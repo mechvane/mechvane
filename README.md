@@ -5,6 +5,11 @@ small and medium-sized companies), following the workflow of classic mechanical 
 and rethought for AI agents. The core stays small; domain modules (sheet metal, standard
 parts, frames, drawings …) load only when a document or the user needs them.
 
+![A joint jumps to the wrong bore after a part edit, update_links puts it back](docs/media/update_links.gif)
+
+*Change a part, and `update_links` notices that a joint jumped to a different bore and
+repairs it (regenerate with `python3 tools/demo_update_links.py`).*
+
 ## Guiding principles
 
 - **Agents are first-class operators.** Every action is a typed command. GUI, scripts,
