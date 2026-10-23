@@ -1,0 +1,67 @@
+{
+  "id": "vdi2230_anziehdrehmoment_m3_bossard",
+  "aussage": "Für Gewindegröße M3 beträgt bei Reibungszahl 0,14 die maximale Montagevorspannkraft 2436 N (Klasse 8.8), 3426 N (Klasse 10.9) und 4111 N (Klasse 12.9). Die zugehörigen maximalen Anziehdrehmomente betragen 141 Ncm (für 8.8), 198 Ncm (für 10.9) und 237 Ncm (für 12.9).",
+  "werte": [
+    {
+      "name": "Montagevorspannkraft FM max M3 8.8",
+      "wert": 2436,
+      "einheit": "N"
+    },
+    {
+      "name": "Montagevorspannkraft FM max M3 10.9",
+      "wert": 3426,
+      "einheit": "N"
+    },
+    {
+      "name": "Montagevorspannkraft FM max M3 12.9",
+      "wert": 4111,
+      "einheit": "N"
+    },
+    {
+      "name": "Anziehdrehmoment MA max M3 8.8",
+      "wert": 141,
+      "einheit": "Ncm"
+    },
+    {
+      "name": "Anziehdrehmoment MA max M3 10.9",
+      "wert": 198,
+      "einheit": "Ncm"
+    },
+    {
+      "name": "Anziehdrehmoment MA max M3 12.9",
+      "wert": 237,
+      "einheit": "Ncm"
+    },
+    {
+      "name": "Reibungszahl µges",
+      "wert": 0.14,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl"],
+    "verfahren": ["Schraubmontage"],
+    "feature": [
+      "Regelgewinde",
+      "Schraubverbindung",
+      "Innensechskantschraube",
+      "Sechskantschraube"
+    ],
+    "groesse": ["M3"],
+    "festigkeitsklasse": ["8.8", "10.9", "12.9"]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3S40LEUM235Qk3rJk2phR1/dbffd8df726c87755678f2c2c11a443c/060_074_Vorspannkr_fte_Anziehdrehmomente_Fastening_DE_01_2025.pdf",
+      "stelle": "Tabelle Seite 61, metrisches Regelgewinde VDI 2230",
+      "zitat": "Angaben in Anlehnung an VDI 2230, Ausgabe 2015: Maximale zu­ [...] lässige Anziehdrehmomente und resultierende maximale Vorspann- [...] kräfte für Sechskantschrauben ISO 4014 – 4018, Innensechskant- [...] schrauben ISO 4762 und für Schrauben mit analogen Kopffestigkeiten [...] bei einer [...] 90 %-igen Ausnutzung der Streckgrenze",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "M3-Schrauben reagieren aufgrund ihres geringen Kernquerschnitts extrem empfindlich auf Überlastung bei der Montage. Die Berechnung bei 90 % Ausnutzung der Dehngrenze nach VDI 2230 stellt die Obergrenze dar.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,54 @@
+{
+  "id": "waelzlager_wellenpassung_umfangslast",
+  "aussage": "Für Wellendurchmesser bis 40 mm unter normaler Radialbelastung ist die Welle mit j6 (j5) zu tolerieren (für normale und hohe Belastung bis 100 mm: k6 (k5)).",
+  "werte": [
+    {
+      "name": "Wellentoleranz normale Belastung bis 40 mm",
+      "wert": "j6",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz hohe Belastung bis 100 mm",
+      "wert": "k6",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl"
+    ],
+    "verfahren": [
+      "Schleifen",
+      "Drehen"
+    ],
+    "feature": [
+      "Welle",
+      "Wälzlagersitz",
+      "Innenring"
+    ],
+    "groesse": [
+      "<=40 mm",
+      "<=100 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wwwpub.zih.tu-dresden.de/~tschoen/konstr/chapter03/tables/lager.pdf",
+      "stelle": "S. 1",
+      "zitat": "Umfangslast     Kugellager     bis 40 mm       normale Belastung               j6 (j5)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die umlaufende Radialkraft hebt den Innenring lokal mikroskopisch vom Wellenzapfen ab; bei Spielpassungen wandert der Ring relativ zur Welle („Rundwandern“), was binnen kurzer Betriebsdauer Passungsrost und Zapfenverschleiß erzeugt.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "passung_h7_k6_waelzlager"
+    }
+  ]
+}

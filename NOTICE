@@ -1,0 +1,9 @@
+Mechvane
+Copyright (c) 2026 Nils Gollub and Mechvane contributors
+
+Licensed under either of the Apache License, Version 2.0 (LICENSE-APACHE) or the
+MIT license (LICENSE-MIT), at your option.
+
+Mechvane builds on SolidCraft (https://github.com/tangency-labs/solidcraft),
+MIT OR Apache-2.0. Slicer engines such as CuraEngine (AGPL-3.0) are run as separate
+processes and are not part of Mechvane; their licences apply to them alone.

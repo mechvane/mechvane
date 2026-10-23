@@ -1,0 +1,48 @@
+{
+  "id": "allgemeintoleranz_iso_2768_m",
+  "aussage": "Längenmaße von über 30 bis 120 mm dürfen bei Toleranzklasse „m“ um maximal ±0,3 mm vom Nennmaß abweichen.",
+  "werte": [
+    {
+      "name": "Grenzabmaß ISO 2768-m (30-120 mm)",
+      "wert": 0.3,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "CNC-Drehen",
+      "Zerspanung",
+      "Spritzguss"
+    ],
+    "feature": [
+      "Längenmaß",
+      "Bauteilkante",
+      "Allgemeintoleranz"
+    ],
+    "groesse": [
+      "30-120 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.messtec.ch/downloads/Allgemeintoleranzen_DIN_ISO_2768-1.pdf",
+      "stelle": "Tabelle 1 (Grenzabmaße für Längenmaße)",
+      "zitat": "m (mittel)       ± 0,1        ± 0,1        ± 0,2        ± 0,3         ± 0,5     ± 0,8         ± 1,2           ±2",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Festlegung des wirtschaftlich erreichbaren Fertigungsstandards ohne Sonderwerkzeuge.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

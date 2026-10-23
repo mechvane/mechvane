@@ -1,0 +1,72 @@
+{
+  "id": "a2_70_anziehdrehmoment_m4_m10_reyher",
+  "aussage": "Bei Edelstahlschrauben der Festigkeitsklasse A2-70 beträgt für Regelgewinde bei Reibungszahl 0,14: M4: Montagevorspannkraft 2,97 kN, Anziehdrehmoment 2,2 Nm. M6: Montagevorspannkraft 6,87 kN, Anziehdrehmoment 7,7 Nm. M8: Montagevorspannkraft 12,61 kN, Anziehdrehmoment 18,8 Nm. M10: Montagevorspannkraft 18,40 kN, Anziehdrehmoment 37,3 Nm.",
+  "werte": [
+    {
+      "name": "Montagevorspannkraft M4 A2-70",
+      "wert": 2.97,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M4 A2-70",
+      "wert": 2.2,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M6 A2-70",
+      "wert": 6.87,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M6 A2-70",
+      "wert": 7.7,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M8 A2-70",
+      "wert": 12.61,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M8 A2-70",
+      "wert": 18.8,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M10 A2-70",
+      "wert": 18.40,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M10 A2-70",
+      "wert": 37.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Reibungszahl µges",
+      "wert": 0.14,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Edelstahl", "A2", "austenitischer nichtrostender Stahl"],
+    "verfahren": ["Schraubmontage"],
+    "feature": ["Regelgewinde", "Schraubverbindung"],
+    "groesse": ["M4", "M6", "M8", "M10"],
+    "festigkeitsklasse": ["A2-70"]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-251, Tabelle 23",
+      "zitat": "Bei Verbindungselementen aus nicht rostenden Stählen sind die Reibungswerte im Gewinde und an den Auflageflächen wesentlich größer als bei vergüteten Stahlschrauben – auch der Streubereich der Reibungswerte ist hier viel größer (bis über 100 %!).",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Edelstahl neigt bei der Montage stark zum Kaltverschweißen (Fressen). Daher ist der Streubereich der Reibungszahlen groß und Schmiermitteleinsatz ratsam.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

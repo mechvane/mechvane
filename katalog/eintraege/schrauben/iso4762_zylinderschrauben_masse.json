@@ -1,0 +1,173 @@
+{
+  "id": "iso4762_zylinderschrauben_masse",
+  "aussage": "Genormte Kopf- und Antriebsmaße für Zylinderschrauben mit Innensechskant nach ISO 4762 (DIN 912) für Regelgewinde M2.5 bis M12: Kopfdurchmesser dk max, Kopfhöhe k max und Schlüsselweite s.",
+  "werte": [
+    {
+      "name": "M2.5 dk max",
+      "wert": 4.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 k max",
+      "wert": 2.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Schlüsselweite s",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 dk max",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 k max",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Schlüsselweite s",
+      "wert": 2.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 dk max",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 k max",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Schlüsselweite s",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 dk max",
+      "wert": 8.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 k max",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Schlüsselweite s",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 dk max",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 k max",
+      "wert": 6.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Schlüsselweite s",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 dk max",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 k max",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Schlüsselweite s",
+      "wert": 6.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 dk max",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 k max",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Schlüsselweite s",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 dk max",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 k max",
+      "wert": 12.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Schlüsselweite s",
+      "wert": 10.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl",
+      "A2",
+      "A4"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Zylinderschraube",
+      "Schraubenkopf",
+      "Innensechskant"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.aramfix.com",
+      "stelle": "Aramfix Technical Data Sheet (ISO 4762 / DIN 912)",
+      "zitat": "Thread d             M1,6          M2           M2,5              M3            M4           M5         M6              M8      M10         M12",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Grundnorm für metrische Zylinderschrauben; Festlegung der Außenabmessungen für Werkzeugzugang und Senkungen.",
+  "ausnahmen": "Gerändelter Kopf erlaubt geringfügig größeres dk (z. B. M3: 5,68 mm; M6: 10,22 mm).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

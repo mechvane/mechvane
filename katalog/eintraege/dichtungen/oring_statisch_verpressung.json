@@ -1,0 +1,57 @@
+{
+  "id": "oring_statisch_verpressung",
+  "aussage": "Die elastische Querschnittsverpressung eines O-Rings im statischen Einbau muss zwischen 15 % und 30 % (optimal 20 % bis 25 %) der Schnurstärke d2 liegen.",
+  "werte": [
+    {
+      "name": "Zulässige Querschnittsverpressung",
+      "bereich": [
+        15,
+        30
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Optimale Querschnittsverpressung",
+      "bereich": [
+        20,
+        25
+      ],
+      "einheit": "%"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Elastomer",
+      "NBR",
+      "FKM",
+      "EPDM",
+      "70-80 Shore A"
+    ],
+    "verfahren": [
+      "Dichtungsmontage",
+      "Zerspanung"
+    ],
+    "feature": [
+      "O-Ring",
+      "O-Ring-Nut",
+      "Dichtung",
+      "Einbauraum"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://nianticseal.com/wp-content/uploads/2024/04/ORD-5700.pdf",
+      "stelle": "S. 3-10",
+      "zitat": "When used as a static seal, the maximum recommended [...] squeeze for most elastomers is 30%",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Unter 15 % reicht die Flächenpressung bei Kältekontraktion nicht aus; über 30 % versagt der Werkstoff durch Druckverformungsrest und Montageschäden.",
+  "ausnahmen": "Vakuumdichtungen (bis zu 35 % Verpressung zulässig).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

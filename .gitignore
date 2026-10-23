@@ -1,0 +1,5 @@
+*.bak
+__pycache__/
+workspace/
+graphify-out/
+graphify-katalog/

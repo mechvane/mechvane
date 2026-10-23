@@ -1,0 +1,26 @@
+{
+  "id": "spannflaechen_orientierung_fictiv",
+  "aussage": "Bauteile sollten gerade, parallele Außenkanten aufweisen, um im Standardschraubstock gespannt werden zu können. Gekrümmte Konturen erfordern teure Sonderspannbacken.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Fräsen"],
+    "feature": ["Spannfläche", "Werkstückorientierung", "Außenkontur"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.fictiv.com/articles/cnc-machining-design-guide",
+      "stelle": "Abschnitt Workholding and Fixturing",
+      "zitat": "Curved edges (other than perfect cylindrical profiles) require custom fixtures, costing extra time and money. Thin parts are difficult to hold and are prone to warping. Parts are also easier to set up and machine if all features can be reached by the tool in just one orientation.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Jede Neuausrichtung erfordert ein manuelles Umspannen und erneutes Antasten der Werkstücknullpunkte, was die Bearbeitungszeit verlängert und die Toleranzkette vergrößert.",
+  "ausnahmen": "Zylindrische Bauteile (im Dreibackenfutter / Prisma spannbar) oder weiche Formbacken.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

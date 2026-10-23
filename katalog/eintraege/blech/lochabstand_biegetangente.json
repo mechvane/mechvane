@@ -1,0 +1,47 @@
+{
+  "id": "lochabstand_biegetangente",
+  "aussage": "Der Mindestabstand zwischen der Außenkante einer Bohrung und der Biegelinie muss mindestens das Vierfache der Blechdicke betragen: d_Loch >= 4,0 * t.",
+  "werte": [
+    {
+      "name": "Mindestabstand Loch zu Biegelinie",
+      "wert": 4.0,
+      "einheit": "x Blechdicke"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Aluminium",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Stanzen",
+      "Laserschneiden",
+      "Biegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Bohrung",
+      "Loch",
+      "Biegekante",
+      "Biegelinie",
+      "Blech"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/design-tips/8-mistakes-to-avoid-when-designing-sheet-metal-parts/",
+      "stelle": "Abschnitt Holes and Slots",
+      "zitat": "Keep all features at least 4x material thickness away from bend lines.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Durch die Dehnzone des Biegevorgangs wird das Material in Loch-Nähe mitgezogen. Das Loch verformt sich unzulässig zu einer Ellipse.",
+  "ausnahmen": "Langlöcher quer zur Biegelinie oder Nachbohren nach dem Biegen.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

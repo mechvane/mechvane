@@ -1,0 +1,55 @@
+{
+  "id": "stiftschrauben_einschraubende_stahl_grauguss_din938_din939",
+  "aussage": "Genormte Einschraubenden für Stiftschrauben nach DIN 938 in Stahl (e ≈ 1,0 * d) und nach DIN 939 in Grauguss (e ≈ 1,25 * d).",
+  "werte": [
+    {
+      "name": "Einschraubende DIN 938 Stahl",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubende DIN 939 Grauguss",
+      "wert": 1.25,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Grauguss"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Stiftschraube",
+      "Einschraubende",
+      "Innengewinde"
+    ],
+    "groesse": [
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-20 (DIN 938, DIN 939)",
+      "zitat": "DIN 938 = mit Einschraubende ≈ 1 d [...] DIN 939 = mit Einschraubende ≈ 1,25 d",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Genormte Einschraublänge zur sicheren Verankerung von Stiftschrauben in zähen und spröden Eisenwerkstoffen.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

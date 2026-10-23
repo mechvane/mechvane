@@ -1,0 +1,61 @@
+{
+  "id": "direktverschraubung_thermoplaste_ecosyn_plast",
+  "aussage": "Werkstoffspezifische Einschraubtiefen für gewindefurchende Direktverschraubung nach Bossard ecosyn-plast: ABS/POM/PP: 2,00 * d1; PA 6 / PA 6.6: 1,70 * d1; PA 6-GF30: 1,90 * d1; PC (Polycarbonat): 2,20 * d1.",
+  "werte": [
+    {
+      "name": "Einschraubtiefe ABS / POM / PP",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe PA 6",
+      "wert": 1.7,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe PA 6-GF30",
+      "wert": 1.9,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe Polycarbonat PC",
+      "wert": 2.2,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "ABS",
+      "POM",
+      "PP",
+      "PA6",
+      "PC",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "Direktverschraubung",
+      "Gewindefurchen"
+    ],
+    "feature": [
+      "Schraubdom",
+      "Tubus",
+      "Einschraubtiefe"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3AYmJ7h7169wKygbbUg0MK/dc07d87c865ade977f525121ea756759/0901_ecosyn_plast_DE.pdf",
+      "stelle": "Katalog 0901, S. 5",
+      "zitat": "Für eine optimale Konstruktion, die sich in der Praxis bewährt, ist es erforderlich die Tubusgeometrie den unterschiedlichen Werkstoffen anzupassen. Die angegebenen Werte basieren auf umfassenden Laborversuchen mit Modellkörpern.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Duktilität, Kriechneigung und Kerbempfindlichkeit variieren zwischen Thermoplasten; kerbempfindliches PC benötigt tiefere Einschraubung und weiteres Vorloch.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

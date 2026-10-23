@@ -1,0 +1,43 @@
+{
+  "id": "wellenabsatz_mindest_uebergangsradius",
+  "aussage": "An reinen Wellenabsätzen ohne Freistich muss der Übergangsradius mindestens r >= 0,05 * d betragen.",
+  "werte": [
+    {
+      "name": "Mindest-Übergangsradius zu Wellendurchmesser",
+      "wert": 0.05,
+      "einheit": "x Wellendurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Vergütungsstahl",
+      "Baustahl"
+    ],
+    "verfahren": [
+      "Drehen"
+    ],
+    "feature": [
+      "Wellenabsatz",
+      "Übergangsradius",
+      "Welle",
+      "Kerbe"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "lehrbuch",
+  "quellen": [
+    {
+      "url": "https://wwwpub.zih.tu-dresden.de/~tschoen/konstr/",
+      "stelle": "Konstruktionslehre Kapitel Wellen",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Scharfe Kanten (r < 0,05 * d) verdoppeln bis verdreifachen die Nennspannungsspitzen im Kerbgrund und führen zu vorzeitigem Ermüdungsbruch.",
+  "ausnahmen": "Freistich nach DIN 509 vorhanden.",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

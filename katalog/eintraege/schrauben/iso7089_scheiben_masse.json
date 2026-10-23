@@ -1,0 +1,168 @@
+{
+  "id": "iso7089_scheiben_masse",
+  "aussage": "Genormte Abmessungen für flache Scheiben Form A ohne Fase nach ISO 7089 (DIN 125 Form A, Produktklasse A) für Nenngrößen M2.5 bis M12: Lochdurchmesser d1 min, Außendurchmesser d2 max und Nenndicke h.",
+  "werte": [
+    {
+      "name": "M2.5 d1 min",
+      "wert": 2.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 d2 max",
+      "wert": 6.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Dicke h",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 d1 min",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 d2 max",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Dicke h",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 d1 min",
+      "wert": 4.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 d2 max",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Dicke h",
+      "wert": 0.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 d1 min",
+      "wert": 5.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 d2 max",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Dicke h",
+      "wert": 1.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 d1 min",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 d2 max",
+      "wert": 12.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Dicke h",
+      "wert": 1.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 d1 min",
+      "wert": 8.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 d2 max",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Dicke h",
+      "wert": 1.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 d1 min",
+      "wert": 10.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 d2 max",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Dicke h",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 d1 min",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 d2 max",
+      "wert": 24.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Dicke h",
+      "wert": 2.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Unterlegscheibe",
+      "Scheibe",
+      "Flache Scheibe"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "200HV",
+      "300HV"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.itpfasteners.com",
+      "stelle": "ITP Technical Catalog S. 346 (ISO 7089)",
+      "zitat": "       2.5             2.84                    2.7                     6                      5.7                    0.55                      0.45",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Verteilung der Kopf- und Mutterauflagekraft auf dem verspannten Bauteil zur Vermeidung von Oberflächeneingrabungen.",
+  "ausnahmen": "Senkschrauben oder Zylinderschrauben in engen Senkungen nach DIN 974-1 Reihe 4 (dort Scheiben nach DIN 433 erforderlich).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

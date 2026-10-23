@@ -1,0 +1,44 @@
+{
+  "id": "standard_k_faktor_stahlblech",
+  "aussage": "Der Standard-K-Faktor für 90°-Freibiegungen an Feinblechen aus Stahl (DC01) mit r ≈ 1,0 * t beträgt k = 0,44.",
+  "werte": [
+    {
+      "name": "Standard-K-Faktor DC01",
+      "wert": 0.44,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "DC01",
+      "S235JR"
+    ],
+    "verfahren": [
+      "Biegen",
+      "Freibiegen",
+      "Abwicklung"
+    ],
+    "feature": [
+      "K-Faktor",
+      "Biegekante",
+      "Blech"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://monami.hs-mittweida.de/files/2129/Bachelorarbeit_Rockhausen.pdf",
+      "stelle": "S. 14",
+      "zitat": "Zwar gibt es hierfür Formeln zu ihrer Berechnung, so zum Beispiel nach DIN 6935, doch auch diese approximieren nur die in der Fertigung tatsächlich auftretenden Biegezugaben.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Dient als standardisierter Rechenwert für die Abwicklung in CAD-Systemen, um Schneidtoleranzen von ±0,2 mm im Fertigteil einzuhalten.",
+  "ausnahmen": "Abweichende Werkzeugpaarungen oder Prägebiegen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,52 @@
+{
+  "id": "grundtoleranzen_it7_it6_iso286",
+  "aussage": "Grundtoleranz IT7 für Nennmaße 18–30 mm beträgt 21 µm (0,021 mm); IT6 beträgt 13 µm.",
+  "werte": [
+    {
+      "name": "Grundtoleranz IT7 (18-30 mm)",
+      "wert": 21,
+      "einheit": "µm"
+    },
+    {
+      "name": "Grundtoleranz IT6 (18-30 mm)",
+      "wert": 13,
+      "einheit": "µm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Reiben",
+      "Feindrehen",
+      "Rundschleifen",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Passung",
+      "Bohrung",
+      "Welle"
+    ],
+    "groesse": [
+      "18-30 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.elesa-ganter.at/siteassets/technical/DIN_ISO_286_ISO_Fundamental_Tolerances_DE.pdf",
+      "stelle": "Tabelle S. A21",
+      "zitat": "       7            10          12           15           18        21       25         30        35        40        46        52        57        63",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "IT7 stellt im allgemeinen Maschinenbau die Standardgenauigkeit für Passungsbohrungen (H7) dar, die mit handelsüblichen Maschinenreibahlen kostengünstig herstellbar ist. IT6 ist die Standardgüte für geschliffene Wellenpassungen (h6, k6, g6).",
+  "ausnahmen": "Gröbere Toleranzen IT8–IT11 für reine Freimaße oder Schruppbearbeitung.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

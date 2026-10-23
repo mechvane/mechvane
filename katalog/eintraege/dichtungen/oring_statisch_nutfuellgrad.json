@@ -1,0 +1,57 @@
+{
+  "id": "oring_statisch_nutfuellgrad",
+  "aussage": "Der Nutfüllgrad eines statischen O-Ring-Einbauraums muss zwischen 60 % und 85 % (Optimum 75 %) liegen; mindestens 10 % des Nutvolumens müssen als Freiraum verbleiben.",
+  "werte": [
+    {
+      "name": "Zulässiger Nutfüllgrad",
+      "bereich": [
+        60,
+        85
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Optimaler Nutfüllgrad",
+      "wert": 75,
+      "einheit": "%"
+    },
+    {
+      "name": "Mindestfreiraum Nutvolumen",
+      "wert": 10,
+      "einheit": "%"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Elastomer",
+      "Metalle",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Fräsen",
+      "Drehen"
+    ],
+    "feature": [
+      "O-Ring-Nut",
+      "Dichtung",
+      "Nutfüllgrad",
+      "Einbauraum"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://nianticseal.com/wp-content/uploads/2024/04/ORD-5700.pdf",
+      "stelle": "S. 3-9",
+      "zitat": "Most [...] O-ring seal applications call for a gland fill of between 60% [...] to 85% of the available volume with the optimum fill being [...] 75%",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Elastomere sind inkompressibel. Bei Erwärmung oder Medienquellung führt ein Füllgrad von 100 % zur Zerstörung des Gehäuses oder zum Herausscheren des Dichtrings.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

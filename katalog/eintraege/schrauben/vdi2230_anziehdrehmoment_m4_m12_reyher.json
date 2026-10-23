@@ -1,0 +1,182 @@
+{
+  "id": "vdi2230_anziehdrehmoment_m4_m12_reyher",
+  "aussage": "Für Schaftschrauben mit Regelgewinde bei Reibungszahl 0,14 betragen die Vorspannkräfte und Anziehdrehmomente für 8.8, 10.9 und 12.9: M4: FV = 4,30 kN / 6,30 kN / 7,40 kN; MA = 3,3 Nm / 4,8 Nm / 5,6 Nm. M6: FV = 9,90 kN / 14,5 kN / 17,0 kN; MA = 11,3 Nm / 16,5 Nm / 19,3 Nm. M8: FV = 18,1 kN / 26,6 kN / 31,1 kN; MA = 27,3 Nm / 40,1 Nm / 46,9 Nm. M10: FV = 28,8 kN / 42,2 kN / 49,4 kN; MA = 54,0 Nm / 79,0 Nm / 93,0 Nm. M12: FV = 41,9 kN / 61,5 kN / 72,0 kN; MA = 93,0 Nm / 137,0 Nm / 160,0 Nm.",
+  "werte": [
+    {
+      "name": "Anziehdrehmoment M4 8.8",
+      "wert": 3.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M4 10.9",
+      "wert": 4.8,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M4 12.9",
+      "wert": 5.6,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M4 8.8",
+      "wert": 4.30,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M4 10.9",
+      "wert": 6.30,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M4 12.9",
+      "wert": 7.40,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M6 8.8",
+      "wert": 11.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M6 10.9",
+      "wert": 16.5,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M6 12.9",
+      "wert": 19.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M6 8.8",
+      "wert": 9.90,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M6 10.9",
+      "wert": 14.5,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M6 12.9",
+      "wert": 17.0,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M8 8.8",
+      "wert": 27.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M8 10.9",
+      "wert": 40.1,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M8 12.9",
+      "wert": 46.9,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M8 8.8",
+      "wert": 18.1,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M8 10.9",
+      "wert": 26.6,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M8 12.9",
+      "wert": 31.1,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M10 8.8",
+      "wert": 54.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M10 10.9",
+      "wert": 79.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M10 12.9",
+      "wert": 93.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M10 8.8",
+      "wert": 28.8,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M10 10.9",
+      "wert": 42.2,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M10 12.9",
+      "wert": 49.4,
+      "einheit": "kN"
+    },
+    {
+      "name": "Anziehdrehmoment M12 8.8",
+      "wert": 93.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M12 10.9",
+      "wert": 137.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment M12 12.9",
+      "wert": 160.0,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft M12 8.8",
+      "wert": 41.9,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M12 10.9",
+      "wert": 61.5,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft M12 12.9",
+      "wert": 72.0,
+      "einheit": "kN"
+    },
+    {
+      "name": "Reibungszahl µges",
+      "wert": 0.14,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl"],
+    "verfahren": ["Schraubmontage"],
+    "feature": ["Regelgewinde", "Schaftschraube", "Schraubverbindung"],
+    "groesse": ["M4", "M6", "M8", "M10", "M12"],
+    "festigkeitsklasse": ["8.8", "10.9", "12.9"]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-221, Tabelle 5 (Richtwerte für Schaftschrauben mit Regelgewinde, Reibungszahl µges = 0,14)",
+      "zitat": "Tabelle 5: Richtwerte für Schaftschrauben mit Regelgewinde, Reibungszahl µges = 0,14",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die Werte nach VDI 2230 gewährleisten eine 90%ige Ausnutzung der Schraubenstreckgrenze bzw. 0,2%-Dehngrenze und verhindern plastische Verformungen beim ordnungsgemäßen Anziehen.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

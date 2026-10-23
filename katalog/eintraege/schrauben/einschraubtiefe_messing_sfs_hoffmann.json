@@ -1,0 +1,63 @@
+{
+  "id": "einschraubtiefe_messing_sfs_hoffmann",
+  "aussage": "Gesamteinschraubtiefe m_ges nach VDI 2230 für Schrauben 8.8 in Messing nach SFS / Hoffmann Group Handbuch: weiches Messing (tau_B ≈ 250 N/mm²): m_ges ≈ 1,3 * d bis 1,4 * d; halbhartes Automatenmessing CuZn39Pb3 (tau_B ≈ 320 N/mm²): m_ges ≈ 1,1 * d bis 1,2 * d.",
+  "werte": [
+    {
+      "name": "Gesamteinschraubtiefe weiches Messing",
+      "bereich": [
+        1.3,
+        1.4
+      ],
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Gesamteinschraubtiefe CuZn39Pb3",
+      "bereich": [
+        1.1,
+        1.2
+      ],
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Messing",
+      "CuZn39Pb3",
+      "Kupferlegierung"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "Technisches Handbuch S. 154",
+      "zitat": "Somit gilt für die Gesamt- [...] einschraubtiefe m ges = meff + mzu.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Einschraubtiefe skaliert mit der Werkstoffscherfestigkeit tau_B; die Gesamteinschraubtiefe addiert m_zu ≈ 2*P für Fasen und unvollständige Gewindegänge.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

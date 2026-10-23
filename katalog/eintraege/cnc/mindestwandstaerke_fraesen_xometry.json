@@ -1,0 +1,42 @@
+{
+  "id": "mindestwandstaerke_fraesen_xometry",
+  "aussage": "Die standardmäßige Mindestdicke von Wänden beträgt 0,794 mm für Metalle und 1,5 mm für Kunststoffe.",
+  "werte": [
+    {
+      "name": "Standard-Mindestwandstärke Metalle",
+      "wert": 0.794,
+      "einheit": "mm"
+    },
+    {
+      "name": "Standard-Mindestwandstärke Kunststoffe",
+      "wert": 1.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Fräsen"],
+    "feature": ["Wand", "Wandstärke"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.xometry.com/resources/machining/10-tips-improve-cad-cnc-design/",
+      "stelle": "Tip #1 (Avoid Excessively Thin Walls)",
+      "zitat": "The standard minimum thickness of walls is 0.794 millimeters for metals and 1.5 millimeters for plastics.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Eine Reduzierung der Wandstärke verringert die Materialsteifigkeit und mindert die erzielbare Fertigungsgenauigkeit durch Vibrationen.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "mindestwandstaerke_fraesen_hubs"
+    }
+  ]
+}

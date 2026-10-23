@@ -1,0 +1,50 @@
+{
+  "id": "waelzlager_gehaeusepassung_loslager",
+  "aussage": "Die Gehäusebohrung für axial verschiebbare Loslager mit stehendem Außenring ist in H7 (bei hohen Genauigkeitsanforderungen H6) auszuführen.",
+  "werte": [
+    {
+      "name": "Gehäusetoleranz Loslager Standard",
+      "wert": "H7",
+      "einheit": ""
+    },
+    {
+      "name": "Gehäusetoleranz Loslager hohe Genauigkeit",
+      "wert": "H6",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Grauguss",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Bohren",
+      "Reiben",
+      "Fräsen"
+    ],
+    "feature": [
+      "Gehäusebohrung",
+      "Loslager",
+      "Wälzlagersitz",
+      "Außenring"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wwwpub.zih.tu-dresden.de/~tschoen/konstr/chapter03/tables/lager.pdf",
+      "stelle": "S. 1",
+      "zitat": "Punktlast für Loslager mit leicht             Qualität der Toleranz richtet   H7 (H6)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Temperaturschwankungen im Betrieb führen zur Längung der Welle gegenüber dem Gehäuse. Das Loslager muss im Gehäuse gleiten können, um axiale Zwangskräfte auf die Wälzkörper zu verhindern.",
+  "ausnahmen": "Punktlast am Innenring / rotierendes Gehäuse.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

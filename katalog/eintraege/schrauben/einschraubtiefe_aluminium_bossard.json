@@ -1,0 +1,70 @@
+{
+  "id": "einschraubtiefe_aluminium_bossard",
+  "aussage": "Mindesteinschraubtiefe für Schrauben der Festigkeitsklasse 8.8 mit Regelgewinde in Aluminium nach Bossard Versuchswerten: AlMg3 F18: 2,0 * d (theoretischer VDI 2230 Rechenwert 3,0 * d); AlMgSi1 F32: 1,4 * d.",
+  "werte": [
+    {
+      "name": "Einschraubtiefe AlMg3 F18 (Versuch)",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe AlMg3 F18 (VDI)",
+      "wert": 3.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe AlMgSi1 F32",
+      "wert": 1.4,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "AlMg3",
+      "AlMgSi1",
+      "Aluminiumlegierung",
+      "Alu"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe",
+      "Schraubverbindung"
+    ],
+    "groesse": [
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
+      "stelle": "Bossard Technische Informationen Blatt 052",
+      "zitat": "Sollen Schrauben in geschnittene Innengewinde eingeschraubt [...] Festigkeit des Bauteilwerkstoffes minimale Eindrehtiefen festzulegen.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "In der Realität plastifizieren die ersten Gewindegänge bei hoher Vorspannung lokal, wodurch nachfolgende Gänge mittragen und bereits bei 2,0 * d Schraubenbruchlast erreicht wird.",
+  "ausnahmen": "Reinaluminium Al 99,5 ist für Schrauben 8.8 ungeeignet.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "einschraubtiefe_aluminium_vdi2230_hanke"
+    }
+  ]
+}

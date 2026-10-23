@@ -1,0 +1,54 @@
+{
+  "id": "iglidur_einpressmasse_toleranzen",
+  "aussage": "iglidur Gleitlager sind Einpressbuchsen, die mit Übermaß in eine H7-tolerierte Gehäuseaufnahme eingepresst werden. Für die Gegenlaufwellen wird mindestens eine h9-Toleranz empfohlen. Das Einpressübermaß kann bis zu 2 % des Innendurchmessers betragen; der Nenndurchmesser stellt sich erst nach dem Einpressen ein.",
+  "werte": [
+    {
+      "name": "Gehäusetoleranz",
+      "wert": "H7",
+      "einheit": ""
+    },
+    {
+      "name": "Empfohlene Wellentoleranz",
+      "wert": "h9",
+      "einheit": ""
+    },
+    {
+      "name": "Einpressübermaß maximal",
+      "wert": 2.0,
+      "einheit": "%"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Polymer",
+      "iglidur",
+      "Kunststoff"
+    ],
+    "verfahren": [
+      "Einpressen",
+      "Gleitlagerung"
+    ],
+    "feature": [
+      "Gleitlager",
+      "Einpressbuchse",
+      "Gehäusebohrung",
+      "Welle"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.igus.de/gleitlager/wiki/toleranzen",
+      "stelle": "Fachbeitrag Toleranzen und Einbau",
+      "zitat": "iglidur Gleitlager sind Einpressbuchsen, die mit Übermaß in eine H7-tolerierte Aufnahme eingepresst werden. Für die Wellen wird mindestens eine h9 Toleranz empfohlen.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Im Lieferzustand weisen die Buchsen am Außen- und Innendurchmesser ein bewusstes Übermaß auf. Erst durch den Einpressvorgang in das formstabile H7-Gehäuse wird das Lager kalibriert und das für den Betrieb erforderliche Laufspiel hergestellt.",
+  "ausnahmen": "Sondergehäuse mit Dünnwand oder abweichender Elastizität.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

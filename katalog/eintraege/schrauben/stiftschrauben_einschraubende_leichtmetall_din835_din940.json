@@ -1,0 +1,60 @@
+{
+  "id": "stiftschrauben_einschraubende_leichtmetall_din835_din940",
+  "aussage": "Genormte Einschraubenden b1 für Stiftschrauben in Leichtmetalle und Aluminiumlegierungen: DIN 835: Einschraubende e ≈ 2,0 * d; DIN 940: Einschraubende e ≈ 2,5 * d.",
+  "werte": [
+    {
+      "name": "Einschraubende DIN 835",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubende DIN 940",
+      "wert": 2.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "Leichtmetall",
+      "AlMg3",
+      "AlSi10Mg",
+      "Alu"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Stiftschraube",
+      "Einschraubende",
+      "Innengewinde",
+      "Sackloch"
+    ],
+    "groesse": [
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-20 (DIN 835, DIN 940)",
+      "zitat": "Stiftschrauben [...] DIN 835 [...] Einschraubende ≈ 2 d",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Genormte Bemessung des Einschraubendes stellt sicher, dass Stiftschrauben in Leichtmetallen mit geringerer Scherfestigkeit beim Anziehen der Mutter nicht ausreißen.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

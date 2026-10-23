@@ -1,0 +1,243 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "L",
+    "expression": "80 mm",
+    "comment": "outer length, 40..200"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "W",
+    "expression": "50 mm",
+    "comment": "outer width, 30..150"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "H",
+    "expression": "30 mm",
+    "comment": "outer height, 22..100"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "wall",
+    "expression": "2 mm",
+    "comment": "wall and floor, 1.2..4"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "hb",
+    "expression": "20 mm",
+    "comment": "boss top above z=0, wall+3..H"
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XY",
+    "name": "BoxSketch"
+   }
+  },
+  {
+   "command": "sketch.draw.dimensioned",
+   "params": {
+    "command": "sketch.rectangle.center",
+    "params": {
+     "center": [
+      0,
+      0
+     ],
+     "corner": [
+      40,
+      25
+     ]
+    },
+    "dimensions": {
+     "width": "L",
+     "height": "W"
+    }
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "solid.extrude",
+   "params": {
+    "distance": "H",
+    "name": "Box",
+    "body_name": "Housing"
+   }
+  },
+  {
+   "command": "solid.fillet",
+   "params": {
+    "edges": [
+     [
+      40,
+      25,
+      15
+     ],
+     [
+      -40,
+      25,
+      15
+     ],
+     [
+      40,
+      -25,
+      15
+     ],
+     [
+      -40,
+      -25,
+      15
+     ]
+    ],
+    "radius": 5,
+    "name": "Corners"
+   }
+  },
+  {
+   "command": "solid.shell",
+   "params": {
+    "faces": [
+     [
+      0,
+      0,
+      30
+     ]
+    ],
+    "thickness": "wall",
+    "name": "Shell"
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XY",
+    "offset": "wall - 1 mm",
+    "name": "BossSketch"
+   }
+  },
+  {
+   "command": "sketch.circle.center",
+   "params": {
+    "center": [
+     33.5,
+     18.5
+    ],
+    "radius": 3.5
+   }
+  },
+  {
+   "command": "sketch.circle.center",
+   "params": {
+    "center": [
+     33.5,
+     18.5
+    ],
+    "radius": 1.5
+   }
+  },
+  {
+   "command": "sketch.dimension",
+   "params": {
+    "entities": [
+     "origin",
+     "c1.center"
+    ],
+    "type": "horizontal",
+    "value": "L/2 - wall - 4.5 mm"
+   }
+  },
+  {
+   "command": "sketch.dimension",
+   "params": {
+    "entities": [
+     "origin",
+     "c1.center"
+    ],
+    "type": "vertical",
+    "value": "W/2 - wall - 4.5 mm"
+   }
+  },
+  {
+   "command": "sketch.dimension",
+   "params": {
+    "entities": [
+     "c1"
+    ],
+    "type": "diameter",
+    "value": "7 mm"
+   }
+  },
+  {
+   "command": "sketch.dimension",
+   "params": {
+    "entities": [
+     "c2"
+    ],
+    "type": "diameter",
+    "value": "3 mm"
+   }
+  },
+  {
+   "command": "sketch.solve",
+   "params": {}
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "solid.extrude",
+   "params": {
+    "distance": "hb - wall + 1 mm",
+    "operation": "join",
+    "profiles": [
+     {
+      "point": [
+       36,
+       18.5
+      ]
+     }
+    ],
+    "name": "Boss"
+   }
+  },
+  {
+   "command": "solid.pattern.rectangular",
+   "params": {
+    "features": [
+     "Boss"
+    ],
+    "dir1": [
+     -1,
+     0,
+     0
+    ],
+    "count1": 2,
+    "spacing1": "L - 2*wall - 9 mm",
+    "dir2": [
+     0,
+     -1,
+     0
+    ],
+    "count2": 2,
+    "spacing2": "W - 2*wall - 9 mm",
+    "name": "Bosses"
+   }
+  }
+ ]
+}

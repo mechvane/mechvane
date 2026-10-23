@@ -1,0 +1,129 @@
+{
+  "id": "iso4032_sechskantmutter_masse",
+  "aussage": "Genormte Abmessungen für reguläre Sechskantmuttern Typ 1 nach ISO 4032 (ersetzt DIN 934) für Regelgewinde M2.5 bis M12: Schlüsselweite s und maximale Mutterhöhe m max.",
+  "werte": [
+    {
+      "name": "M2.5 Schlüsselweite s",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 m max",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Schlüsselweite s",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 m max",
+      "wert": 2.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Schlüsselweite s",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 m max",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Schlüsselweite s",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 m max",
+      "wert": 4.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Schlüsselweite s",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 m max",
+      "wert": 5.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Schlüsselweite s",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 m max",
+      "wert": 6.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Schlüsselweite s",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 m max",
+      "wert": 8.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Schlüsselweite s",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 m max",
+      "wert": 10.8,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Sechskantmutter",
+      "Mutter",
+      "Mutterhöhe"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8",
+      "10",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.aramfix.com",
+      "stelle": "Aramfix Technical Data Sheet (ISO 4032)",
+      "zitat": "Thread d       preferred    M1,6     M2      M2,5     M3      M4      M5      M6      M8      M10     M12",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "ISO 4032 definiert gegenüber DIN 934 geänderte Schlüsselweiten (M10: 16 mm statt 17 mm; M12: 18 mm statt 19 mm) und größere Mutterhöhen für höhere Abstreiffestigkeit.",
+  "ausnahmen": "Alte Konstruktionen nach DIN 934.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

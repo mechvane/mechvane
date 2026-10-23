@@ -1,0 +1,48 @@
+{
+  "id": "direktverschraubung_thermoplaste_delta_pt",
+  "aussage": "Für die gewindefurchende Direktverschraubung mit Spezialschrauben (EJOT DELTA PT mit 30°-Flankenwinkel) in allen gängigen Kunststoffen mit E-Modul bis 20.000 N/mm² beträgt die Einschraubtiefe te = 2 * d1.",
+  "werte": [
+    {
+      "name": "Einschraubtiefe te DELTA PT",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste",
+      "Kunststoffe",
+      "ABS",
+      "PA",
+      "PP",
+      "POM",
+      "PC"
+    ],
+    "verfahren": [
+      "Direktverschraubung",
+      "Gewindefurchen"
+    ],
+    "feature": [
+      "Schraubdom",
+      "Kernloch",
+      "Einschraubtiefe",
+      "DELTA PT"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.smw-schrauben.ch/userdata/uploads/Dokumente/delta-pt-de(1).pdf",
+      "stelle": "Seite 4, Konstruktionsrichtlinie",
+      "zitat": "Für alle gängigen Kunststoffe bis E = 20’000 N/mm2. [...] Einschraubtiefe te = 2 x d1",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Normale metrische 60°-Schrauben erzeugen zu hohe Radialspannungen und sprengen Kunststoffdome. Der 30°-Flankenwinkel reduziert Radialkräfte und vergrößert den tragenden Kunststoffscherquerschnitt.",
+  "ausnahmen": "Metrische 8.8-Schrauben dürfen nicht direkt in Thermoplaste geschraubt werden.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

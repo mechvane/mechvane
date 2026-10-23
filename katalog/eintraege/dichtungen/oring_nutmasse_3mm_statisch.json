@@ -1,0 +1,79 @@
+{
+  "id": "oring_nutmasse_3mm_statisch",
+  "aussage": "Für Schnurstärke d2 = 3,00 mm beträgt radial statisch t = 2,30 mm und b = 3,98 mm; axial statisch t = 2,30 mm und b = 4,60 mm; Nutgrundradius r1 = 0,60 mm, Einführschräge z = 1,53 mm.",
+  "werte": [
+    {
+      "name": "Schnurstärke d2",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nuttiefe radial statisch",
+      "wert": 2.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutbreite radial statisch",
+      "wert": 3.98,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nuttiefe axial statisch",
+      "wert": 2.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutbreite axial statisch",
+      "wert": 4.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutgrundradius r1",
+      "wert": 0.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "Einführschräge z",
+      "wert": 1.53,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Elastomer",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fräsen"
+    ],
+    "feature": [
+      "O-Ring-Nut",
+      "O-Ring",
+      "Nutmaß",
+      "statisch radial",
+      "statisch axial"
+    ],
+    "groesse": [
+      "3 mm",
+      "3.0 mm",
+      "d2=3.0"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.cog.de/produkte/rund-um-den-o-ring/o-ring-einbaumasse/tabellarisch",
+      "stelle": "Tabelle Zeile 7",
+      "zitat": "Die hier abgebildete Tabelle zeigt eine Auswahl der Einbaumaße in Abhängigkeit von Schnurstärke d2 für den radialen und axialen O-Ring Einbau.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Gewährleistet 23,3 % Verpressung bei optimalem Freiraum für thermische Ausdehnung.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

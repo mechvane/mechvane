@@ -1,0 +1,26 @@
+{
+  "id": "wirksame_losdrehsicherungen",
+  "aussage": "Als wirksame Losdrehsicherungen unter dynamischer Querbeanspruchung gelten mechanische Verriegelungen an der Auflagefläche sowie stoffschlüssige Verklebungen im Gewinde.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl", "Edelstahl"],
+    "verfahren": ["Schraubverbindung"],
+    "feature": ["Schraubensicherung", "Losdrehsicherung", "Sperrverzahnung", "Klebstoff"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.wuerth-industrie.com/web/media/downloads/brochures/de_wis/dino-technik.pdf",
+      "stelle": "Kapitel 7.4.3 (Losdrehsicherungen)",
+      "zitat": "Losdrehsicherungen verhindern unter dynamischen Belas- [...] tung, wirkungsvoll das selbsttätige Losdrehen. Bis auf ge- [...] ringe unvermeidliche Setzbeträge bleibt die Vorspannkraft [...] in der Verbindung erhalten [...] Verriegelung an der Auflage [...] Verklebung im Gewinde",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Im Unterschied zu bloßen Verliersicherungen (z. B. Muttern mit Polyamidring), die nach Vorspannkraftverlust lediglich das Abfallen verhindern, halten Verriegelungselemente (z. B. Keilsicherungsscheiben oder Sperrverzahnungen) und anaerobe Klebstoffe die Vorspannkraft aufrecht.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

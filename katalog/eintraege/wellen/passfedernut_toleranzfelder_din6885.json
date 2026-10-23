@@ -1,0 +1,52 @@
+{
+  "id": "passfedernut_toleranzfelder_din6885",
+  "aussage": "Für eine Standard-Passfederverbindung (leichter Sitz / Normalfall) ist die Wellennutbreite mit P9 und die Nabennutbreite mit JS9 zu tolerieren (z. B. bei Passfeder 6 x 6: Wellennut 6 P9 = -0,042 ... -0,012 mm; Nabennut 6 JS9 = ±0,015 mm).",
+  "werte": [
+    {
+      "name": "Toleranzfeld Wellennutbreite",
+      "wert": "P9",
+      "einheit": ""
+    },
+    {
+      "name": "Toleranzfeld Nabennutbreite",
+      "wert": "JS9",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "C45"
+    ],
+    "verfahren": [
+      "Fräsen",
+      "Nutenstoßen",
+      "Räumen"
+    ],
+    "feature": [
+      "Passfeder",
+      "Passfedernut",
+      "Welle",
+      "Nabe"
+    ],
+    "groesse": [
+      "6x6",
+      "6-100 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.hanser.ch/fileadmin/user_upload_hanser/downloads/Technischer_Anhang/6885_2.pdf",
+      "stelle": "S. 2079",
+      "zitat": "* Die Nutbreite wird standardmäßig in P9 ausgeführt, Ausnahmen sind auf dem jeweiligen Normblatt vermerkt.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "P9 in der Welle sorgt für einen spielfreien Festsitz der Feder, sodass sie sich beim Aufschieben der Nabe nicht verkippt. JS9 in der Nabe bietet ausreichend Spiel für leichte manuelle Fügbarkeit ohne Presse.",
+  "ausnahmen": "Festsitz (P9/P9) oder Schiebesitz (D10/JS9).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

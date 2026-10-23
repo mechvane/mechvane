@@ -1,0 +1,63 @@
+{
+  "id": "einschraubtiefe_aluguss_empfehlung",
+  "aussage": "Empfohlene Mindesteinschraubtiefe für Schrauben der Festigkeitsklasse 8.8 mit Regelgewinde in Aluminiumguss unbekannter Legierung: 2,0 * d (effektiv tragend) bzw. 2,5 * d (Gesamteinschraubtiefe im Sackloch).",
+  "werte": [
+    {
+      "name": "Mindesteinschraubtiefe tragend",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Gesamteinschraubtiefe Sackloch",
+      "wert": 2.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "Aluminiumguss",
+      "AlSi10Mg",
+      "AlSi12",
+      "AlSi9Cu3",
+      "Alu"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe",
+      "Schraubverbindung"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "erfahrung",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
+      "stelle": "Synthese aus Bossard Handbuch und DIN 940",
+      "zitat": "Sollen Schrauben in geschnittene Innengewinde eingeschraubt [...] minimale Eindrehtiefen festzulegen.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Deckt sich mit der Stiftschraubennormung DIN 940 (2,5 * d), DIN 835 (2,0 * d) sowie den empirischen Grenzwerten von Bossard und Böllhoff. Verhindert Gewindebohrerbruch und Klemmen durch Steigungstoleranzen bei > 3*d.",
+  "ausnahmen": "Wird die 8.8er Schraube voll vorgespannt, sollte in Aluguss unbekannter Güte nicht tiefer als 2,0 * d geschnitten, sondern ein Drahtgewindeeinsatz (HELICOIL) verwendet werden.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": []
+}

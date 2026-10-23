@@ -1,0 +1,49 @@
+{
+  "id": "oring_oberflaechenrauheit_statisch",
+  "aussage": "Nutgrund und Dichtflächen statischer Flüssigkeitsabdichtungen müssen eine maximale Oberflächenrauheit von Ra <= 1,6 µm (Rz <= 6,3 µm) einhalten; Bearbeitungsriefen quer zur Dichtlinie sind unzulässig.",
+  "werte": [
+    {
+      "name": "Maximale Mittenrauwert Ra",
+      "wert": 1.6,
+      "einheit": "µm"
+    },
+    {
+      "name": "Maximale gemittelte Rautiefe Rz",
+      "wert": 6.3,
+      "einheit": "µm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fräsen",
+      "Schleifen"
+    ],
+    "feature": [
+      "O-Ring-Nut",
+      "Dichtfläche",
+      "Oberflächenrauheit"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://nianticseal.com/wp-content/uploads/2024/04/ORD-5700.pdf",
+      "stelle": "S. 4-2",
+      "zitat": "The design charts indicate a surface roughness value not to [...] exceed 32 micro-inches (32 rms) on the sealing surfaces for [...] static seals with a maximum of 16 rms recommended for",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Gröbere Rillen oder Längskratzer können durch die Kaltverformung des 70-Shore-Elastomers nicht vollständig ausgefüllt werden und bilden mikroskopische Leckagekanäle.",
+  "ausnahmen": "Gasdichtungen (erfordern feineres Finish Ra <= 0,8 µm).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

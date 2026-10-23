@@ -1,0 +1,31 @@
+{
+  "id": "federn_normauslegung_gutekunst",
+  "aussage": "Die vollständige Auslegung von Druckfedern und Zugfedern erfolgt nach DIN EN 13906 und umfasst Federkräfte, Federwege, Federrate und Knickfederweg.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Federstahl"],
+    "verfahren": ["Federmontage"],
+    "feature": ["Druckfeder", "Zugfeder", "Federberechnung"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.federnshop.com/de/service-und-informationen/federberechnung-nach-din-13906.html",
+      "stelle": "Online-Portal Federberechnung nach DIN 13906",
+      "zitat": "Berechnen Sie Druckfedern, Zugfedern und Schenkelfedern individuell mit dem Gutekunst Federnberechnungsprogramm WinFSB. Mit Eingabe von Maßdaten, Weg-Kraft- oder Länge-Kraft-Eigenschaften wird die gewünschte Feder komplett nach DIN EN 13906 berechnet.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die rechnerische Erfassung von Blocklänge, Knickfederweg und dynamischer Belastbarkeit ist Voraussetzung für eine funktionssichere Integration in Mechanismen.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "druckfedern_knickung_lagerungsbeiwerte"
+    }
+  ]
+}

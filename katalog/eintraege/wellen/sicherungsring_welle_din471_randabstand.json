@@ -1,0 +1,66 @@
+{
+  "id": "sicherungsring_welle_din471_randabstand",
+  "aussage": "Der Mindestrandabstand n von der Nut zur Wellenkante muss bei Wellen-Sicherungsringen mindestens der dreifachen Nuttiefe entsprechen: n >= 3 * t (z. B. bei Welle Ø 20 mm: Nut d2 = 19,0 mm -> t = 0,5 mm -> n >= 1,5 mm).",
+  "werte": [
+    {
+      "name": "Mindestrandabstand zu Nuttiefe",
+      "wert": 3.0,
+      "einheit": "x Nuttiefe"
+    },
+    {
+      "name": "Nutdurchmesser Welle 20",
+      "wert": 19.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nuttiefe Welle 20",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindestrandabstand Welle 20",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutbreite Welle 20",
+      "wert": 1.3,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Vergütungsstahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Einstechen"
+    ],
+    "feature": [
+      "Sicherungsring",
+      "Sicherungsringnut",
+      "Welle",
+      "Nutmaß"
+    ],
+    "groesse": [
+      "20 mm",
+      "Welle 20"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "S. TI-91 (DIN 471)",
+      "zitat": "Sicherungsringe (Halteringe) [...] für Wellen [...] Regelausführung",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Bei einem Randabstand < 3 * t versagt die Verbindung bei axialer Belastung durch Abscheren des Wellenstumpfs (Ausbrechen des Materials vor der Nut), bevor die elastische Tragfähigkeit des Sicherungsrings erreicht wird.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

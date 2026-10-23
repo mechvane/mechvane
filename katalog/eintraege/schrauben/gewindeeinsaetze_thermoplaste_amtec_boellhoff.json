@@ -1,0 +1,79 @@
+{
+  "id": "gewindeeinsaetze_thermoplaste_amtec_boellhoff",
+  "aussage": "Für metallische Gewindeeinsätze in Thermoplasten (Böllhoff AMTEC HITSERT 2) muss die Schraubeneingriffslänge mindestens der Einsatzlänge l plus einer Gewindesteigung P entsprechen: Eingriffslänge = l + 1*P (Einsatzlänge M2: 5,0 mm = 2,5*d; M3: 5,0 mm = 1,67*d bzw. 5,5 mm = 1,83*d; M4: 6,0 mm = 1,5*d; M5: 7,0 mm = 1,4*d).",
+  "werte": [
+    {
+      "name": "M2 Einsatzlänge l",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2,5 Einsatzlänge l",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Einsatzlänge l",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Einsatzlänge l",
+      "wert": 6.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Einsatzlänge l",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindest-Zuschlag Schraubeneingriff",
+      "wert": 1.0,
+      "einheit": "x Steigung P"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste",
+      "Messing",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Wärmeeinbettung",
+      "Ultraschalleinbettung"
+    ],
+    "feature": [
+      "Gewindeeinsatz",
+      "HITSERT",
+      "Schraubeneingriffslänge"
+    ],
+    "groesse": [
+      "M2",
+      "M2.5",
+      "M3",
+      "M4",
+      "M5"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://media.boellhoff.com/files/pdf1/amtec-praezisionsgewindeeinsaetze-fuer-kunststoffbauteile-de-0200.pdf",
+      "stelle": "Katalog 0200, S. 41",
+      "zitat": "➂ Schraubeneingriffslänge = min. Länge des Gewindeeinsatzes (l) + 1p (Steigung)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Vollständige Kraftübertragung über die gesamte Gewindebuchsenlänge; die Schraube muss den Einsatz voll durchdringen.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "gewindeeinsaetze_3ddruck_ruthex"
+    }
+  ]
+}

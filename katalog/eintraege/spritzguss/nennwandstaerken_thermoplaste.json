@@ -1,0 +1,81 @@
+{
+  "id": "nennwandstaerken_thermoplaste",
+  "aussage": "Die Nennwandstärken von Spritzgussbauteilen müssen innerhalb der werkstoffspezifischen Mindest- und Maximalgrenzen liegen (PP: 0,64 ... 3,81 mm, ABS: 1,14 ... 3,56 mm, PA6: 0,76 ... 2,92 mm, PC: 1,02 ... 3,81 mm, POM: 0,76 ... 3,05 mm).",
+  "werte": [
+    {
+      "name": "Wandstärkenbereich PP",
+      "bereich": [
+        0.64,
+        3.81
+      ],
+      "einheit": "mm"
+    },
+    {
+      "name": "Wandstärkenbereich ABS",
+      "bereich": [
+        1.14,
+        3.56
+      ],
+      "einheit": "mm"
+    },
+    {
+      "name": "Wandstärkenbereich PA6",
+      "bereich": [
+        0.76,
+        2.92
+      ],
+      "einheit": "mm"
+    },
+    {
+      "name": "Wandstärkenbereich PC",
+      "bereich": [
+        1.02,
+        3.81
+      ],
+      "einheit": "mm"
+    },
+    {
+      "name": "Wandstärkenbereich POM",
+      "bereich": [
+        0.76,
+        3.05
+      ],
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PP",
+      "ABS",
+      "PA6",
+      "PC",
+      "POM",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "Spritzguss",
+      "Kunststoffspritzguss"
+    ],
+    "feature": [
+      "Wand",
+      "Wandstärke",
+      "Spritzgussteil"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/guides-and-trend-reports/injection-molding-guide-process-design-tips-materials/",
+      "stelle": "Design Tips - Wall Thickness",
+      "zitat": "Keep wall thickness consistent: Thick sections cool more slowly than thin sections, which can lead to sink, voids, and warping",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Zu dünne Wände lassen sich aufgrund des Druckabfalls in der Kavität nicht vollständig füllen (Short Shots). Zu dicke Wände führen zu extrem langen Kühlzeiten, Lunkern und Verzug.",
+  "ausnahmen": "Fließhilfen, partielle Aufdickungen mit Schiebern.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

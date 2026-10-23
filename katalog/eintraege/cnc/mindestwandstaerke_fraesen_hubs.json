@@ -1,0 +1,58 @@
+{
+  "id": "mindestwandstaerke_fraesen_hubs",
+  "aussage": "Die empfohlene Mindestwandstärke beträgt 0,8 mm für Metalle und 1,5 mm für Kunststoffe (machbar bis 0,5 mm für Metalle und 1,0 mm für Kunststoffe; Protolabs Mindestgeometrie 0,5 mm).",
+  "werte": [
+    {
+      "name": "Empfohlene Mindestwandstärke Metalle",
+      "wert": 0.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlene Mindestwandstärke Kunststoffe",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Machbare Mindestwandstärke Metalle",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Machbare Mindestwandstärke Kunststoffe",
+      "wert": 1.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Wand",
+      "Steg",
+      "Wandstärke"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Minimum wall thickness",
+      "zitat": "Minimum wall thickness [...] Recommended: 0.8 mm (metals), 1.5 mm (plastics) [...] Feasible: 0.5 mm (metals), 1.0 mm (plastics)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Dünne Wände verlieren an Steifigkeit und vibrieren beim Fräsen. Kunststoffe neigen durch Eigenspannungen und Zerspanungswärme zu Verzug.",
+  "ausnahmen": "Kurze Rippen oder Sonderaufspannungen mit Abstützung.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

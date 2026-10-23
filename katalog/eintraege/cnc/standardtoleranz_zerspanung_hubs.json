@@ -1,0 +1,37 @@
+{
+  "id": "standardtoleranz_zerspanung_hubs",
+  "aussage": "Die typische Standardtoleranz für CNC-gefräste Bauteile ohne zusätzliche Bearbeitungsaufpreise beträgt +-0,1 mm (machbar bis +-0,02 mm).",
+  "werte": [
+    {
+      "name": "Typische Standardtoleranz",
+      "wert": 0.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Machbare Toleranz",
+      "wert": 0.02,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Fräsen", "CNC-Drehen"],
+    "feature": ["Toleranz", "Passung", "Funktionsmaß"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Tolerances",
+      "zitat": "Typical: +-0.1 mm",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Toleranzen enger als 0,1 mm erfordern Schlichtwerkzeuge, reduzierte Vorschübe, thermische Kompensation und manuelle Messprotokolle, was die Teilekosten vervielfacht.",
+  "ausnahmen": "Gepickte Passflächen (z. B. H7-Lagersitze) gegen Aufpreis.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

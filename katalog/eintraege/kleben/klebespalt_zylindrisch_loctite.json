@@ -1,0 +1,47 @@
+{
+  "id": "klebespalt_zylindrisch_loctite",
+  "aussage": "Für das Fügen von Welle-Nabe-Verbindungen und Lagersitzen sind folgende maximale Klebespalte einzuhalten: Loctite 603: für zylindrische Fügeteile mit geringen Spaltmaßen bis 0,1 mm (Spalt ≤ 0.1 mm). Loctite 648: für Spiel- oder Presssitzverbindungen (Befestigung von Buchsen und Lagern) bis 0,15 mm bei Betriebstemperaturen von -55 °C bis +175 °C. Loctite 638: für dynamische axiale und radiale Belastungen mit großem Spaltfüllvermögen bis 0,25 mm (Spalt ≤ 0.25 mm).",
+  "werte": [
+    {
+      "name": "Maximaler Klebespalt Loctite 603",
+      "wert": 0.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Maximaler Klebespalt Loctite 648",
+      "wert": 0.15,
+      "einheit": "mm"
+    },
+    {
+      "name": "Maximaler Klebespalt Loctite 638",
+      "wert": 0.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "Temperaturbereich Loctite 648",
+      "bereich": [-55, 175],
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Stahl", "Aluminium"],
+    "verfahren": ["Fügen zylindrischer Teile", "Kleben"],
+    "feature": ["Welle-Nabe-Verbindung", "Lagersitz", "Buchse", "Klebespalt"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ludwigmeister.de/content/techn-informationen/chemische-produkte/klebstoffe/loctite_klebetechnik_de.pdf",
+      "stelle": "Seite 16, Fügen zylindrischer Teile",
+      "zitat": "Loctite® 648 [...] Erhöhte Temperaturbeständigkeit [...] bis 0,15 mm [...] -55 °C bis +175 °C",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Anaerob härtende Klebstoffe härten nur unter Luftabschluss bei katalytischem Metallkontakt aus. Bei zu großem Spaltmaß kann der Klebstoff nicht vollständig polymerisieren, wodurch die Scherfestigkeit drastisch sinkt.",
+  "ausnahmen": "Verwendung von Aktivatoren bei passiven Werkstoffen oder größeren Spalten.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

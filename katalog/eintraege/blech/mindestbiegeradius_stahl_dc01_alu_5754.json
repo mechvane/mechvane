@@ -1,0 +1,56 @@
+{
+  "id": "mindestbiegeradius_stahl_dc01_alu_5754",
+  "aussage": "Der innere Mindestbiegeradius beim Kaltbiegen quer zur Walzrichtung beträgt für unlegierten Stahl DC01 und Aluminium EN AW-5754 mindestens die einfache Blechdicke: r_min >= 1,0 * t (z. B. r_min = 2,0 mm bei 2 mm Blechdicke).",
+  "werte": [
+    {
+      "name": "Mindestbiegeradiusfaktor DC01 / 5754",
+      "wert": 1.0,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Mindestbiegeradius 2 mm Blech",
+      "wert": 2.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "DC01",
+      "Aluminium",
+      "EN AW-5754",
+      "AlMg3",
+      "Alu"
+    ],
+    "verfahren": [
+      "Biegen",
+      "Freibiegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Biegekante",
+      "Biegeradius",
+      "Blech",
+      "Mindestbiegeradius"
+    ],
+    "groesse": [
+      "0.5-5.0 mm",
+      "2 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://monami.hs-mittweida.de/files/2129/Bachelorarbeit_Rockhausen.pdf",
+      "stelle": "S. 12–15",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Ein Biegeradius r < 1,0 * t überschreitet die Randfaserdehnung der Außenschicht und führt zu sichtbaren Orangenhaut-Effekten und Anrissen.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

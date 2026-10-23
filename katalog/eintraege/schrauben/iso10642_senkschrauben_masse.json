@@ -1,0 +1,123 @@
+{
+  "id": "iso10642_senkschrauben_masse",
+  "aussage": "Genormte Abmessungen für Senkschrauben mit Innensechskant nach ISO 10642 (DIN 7991) für M3 bis M12: Kopfdurchmesser dk (theoretisch/Nennmaß), Kopfhöhe k max und Senkwinkel 90°.",
+  "werte": [
+    {
+      "name": "M3 dk theoretisch max",
+      "wert": 6.72,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 k max",
+      "wert": 1.86,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 dk theoretisch max",
+      "wert": 8.96,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 k max",
+      "wert": 2.48,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 dk theoretisch max",
+      "wert": 11.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 k max",
+      "wert": 3.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 dk theoretisch max",
+      "wert": 13.44,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 k max",
+      "wert": 3.72,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 dk theoretisch max",
+      "wert": 17.92,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 k max",
+      "wert": 4.96,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 dk theoretisch max",
+      "wert": 22.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 k max",
+      "wert": 6.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 dk theoretisch max",
+      "wert": 26.88,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 k max",
+      "wert": 7.44,
+      "einheit": "mm"
+    },
+    {
+      "name": "Senkwinkel alpha",
+      "wert": 90,
+      "einheit": "°"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Senkschraube",
+      "Senkkopf",
+      "Innensechskant"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-14, Tabelle ISO 10642",
+      "zitat": "ISO 10642 [...] Senkschrauben mit Innensechskant",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Flächenbündige Schraubverbindung ohne hervorstehenden Schraubenkopf.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

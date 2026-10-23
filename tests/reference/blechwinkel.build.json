@@ -1,0 +1,116 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "B",
+    "expression": "60 mm",
+    "comment": "width along the bend"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "La",
+    "expression": "40 mm",
+    "comment": "base leg, outer"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "Lb",
+    "expression": "30 mm",
+    "comment": "flange leg, outer"
+   }
+  },
+  {
+   "command": "sheet.manage_rules",
+   "params": {
+    "name": "Stahl2",
+    "thickness": "2 mm",
+    "bend_radius": "2 mm",
+    "k_factor": "0.44",
+    "active": true
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XY",
+    "name": "BaseSketch"
+   }
+  },
+  {
+   "command": "sketch.draw.dimensioned",
+   "params": {
+    "command": "sketch.rectangle.center",
+    "params": {
+     "center": [
+      0,
+      0
+     ],
+     "corner": [
+      30,
+      20
+     ]
+    },
+    "dimensions": {
+     "width": "B",
+     "height": "La"
+    }
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "sheet.flange",
+   "params": {
+    "sketch": "BaseSketch",
+    "name": "Base",
+    "body_name": "Winkel"
+   }
+  },
+  {
+   "command": "sheet.flange",
+   "params": {
+    "edges": [
+     [
+      0,
+      20,
+      2
+     ]
+    ],
+    "height": "Lb",
+    "angle": 90,
+    "name": "Lasche"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     15,
+     -5,
+     2
+    ],
+    "clearance": "M6",
+    "name": "Loch1"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     -15,
+     -5,
+     2
+    ],
+    "clearance": "M6",
+    "name": "Loch2"
+   }
+  }
+ ]
+}

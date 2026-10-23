@@ -1,0 +1,189 @@
+{
+  "id": "din76_1_gewindeauslauf_freistich",
+  "aussage": "Genormte Gewindefreistiche und Gewindeausläufe nach DIN 76-1 für Regelgewinde M3 bis M12: Freistichdurchmesser dg, Radius r, Breite g2 max (Form A) sowie Innengewindefreistich Form C (dG, g max) und Auslauf x1 (außen) / e1 (innen).",
+  "werte": [
+    {
+      "name": "M3 Auslauf x1 außen",
+      "wert": 1.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Auslauf e1 innen",
+      "wert": 2.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Freistich dg außen",
+      "wert": 2.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Freistich g2 max Form A",
+      "wert": 1.75,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Auslauf x1 außen",
+      "wert": 1.75,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Auslauf e1 innen",
+      "wert": 3.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Freistich dg außen",
+      "wert": 2.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Freistich g2 max Form A",
+      "wert": 2.45,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Auslauf x1 außen",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Auslauf e1 innen",
+      "wert": 4.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Freistich dg außen",
+      "wert": 3.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Freistich g2 max Form A",
+      "wert": 2.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Auslauf x1 außen",
+      "wert": 2.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Auslauf e1 innen",
+      "wert": 5.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Freistich dg außen",
+      "wert": 4.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Freistich g2 max Form A",
+      "wert": 3.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Auslauf x1 außen",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Auslauf e1 innen",
+      "wert": 6.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Freistich dg außen",
+      "wert": 6.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Freistich g2 max Form A",
+      "wert": 4.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Auslauf x1 außen",
+      "wert": 3.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Auslauf e1 innen",
+      "wert": 7.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Freistich dg außen",
+      "wert": 7.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Freistich g2 max Form A",
+      "wert": 5.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Auslauf x1 außen",
+      "wert": 4.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Auslauf e1 innen",
+      "wert": 8.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Freistich dg außen",
+      "wert": 9.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Freistich g2 max Form A",
+      "wert": 6.1,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Gewindedrehen",
+      "Gewindeschneiden",
+      "CNC-Drehen"
+    ],
+    "feature": [
+      "Gewindefreistich",
+      "Gewindeauslauf",
+      "Gewinde",
+      "Innengewinde",
+      "Außengewinde"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.handwerk-technik.de",
+      "stelle": "Tabellenbuch Maschinenelemente DIN 76-1",
+      "zitat": "DIN 76-1: Gewindeausläufe und Gewindefreistiche",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Gewindefreistiche erlauben das vollständige Einschrauben bis an den Bund/Absatz, ohne dass die unvollständigen Anschnittgänge des Gewindewerkzeugs verklemmen.",
+  "ausnahmen": "Gewinderollen oder Gewindefräsen mit definiertem Auslauf.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

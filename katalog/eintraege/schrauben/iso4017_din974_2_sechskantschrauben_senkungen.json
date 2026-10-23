@@ -1,0 +1,192 @@
+{
+  "id": "iso4017_din974_2_sechskantschrauben_senkungen",
+  "aussage": "Abmessungen für Sechskantschrauben ISO 4017 / ISO 4014 und Werkzeugfreiraum-Senkdurchmesser d1 nach DIN 974-2 (Reihe 1 für Steckschlüssel, Reihe 2 für Ringschlüssel) für M3 bis M12.",
+  "werte": [
+    {
+      "name": "M3 ISO Schlüsselweite s",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Kopfhöhe k",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 ISO Schlüsselweite s",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Kopfhöhe k",
+      "wert": 2.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 15.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 ISO Schlüsselweite s",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Kopfhöhe k",
+      "wert": 3.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 15.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 ISO Schlüsselweite s",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Kopfhöhe k",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 ISO Schlüsselweite s",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Kopfhöhe k",
+      "wert": 5.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 24.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 26.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 ISO Schlüsselweite s",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Kopfhöhe k",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 28.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 33.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 ISO Schlüsselweite s",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Kopfhöhe k",
+      "wert": 7.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Senk-Ø Reihe 1 (Steckschlüssel)",
+      "wert": 33.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Senk-Ø Reihe 2 (Ringschlüssel)",
+      "wert": 36.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Senken",
+      "Flachsenken",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Sechskantschraube",
+      "Flachsenkung",
+      "Werkzeugfreiraum",
+      "Steckschlüssel"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Reyher TI Technische Informationen",
+      "zitat": "DIN 974 Teil 2: Senkungen für Sechskantschrauben",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Versenken von Sechskantschrauben erfordert Werkzeugfreiraum für Steckschlüsseleinsätze (Nüsse) oder Ringschlüssel zum Anziehen.",
+  "ausnahmen": "Senktiefe hängt vom konkreten Anwendungsfall (k + Scheibendicke) ab.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

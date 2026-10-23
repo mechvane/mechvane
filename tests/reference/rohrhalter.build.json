@@ -1,0 +1,169 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "R",
+    "expression": "40 mm",
+    "comment": "pipe nominal radius"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "Lf",
+    "expression": "25 mm",
+    "comment": "mounting flange length"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "t",
+    "expression": "4 mm",
+    "comment": "clamp sheet / strap thickness"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "W",
+    "expression": "24 mm",
+    "comment": "clamp strap width"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "dh",
+    "expression": "6.6 mm",
+    "comment": "through-hole diameter (M6 clearance)"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "dcb",
+    "expression": "11 mm",
+    "comment": "counterbore diameter"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "tcb",
+    "expression": "2 mm",
+    "comment": "counterbore depth"
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XY",
+    "name": "PathSketch"
+   }
+  },
+  {
+   "command": "sketch.line",
+   "params": {
+    "points": [
+     ["-R - Lf", 0],
+     ["-R", 0]
+    ],
+    "closed": false
+   }
+  },
+  {
+   "command": "sketch.arc.three_point",
+   "params": {
+    "start": ["-R", 0],
+    "end": ["R", 0],
+    "through": [0, "R"]
+   }
+  },
+  {
+   "command": "sketch.line",
+   "params": {
+    "points": [
+     ["R", 0],
+     ["R + Lf", 0]
+    ],
+    "closed": false
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "YZ",
+    "offset": "-R - Lf",
+    "name": "ProfileSketch"
+   }
+  },
+  {
+   "command": "sketch.line",
+   "params": {
+    "points": [
+     ["-t/2", "-W/2"],
+     ["t/2", "-W/2"],
+     ["t/2", "W/2"],
+     ["-t/2", "W/2"]
+    ],
+    "closed": true
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "solid.sweep",
+   "params": {
+    "sketch": "ProfileSketch",
+    "path_sketch": "PathSketch",
+    "path": [
+     "l1",
+     "a1",
+     "l2"
+    ],
+    "name": "ClampBody",
+    "body_name": "Rohrhalter"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     "-R - Lf/2",
+     "t/2",
+     0
+    ],
+    "type": "counterbore",
+    "diameter": "dh",
+    "cb_diameter": "dcb",
+    "cb_depth": "tcb",
+    "depth": "t",
+    "name": "MountHoleLeft"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     "R + Lf/2",
+     "t/2",
+     0
+    ],
+    "type": "counterbore",
+    "diameter": "dh",
+    "cb_diameter": "dcb",
+    "cb_depth": "tcb",
+    "depth": "t",
+    "name": "MountHoleRight"
+   }
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "bauteilgroesse_3achs_seitenbearbeitung_protolabs",
+  "aussage": "Bei 3-Achs-Fräsmaschinen können Teile bis 254 mm × 178 mm (10 in. × 7 in.) von bis zu 6 orthogonalen Seiten bearbeitet werden; größere Teile können nur von oben und unten bearbeitet werden.",
+  "werte": [
+    {
+      "name": "Maximale Länge für 6-Seiten-Bearbeitung",
+      "wert": 254,
+      "einheit": "mm"
+    },
+    {
+      "name": "Maximale Breite für 6-Seiten-Bearbeitung",
+      "wert": 178,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["3-Achs-CNC-Fräsen"],
+    "feature": ["Bauteilgröße", "Seitenbearbeitung", "Aufspannung"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/design-tips/6-ways-to-optimize-part-design-for-cnc-machining/",
+      "stelle": "Abschnitt 6 (3-Axis and 5-Axis Machining)",
+      "zitat": "With 3-axis machining, the workpiece is gripped from the bottom of the raw material blank while all of the part features are cut from up to 6 orthogonal sides. With parts larger than 10 in. by 7 in. (254mm by 178mm), only the top and bottom can be machined: no side setups!",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Große Werkstücke schränken den Verfahrweg des Spindelkopfes und die Klemmoptionen im Standard-Schraubstock ein, sodass seitliche Aufspannungen entfallen.",
+  "ausnahmen": "5-Achs-Bearbeitung.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

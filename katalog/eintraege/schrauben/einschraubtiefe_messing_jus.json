@@ -1,0 +1,65 @@
+{
+  "id": "einschraubtiefe_messing_jus",
+  "aussage": "Mindesteinschraubtiefe für Schrauben der Festigkeitsklasse 8.8 in Messing (Rm = 380 N/mm², Scherfestigkeitsverhältnis tau_B/Rm = 0,60) nach JUS Spanntechnik: tragende Einschraubtiefe 1,2 * d bis 1,4 * d, Gesamteinschraubtiefe inklusive Auslauf ca. 1,4 * d bis 1,6 * d.",
+  "werte": [
+    {
+      "name": "Tragende Einschraubtiefe Messing",
+      "bereich": [
+        1.2,
+        1.4
+      ],
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Gesamteinschraubtiefe Messing",
+      "bereich": [
+        1.4,
+        1.6
+      ],
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Messing",
+      "Kupferlegierung",
+      "CuZn39Pb3",
+      "CuZn37"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://jus-spanntechnik.de/ratgeber/gewindelaenge-berechnen/",
+      "stelle": "Ratgeber Gewindelänge & Einschraubtiefe",
+      "zitat": "Scherfestigkeit des Bauteilwerkstoffs (≈ 0,6 · Rm,M)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Messing besitzt eine höhere Scherfestigkeit als Aluminium, liegt aber unter Vergütungsstahl; ein Faktor von ca. 1,5 * d stellt Bruchgleichheit sicher.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

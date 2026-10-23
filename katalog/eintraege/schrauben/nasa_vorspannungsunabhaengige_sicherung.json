@@ -1,0 +1,37 @@
+{
+  "id": "nasa_vorspannungsunabhaengige_sicherung",
+  "aussage": "Jede Schraubverbindung in Raumfahrthardware muss mindestens ein Sicherungselement aufweisen, dessen Funktion nicht von der Vorspannkraft abhängt.",
+  "werte": [
+    {
+      "name": "Mindestanzahl vorspannungsunabhängiger Sicherungselemente",
+      "wert": 1,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [],
+    "verfahren": [
+      "Schraubverbindung"
+    ],
+    "feature": [
+      "Schraubensicherung",
+      "Sekundärsicherung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://standards.nasa.gov/system/files/tmp/NASA-STD-5020B%20Revalidated%201-5-2026.pdf",
+      "stelle": "Seite 37, Paragraph 4.6.1 [TFSR 16]",
+      "zitat": "Regardless of the magnitude of preload, each threaded fastening system in spaceflight hardware shall incorporate a minimum of one locking feature that does not depend upon preload to function.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Vibrationen und Schockbelastungen beim Start können zum Lockern oder Setzen führen; eine primär durch Reibung wirkende Verbindung verliert bei Setzbeträgen ihre Sicherung, wenn kein formschlüssiges oder stoffschlüssiges Sekundärsicherungselement vorhanden ist.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

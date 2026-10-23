@@ -1,0 +1,37 @@
+{
+  "id": "innenradius_werkzeugradius_xometry",
+  "aussage": "Als Faustregel für vertikale Innenkanten gilt ein Radius von 130 % des Fräserradius.",
+  "werte": [
+    {
+      "name": "Empfohlener Innenradius zu Fräserradius",
+      "wert": 130,
+      "einheit": "%"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Fräsen"],
+    "feature": ["Tasche", "Vertikale Innenecke", "Innenkante", "Innenradius"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.xometry.com/resources/machining/10-tips-improve-cad-cnc-design/",
+      "stelle": "Tip #6 (Add a Radius When Designing Internal Vertical Edges)",
+      "zitat": "A good rule of thumb is to add a radius of 130% of the milling radius. If you need sharp internal corners, consider adding undercuts instead of reducing the edge radius.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Verhindert übermäßigen Werkzeugverschleiß, Rattermarken an den Wänden und senkt die Fertigungskosten.",
+  "ausnahmen": "Eckenfreistiche (Undercuts), wenn scharfe Ecken nötig sind.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "leitet_ab",
+      "ziel": "innenradius_vertikale_kanten_hubs"
+    }
+  ]
+}

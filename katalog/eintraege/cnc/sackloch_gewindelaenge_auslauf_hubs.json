@@ -1,0 +1,56 @@
+{
+  "id": "sackloch_gewindelaenge_auslauf_hubs",
+  "aussage": "Die empfohlene Gewindelänge beträgt das 1,5-fache bis 3-fache des Nenndurchmessers. Bei Sacklochgewinden mit Gewindebohrern (unter M6) ist am Bohrungsgrund eine gewindefreie Länge von mindestens dem 1,5-fachen Nenndurchmesser vorzusehen.",
+  "werte": [
+    {
+      "name": "Mindest-Gewindelänge",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Empfohlene Gewindelänge",
+      "wert": 3.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Gewindefreier Auslauf am Grund (unter M6)",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Sackloch",
+      "Innengewinde",
+      "Gewindeauslauf"
+    ],
+    "groesse": [
+      "<M6"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Thread length",
+      "zitat": "Minimum: 1.5 times nominal diameter [...] Recommended: 3 times nominal diameter",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Der Großteil der Zugkraft wird von den ersten 3 bis 4 Gewindegängen übertragen. Längere Gewinde bringen keinen Tragfähigkeitsgewinn, erhöhen jedoch das Risiko von Gewindebohrerbruch enorm.",
+  "ausnahmen": "Gewindefräsen (erfordert weniger Auslauf als Gewindebohrer mit Anschnitt).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,107 @@
+{
+  "id": "gewindeeinsaetze_3ddruck_ruthex",
+  "aussage": "ruthex Einschmelz-Gewindeeinsätze RX (Messing) für FDM-3D-Druck in Thermoplasten (PLA, PETG, ABS, ASA, PA): Standard-Einsatzlänge M2 = 4,0 mm (2,0*d); M2,5 = 5,7 mm (2,28*d); M3 = 5,7 mm (1,90*d; Short RX-M3Sx4.0 = 4,0 mm / 1,33*d); M4 = 8,1 mm (2,03*d); M5 = 9,5 mm (1,90*d); M6 = 12,7 mm (2,12*d); M8 = 12,7 mm (1,59*d); Vorlochbohrung für M3 = Ø 4,0 mm, Mindestbohrungstiefe >= 6,7 mm.",
+  "werte": [
+    {
+      "name": "M2 Länge RX-M2x4",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Länge RX-M2.5x5.7",
+      "wert": 5.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Länge RX-M3x5.7",
+      "wert": 5.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Short Länge RX-M3Sx4.0",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Länge RX-M4x8.1",
+      "wert": 8.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Länge RX-M5x9.5",
+      "wert": 9.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Länge RX-M6x12.7",
+      "wert": 12.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Länge RX-M8x12.7",
+      "wert": 12.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Vorlochbohrung",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Mindestbohrungstiefe",
+      "wert": 6.7,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "PA",
+      "Thermoplaste",
+      "Messing"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck",
+      "Wärmeeinbettung"
+    ],
+    "feature": [
+      "Gewindeeinsatz",
+      "ruthex",
+      "Einschmelzmutter",
+      "Vorloch"
+    ],
+    "groesse": [
+      "M2",
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ruthex.de/products/ruthex-gewindeeinsatz-m3-100-stuck-rx-m3x5-7-messing-gewindebuchsen",
+      "stelle": "ruthex RX-M3x5.7 Produktseite & Spezifikation",
+      "zitat": "Optimal für alle gängigen thermoplastischen Werkstoffe wie PLA, PETG, ABS, PP, PPS und mehr.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die gerändelte Messing-Außenkontur verankert sich durch thermisches Plastifizieren im thermoplastischen Schichtgefüge und verhindert Auszug und Durchdrehen.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "gewindeeinsaetze_thermoplaste_amtec_boellhoff"
+    }
+  ]
+}

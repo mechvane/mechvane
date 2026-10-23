@@ -1,0 +1,154 @@
+{
+  "id": "din974_1_senkungen_iso4762_scheibe",
+  "aussage": "Senkdurchmesser d1 und Senktiefen nach DIN 974-1 für Zylinderschrauben ISO 4762 mit Unterlegscheibe nach ISO 7089 (Reihe 5, Standard) und kleiner Scheibe DIN 433 (Reihe 4) für M3 bis M12.",
+  "werte": [
+    {
+      "name": "M3 Durchgangsloch dh",
+      "wert": 3.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch dh",
+      "wert": 4.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch dh",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch dh",
+      "wert": 6.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 15.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch dh",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch dh",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 24.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch dh",
+      "wert": 13.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Senk-Ø Reihe 4 (DIN 433)",
+      "wert": 24.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Senk-Ø Reihe 5 (ISO 7089)",
+      "wert": 26.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Senken",
+      "Flachsenken",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Flachsenkung",
+      "Senkung",
+      "Zylindersenkung",
+      "Schraubenkopfsenkung"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.beuth.de",
+      "stelle": "Normenvorschau DIN 974-1 (Senkungen für Schrauben)",
+      "zitat": "DIN 974 Teil 1: Senkungen für Zylinderschrauben",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Flachsenkung zum bündigen Versenken von Zylinderschrauben mit Unterlegscheibe. Die Senktiefe errechnet sich konstruktiv aus Schraubenkopfhöhe k + Scheibendicke h.",
+  "ausnahmen": "Senkung ohne Scheibe (Reihe 1 mit kleinerem Senkdurchmesser: M3=6,5; M4=8; M5=10; M6=11; M8=15 mm).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

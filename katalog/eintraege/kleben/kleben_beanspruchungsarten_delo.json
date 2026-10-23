@@ -1,0 +1,36 @@
+{
+  "id": "kleben_beanspruchungsarten_delo",
+  "aussage": "Klebeverbindungen müssen so gestaltet werden, dass sie vorrangig auf Druck-, Zug- oder Scherbeanspruchung beansprucht werden. Schäl- und Biegebeanspruchungen müssen konstruktiv vermieden werden (z. B. durch Nut-Feder-Verbindungen). Kräfte sollten stets zentral eingeleitet werden.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Kunststoffe",
+      "Glas",
+      "Fügeteile"
+    ],
+    "verfahren": [
+      "Kleben"
+    ],
+    "feature": [
+      "Klebefuge",
+      "Klebverbindung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.delo.de/news-und-termine/delo-news/detail/8-tipps-hochtechnologieklebstoffe/",
+      "stelle": "Online-Fachbeitrag, Abschnitt Die 8 Regeln für Ihren Klebeerfolg",
+      "zitat": "Druck-, Zug- und Scherbeanspruchung bevorzugt: Diese Belastungsarten sind für Klebeverbindungen am günstigsten.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Schälbeanspruchungen erzeugen an den Fugenrändern extreme, linienförmige Spannungsspitzen. Da Klebstoffe im Vergleich zu Metallen eine begrenzte Schälfestigkeit aufweisen, reißt die Klebefuge unter Schälung bereits bei minimalen Gesamtkräften ein.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

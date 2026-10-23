@@ -1,0 +1,48 @@
+{
+  "id": "schraubdom_dimensionierung_abstuetzung",
+  "aussage": "Der Außendurchmesser von Schraubdomen muss das 2,0- bis 2,4-fache des Schraubendurchmessers betragen; freistehende Dome müssen durch Stützrippen (Gussets) abgestützt und am Fuß ausgekernt werden.",
+  "werte": [
+    {
+      "name": "Außendurchmesser Schraubdom",
+      "bereich": [
+        2.0,
+        2.4
+      ],
+      "einheit": "x Schraubendurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste",
+      "ABS",
+      "PC",
+      "PA",
+      "PP"
+    ],
+    "verfahren": [
+      "Spritzguss"
+    ],
+    "feature": [
+      "Schraubdom",
+      "Dom",
+      "Stützrippe",
+      "Befestigung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://fab.cba.mit.edu/classes/S62.12/people/vernelle.noel/Plastic_Snap_fit_design.pdf",
+      "stelle": "S. 14",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Verhindert das Aufplatzen des Doms durch Tangentialspannungen beim Eindrehen der Schraube und verhindert Bruch durch Biegemomente.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

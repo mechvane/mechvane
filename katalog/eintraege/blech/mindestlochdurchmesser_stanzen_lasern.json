@@ -1,0 +1,53 @@
+{
+  "id": "mindestlochdurchmesser_stanzen_lasern",
+  "aussage": "Der kleinste zulässige Lochdurchmesser beträgt beim mechanischen Stanzen d_min >= 1,0 * t und beim Laserschneiden im Dünnblech d_min >= 0,7 * t.",
+  "werte": [
+    {
+      "name": "Mindestlochdurchmesser Stanzen",
+      "wert": 1.0,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Mindestlochdurchmesser Laserschneiden",
+      "wert": 0.7,
+      "einheit": "x Blechdicke"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Baustahl",
+      "Edelstahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Stanzen",
+      "Laserschneiden",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Loch",
+      "Bohrung",
+      "Durchbruch",
+      "Blech"
+    ],
+    "groesse": [
+      "<=4.0 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://monami.hs-mittweida.de/files/2129/Bachelorarbeit_Rockhausen.pdf",
+      "stelle": "S. 18",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Beim Stanzen bricht der Stempel bei d < t durch Knickbelastung ab. Beim Laserschneiden überhitzt die Lochmitte bei zu kleinen Durchmessern durch den Einschussstrahl.",
+  "ausnahmen": "Zentrierkörnung beim Laser.",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

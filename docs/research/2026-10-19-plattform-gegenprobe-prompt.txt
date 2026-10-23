@@ -1,0 +1,11 @@
+Recherche mit Web, Ergebnis als ausführliches Markdown-Dokument auf Deutsch, mit Quellen-URLs zu jeder Aussage. Markiere klar, was belegt ist und was du vermutest. Stand Oktober 2026.
+
+Kontext: Wir planen ein Open-Source-CAD "Autodesk Inventor neu gedacht" ("inventa"): parametrisch, modular über Plugins, mit tief integrierten KI-Agenten (MCP), Feature-Baum wie Inventor (Browser mit Features, Ende-des-Teils-Marker) statt Fusion-Timeline, später Baugruppen, Blech, Zeichnungen nach DIN/ISO, integrierter Slicer. Favorit als Basis ist derzeit SolidCraft (tangency-labs/solidcraft, Rust, eigener Kernel, MCP-Server, Fusion-ähnlich mit Timeline). Wir wollen eine Gegenprobe mit drei Alternativen als Plattform:
+
+1. Chili3D (github.com/xiangechen/chili3d): Web-CAD auf OpenCascade (WASM), TypeScript. Stand, Aktivität (Commits, Releases, Mitwirkende), Parametrik/History, Constraint-Skizzen?, Plugin-/Erweiterbarkeit, Lizenz (AGPL?), Agenten-/MCP-Anbindung.
+2. Dune 3D (github.com/dune3d/dune3d): GTK/C++, OCCT + SolveSpace-Solver. Stand, Aktivität, Workflow (Gruppen statt Features?), Erweiterbarkeit, Lizenz, Scripting/API.
+3. FreeCAD 1.x (aktuell 1.0/1.1/ggf. 1.2): Stand des Topological-Naming-Fix, Assembly-Workbench, TechDraw, Sketcher, Python-API, bestehende MCP-Server für FreeCAD (welche, wie gut), Performance, UI-Modernisierung, Plugin-System (Addons/Workbenches), Lizenz (LGPL), Governance.
+
+Für jede: Kernel, Sprache, Lizenz, Aktivität 2025/2026 (Zahlen), Parametrik und Feature-Baum, Skizzen-Solver, Baugruppen, Zeichnungen, Erweiterbarkeit (Plugins mit eigener UI?), Agenten-Tauglichkeit (headless, API, MCP), Hauptrisiken.
+
+Am Ende: Vergleichstabelle der drei plus SolidCraft (soweit du es kennst) und eine ehrliche Einschätzung, ob eine der drei SolidCraft als Basis schlägt und unter welchen Bedingungen.

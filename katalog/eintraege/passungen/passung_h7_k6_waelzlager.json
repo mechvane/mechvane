@@ -1,0 +1,66 @@
+{
+  "id": "passung_h7_k6_waelzlager",
+  "aussage": "Die Passung H7/k6 bildet den klassischen Haftsitz für Wälzlagerinnenringe auf Wellen bei normaler Belastung: Für Ø 20 mm ergibt Bohrung H7 (0/+21 µm) gepaart mit Welle k6 (+2/+15 µm) ein Höchstspiel von +19 µm und ein Höchstübermaß von -15 µm.",
+  "werte": [
+    {
+      "name": "Höchstspiel",
+      "wert": 19,
+      "einheit": "µm"
+    },
+    {
+      "name": "Höchstübermaß",
+      "wert": -15,
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrungstoleranz",
+      "wert": "H7",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz",
+      "wert": "k6",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Wälzlagerstahl"
+    ],
+    "verfahren": [
+      "Schleifen",
+      "Drehen",
+      "Montage"
+    ],
+    "feature": [
+      "Wälzlagersitz",
+      "Welle",
+      "Innenring"
+    ],
+    "groesse": [
+      "20 mm",
+      ">18-30 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://wwwpub.zih.tu-dresden.de/~tschoen/konstr/chapter03/tables/passung.pdf",
+      "stelle": "S. 1",
+      "zitat": "H7/k6     K7/h6     H7/k6     Haftsitzteile unter  Riemenscheiben,",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Durch die leichte Überdeckung wird verhindert, dass der gehärtete Innenring auf der Welle relativ rotiert und Reibkorrosion (Passungsrost) verursacht, während die Montage mit leichten Hammerschlägen noch möglich bleibt.",
+  "ausnahmen": "Umfangslast bei kleinen Lagern <= 40 mm normale Last (dort nach FAG j6/j5 empfohlen).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "waelzlager_wellenpassung_umfangslast"
+    }
+  ]
+}

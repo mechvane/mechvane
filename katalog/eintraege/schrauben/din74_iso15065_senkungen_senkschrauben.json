@@ -1,0 +1,173 @@
+{
+  "id": "din74_iso15065_senkungen_senkschrauben",
+  "aussage": "Senkungsmaße für Senkschrauben nach DIN 74 Form F (speziell für Innensechskant-Senkschrauben ISO 10642), DIN 74 Form A und ISO 15065 für M3 bis M12 bei 90°-Senkwinkel.",
+  "werte": [
+    {
+      "name": "M3 Form F Senk-Ø d2",
+      "wert": 6.94,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Form F Tiefe t1",
+      "wert": 1.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Form A Senk-Ø d2",
+      "wert": 6.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 ISO 15065 Senk-Ø Dc",
+      "wert": 6.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Form F Senk-Ø d2",
+      "wert": 9.18,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Form F Tiefe t1",
+      "wert": 2.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Form A Senk-Ø d2",
+      "wert": 8.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 ISO 15065 Senk-Ø Dc",
+      "wert": 9.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Form F Senk-Ø d2",
+      "wert": 11.47,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Form F Tiefe t1",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Form A Senk-Ø d2",
+      "wert": 10.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 ISO 15065 Senk-Ø Dc",
+      "wert": 10.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Form F Senk-Ø d2",
+      "wert": 13.71,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Form F Tiefe t1",
+      "wert": 3.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Form A Senk-Ø d2",
+      "wert": 12.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 ISO 15065 Senk-Ø Dc",
+      "wert": 12.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Form F Senk-Ø d2",
+      "wert": 18.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Form F Tiefe t1",
+      "wert": 4.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Form A Senk-Ø d2",
+      "wert": 16.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 ISO 15065 Senk-Ø Dc",
+      "wert": 17.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Form F Senk-Ø d2",
+      "wert": 22.73,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Form F Tiefe t1",
+      "wert": 5.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 ISO 15065 Senk-Ø Dc",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Form F Senk-Ø d2",
+      "wert": 27.21,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Form F Tiefe t1",
+      "wert": 6.9,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Senken",
+      "Kegelsenken",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Senkung",
+      "Kegelsenkung",
+      "Senkschraubensenkung"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.beuth.de",
+      "stelle": "Normen für das Zeichnen DIN 74 / ISO 15065",
+      "zitat": "DIN 74: Senkungen für Senkschrauben",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "DIN 74 Form F ist speziell auf ISO 10642 abgestimmt. DIN 74 Form A ist für Schlitzsenkschrauben genormt und besitzt kleinere Senkdurchmesser, sodass ISO 10642 Schrauben in Form-A-Senkungen überstehen.",
+  "ausnahmen": "DIN 74 Form A ist ab M10 in der Norm nicht mehr enthalten.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

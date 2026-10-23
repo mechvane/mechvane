@@ -1,0 +1,60 @@
+{
+  "id": "mindestbiegeradius_alu_6061_t6",
+  "aussage": "Für die ausgehärtete Aluminiumlegierung EN AW-6061-T6 muss der Mindestbiegeradius mindestens das Doppelte bis Dreifache der Blechdicke betragen: r_min >= 2,0 ... 3,0 * t (z. B. 4,0 bis 6,0 mm bei 2 mm Alu).",
+  "werte": [
+    {
+      "name": "Mindestbiegeradiusfaktor 6061-T6",
+      "bereich": [
+        2.0,
+        3.0
+      ],
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Mindestbiegeradius 2 mm Alu 6061-T6",
+      "bereich": [
+        4.0,
+        6.0
+      ],
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "EN AW-6061-T6",
+      "AlMg1SiCu",
+      "Alu"
+    ],
+    "verfahren": [
+      "Biegen",
+      "Freibiegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Biegekante",
+      "Biegeradius",
+      "Blech",
+      "Mindestbiegeradius"
+    ],
+    "groesse": [
+      "1.0-5.0 mm",
+      "2 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://sendcutsend.com/blog/avoid-deformation-bent-sheet-metal/",
+      "stelle": "Avoid Deformation Guide",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Durch die Ausscheidungshärtung im T6-Zustand besitzt 6061 nur ca. 8...10 % Bruchdehnung. Tightere Radien (r <= 1,0 * t) führen zu sofortigem Spaltbruch.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

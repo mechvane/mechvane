@@ -1,0 +1,26 @@
+{
+  "id": "zugfedern_oesenformen",
+  "aussage": "Bei Zugfedern dienen unterschiedliche Ösenformen zur Krafteinleitung (u. a. halbe deutsche Öse, ganze deutsche Öse, doppelte deutsche Öse, Hakenöse und englische Öse).",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Federstahl"],
+    "verfahren": ["Federmontage"],
+    "feature": ["Zugfeder", "Federöse", "Schraubenfeder"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.eassistant.eu/fileadmin/dokumente/eassistant/etc/HTMLHandbuch/de/eAssistantHandbch23.html",
+      "stelle": "Kapitel 23, Abschnitt 23.5 (Auswahl der Federenden)",
+      "zitat": "Zur Überleitung der Federkraft dienen die unterschiedliche Ösenformen und Anschlusselemente. [...] Halbe deutsche Öse [...] Ganze deutsche Öse [...] Doppelte deutsche Öse [...] Ganze deutsche Öse seitlich hochgestellt [...] Doppelte deutsche Öse seitlich hochgestellt [...] Hakenöse [...] Hakenöse seitlich hochgestellt [...] Englische Öse",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Am Übergang vom Federkörper zur aufgebogenen Öse tritt eine kombinierte Biege- und Torsionsspannung auf. Dieser Übergangsradius ist kerbempfindlich und die primäre Bruchstelle von Zugfedern.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,106 @@
+{
+  "id": "einschraubtiefe_stahl_grauguss_vdi2230_hanke",
+  "aussage": "Berechnung der Gesamteinschraubtiefe m_ges nach VDI 2230-1 für Schrauben 8.8 in Baustahl und Grauguss nach Hanke: Baustahl S235: M6 = 8,2 mm (1,37 * d), M8 = 10,6 mm (1,33 * d), M10 = 13,0 mm (1,30 * d), M12 = 15,4 mm (1,28 * d); Baustahl S355: M6 = 6,8 mm (1,13 * d); Grauguss GJL-100: M6 = 15,1 mm (2,52 * d); GJL-200: M6 = 8,9 mm (1,48 * d); GJL-250: M6 = 7,8 mm (1,30 * d).",
+  "werte": [
+    {
+      "name": "M6 S235 m_ges",
+      "wert": 8.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 S235 Faktor",
+      "wert": 1.37,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M8 S235 m_ges",
+      "wert": 10.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 S235 Faktor",
+      "wert": 1.33,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M10 S235 m_ges",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 S235 Faktor",
+      "wert": 1.3,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M12 S235 m_ges",
+      "wert": 15.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 S235 Faktor",
+      "wert": 1.28,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M6 GJL-250 m_ges",
+      "wert": 7.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 GJL-250 Faktor",
+      "wert": 1.3,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Baustahl",
+      "S235",
+      "S355",
+      "Grauguss",
+      "GJL-100",
+      "GJL-200",
+      "GJL-250"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe",
+      "Schraubverbindung"
+    ],
+    "groesse": [
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf",
+      "stelle": "VDI 2230 Tabellen Baustahl und GJL",
+      "zitat": "VDI 2230-1:2015 Tabellen Baustahl und GJL",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "VDI 2230 schlägt zur rein elastisch berechneten Gewindeüberdeckung m_eff stets 2*P für Fasen und unvollständige Gewindegänge hinzu.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "einschraubtiefe_stahl_grauguss_bossard"
+    }
+  ]
+}

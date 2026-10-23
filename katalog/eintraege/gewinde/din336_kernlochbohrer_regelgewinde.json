@@ -1,0 +1,130 @@
+{
+  "id": "din336_kernlochbohrer_regelgewinde",
+  "aussage": "Genormte Spiralbohrerdurchmesser für Kernlochbohrungen metrischer ISO-Regelgewinde nach DIN 336-1 (ISO 2306) für Gewindebohren von M2.5 bis M12.",
+  "werte": [
+    {
+      "name": "M2.5 Steigung P",
+      "wert": 0.45,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Kernlochbohrer-Ø",
+      "wert": 2.05,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Steigung P",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Kernlochbohrer-Ø",
+      "wert": 2.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Steigung P",
+      "wert": 0.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Kernlochbohrer-Ø",
+      "wert": 3.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Steigung P",
+      "wert": 0.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Kernlochbohrer-Ø",
+      "wert": 4.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Steigung P",
+      "wert": 1.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Kernlochbohrer-Ø",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Steigung P",
+      "wert": 1.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Kernlochbohrer-Ø",
+      "wert": 6.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Steigung P",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Kernlochbohrer-Ø",
+      "wert": 8.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Steigung P",
+      "wert": 1.75,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Kernlochbohrer-Ø",
+      "wert": 10.2,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Messing",
+      "Grauguss"
+    ],
+    "verfahren": [
+      "Bohren",
+      "Gewindeschneiden",
+      "Gewindebohren"
+    ],
+    "feature": [
+      "Kernloch",
+      "Kernlochbohrung",
+      "Innengewinde"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.toolsinmotion.de",
+      "stelle": "Kernlochtabelle DIN 336",
+      "zitat": "Nenngrößen, Steigungen und Kernlochmaße zum Gewindeschneiden für das metrische ISO-Regelgewinde nach DIN 13.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Der Kernlochbohrer erzeugt das Ausgangsloch für das geschnittene Innengewinde (Faustformel d_Kern ≈ d - P). Zu kleine Bohrer führen zum Werkzeugbruch, zu große zur unvollständigen Profilausformung.",
+  "ausnahmen": "Gewindefurchen (erfordert größere Vorlochdurchmesser).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

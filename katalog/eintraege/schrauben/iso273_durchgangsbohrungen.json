@@ -1,0 +1,169 @@
+{
+  "id": "iso273_durchgangsbohrungen",
+  "aussage": "Genormte Durchmesser für Durchgangsbohrungen von Schrauben nach ISO 273 (DIN EN 20273) für M2.5 bis M12 in den Reihen fein (H12), mittel (H13, Standard) und grob (H14).",
+  "werte": [
+    {
+      "name": "M2.5 Durchgangsloch fein",
+      "wert": 2.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Durchgangsloch mittel",
+      "wert": 2.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Durchgangsloch grob",
+      "wert": 3.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Durchgangsloch fein",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Durchgangsloch mittel",
+      "wert": 3.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Durchgangsloch grob",
+      "wert": 3.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch fein",
+      "wert": 4.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch mittel",
+      "wert": 4.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch grob",
+      "wert": 4.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch fein",
+      "wert": 5.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch mittel",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch grob",
+      "wert": 5.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch fein",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch mittel",
+      "wert": 6.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch grob",
+      "wert": 7.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch fein",
+      "wert": 8.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch mittel",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch grob",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch fein",
+      "wert": 10.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch mittel",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch grob",
+      "wert": 12.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch fein",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch mittel",
+      "wert": 13.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch grob",
+      "wert": 14.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Bohren",
+      "CNC-Fräsen",
+      "Stanzen"
+    ],
+    "feature": [
+      "Durchgangsbohrung",
+      "Durchgangsloch",
+      "Bohrung"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://cad-markt.de",
+      "stelle": "Tabelle DIN ISO 20273 Durchgangsbohrungen",
+      "zitat": "['Gewinde', 'fein', 'mittel', 'grob']",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Reihe mittel (H13) ist die Standardausführung im allgemeinen Maschinenbau; Reihe fein wird bei Passschrauben oder präziser Zentrierung genutzt; Reihe grob gleicht Teilungsfehler bei Schweißkonstruktionen aus.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": []
+}

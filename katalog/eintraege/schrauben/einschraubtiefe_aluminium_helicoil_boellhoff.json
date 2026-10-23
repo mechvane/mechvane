@@ -1,0 +1,72 @@
+{
+  "id": "einschraubtiefe_aluminium_helicoil_boellhoff",
+  "aussage": "Empfohlene Nennlängen für HELICOIL Plus Gewindeeinsätze in Aluminium und Leichtmetallen bei Schraubenfestigkeitsklasse 8.8: Rm <= 100 N/mm²: 3,5 * d; Rm 100 bis 200 N/mm²: 2,5 * d; Rm 200 bis 300 N/mm² (z. B. AlSi10Mg): 1,5 * d; Rm > 300 N/mm²: 1,5 * d.",
+  "werte": [
+    {
+      "name": "Nennlänge HELICOIL Rm <= 100",
+      "wert": 3.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Nennlänge HELICOIL Rm 100-200",
+      "wert": 2.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Nennlänge HELICOIL Rm 200-300",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Nennlänge HELICOIL Rm > 300",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "AlSi10Mg",
+      "Aluminiumguss",
+      "Leichtmetall",
+      "Alu"
+    ],
+    "verfahren": [
+      "Gewindeeinsatz",
+      "Gewindepanzerung",
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Gewindeeinsatz",
+      "HELICOIL",
+      "Innengewinde",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://media.boellhoff.com/files/pdf13/0100-helicoil-plus-at-de.pdf",
+      "stelle": "Böllhoff HELICOIL Plus Gesamtkatalog 0100, S. 13",
+      "zitat": "Die Richtwerte sind so bemessen, dass in der Verbindung die Schraube das schwächere Glied ist. Die empfohlenen Nennlängen können unterschritten werden, wenn Versuche dies bestätigen.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Durch den Drahtgewindeeinsatz wird der wirksame Gewindedurchmesser vergrößert und die Scherfläche im Aluminium um ca. 30 % erhöht, wodurch die erforderliche Einschraublänge drastisch sinkt.",
+  "ausnahmen": "Kann unterschritten werden, wenn Versuche dies bestätigen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

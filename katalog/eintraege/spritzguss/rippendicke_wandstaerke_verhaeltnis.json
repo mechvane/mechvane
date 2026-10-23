@@ -1,0 +1,48 @@
+{
+  "id": "rippendicke_wandstaerke_verhaeltnis",
+  "aussage": "Die Dicke einer Versteifungsrippe am Rippenfuß darf maximal 40 % bis 60 % der Dicke der angrenzenden Grundwand betragen: t_Rippe <= 0,4 ... 0,6 * T_Wand.",
+  "werte": [
+    {
+      "name": "Maximale Rippendicke zu Grundwand",
+      "bereich": [
+        0.4,
+        0.6
+      ],
+      "einheit": "x Wandstärke"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste",
+      "ABS",
+      "PC",
+      "PA",
+      "PP"
+    ],
+    "verfahren": [
+      "Spritzguss"
+    ],
+    "feature": [
+      "Versteifungsrippe",
+      "Rippe",
+      "Wand",
+      "Spritzgussteil"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://fab.cba.mit.edu/classes/S62.12/people/vernelle.noel/Plastic_Snap_fit_design.pdf",
+      "stelle": "S. 10",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Überschreitet die Rippendicke 60 % der Wandstärke, bildet sich an der Wurzel eine thermische Masseanhäufung, die beim Erstarren zu unschönen Einfallstellen auf der Sichtseite führt.",
+  "ausnahmen": "Strukturierte Narbung auf der Gegenseite kaschiert leichte Einfallstellen.",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

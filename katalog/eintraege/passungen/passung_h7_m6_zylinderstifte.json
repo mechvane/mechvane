@@ -1,0 +1,59 @@
+{
+  "id": "passung_h7_m6_zylinderstifte",
+  "aussage": "Bohrung H7 (0/+15 µm) gepaart mit Stift m6 (+6/+15 µm) für Ø 10 mm ergibt -15 µm bis 0 µm Übermaß (Treibsitz).",
+  "werte": [
+    {
+      "name": "Mindestübermaß",
+      "wert": 0,
+      "einheit": "µm"
+    },
+    {
+      "name": "Höchstübermaß",
+      "wert": -15,
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrungstoleranz",
+      "wert": "H7",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz",
+      "wert": "m6",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl"
+    ],
+    "verfahren": [
+      "Reiben",
+      "Montage"
+    ],
+    "feature": [
+      "Zylinderstift",
+      "Passstift",
+      "Passbohrung"
+    ],
+    "groesse": [
+      "10 mm",
+      ">6-10 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "S. TI-115",
+      "zitat": "ISO 2338 [...] ersetzt DIN 7 [...] Toleranzfeld m6",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Garantiert spielfreie Zentrierung von zwei Gehäusehälften ohne Nachbearbeitung im montierten Zustand.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

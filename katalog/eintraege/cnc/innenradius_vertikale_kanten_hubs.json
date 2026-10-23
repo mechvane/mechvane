@@ -1,0 +1,44 @@
+{
+  "id": "innenradius_vertikale_kanten_hubs",
+  "aussage": "Der vertikale Innenradius an Taschenecken sollte mindestens ⅓ der Kavitätentiefe betragen und geringfügig größer als der Fräserradius sein.",
+  "werte": [
+    {
+      "name": "Mindest-Innenradius zu Kavitätstiefe",
+      "wert": 0.333,
+      "einheit": "x Kavitätstiefe"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Tasche",
+      "Vertikale Innenecke",
+      "Kavität",
+      "Innenradius"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Internal edges (Vertical corner radius)",
+      "zitat": "Recommended: ⅓ times cavity depth (or larger)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Schaftfräser sind zylindrisch und hinterlassen prinzipbedingt an Innenkanten einen Radius. Ist der Eckenradius geringfügig größer als der Werkzeugradius, fährt das Werkzeug kontinuierlich auf einer Kreisbahn und muss an der Ecke nicht schlagartig abstoppen.",
+  "ausnahmen": "T-Bone- oder Dog-Bone-Freistiche, wenn scharfe 90°-Innenecken zwingend erforderlich sind.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

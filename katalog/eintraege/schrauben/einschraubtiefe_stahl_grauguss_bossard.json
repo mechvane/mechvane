@@ -1,0 +1,97 @@
+{
+  "id": "einschraubtiefe_stahl_grauguss_bossard",
+  "aussage": "Mindesteinschraubtiefen für Schrauben der Festigkeitsklasse 8.8 in Stahl und Grauguss nach Bossard Versuchswerten: Baustahl S235 / St37: 1,0 * d (theoretisch VDI 1,5 * d); Baustahl S355 / St52: 0,9 * d (VDI 1,3 * d); Vergütungsstahl C45V: 0,8 * d (VDI 0,9 * d); Grauguss GJL 250: 1,0 * d (VDI 1,3 * d).",
+  "werte": [
+    {
+      "name": "Einschraubtiefe S235 Versuch",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe S235 VDI",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe S355 Versuch",
+      "wert": 0.9,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe S355 VDI",
+      "wert": 1.3,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe C45V Versuch",
+      "wert": 0.8,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe C45V VDI",
+      "wert": 0.9,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe GJL 250 Versuch",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Einschraubtiefe GJL 250 VDI",
+      "wert": 1.3,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Baustahl",
+      "S235",
+      "S355",
+      "C45",
+      "Grauguss",
+      "GJL-250"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe",
+      "Schraubverbindung"
+    ],
+    "groesse": [
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
+      "stelle": "Bossard Technische Informationen Blatt 052",
+      "zitat": "S235 (St37-2) [...] 1,0 · d             1,25 · d                    1,25 · d            1,4 · d             1,4 · d",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Empirische Versuche erzielen durch plastische Traganteile bereits bei 0,8 bis 1,0 * d die Bruchlast von 8.8er Schrauben in Stahl.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "einschraubtiefe_stahl_grauguss_vdi2230_hanke"
+    }
+  ]
+}

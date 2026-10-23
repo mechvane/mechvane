@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MechvaneWissenskatalogEintrag",
+  "description": "Schema für einen Datensatz im Mechvane-Konstruktionswissenskatalog",
+  "type": "object",
+  "required": [
+    "id",
+    "aussage",
+    "werte",
+    "geltungsbereich",
+    "herkunft",
+    "quellen",
+    "begruendung",
+    "ausnahmen",
+    "haerte",
+    "pruefstatus",
+    "beziehungen"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Eindeutige Identifikation des Katalogeintrags"
+    },
+    "aussage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Zusammenfassende technische Aussage oder Konstruktionsregel"
+    },
+    "werte": {
+      "type": "array",
+      "description": "Strukturierte Kenn- und Richtwerte",
+      "items": {
+        "type": "object",
+        "required": ["name", "einheit"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Bezeichnung des Werts (z. B. Mindestwandstärke, Anziehdrehmoment)"
+          },
+          "wert": {
+            "type": ["number", "string"],
+            "description": "Diskreter Zahlen- oder Kennwert"
+          },
+          "bereich": {
+            "type": "array",
+            "items": {
+              "type": ["number", "string"]
+            },
+            "description": "Werteintervall [min, max] oder Wertebereich"
+          },
+          "einheit": {
+            "type": "string",
+            "description": "Physikalische Einheit (z. B. mm, Nm, kN, °C, %) oder leer"
+          }
+        },
+        "anyOf": [
+          {"required": ["wert"]},
+          {"required": ["bereich"]}
+        ]
+      }
+    },
+    "geltungsbereich": {
+      "type": "object",
+      "description": "Einschränkungen für Werkstoff, Fertigung, Geometrie und Festigkeit",
+      "required": [
+        "werkstoff",
+        "verfahren",
+        "feature",
+        "groesse",
+        "festigkeitsklasse"
+      ],
+      "properties": {
+        "werkstoff": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste der zutreffenden Werkstoffe oder Werkstoffgruppen"
+        },
+        "verfahren": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste der Fertigungsverfahren (z. B. CNC-Fräsen, FDM-Druck)"
+        },
+        "feature": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste der CAD-Features oder Maschinenelemente (z. B. Tasche, Sackloch, Bohrung)"
+        },
+        "groesse": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste der zutreffenden Nenngrößen (z. B. M3, M8)"
+        },
+        "festigkeitsklasse": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste der Festigkeitsklassen (z. B. 8.8, 10.9, A2-70)"
+        }
+      }
+    },
+    "herkunft": {
+      "type": "string",
+      "enum": [
+        "norm_sekundaer",
+        "hersteller",
+        "lehrbuch",
+        "handbuch",
+        "versuch",
+        "erfahrung",
+        "hypothese"
+      ],
+      "description": "Klassifizierung der Informationsherkunft"
+    },
+    "quellen": {
+      "type": "array",
+      "description": "Nachprüfbare Quellenangaben mit Fundstelle und wörtlichem Zitat",
+      "items": {
+        "type": "object",
+        "required": ["url", "stelle", "zitat", "abgerufen"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Web-URL der Primär- oder Sekundärquelle"
+          },
+          "stelle": {
+            "type": "string",
+            "description": "Abschnitt, Kapitel, Seite oder Tabelle in der Quelle"
+          },
+          "zitat": {
+            "type": "string",
+            "description": "Wörtliches Zitat oder Datenzeile aus der Quelle"
+          },
+          "abgerufen": {
+            "type": "string",
+            "description": "Datum des Abrufs / der Quellenprüfung (ISO-Format JJJJ-MM-TT)"
+          }
+        }
+      }
+    },
+    "begruendung": {
+      "type": "string",
+      "description": "Physikalische, werkstoffkundliche oder fertigungstechnische Begründung"
+    },
+    "ausnahmen": {
+      "type": "string",
+      "description": "Bedingungen und Ausnahmefälle, unter denen die Regel nicht gilt"
+    },
+    "haerte": {
+      "type": "string",
+      "enum": ["fehler", "hinweis"],
+      "description": "Prüfungsrelevanz: fehler (harte Grenze) oder hinweis (Best Practice)"
+    },
+    "pruefstatus": {
+      "type": "string",
+      "enum": ["automatisch", "von_hand", "offen", "nicht_belegt"],
+      "description": "Verifikationsgrad des Eintrags"
+    },
+    "beziehungen": {
+      "type": "array",
+      "description": "Beziehungen zu anderen Katalogeinträgen",
+      "items": {
+        "type": "object",
+        "required": ["typ", "ziel"],
+        "properties": {
+          "typ": {
+            "type": "string",
+            "enum": ["widerspricht", "leitet_ab", "ersetzt", "gilt_fuer"],
+            "description": "Art der gerichteten Beziehung"
+          },
+          "ziel": {
+            "type": "string",
+            "description": "ID des Ziel-Katalogeintrags"
+          }
+        }
+      }
+    }
+  }
+}

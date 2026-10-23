@@ -1,0 +1,116 @@
+{
+  "id": "einschraubtiefe_aluminium_vdi2230_hanke",
+  "aussage": "Berechnung der Gesamteinschraubtiefe m_ges nach VDI 2230-1 für Schrauben 8.8 in Aluminiumguss (inklusive 2 nicht tragenden Gewindegängen 2*P): G-AlSiCu3 S F: M6 = 21,3 mm (3,55 * d), M8 = 27,9 mm (3,49 * d), M10 = 34,5 mm (3,45 * d), M12 = 41,2 mm (3,43 * d); Aluguss tau_B=100 N/mm²: M6 = 17,1 mm (2,85 * d); Aluguss tau_B=130 N/mm²: M6 = 13,6 mm (2,27 * d).",
+  "werte": [
+    {
+      "name": "M6 G-AlSiCu3 m_ges",
+      "wert": 21.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 G-AlSiCu3 Faktor",
+      "wert": 3.55,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M8 G-AlSiCu3 m_ges",
+      "wert": 27.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 G-AlSiCu3 Faktor",
+      "wert": 3.49,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M10 G-AlSiCu3 m_ges",
+      "wert": 34.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 G-AlSiCu3 Faktor",
+      "wert": 3.45,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M12 G-AlSiCu3 m_ges",
+      "wert": 41.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 G-AlSiCu3 Faktor",
+      "wert": 3.43,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M6 weicher Sandguss m_ges",
+      "wert": 17.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 weicher Sandguss Faktor",
+      "wert": 2.85,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "M6 Aluguss tau=130 m_ges",
+      "wert": 13.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Aluguss tau=130 Faktor",
+      "wert": 2.27,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Aluminium",
+      "Aluminiumguss",
+      "AlSi10Mg",
+      "AlSi9Cu3",
+      "G-AlSiCu3",
+      "G-AlSi12",
+      "Alu"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe",
+      "Schraubverbindung"
+    ],
+    "groesse": [
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.ing-hanke.de/know-how/mindesteinschraubtiefe-von-hochfesten-schraubverbindungen-mit-metrischem-regelgewinde-nach-vdi-2230-blatt-1/",
+      "stelle": "Ing.-Büro Hanke Fachartikel Tabellen Aluminiumguss",
+      "zitat": "Bei der Berechnung der Zahlenwerte wurden die beiden Gewindegänge, die nicht mittragen, bereits berücksichtigt und der effektiven Einschraubtiefe hinzuaddiert... Bei Materialpaarungen mit besonders großen Unterschieden der Festigkeiten von Schraube und Innengewinde werden sehr hohe Einschraubtiefen ermittelt. Dies verursacht Probleme in der Herstellung und in der Anwendung der Schraubverbindung (Gewindebohren, „Festfressen“ bei der Montage). Kritisch angesehen werden Einschraubtiefen ab einer Länge von 1.5*d [1]. Je länger die Einschraubtiefen werden, desto problematischer sind die Effekte. Fertigungstechnisch wird empfohlen, Gewindebohrungen länger als 3*d zu vermeiden.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "VDI 2230 modelliert die elastische Scherbeanspruchung unter voller Schraubenauslastung. Bei weichen Werkstoffen führt dies rechnerisch zu Tiefen > 3*d, die fertigungstechnisch wegen Werkzeugbruchs und Reibklemmen vermieden werden sollten.",
+  "ausnahmen": "Fertigungstechnisch wird empfohlen, Gewindebohrungen länger als 3*d zu vermeiden und stattdessen Gewindeeinsätze einzusetzen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "einschraubtiefe_aluminium_bossard"
+    }
+  ]
+}

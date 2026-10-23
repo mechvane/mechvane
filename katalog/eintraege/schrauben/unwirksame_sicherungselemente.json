@@ -1,0 +1,38 @@
+{
+  "id": "unwirksame_sicherungselemente",
+  "aussage": "Federringe (DIN 127, DIN 128, DIN 6905, DIN 7980), Federscheiben (DIN 137, DIN 6904), Zahnscheiben (DIN 6797, DIN 6906) und Fächerscheiben (DIN 6798, DIN 6907) besitzen keinerlei Sicherungswirkung gegen Losdrehen oder Lockern. Von der Verwendung mit Schrauben der Festigkeitsklasse 8.8 oder höher muss abgeraten werden.",
+  "werte": [
+    {
+      "name": "Sicherungswirkung gegen Losdrehen",
+      "wert": 0,
+      "einheit": "%"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl"],
+    "verfahren": ["Schraubverbindung"],
+    "feature": [
+      "Federring",
+      "Federscheibe",
+      "Zahnscheibe",
+      "Fächerscheibe",
+      "Schraubensicherung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": ["8.8", "10.9", "12.9"]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.wuerth-industrie.com/web/media/downloads/brochures/de_wis/dino-technik.pdf",
+      "stelle": "Kapitel 7.4.1 (Unwirksame Sicherungselemente)",
+      "zitat": "Die nachfolgend aufgeführten Produkte besitzen keinerlei [...] Sicherungswirkung, weder in Bezug auf das Lockern [...] noch in Bezug auf das Losdrehen [...] Von einer Verwendung [...] mit Schrauben der Festigkeitsklasse ≥ 8.8 muss abgeraten [...] werden [...] Federringe DIN 127, DIN 128, DIN 6905, DIN 7980 [...] Federscheiben DIN 137, DIN 6904 [...] Zahnscheiben DIN 6797, DIN 6906 [...] Fächerscheiben DIN 6798, DIN 6907",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Diese federnden Elemente sind bereits bei geringen Vorspannkräften vollständig flachgedrückt. Unter dynamischer Querbelastung federn sie nicht nach und können den Setzbetrag hochfester Schrauben nicht ausgleichen. Die entsprechenden DIN-Normen wurden vom Deutschen Institut für Normung (DIN) offiziell zurückgezogen.",
+  "ausnahmen": "Keine bei Schrauben der Festigkeitsklasse >= 8.8.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,155 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "Lh",
+    "expression": "60 mm",
+    "comment": "half length of base plate"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "W",
+    "expression": "60 mm",
+    "comment": "width of base plate"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "T",
+    "expression": "10 mm",
+    "comment": "thickness of base plate"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "br",
+    "expression": "8 mm",
+    "comment": "rib thickness"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "Lr",
+    "expression": "50 mm",
+    "comment": "rib length"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "hr",
+    "expression": "15 mm",
+    "comment": "rib height above plate"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "n",
+    "expression": "2",
+    "unit": "",
+    "comment": "number of ribs per symmetric half"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "s",
+    "expression": "18 mm",
+    "comment": "linear pattern spacing"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "r",
+    "expression": "2 mm",
+    "comment": "internal fillet radius at rib base"
+   }
+  },
+  {
+   "command": "solid.box",
+   "params": {
+    "length": "Lh",
+    "width": "W",
+    "height": "T",
+    "corner": [
+     0,
+     0,
+     0
+    ],
+    "operation": "new",
+    "name": "HalfPlate",
+    "body_name": "Rippenplatte"
+   }
+  },
+  {
+   "command": "solid.box",
+   "params": {
+    "length": "br",
+    "width": "Lr",
+    "height": "hr",
+    "corner": [
+     8,
+     5,
+     "T"
+    ],
+    "operation": "join",
+    "name": "Rib"
+   }
+  },
+  {
+   "command": "solid.fillet",
+   "params": {
+    "edges": [
+     [
+      8,
+      30,
+      10
+     ],
+     [
+      16,
+      30,
+      10
+     ]
+    ],
+    "radius": "r",
+    "name": "RibFillet"
+   }
+  },
+  {
+   "command": "solid.pattern.rectangular",
+   "params": {
+    "features": [
+     "Rib",
+     "RibFillet"
+    ],
+    "dir1": [
+     1,
+     0,
+     0
+    ],
+    "count1": "n",
+    "spacing1": "s",
+    "name": "Ribs"
+   }
+  },
+  {
+   "command": "solid.mirror",
+   "params": {
+    "bodies": [
+     "Rippenplatte"
+    ],
+    "plane": "YZ",
+    "combine": true,
+    "name": "MirrorCenter"
+   }
+  }
+ ]
+}

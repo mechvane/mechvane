@@ -1,0 +1,424 @@
+{
+  "about": {
+    "design": "flansch",
+    "format": "solidcraft/27",
+    "replay": "solidcraft-cli eval script.json (timeline.add steps need a build that reads this design format)",
+    "version": "0.16.2"
+  },
+  "commands": [
+    {
+      "command": "parameters.add",
+      "params": {
+        "expression": "60 mm",
+        "name": "A",
+        "unit": "mm"
+      }
+    },
+    {
+      "command": "parameters.add",
+      "params": {
+        "expression": "8 mm",
+        "name": "T",
+        "unit": "mm"
+      }
+    },
+    {
+      "command": "parameters.add",
+      "params": {
+        "expression": "45 mm",
+        "name": "bcd",
+        "unit": "mm"
+      }
+    },
+    {
+      "command": "parameters.add",
+      "params": {
+        "expression": "6.6 mm",
+        "name": "dh",
+        "unit": "mm"
+      }
+    },
+    {
+      "command": "parameters.add",
+      "params": {
+        "expression": "4",
+        "name": "n",
+        "unit": ""
+      }
+    },
+    {
+      "command": "timeline.add",
+      "params": {
+        "feature": {
+          "id": 1,
+          "name": "PlateSketch",
+          "plane": {
+            "name": "XY",
+            "type": "origin"
+          },
+          "sketch": {
+            "constraints": [
+              {
+                "id": "k1",
+                "l": 0,
+                "type": "horizontal"
+              },
+              {
+                "id": "k2",
+                "l": 2,
+                "type": "horizontal"
+              },
+              {
+                "id": "k3",
+                "l": 1,
+                "type": "vertical"
+              },
+              {
+                "id": "k4",
+                "l": 3,
+                "type": "vertical"
+              },
+              {
+                "id": "k5",
+                "l": 4,
+                "p": 5,
+                "type": "midpoint"
+              },
+              {
+                "id": "k6",
+                "p": 0,
+                "q": 5,
+                "type": "coincident"
+              },
+              {
+                "id": "k7",
+                "l": 1,
+                "param": "d1",
+                "type": "length",
+                "value": 60.0
+              },
+              {
+                "id": "k8",
+                "l": 0,
+                "param": "d2",
+                "type": "length",
+                "value": 60.0
+              }
+            ],
+            "counters": {
+              "k": 8,
+              "l": 6,
+              "p": 5
+            },
+            "curves": [
+              {
+                "a": 1,
+                "b": 2,
+                "construction": false,
+                "id": "l1",
+                "type": "line"
+              },
+              {
+                "a": 2,
+                "b": 3,
+                "construction": false,
+                "id": "l2",
+                "type": "line"
+              },
+              {
+                "a": 3,
+                "b": 4,
+                "construction": false,
+                "id": "l3",
+                "type": "line"
+              },
+              {
+                "a": 4,
+                "b": 1,
+                "construction": false,
+                "id": "l4",
+                "type": "line"
+              },
+              {
+                "a": 1,
+                "b": 3,
+                "construction": true,
+                "id": "l5",
+                "type": "line"
+              },
+              {
+                "a": 2,
+                "b": 4,
+                "construction": true,
+                "id": "l6",
+                "type": "line"
+              }
+            ],
+            "points": [
+              {
+                "fixed": true,
+                "id": "origin",
+                "pos": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "fixed": false,
+                "id": "p1",
+                "pos": [
+                  -30.0,
+                  -30.0
+                ]
+              },
+              {
+                "fixed": false,
+                "id": "p2",
+                "pos": [
+                  30.0,
+                  -30.0
+                ]
+              },
+              {
+                "fixed": false,
+                "id": "p3",
+                "pos": [
+                  30.0,
+                  30.0
+                ]
+              },
+              {
+                "fixed": false,
+                "id": "p4",
+                "pos": [
+                  -30.0,
+                  30.0
+                ]
+              },
+              {
+                "fixed": false,
+                "id": "p5",
+                "pos": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          },
+          "suppressed": false,
+          "type": "sketch"
+        },
+        "params": [
+          {
+            "expression": "A",
+            "name": "d1",
+            "unit": "mm"
+          },
+          {
+            "expression": "A",
+            "name": "d2",
+            "unit": "mm"
+          }
+        ]
+      }
+    },
+    {
+      "command": "timeline.add",
+      "params": {
+        "feature": {
+          "extent": {
+            "convention": "total_distance",
+            "direction": "positive",
+            "distance": "T"
+          },
+          "id": 2,
+          "name": "Plate",
+          "operation": "new_body",
+          "param_names": [
+            "d3"
+          ],
+          "profiles": {
+            "type": "all"
+          },
+          "sketch": 1,
+          "suppressed": false,
+          "type": "extrude"
+        }
+      }
+    },
+    {
+      "command": "timeline.add",
+      "params": {
+        "feature": {
+          "distance": "1",
+          "edge_names": [
+            "F2:side:l3|F2:top",
+            "F2:side:l1|F2:top",
+            "F2:side:l2|F2:top",
+            "F2:side:l4|F2:top"
+          ],
+          "edge_refs": [
+            {
+              "dir": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                30.0,
+                30.0,
+                8.0
+              ],
+              "min": [
+                -30.0,
+                -30.0,
+                0.0
+              ]
+            },
+            {
+              "dir": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                30.0,
+                30.0,
+                8.0
+              ],
+              "min": [
+                -30.0,
+                -30.0,
+                0.0
+              ]
+            },
+            {
+              "dir": [
+                0.0,
+                -1.0,
+                0.0
+              ],
+              "max": [
+                30.0,
+                30.0,
+                8.0
+              ],
+              "min": [
+                -30.0,
+                -30.0,
+                0.0
+              ]
+            },
+            {
+              "dir": [
+                0.0,
+                1.0,
+                0.0
+              ],
+              "max": [
+                30.0,
+                30.0,
+                8.0
+              ],
+              "min": [
+                -30.0,
+                -30.0,
+                0.0
+              ]
+            }
+          ],
+          "edges": [
+            [
+              0.0,
+              30.0,
+              8.0
+            ],
+            [
+              0.0,
+              -30.0,
+              8.0
+            ],
+            [
+              30.0,
+              0.0,
+              8.0
+            ],
+            [
+              -30.0,
+              0.0,
+              8.0
+            ]
+          ],
+          "id": 3,
+          "name": "TopChamfer",
+          "param_names": [
+            "d4"
+          ],
+          "suppressed": false,
+          "type": "chamfer"
+        }
+      }
+    },
+    {
+      "command": "timeline.add",
+      "params": {
+        "feature": {
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "base": [
+            "bcd/2 * cos(45 deg)",
+            "bcd/2 * sin(45 deg)",
+            -1.0
+          ],
+          "height": "T + 2",
+          "id": 4,
+          "name": "BoltHole",
+          "operation": "cut",
+          "param_names": [
+            "d5",
+            "d6"
+          ],
+          "radius": "(dh) / 2",
+          "suppressed": false,
+          "type": "cylinder"
+        }
+      }
+    },
+    {
+      "command": "timeline.add",
+      "params": {
+        "feature": {
+          "features": [
+            "BoltHole"
+          ],
+          "id": 5,
+          "name": "BoltHoles",
+          "param_names": [
+            "d7",
+            "d8"
+          ],
+          "pattern": {
+            "angle": "360 deg",
+            "axis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "count": "n",
+            "origin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "type": "circular"
+          },
+          "suppressed": false,
+          "type": "pattern"
+        }
+      }
+    }
+  ]
+}

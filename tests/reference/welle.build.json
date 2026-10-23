@@ -1,0 +1,154 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "d1",
+    "expression": "16 mm",
+    "comment": "diameter step 1"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "L1",
+    "expression": "20 mm",
+    "comment": "length step 1"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "d2",
+    "expression": "24 mm",
+    "comment": "diameter step 2 (collar)"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "L2",
+    "expression": "30 mm",
+    "comment": "length step 2"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "d3",
+    "expression": "18 mm",
+    "comment": "diameter step 3"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "L3",
+    "expression": "20 mm",
+    "comment": "length step 3"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "bg",
+    "expression": "1.5 mm",
+    "comment": "retaining ring groove width"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "tg",
+    "expression": "0.8 mm",
+    "comment": "retaining ring groove depth"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "c",
+    "expression": "1 mm",
+    "comment": "end chamfer distance"
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XZ",
+    "name": "ShaftSketch"
+   }
+  },
+  {
+   "command": "sketch.line",
+   "params": {
+    "points": [
+     [0, 0],
+     ["L1 + L2 + L3", 0],
+     ["L1 + L2 + L3", "d3/2"],
+     ["L1 + L2", "d3/2"],
+     ["L1 + L2", "d2/2"],
+     ["L1", "d2/2"],
+     ["L1", "d1/2"],
+     [0, "d1/2"]
+    ],
+    "closed": true
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "solid.revolve",
+   "params": {
+    "sketch": "ShaftSketch",
+    "axis": "x",
+    "name": "Shaft",
+    "body_name": "Welle"
+   }
+  },
+  {
+   "command": "sketch.create",
+   "params": {
+    "plane": "XZ",
+    "name": "GrooveSketch"
+   }
+  },
+  {
+   "command": "sketch.line",
+   "params": {
+    "points": [
+     [4, "d1/2 - tg"],
+     ["4 + bg", "d1/2 - tg"],
+     ["4 + bg", "d1/2 + 1 mm"],
+     [4, "d1/2 + 1 mm"]
+    ],
+    "closed": true
+   }
+  },
+  {
+   "command": "sketch.finish",
+   "params": {}
+  },
+  {
+   "command": "solid.revolve",
+   "params": {
+    "sketch": "GrooveSketch",
+    "axis": "x",
+    "operation": "cut",
+    "name": "Groove"
+   }
+  },
+  {
+   "command": "solid.chamfer",
+   "params": {
+    "edges": [
+     [0, 0, 8]
+    ],
+    "distance": "c",
+    "name": "EndChamfer"
+   }
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+{
+  "id": "fdm_mindestspalt_beweglich",
+  "aussage": "Der konstruktive Spalt für bewegliche Baugruppen (Scharniere, Gelenke, Führungen) muss mindestens 0,30 mm (empfohlen 0,40 mm) betragen.",
+  "werte": [
+    {
+      "name": "Mindestspalt bewegliche Teile FDM",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlener Spalt bewegliche Teile FDM",
+      "wert": 0.4,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Scharnier",
+      "Gelenk",
+      "Führung",
+      "Spaltmaß",
+      "Print-in-Place"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://help.prusa3d.com/article/faq-frequently-asked-questions_1932",
+      "stelle": "FAQ Tolerances",
+      "zitat": "According to our testing, the precision tolerance of a well-assembled Original Prusa printer is 0,1 mm on the Z-axis and 0,3 mm on X and Y.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Bei Spaltmaßen < 0,30 mm verschmelzen benachbarte Perimeterschichten durch Wärmestrahlung und Materialquellung unlösbar miteinander.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

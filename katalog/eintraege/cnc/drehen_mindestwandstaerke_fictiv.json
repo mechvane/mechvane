@@ -1,0 +1,48 @@
+{
+  "id": "drehen_mindestwandstaerke_fictiv",
+  "aussage": "CNC-Drehteile besitzen typischerweise zylindrische, axialsymmetrische Geometrien. Die Wandstärke an gedrehten Bauteilen sollte über 0,02 Zoll gehalten werden.",
+  "werte": [
+    {
+      "name": "Mindestwandstärke CNC-Drehen",
+      "wert": 0.02,
+      "einheit": "Zoll"
+    },
+    {
+      "name": "Mindestwandstärke CNC-Drehen metrisch",
+      "wert": 0.508,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Drehen"
+    ],
+    "feature": [
+      "Drehteil",
+      "Wandstärke",
+      "Zylindrische Geometrie"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.fictiv.com/articles/cnc-machining-design-guide",
+      "stelle": "Abschnitt CNC Turning",
+      "zitat": "CNC turning refers to parts created on a lathe, generally with cylindrical geometry and axial symmetry. The stock material is held in a chuck, which rotates, while a cutting tool moves up and down and side to side to remove material.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Zu geringe Wandstärken führen zu elastischer Verformung durch die Backenspannung im Drehfutter sowie zu Rattern und schlechter Oberflächengüte beim Zerspanen.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

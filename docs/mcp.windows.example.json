@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "solidcraft": {
+      "command": "C:\\Users\\gollu\\mechvane\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe",
+      "args": ["mcp", "--allow-path", "C:\\Users\\gollu\\mechvane\\workspace"]
+    },
+    "mechvane": {
+      "command": "python",
+      "args": ["-m", "mechvane"],
+      "cwd": "C:\\Users\\gollu\\mechvane\\repo",
+      "env": {
+        "MECHVANE_WORKSPACE": "C:\\Users\\gollu\\mechvane\\workspace",
+        "PYTHONPATH": "C:\\Users\\gollu\\mechvane\\repo",
+        "SOLIDCRAFT_CLI": "C:\\Users\\gollu\\mechvane\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe"
+      }
+    }
+  }
+}

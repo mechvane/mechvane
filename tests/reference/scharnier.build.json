@@ -1,0 +1,115 @@
+{
+ "commands": [
+  {
+   "command": "solid.box",
+   "params": {
+    "length": 40,
+    "width": 40,
+    "height": 3,
+    "corner": [
+     -20,
+     -40,
+     0
+    ],
+    "operation": "new",
+    "body_name": "BasePlate"
+   }
+  },
+  {
+   "command": "solid.box",
+   "params": {
+    "length": 40,
+    "width": 40,
+    "height": 3,
+    "corner": [
+     -20,
+     0,
+     0
+    ],
+    "operation": "new",
+    "body_name": "LidPlate"
+   }
+  },
+  {
+   "command": "component.create",
+   "params": {
+    "name": "Base",
+    "parent": "root",
+    "activate": false
+   }
+  },
+  {
+   "command": "component.move_bodies",
+   "params": {
+    "bodies": [
+     "BasePlate"
+    ],
+    "component": "Base"
+   }
+  },
+  {
+   "command": "component.create",
+   "params": {
+    "name": "Lid",
+    "parent": "root",
+    "activate": false
+   }
+  },
+  {
+   "command": "component.move_bodies",
+   "params": {
+    "bodies": [
+     "LidPlate"
+    ],
+    "component": "Lid"
+   }
+  },
+  {
+   "command": "occurrence.ground",
+   "params": {
+    "occurrence": "Base:1",
+    "grounded": true
+   }
+  },
+  {
+   "command": "joint.create",
+   "params": {
+    "type": "revolute",
+    "name": "Hinge",
+    "flip": true,
+    "limits": [
+     [
+      0,
+      270
+     ]
+    ],
+    "a": {
+     "occurrence": "Base",
+     "point": [
+      0,
+      0,
+      3
+     ],
+     "z": [
+      1,
+      0,
+      0
+     ]
+    },
+    "b": {
+     "occurrence": "Lid",
+     "point": [
+      0,
+      0,
+      3
+     ],
+     "z": [
+      1,
+      0,
+      0
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "bohrungstiefe_fraesen_hubs",
+  "aussage": "Die empfohlene maximale Bohrungstiefe beträgt das 4-fache des Nenndurchmessers (typisch bis zum 10-fachen Nenndurchmesser machbar).",
+  "werte": [
+    {
+      "name": "Empfohlene maximale Bohrungstiefe zu Durchmesser",
+      "wert": 4.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Typisch machbare maximale Bohrungstiefe zu Durchmesser",
+      "wert": 10.0,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Bohren", "CNC-Fräsen"],
+    "feature": ["Bohrung", "Bohrtiefe"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Holes (Maximum depth)",
+      "zitat": "Recommended: 4 times nominal diameter",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Bei Bohrungstiefen über dem 4-fachen Durchmesser neigen Standardbohrer zum Verlaufen (Achsabweichung), die Späneabfuhr wird erschwert und es entstehen Riefen an der Bohrungswand.",
+  "ausnahmen": "Tieflochbohren mit Spezialwerkzeugen und Innenkühlung.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

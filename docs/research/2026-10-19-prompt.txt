@@ -1,0 +1,23 @@
+Deep Research, Ergebnis als ausführliches Markdown-Dokument auf Deutsch, mit Quellen-URLs.
+
+Kontext: Wir planen ein langfristiges Open-Source-Projekt: eine parametrische 3D-CAD-Anwendung, die Autodesk Inventor neu denkt: tief integrierte KI-Agenten, modular (Plugin-Architektur, nur geladen was gebraucht wird), ohne Ballast. Wir brauchen eine belastbare Bestandsaufnahme als Grundlage für eine Roadmap.
+
+Teil A – Funktionsumfang der neuesten Autodesk-Inventor-Version (Inventor 2027 bzw. die aktuellste verfügbare, inkl. Point-Releases 2026/2027). Bitte vollständig und gegliedert:
+1. Bauteilkonstruktion (Skizze 2D/3D, Constraints, Features, Flächen, Freiform/T-Splines, Direktbearbeitung, iParts/iFeatures, Parameter/Excel, Multibody)
+2. Baugruppen (Abhängigkeiten/Gelenke, Level of Detail/Modellzustände, Ersatzdarstellungen, Positionsdarstellungen, Frame Generator, Design Accelerator, Schrauben, Inhaltscenter, Rohrleitungen/Kabel & Kabelbaum, Schweißkonstruktion)
+3. Blech (Abwicklung, Regeln, Stanzwerkzeuge, Konturrollen)
+4. Zeichnungen (Ansichten, Schnitte, Bemaßung, Stücklisten, Normen DIN/ISO/ANSI, Model-Based Definition/3D-Annotationen)
+5. Simulation (Belastungsanalyse FEM, dynamische Simulation), Generatives Design / Formgenerator
+6. Präsentationen/Explosionsdarstellungen, Rendering, Studio
+7. iLogic, API (COM/.NET), Add-ins, Automatisierung, Configurator
+8. Datenaustausch (STEP, IGES, JT, Parasolid, AnyCAD, Revit/IFC, DWG, STL/3MF), Vault/PDM, Cloud (Autodesk Docs, Fusion-Anbindung)
+9. Was ist in den letzten 2-3 Releases neu (mit Release-Jahr) – inkl. KI-Funktionen von Autodesk (Autodesk AI, Assistant)
+10. Systemvoraussetzungen, Geometrie-Kernel (ShapeManager), Lizenzmodell
+Für jeden Bereich: Einschätzung, wie viel davon für Maschinenbau-Alltag (Einzelanwender, Maker, KMU) wirklich nötig ist (Kern / häufig / Nische).
+
+Teil B – Open-Source-Landschaft:
+1. Was ist "OpenCraft" / "Open Craft" (ein aktuelles, inspirierendes Open-Source-Projekt, vermutlich CAD/3D bezogen, evtl. mit einem Fusion-360-Nachbau)? Bitte identifizieren, Repo-URLs, Stand, Architektur, Lizenz. Falls mehrdeutig, alle Kandidaten nennen.
+2. Bestehende Open-Source-CAD-Projekte und Kernel als Baustein-Kandidaten: FreeCAD (1.x), OpenCASCADE/OCCT, build123d/CadQuery, Truck (Rust), Fornjot, SolveSpace, Onshape-artige Web-Ansätze, Zoo/KittyCAD, Manifold, Constraint-Solver (PlaneGCS, SolveSpace-Solver), Topologisches Naming-Problem und Lösungen.
+3. KI in CAD: Stand der Technik 2026 (Text-zu-CAD, Agenten die CAD per API steuern, MCP-Server für Fusion/FreeCAD/Blender, Zoo Text-to-CAD, Forschung).
+
+Teil C – Empfehlung: Welche Architektur/Kernel/Sprache wäre für ein modulares, agenten-zentriertes "Inventor neu gedacht" sinnvoll, welche Kernfunktionen gehören in ein MVP, was sind die größten technischen Risiken (Kernel, Naming, Solver, Zeichnungen, Performance), und realistischer Aufwand.

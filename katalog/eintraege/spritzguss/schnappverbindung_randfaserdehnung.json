@@ -1,0 +1,64 @@
+{
+  "id": "schnappverbindung_randfaserdehnung",
+  "aussage": "Bei der Auslegung von Schnapphaken darf die rechnerische Randfaserdehnung epsilon bei einmaliger Montage 4,0 % für PC (Makrolon), 2,5 % für PC/ABS (Bayblend), 3,0 % für POM und 2,0 % für ABS nicht überschreiten; bei Mehrfachbetätigung sind maximal 60 % dieser Werte zulässig.",
+  "werte": [
+    {
+      "name": "Zulässige Randfaserdehnung PC (einmalig)",
+      "wert": 4.0,
+      "einheit": "%"
+    },
+    {
+      "name": "Zulässige Randfaserdehnung PC/ABS (einmalig)",
+      "wert": 2.5,
+      "einheit": "%"
+    },
+    {
+      "name": "Zulässige Randfaserdehnung POM (einmalig)",
+      "wert": 3.0,
+      "einheit": "%"
+    },
+    {
+      "name": "Zulässige Randfaserdehnung ABS (einmalig)",
+      "wert": 2.0,
+      "einheit": "%"
+    },
+    {
+      "name": "Faktor Mehrfachbetätigung",
+      "wert": 0.6,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PC",
+      "PC/ABS",
+      "POM",
+      "ABS",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "Spritzguss"
+    ],
+    "feature": [
+      "Schnapphaken",
+      "Schnappverbindung",
+      "Biegebalken"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://fab.cba.mit.edu/classes/S62.12/people/vernelle.noel/Plastic_Snap_fit_design.pdf",
+      "stelle": "S. 12, Tabelle 2",
+      "zitat": "Bayblend            PC/ABS            2.5% [...] Makrolon®           PC                4%",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Überschreitung führt zu plastischer Dauerverformung (der Haken schließt nicht mehr spielfrei), Spannungsweißbruch oder Gewaltbruch beim Einrasten.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

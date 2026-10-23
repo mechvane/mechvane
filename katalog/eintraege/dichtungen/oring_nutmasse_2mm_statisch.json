@@ -1,0 +1,69 @@
+{
+  "id": "oring_nutmasse_2mm_statisch",
+  "aussage": "Für einen O-Ring mit Schnurstärke d2 = 2,00 mm beträgt für den radialen statischen Einbau die Nuttiefe t = 1,50 mm (+0,05/0) und die Nutbreite b = 2,78 mm (+0,05/0); für den axialen Einbau gilt t = 1,50 mm (+0,10/0) und b = 3,40 mm (+0,25/0).",
+  "werte": [
+    {
+      "name": "Schnurstärke d2",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nuttiefe radial statisch",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutbreite radial statisch",
+      "wert": 2.78,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nuttiefe axial statisch",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nutbreite axial statisch",
+      "wert": 3.4,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Elastomer",
+      "Stahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fräsen"
+    ],
+    "feature": [
+      "O-Ring-Nut",
+      "O-Ring",
+      "Nutmaß",
+      "statisch radial",
+      "statisch axial"
+    ],
+    "groesse": [
+      "2 mm",
+      "2.0 mm",
+      "d2=2.0"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.cog.de/produkte/rund-um-den-o-ring/o-ring-einbaumasse/tabellarisch",
+      "stelle": "Tabelle Zeile 4",
+      "zitat": "Die hier abgebildete Tabelle zeigt eine Auswahl der Einbaumaße in Abhängigkeit von Schnurstärke d2 für den radialen und axialen O-Ring Einbau.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Ergibt eine Nennverpressung von 25,0 % und einen sicheren Nutfüllgrad von ca. 75 %.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

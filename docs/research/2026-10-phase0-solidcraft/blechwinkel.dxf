@@ -1,0 +1,758 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1015
+  9
+$HANDSEED
+  5
+42
+  9
+$INSUNITS
+ 70
+4
+  9
+$MEASUREMENT
+ 70
+1
+  9
+$EXTMIN
+ 10
+-30.0
+ 20
+-20.0
+ 30
+0.0
+  9
+$EXTMAX
+ 10
+30.0
+ 20
+46.523893421169
+ 30
+0.0
+  0
+ENDSEC
+  0
+SECTION
+  2
+TABLES
+  0
+TABLE
+  2
+LTYPE
+  5
+23
+330
+0
+100
+AcDbSymbolTable
+ 70
+4
+  0
+LTYPE
+  5
+24
+330
+23
+100
+AcDbSymbolTableRecord
+100
+AcDbLinetypeTableRecord
+  2
+ByBlock
+ 70
+0
+  3
+
+ 72
+65
+ 73
+0
+ 40
+0.0
+  0
+LTYPE
+  5
+25
+330
+23
+100
+AcDbSymbolTableRecord
+100
+AcDbLinetypeTableRecord
+  2
+ByLayer
+ 70
+0
+  3
+
+ 72
+65
+ 73
+0
+ 40
+0.0
+  0
+LTYPE
+  5
+26
+330
+23
+100
+AcDbSymbolTableRecord
+100
+AcDbLinetypeTableRecord
+  2
+Continuous
+ 70
+0
+  3
+Solid line
+ 72
+65
+ 73
+0
+ 40
+0.0
+  0
+LTYPE
+  5
+27
+330
+23
+100
+AcDbSymbolTableRecord
+100
+AcDbLinetypeTableRecord
+  2
+DASHED
+ 70
+0
+  3
+Dashed __ __ __ __ __ __ __ __ __ __
+ 72
+65
+ 73
+2
+ 40
+19.05
+ 49
+12.7
+ 74
+0
+ 49
+-6.35
+ 74
+0
+  0
+ENDTAB
+  0
+TABLE
+  2
+LAYER
+  5
+28
+330
+0
+100
+AcDbSymbolTable
+ 70
+6
+  0
+LAYER
+  5
+29
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+0
+ 70
+0
+ 62
+7
+  6
+Continuous
+  0
+LAYER
+  5
+2A
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+BEND_DOWN
+ 70
+0
+ 62
+5
+  6
+DASHED
+  0
+LAYER
+  5
+2B
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+BEND_NOTES
+ 70
+0
+ 62
+8
+  6
+Continuous
+  0
+LAYER
+  5
+2C
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+BEND_UP
+ 70
+0
+ 62
+1
+  6
+DASHED
+  0
+LAYER
+  5
+2D
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+CUT
+ 70
+0
+ 62
+4
+  6
+Continuous
+  0
+LAYER
+  5
+2E
+330
+28
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+OUTLINE
+ 70
+0
+ 62
+7
+  6
+Continuous
+  0
+ENDTAB
+  0
+TABLE
+  2
+STYLE
+  5
+2F
+330
+0
+100
+AcDbSymbolTable
+ 70
+1
+  0
+STYLE
+  5
+30
+330
+2F
+100
+AcDbSymbolTableRecord
+100
+AcDbTextStyleTableRecord
+  2
+Standard
+ 70
+0
+ 40
+0.0
+ 41
+1.0
+ 50
+0.0
+ 71
+0
+ 42
+2.5
+  3
+txt
+  4
+
+  0
+ENDTAB
+  0
+TABLE
+  2
+BLOCK_RECORD
+  5
+31
+330
+0
+100
+AcDbSymbolTable
+ 70
+2
+  0
+BLOCK_RECORD
+  5
+20
+330
+31
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+*Model_Space
+  0
+BLOCK_RECORD
+  5
+21
+330
+31
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+*Paper_Space
+  0
+ENDTAB
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+BLOCK
+  5
+32
+330
+20
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+*Model_Space
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+*Model_Space
+  1
+
+  0
+ENDBLK
+  5
+33
+330
+20
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+34
+330
+21
+100
+AcDbEntity
+ 67
+1
+  8
+0
+100
+AcDbBlockBegin
+  2
+*Paper_Space
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+*Paper_Space
+  1
+
+  0
+ENDBLK
+  5
+35
+330
+21
+100
+AcDbEntity
+ 67
+1
+  8
+0
+100
+AcDbBlockEnd
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+CIRCLE
+  5
+36
+330
+20
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbCircle
+ 10
+15.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+3.3
+  0
+CIRCLE
+  5
+37
+330
+20
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbCircle
+ 10
+-15.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+3.3
+  0
+LINE
+  5
+38
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+30.0
+ 20
+20.523893421169
+ 30
+0.0
+ 11
+30.0
+ 21
+46.523893421169
+ 31
+0.0
+  0
+LINE
+  5
+39
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+30.0
+ 20
+46.523893421169
+ 30
+0.0
+ 11
+-30.0
+ 21
+46.523893421169
+ 31
+0.0
+  0
+LINE
+  5
+3A
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+-30.0
+ 20
+46.523893421169
+ 30
+0.0
+ 11
+-30.0
+ 21
+20.523893421169
+ 31
+0.0
+  0
+LINE
+  5
+3B
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+-30.0
+ 20
+20.523893421169
+ 30
+0.0
+ 11
+-30.0
+ 21
+16.0
+ 31
+0.0
+  0
+LINE
+  5
+3C
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+-30.0
+ 20
+16.0
+ 30
+0.0
+ 11
+-30.0
+ 21
+-20.0
+ 31
+0.0
+  0
+LINE
+  5
+3D
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+-30.0
+ 20
+-20.0
+ 30
+0.0
+ 11
+30.0
+ 21
+-20.0
+ 31
+0.0
+  0
+LINE
+  5
+3E
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+30.0
+ 20
+-20.0
+ 30
+0.0
+ 11
+30.0
+ 21
+16.0
+ 31
+0.0
+  0
+LINE
+  5
+3F
+330
+20
+100
+AcDbEntity
+  8
+OUTLINE
+100
+AcDbLine
+ 10
+30.0
+ 20
+16.0
+ 30
+0.0
+ 11
+30.0
+ 21
+20.523893421169
+ 31
+0.0
+  0
+LINE
+  5
+40
+330
+20
+100
+AcDbEntity
+  8
+BEND_UP
+100
+AcDbLine
+ 10
+30.0
+ 20
+18.261946710585
+ 30
+0.0
+ 11
+-30.0
+ 21
+18.261946710585
+ 31
+0.0
+  0
+TEXT
+  5
+41
+330
+20
+100
+AcDbEntity
+  8
+BEND_NOTES
+100
+AcDbText
+ 10
+0.0
+ 20
+19.761946710585
+ 30
+0.0
+ 40
+3.0
+  1
+B1 UP 90%%d R2
+ 50
+0.0
+ 72
+1
+ 11
+0.0
+ 21
+19.761946710585
+ 31
+0.0
+100
+AcDbText
+ 73
+0
+  0
+ENDSEC
+  0
+SECTION
+  2
+OBJECTS
+  0
+DICTIONARY
+  5
+22
+330
+0
+100
+AcDbDictionary
+281
+1
+  0
+ENDSEC
+  0
+EOF

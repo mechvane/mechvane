@@ -1,0 +1,50 @@
+{
+  "id": "oring_3ddruck_vollmaterialzone",
+  "aussage": "Bei FDM-gedruckten Dichtflanschen muss die Dichtnut von einer mindestens 3,0 mm dicken Vollmaterialzone (mindestens 5–6 massive Perimeter oder lokaler 100-%-Infill-Block) umgeben sein.",
+  "werte": [
+    {
+      "name": "Mindestdicke Vollmaterialzone",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindestanzahl Perimeter",
+      "wert": 5,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "PA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Dichtflansch",
+      "O-Ring-Nut",
+      "Vollmaterialzone"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hypothese",
+  "quellen": [
+    {
+      "url": "",
+      "stelle": "interne Konstruktionserfahrung Mechvane",
+      "zitat": "FDM-Druckteile mit Standard-Infill (20%) sind luft- und wasserdurchlässig; ohne massive Perimeter um die Dichtnut strömt das Medium durch das Bauteilinnere am O-Ring vorbei.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Druckluft oder Wasser unter Druck migriert durch die Grenzflächen der Layer in das Hohlraumsystem des Standard-Infills und tritt außerhalb der Dichtung wieder aus.",
+  "ausnahmen": "Vollständig massiv gedruckte Bauteile (100 % Infill).",
+  "haerte": "fehler",
+  "pruefstatus": "offen",
+  "beziehungen": []
+}

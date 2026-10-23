@@ -1,0 +1,50 @@
+{
+  "id": "mindestschenkellaenge_freibiegen",
+  "aussage": "Die Mindestschenkellänge eines gebogenen Flansches muss mindestens Flansch_min >= 3,5 * t + r (Stahl/Edelstahl) bzw. 3,0 * t + r (Aluminium) betragen.",
+  "werte": [
+    {
+      "name": "Mindestflanschfaktor Stahl",
+      "wert": 3.5,
+      "einheit": "x Blechdicke + Radius"
+    },
+    {
+      "name": "Mindestflanschfaktor Aluminium",
+      "wert": 3.0,
+      "einheit": "x Blechdicke + Radius"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Gesenkbiegen",
+      "Freibiegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Flansch",
+      "Schenkel",
+      "Biegeschenkel",
+      "Blech"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/design-for-sheet-metal-fabrication-toolkit/",
+      "stelle": "Toolkit",
+      "zitat": "Minimum flange lengths are required to hold a workpiece between the top and bottom die in the press brake.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Schenkel, die kleiner als die Auflagebreite der Gesenkschulter sind, rutschen während des Biegehubs in die V-Nut ab. Dies führt zu unkontrolliertem Winkelversatz oder Ausschuss.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,46 @@
+{
+  "id": "kantenverrundung_radienpaarung",
+  "aussage": "Ecken müssen mit einem Innenradius von R_in >= 0,5 * T_Wand und einem konzentrischen Außenradius von R_out = R_in + T_Wand ≈ 1,5 * T_Wand verrundet werden.",
+  "werte": [
+    {
+      "name": "Mindest-Innenradius",
+      "wert": 0.5,
+      "einheit": "x Wandstärke"
+    },
+    {
+      "name": "Außenradius konzentrisch",
+      "wert": 1.5,
+      "einheit": "x Wandstärke"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "Spritzguss"
+    ],
+    "feature": [
+      "Kante",
+      "Innenradius",
+      "Außenradius",
+      "Wandübergang"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "lehrbuch",
+  "quellen": [
+    {
+      "url": "https://fab.cba.mit.edu/classes/S62.12/people/vernelle.noel/Plastic_Snap_fit_design.pdf",
+      "stelle": "S. 8",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "R_in < 0,5 * T verdreifacht die Kerbspannungen unter Stoßbelastung. Scharfe Außenecken führen zu Wanddickenaufdickungen und Einfallstellen.",
+  "ausnahmen": "Werkzeugtrennungen.",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

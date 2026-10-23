@@ -1,0 +1,61 @@
+{
+  "id": "druckfedern_knickung_lagerungsbeiwerte",
+  "aussage": "Druckfedern können unter Belastung ausknicken. Die Grenzfederlänge ist die Knicklänge Lk und der zugehörige Weg der Knickfederweg sK. Der Einfluss der Federendenlagerung wird über den Lagerungsbeiwert ν abgebildet: frei - fest: ν = 2, gelenkig - gelenkig: ν = 1, verschiebbar - fest: ν = 1, gelenkig - fest: ν = 0,7, fest - fest: ν = 0,5.",
+  "werte": [
+    {
+      "name": "Lagerungsbeiwert frei - fest",
+      "wert": 2.0,
+      "einheit": ""
+    },
+    {
+      "name": "Lagerungsbeiwert gelenkig - gelenkig",
+      "wert": 1.0,
+      "einheit": ""
+    },
+    {
+      "name": "Lagerungsbeiwert verschiebbar - fest",
+      "wert": 1.0,
+      "einheit": ""
+    },
+    {
+      "name": "Lagerungsbeiwert gelenkig - fest",
+      "wert": 0.7,
+      "einheit": ""
+    },
+    {
+      "name": "Lagerungsbeiwert fest - fest",
+      "wert": 0.5,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Federstahl",
+      "Federbandstahl"
+    ],
+    "verfahren": [
+      "Federmontage"
+    ],
+    "feature": [
+      "Druckfeder",
+      "Schraubenfeder",
+      "Federendenlagerung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.eassistant.eu/fileadmin/dokumente/eassistant/etc/HTMLHandbuch/de/eAssistantHandbch22.html",
+      "stelle": "Kapitel 22, Abschnitt 22.3.5 (Lagerungsarten)",
+      "zitat": "Einige Federn können ausknicken. Die zugehörige Federlänge wird als Knicklänge (Lk) und der bis dahin zurückgelegte Federweg als Knickfederweg (sK) bezeichnet. Ein Einfluss der Federendenlagerung wird durch den Lagerungsbeiwert ν berücksichtigt.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Schlanke Federn weisen eine geringe Quersteifigkeit auf. Ohne Führung durch einen Dorn oder eine Hülse knicken ungeführte Federn aus, wenn der Arbeitsweg den Knickfederweg sK überschreitet.",
+  "ausnahmen": "Geführte Federn (Dornführung oder Hülsenführung).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

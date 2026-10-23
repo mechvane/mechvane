@@ -1,0 +1,46 @@
+{
+  "id": "waelzlager_schulter_uebergangsradius",
+  "aussage": "Der Übergangsradius an der Schulter von Welle oder Gehäuse muss strikt kleiner oder gleich dem minimalen Kantenabstand des Lagers sein: ra_max <= r_s_min (z. B. ra_max = 1,0 mm bei 6204).",
+  "werte": [
+    {
+      "name": "Maximaler Rundungsradius ra_max (6204)",
+      "wert": 1.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Wälzlagerstahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Schleifen",
+      "Lagermontage"
+    ],
+    "feature": [
+      "Wellenabsatz",
+      "Gehäuseschulter",
+      "Lagersitz",
+      "Wälzlager"
+    ],
+    "groesse": [
+      "6204"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.slf-fraureuth.de/en/catalogue/pdf/6204.2RSR/",
+      "stelle": "S. 1",
+      "zitat": "ra max                1 mm       maximaler Rundungsradius",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Ist der Übergangsradius ra größer als die Fase rs des Lagerrings, stützt sich das Lager nicht auf der planen Stirnfläche der Schulter ab, sondern reitet punktuell auf dem Rundungsradius. Dies führt zu Schiefstellung des Lagers, unzulässigen Kantenpressungen und schnellem Wälzkörperausfall.",
+  "ausnahmen": "Freistich nach DIN 509 an der Schulter.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

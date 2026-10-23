@@ -1,0 +1,52 @@
+{
+  "id": "iglidur_pv_wert_schmierung",
+  "aussage": "Der pv-Wert (Produkt aus spezifischer Belastung p und Gleitgeschwindigkeit v) dient als Kennwert für die entstehende Reibungswärme im Gleitlager. Eine Einmalschmierung bei der Montage verbessert das Einlaufverhalten und erhöht die Belastbarkeit (Korrekturfaktor 1,3 für den pv-Wert gegenüber Trockenlauf mit Faktor 1).",
+  "werte": [
+    {
+      "name": "Korrekturfaktor pv-Wert Trockenlauf",
+      "wert": 1.0,
+      "einheit": ""
+    },
+    {
+      "name": "Korrekturfaktor pv-Wert Einmalschmierung",
+      "wert": 1.3,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Polymer",
+      "iglidur",
+      "Kunststoff"
+    ],
+    "verfahren": [
+      "Gleitlagerung"
+    ],
+    "feature": [
+      "Gleitlager",
+      "Lagersitz",
+      "pv-Wert"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.igus.de/gleitlager/wiki/p-x-v-wert-und-schmierung",
+      "stelle": "Fachbeitrag p x v-Wert und Schmierung",
+      "zitat": "Dem Produkt aus der spezifischen Belastung [p] und der Gleitgeschwindigkeit [v] kommt bei Gleitlagern eine ganz besondere Bedeutung zu. Der pv-Wert kann als ein Maß der Reibungswärme angesehen werden und kann deshalb als analytisches Mittel zur Beantwortung der Frage nach der Einsetzbarkeit eines Gleitlagers benutzt werden. Dazu wird der tatsächliche pv-Wert mit einem in der Höhe berechenbaren zulässigen pv-Wert verglichen. Der zulässige pv-Wert ist abhängig vom Werkstoff der Laufpartner, von der Umgebungswärme und der Einschaltdauer.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Kann die im Gleitkontakt entstehende Reibungswärme nicht schnell genug über Welle und Gehäuse abgeführt werden, erreicht das Polymer seine Erweichungstemperatur, was zu rapidem Materialabtrag oder Festfressen führt.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iglidur_einpressmasse_toleranzen"
+    }
+  ]
+}

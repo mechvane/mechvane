@@ -1,0 +1,38 @@
+{
+  "id": "a2_a4_keine_planmaessige_vorspannung_bossard",
+  "aussage": "Schrauben aus nichtrostendem Stahl dürfen nicht in planmäßig vorgespannten Anwendungen eingesetzt werden, sofern nichts anderes festgelegt wird.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Edelstahl", "A2", "A4", "austenitischer nichtrostender Stahl"],
+    "verfahren": ["Schraubmontage"],
+    "feature": ["Schraubverbindung", "Vorspannung"],
+    "groesse": [],
+    "festigkeitsklasse": [
+      "A2-50",
+      "A2-70",
+      "A2-80",
+      "A4-50",
+      "A4-70",
+      "A4-80"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3S40LEUM235Qk3rJk2phR1/dbffd8df726c87755678f2c2c11a443c/060_074_Vorspannkr_fte_Anziehdrehmomente_Fastening_DE_01_2025.pdf",
+      "stelle": "Seite 68, Kapitel Vorspannung von Schrauben aus nichtrostendem Stahl",
+      "zitat": "Schrauben aus nichtrostendem Stahl dürfen nicht in planmässig vorgespannten Anwendungen eingesetzt werden, sofern nichts anderes festgelegt wird.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Austenitische Edelstähle besitzen keine ausgeprägte Streckgrenze, sondern eine 0,2%-Dehngrenze mit ausgeprägter Neigung zu Kriech- und Relaxationsvorgängen unter Dauerlast.",
+  "ausnahmen": "Sofern im Einzelfall gesondert nachgewiesen und festgelegt.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "a2_70_anziehdrehmoment_m4_m10_reyher"
+    }
+  ]
+}

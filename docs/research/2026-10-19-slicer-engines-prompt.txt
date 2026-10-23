@@ -1,0 +1,13 @@
+Recherche mit Web, Ergebnis als ausführliches Markdown-Dokument auf Deutsch, mit Quellen-URLs zu jeder Aussage. Markiere klar, was belegt ist und was du vermutest. Stand Oktober 2026.
+
+Kontext: Wir bauen ein Open-Source-CAD ("inventa", parametrisch, Rust-basiert auf Grundlage von SolidCraft, tangency-labs/solidcraft). Darin soll ein grafisches Slicer-Modul für FDM-3D-Druck nahtlos im selben Fenster laufen: Teil konstruieren, Tab wechseln, slicen, Schichtvorschau ansehen; bei Änderung eines Parameters automatisch neu slicen. Die Slicer-Engine soll als getrennter Prozess angebunden werden (Lizenztrennung, spätere Veröffentlichung). Der Nutzer druckt auf einem Ultimaker 2+ und hat eigene Cura-Profile (Material + Druckprofil), headless mit CuraEngine 5.13 läuft bereits.
+
+Bitte vergleichen:
+1. CuraEngine (5.x): Ansteuerung (CLI mit -s/-j Definitionen, Arcus/Protobuf-Socket wie Cura-Frontend, Plugin-System seit 5.5 per gRPC), Ausgabe von Schichtdaten (LayerOptimized-Messages: Polygone/Pfade pro Schicht und Linientyp) für eine eigene Vorschau, Geschwindigkeit beim Neu-Slicen, inkrementelles Slicen möglich?, Lizenz (AGPL-3.0) und was das für eine Anbindung als getrennter Prozess bedeutet.
+2. libslic3r (PrusaSlicer, OrcaSlicer, Bambu Studio): als Bibliothek oder CLI nutzbar? CLI-Optionen (--export-gcode, --load config.ini), Ausgabe von Vorschaudaten (G-Code parsen vs. interne Daten), Geschwindigkeit, Lizenz (AGPL), Profile-Import aus Cura möglich?
+3. Rust-eigene oder neuere Slicer: z.B. "slicer" crates, Kiri:Moto (JS), Slic3r-Ports, "rsslicer", "SuperSlicer", "Prusa libslic3r Rust bindings", OrcaSlicer CLI, sonstige ernstzunehmende Projekte 2025/2026. Reifegrad ehrlich einschätzen.
+4. G-Code-Vorschau: fertige Bibliotheken/Formate für eine eigene Schichtvorschau (z.B. gcode-preview, Parsing von ;TYPE:-Kommentaren in Cura- und Prusa-G-Code), was man aus G-Code allein rekonstruieren kann.
+5. Cura-Profile weiterverwenden: Wie sind Cura-Profile aufgebaut (definition_changes, quality, material .xml.fdm_material, intent, Vererbung über .def.json), lassen sie sich in andere Engines übersetzen? Gibt es Konverter Cura <-> PrusaSlicer?
+6. Ultimaker 2+ Besonderheiten (UltiGCode vs. RepRap-Flavor, Materialeinstellungen am Drucker).
+
+Am Ende: Bewertungstabelle (Steuerbarkeit, Neu-Slice-Geschwindigkeit, Schichtdaten für Vorschau, Cura-Profile, Lizenz, Reife) und eine begründete Empfehlung für einen ersten Prototyp.

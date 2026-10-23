@@ -1,0 +1,51 @@
+{
+  "id": "biegefreischnitt_mindestabmessungen",
+  "aussage": "Ein Biegefreischnitt muss eine Mindestbreite von mindestens 50 % der Blechdicke und eine Tiefe von Biegeradius + Blechdicke + 0,020 Zoll aufweisen.",
+  "werte": [
+    {
+      "name": "Mindestbreite Freischnitt",
+      "wert": 0.5,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Tiefenzuschlag Freischnitt",
+      "wert": 0.508,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Aluminium",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Stanzen",
+      "Laserschneiden",
+      "Biegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Biegefreischnitt",
+      "Bend Relief",
+      "Lasche",
+      "Blech"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://sendcutsend.com/blog/step-by-step-guide-to-sheet-metal-bending/",
+      "stelle": "Notches and Reliefs",
+      "zitat": "These notches should be at least 50% of the material’s thickness in width and the depth should equal Bend radius + Material thickness +.020”.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Verhindert Kerbrisse an den Übergangsecken und verhindert das axiale Aufwölben des Nachbarmaterials.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

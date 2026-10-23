@@ -1,0 +1,55 @@
+{
+  "id": "einschraubtiefe_messing_empfehlung",
+  "aussage": "Empfohlene Gesamteinschraubtiefe für Schrauben der Festigkeitsklasse 8.8 mit Regelgewinde in Messing (CuZn-Legierungen): 1,5 * d.",
+  "werte": [
+    {
+      "name": "Empfohlene Gesamteinschraubtiefe Messing",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Messing",
+      "CuZn39Pb3",
+      "CuZn37",
+      "Kupferlegierung"
+    ],
+    "verfahren": [
+      "Schraubmontage",
+      "Gewindeschneiden",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "erfahrung",
+  "quellen": [
+    {
+      "url": "https://jus-spanntechnik.de/ratgeber/gewindelaenge-berechnen/",
+      "stelle": "Synthese aus VDI 2230 Berechnungsdiagramm und Fachpraxis",
+      "zitat": "Scherfestigkeit des Bauteilwerkstoffs (≈ 0,6 · Rm,M)",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Automatenmessing ist deutlich scherfester als Aluminiumguss. 1,5 * d bietet Sicherheitsreserven gegen Chargenschwankungen und liegt unterhalb der Klemmschwelle tiefer Gewinde.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": []
+}

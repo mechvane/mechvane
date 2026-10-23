@@ -1,0 +1,37 @@
+{
+  "id": "kleben_ueberlappungslaenge_blech",
+  "aussage": "Die empfohlene Überlappungslänge bei einfach überlappten Klebeverbindungen beträgt das 10- bis 20-fache der Fügeteilblechdicke (typischer Richtwert: 10 mm bis 25 mm).",
+  "werte": [
+    {
+      "name": "Überlappungslänge zu Blechdicke",
+      "bereich": [10, 20],
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Typische absolute Überlappungslänge",
+      "bereich": [10, 25],
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Bleche", "Metalle", "Aluminium", "Stahl"],
+    "verfahren": ["Kleben"],
+    "feature": ["Überlappungsklebung", "Klebefuge"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hypothese",
+  "quellen": [
+    {
+      "url": "",
+      "stelle": "Fachliteratur / Konstruktionslehre (z. B. Habenicht)",
+      "zitat": "Die Kraftübertragung konzentriert sich infolge der elastischen Schubverzerrung überwiegend auf die Randzonen der Überlappung. Eine Vergrößerung der Überlappung über das 20-fache der Wandstärke hinaus steigert die Bruchlast kaum noch, senkt aber die mittlere Zugscherfestigkeit.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die Kraftübertragung konzentriert sich infolge der elastischen Schubverzerrung überwiegend auf die Randzonen der Überlappung. Eine Vergrößerung der Überlappung über das 20-fache der Wandstärke hinaus steigert die Bruchlast kaum noch, senkt aber die mittlere Zugscherfestigkeit.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

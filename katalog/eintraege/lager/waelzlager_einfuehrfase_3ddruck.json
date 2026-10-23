@@ -1,0 +1,51 @@
+{
+  "id": "waelzlager_einfuehrfase_3ddruck",
+  "aussage": "An der Öffnung eines 3D-gedruckten Lagersitzes muss eine Fase von mindestens 0,5 mm x 45° angebracht sein.",
+  "werte": [
+    {
+      "name": "Mindestfase Lagersitz 3D-Druck",
+      "wert": 0.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Fasenwinkel",
+      "wert": 45,
+      "einheit": "°"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Lagersitz",
+      "Gehäusebohrung",
+      "Einführfase",
+      "Wälzlager"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://familymake.com",
+      "stelle": "FDM Press Fit Guide",
+      "zitat": "",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Ungefaste Öffnungen führen beim Ansetzen des harten Stahlaußenrings zum Verkanten und Abscheren der Deckschicht entlang der Drucklayer.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "nicht_belegt",
+  "beziehungen": []
+}

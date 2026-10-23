@@ -1,0 +1,163 @@
+{
+  "id": "din625_rillenkugellager_hauptabmessungen",
+  "aussage": "Hauptabmessungen genormter einreihiger Rillenkugellager nach DIN 625-1 (Reihe 6000 bis 6005): Bohrung d, Außendurchmesser D, Breite B und Kantenabstand rs_min.",
+  "werte": [
+    {
+      "name": "6000 Bohrung d",
+      "wert": 10,
+      "einheit": "mm"
+    },
+    {
+      "name": "6000 Außendurchmesser D",
+      "wert": 26,
+      "einheit": "mm"
+    },
+    {
+      "name": "6000 Breite B",
+      "wert": 8,
+      "einheit": "mm"
+    },
+    {
+      "name": "6000 Kantenabstand rs_min",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Bohrung d",
+      "wert": 12,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Außendurchmesser D",
+      "wert": 28,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Breite B",
+      "wert": 8,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Kantenabstand rs_min",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Bohrung d",
+      "wert": 15,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Außendurchmesser D",
+      "wert": 32,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Breite B",
+      "wert": 9,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Kantenabstand rs_min",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Bohrung d",
+      "wert": 17,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Außendurchmesser D",
+      "wert": 35,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Breite B",
+      "wert": 10,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Kantenabstand rs_min",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Bohrung d",
+      "wert": 20,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Außendurchmesser D",
+      "wert": 42,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Breite B",
+      "wert": 12,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Kantenabstand rs_min",
+      "wert": 0.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Bohrung d",
+      "wert": 25,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Außendurchmesser D",
+      "wert": 47,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Breite B",
+      "wert": 12,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Kantenabstand rs_min",
+      "wert": 0.6,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Wälzlagerstahl",
+      "100Cr6"
+    ],
+    "verfahren": [
+      "Wälzlagermontage"
+    ],
+    "feature": [
+      "Rillenkugellager",
+      "Lagersitz",
+      "Wälzlager"
+    ],
+    "groesse": [
+      "6000",
+      "6001",
+      "6002",
+      "6003",
+      "6004",
+      "6005"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://medias.schaeffler.de",
+      "stelle": "Produktkatalog Rillenkugellager DIN 625-1",
+      "zitat": "DIN 625 / ISO 15",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Internationale Standardisierung der Anschlussmaße für den weltweiten Austauschbau von Wälzlagern.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "offen",
+  "beziehungen": []
+}

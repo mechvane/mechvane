@@ -1,0 +1,51 @@
+{
+  "id": "oring_einfuehrschraege_radial",
+  "aussage": "An Zylinder- oder Wellenenden für radiale O-Ring-Dichtungen muss eine Einführschräge mit einem Winkel von 15° bis 20° und verrundeten Kanten (R >= 0,3 mm) angebracht werden.",
+  "werte": [
+    {
+      "name": "Einführschrägenwinkel",
+      "bereich": [
+        15,
+        20
+      ],
+      "einheit": "°"
+    },
+    {
+      "name": "Mindestkantenverrundung",
+      "wert": 0.3,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fräsen"
+    ],
+    "feature": [
+      "Einführschräge",
+      "Welle",
+      "Zylinder",
+      "O-Ring"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://nianticseal.com/wp-content/uploads/2024/04/ORD-5700.pdf",
+      "stelle": "S. 10-4",
+      "zitat": "Provide a 20° lead-in chamfer.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Scharfe Kanten führen beim Einschieben zum Abscheren von Elastomerteilen an der Ringaußenseite, was zu sofortigem Lecken führt.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,59 @@
+{
+  "id": "freistich_din509_form_f_waelzlagersitz",
+  "aussage": "Für Lagersitze auf Wellen mit Fertigmaß Ø 18 bis 80 mm ist standardmäßig der Freistich DIN 509 – F 0,6 x 0,3 vorzusehen (r1 = 0,6 mm, Einstiefe t1 = 0,3 mm, Plantiefe t2 = 0,2 mm, Einstichbreite f1 = 2,5 mm).",
+  "werte": [
+    {
+      "name": "Freistichradius r1",
+      "wert": 0.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "Einstiefe t1",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Plantiefe t2",
+      "wert": 0.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Einstichbreite f1",
+      "wert": 2.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Schleifen"
+    ],
+    "feature": [
+      "Freistich",
+      "Wellenabsatz",
+      "Lagersitz",
+      "Welle"
+    ],
+    "groesse": [
+      "18-80 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://cad-markt.de/index.php/cad-tutuorials/normen/1611-00509-din-509-freistiche",
+      "stelle": "Tabelle Form F",
+      "zitat": "Wenn bei der Montage ein Teil keine ausreichend große Fase oder Rundung hat, kann dieses dann plan an das erste Teil geschoben werden.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Garantiert den Freilauf des Schleifwerkzeugs an Zylinder- und Planfläche und stellt sicher, dass der Lagerinnenring mit Kantenfase r_s_min >= 0,6 mm vollflächig an der Schulter aufliegt.",
+  "ausnahmen": "",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

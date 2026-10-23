@@ -1,0 +1,31 @@
+{
+  "id": "nasa_verbot_federringe",
+  "aussage": "Frei mitdrehende Federringe und Zahnscheiben bieten minimalen bis keinen Schutz gegen Losdrehen.",
+  "werte": [],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl", "Titan", "Aluminium"],
+    "verfahren": ["Schraubverbindung"],
+    "feature": ["Federring", "Zahnscheibe", "Schraubensicherung"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://standards.nasa.gov/system/files/tmp/NASA-STD-5020B%20Revalidated%201-5-2026.pdf",
+      "stelle": "Seite 84, Appendix B.2, Paragraph d",
+      "zitat": "Free spinning split lock and tooth lock washers provide minimal, if any, locking.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Die Federsteifigkeit herkömmlicher Federringe ist im Verhältnis zur Schraubensteifigkeit vernachlässigbar gering. Nach dem Anziehen wirken sie wie einfache Unterlegscheiben ohne Sperreffekt.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "unwirksame_sicherungselemente"
+    }
+  ]
+}

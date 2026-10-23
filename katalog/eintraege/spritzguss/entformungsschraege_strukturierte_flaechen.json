@@ -1,0 +1,46 @@
+{
+  "id": "entformungsschraege_strukturierte_flaechen",
+  "aussage": "Für erodierte oder genarbte Oberflächen muss pro 0,025 mm Narbungstiefe die Entformungsschräge um mindestens +1° pro Seite über die Basisschräge (1°) hinaus erhöht werden.",
+  "werte": [
+    {
+      "name": "Basisentformungsschräge",
+      "wert": 1.0,
+      "einheit": "°"
+    },
+    {
+      "name": "Zusätzliche Schräge je 0,025 mm Textur",
+      "wert": 1.0,
+      "einheit": "°"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "Spritzguss"
+    ],
+    "feature": [
+      "Entformungsschräge",
+      "Narbung",
+      "Textur",
+      "Sichtfläche"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/guides-and-trend-reports/injection-molding-guide-process-design-tips-materials/",
+      "stelle": "Draft Angles",
+      "zitat": "A common starting point is 1 to 2 degrees of draft, with more draft for textured surfaces or deeper features that need extra help releasing from the mold.",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "In den Mikrovertiefungen der Struktur verkrallt sich der erstarrende Kunststoff. Ohne ausreichende Schräge reißt die Struktur beim Ausstoßen auf und hinterlässt Glanzstreifen oder weiße Riefen.",
+  "ausnahmen": "",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

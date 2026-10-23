@@ -1,0 +1,37 @@
+{
+  "id": "taschentiefe_breite_verhaeltnis_hubs",
+  "aussage": "Die empfohlene Tiefe einer Frästasche beträgt maximal das 4-fache der Taschenbreite (Kavitätstiefe sollte 3 bis 5 mal die Breite nicht überschreiten).",
+  "werte": [
+    {
+      "name": "Empfohlene maximale Kavitätstiefe zu Breite",
+      "wert": 4.0,
+      "einheit": "x Breite"
+    },
+    {
+      "name": "Typischer Bereich Tiefe zu Breite",
+      "bereich": [3.0, 5.0],
+      "einheit": "x Breite"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Metalle", "Aluminium", "Stahl", "Kunststoffe"],
+    "verfahren": ["CNC-Fräsen"],
+    "feature": ["Tasche", "Kavität", "Vertiefung"],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Cavity depth",
+      "zitat": "Recommended cavity depth:  4 times cavity width",
+      "abgerufen": "2026-10-21"
+    }
+  ],
+  "begruendung": "Bei tieferen Taschen treten Werkzeugabdrängung (Deflection), schlechte Spanabfuhr und starke Vibrationen auf, die zu unzureichender Maßhaltigkeit führen.",
+  "ausnahmen": "Stufenkonstruktionen oder Sonderfräser mit Freischliff.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}
