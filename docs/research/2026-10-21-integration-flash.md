@@ -1,7 +1,7 @@
 # Integrationsbericht: Merging von argon-fixes, links-fixes und inplace-fixes
 
 **Datum:** 2026-10-21  
-**Branch:** `gemini/integration` (Worktree `/root/repos/inventa-integration`, Basis `main` @ `6870540`)  
+**Branch:** `gemini/integration` (Worktree `/root/repos/mechvane-integration`, Basis `main` @ `6870540`)  
 **Autor:** Gemini 3.8 Flash
 
 ---

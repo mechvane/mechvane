@@ -3,7 +3,7 @@
 **Datum:** 2026-10-21  
 **Modell / Status:** Gemini 3.8 Flash, nicht verifiziert  
 **Arbeitsverzeichnis:** `/tmp/graph-katalog`  
-**Ausgabe-Verzeichnis:** `/root/repos/inventa/graphify-katalog/` (gitignored)
+**Ausgabe-Verzeichnis:** `/root/repos/mechvane/graphify-katalog/` (gitignored)
 
 ---
 
@@ -12,7 +12,7 @@
 ### Pipeline-Ablauf
 1. **Initialisierung und Korpus-Kopie:**
    - Arbeitsverzeichnis `/tmp/graph-katalog` angelegt.
-   - Alle 39 Markdown-Recherchedateien aus `/root/repos/inventa/docs/research/*.md` (ohne Unterordner mit Skripten) dorthin kopiert.
+   - Alle 39 Markdown-Recherchedateien aus `/root/repos/mechvane/docs/research/*.md` (ohne Unterordner mit Skripten) dorthin kopiert.
    - Datei- und Wortzählung via `graphify.detect`: **39 Dokumente**, **92.333 Wörter**.
 2. **Semantische Extraktion (Host-Modell / Gemini 3.8 Flash ohne externen API-Key):**
    - Gemäß `extraction-spec.md` und den SKILL.md-Vorgaben für Part B wurde die semantische Extraktion direkt vom Modell durchgeführt.
@@ -30,7 +30,7 @@
    - Interaktive HTML-Visualisierung generiert (`graph.html`).
    - Audit-Bericht (`GRAPH_REPORT.md`), Graphdaten (`graph.json`), Manifest (`manifest.json`) und Kosten-Tracker (`cost.json`) erzeugt.
    - Fünf Agentenabfragen nach `query.md` durchgeführt und via `graphify save-result` im Arbeitsspeicher (`memory/`) abgelegt.
-   - Vollständige Ausgabe nach `/root/repos/inventa/graphify-katalog/` übertragen.
+   - Vollständige Ausgabe nach `/root/repos/mechvane/graphify-katalog/` übertragen.
 
 ### Aufwand & Ressourceneinsatz
 - **Token-Verbrauch:** 92.333 Input-Tokens, 17.700 Output-Tokens.

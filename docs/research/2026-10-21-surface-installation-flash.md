@@ -34,7 +34,7 @@ Wichtigste Ergebnisse:
   - `solidcraft-cli.exe mcp` startet und antwortet auf das JSON-RPC-Initialisierungssignal mit `serverInfo.name: "solidcraft"`.
 
 ### 2.2 Repo-Stand übertragen
-- Erzeugung eines Archivs aus dem Branch: `git -C /root/repos/inventa-surface archive --format=zip -o /tmp/surface-inventa.zip HEAD`
+- Erzeugung eines Archivs aus dem Branch: `git -C /root/repos/mechvane-surface archive --format=zip -o /tmp/surface-inventa.zip HEAD`
 - Per `scp` übertragen und entpackt nach `C:\Users\gollu\inventa\repo\`. Keine Zugangsdaten auf dem Surface angelegt.
 
 ### 2.3 Plattformneutrale Codeanpassungen

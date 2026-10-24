@@ -3,7 +3,7 @@
 **Autor:** Gemini 3.8 Flash  
 **Datum:** 2026-10-23  
 **Branch:** `gemini/senkkopf`  
-**Repo:** `inventa` (`/root/repos/inventa-senkkopf`)
+**Repo:** `inventa` (`/root/repos/mechvane-senkkopf`)
 
 ---
 
@@ -31,7 +31,7 @@ Im Rahmen des Auftrags wurden Senkschrauben mit Innensechskant nach **ISO 10642*
 
 ## 2. Recherche & Belegungsstatus der Normmaße
 
-Die Recherche ist im Detail in [`docs/research/2026-10-23-iso10642-iso15065-flash.md`](file:///root/repos/inventa-senkkopf/docs/research/2026-10-23-iso10642-iso15065-flash.md) dokumentiert und wurde mit `python3 tools/check_sources.py` geprüft.
+Die Recherche ist im Detail in [`docs/research/2026-10-23-iso10642-iso15065-flash.md`](file:///root/repos/mechvane-senkkopf/docs/research/2026-10-23-iso10642-iso15065-flash.md) dokumentiert und wurde mit `python3 tools/check_sources.py` geprüft.
 
 ### Geprüfte Quellen
 - **Bossard Schrauben-Lexikon & Online-Katalog:** ISO 10642 Normmaße und Passungen

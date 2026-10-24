@@ -1,6 +1,6 @@
 > Gemini 3.8 Flash, nicht verifiziert. Lesendes Code-Review von `inventa/links.py`, `inventa/inplace.py`, `inventa/tree.py`, den zugehörigen Aufrufen in `inventa/server.py` sowie den Tests in `tests/inventa/check.py`.
 > Datum: 2026-10-21. Geprüfter Commit auf `main`: `bca360960e8fd08bcaa59fd52d5a6578cba335f1`.
-> Alle Befunde 1 bis 10 wurden durch eigenständige Reproduktionsskripte unter `/tmp/review-lit-*.py` mit `PYTHONPATH=/root/repos/inventa` gegen die installierte SolidCraft-CLI empirisch bestätigt.
+> Alle Befunde 1 bis 10 wurden durch eigenständige Reproduktionsskripte unter `/tmp/review-lit-*.py` mit `PYTHONPATH=/root/repos/mechvane` gegen die installierte SolidCraft-CLI empirisch bestätigt.
 
 ---
 
@@ -38,7 +38,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 1. [Hoch] `links.check` ignoriert axiale Verschiebung bei Zylindergelenken und In-Plane-Verschiebung bei Ebenengelenken (`status` fälschlich `"ok"`)
 
-- **Fundstelle:** [inventa/links.py:180-186](file:///root/repos/inventa/inventa/links.py#L180-L186), [inventa/links.py:67-74](file:///root/repos/inventa/inventa/links.py#L67-L74)
+- **Fundstelle:** [inventa/links.py:180-186](file:///root/repos/mechvane/inventa/links.py#L180-L186), [inventa/links.py:67-74](file:///root/repos/mechvane/inventa/links.py#L67-L74)
 - **Was falsch ist:**
   1. `links.record` speichert bei Zylindergelenken gewissenhaft `anchor["axial"]` (den Abstand entlang der Zylinderachse) und bei Ebenengelenken `anchor["offset"]` (den 2D/3D-Versatz zum Flächenschwerpunkt).
   2. In `links.check(ws, doc)` wird für Zylinder jedoch ausschließlich `ok = any(test(f, o, d) for f in named)` mit `test = _on_cylinder` ausgewertet. `_on_cylinder` prüft lediglich:
@@ -80,7 +80,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 2. [Hoch] `_match` ordnet koaxiale Zylinder (z. B. Senkungen, Stufenbohrungen) alphabetisch erstem Feature zu
 
-- **Fundstelle:** [inventa/links.py:77-84](file:///root/repos/inventa/inventa/links.py#L77-L84), [inventa/links.py:67-70](file:///root/repos/inventa/links.py#L67-L70)
+- **Fundstelle:** [inventa/links.py:77-84](file:///root/repos/mechvane/inventa/links.py#L77-L84), [inventa/links.py:67-70](file:///root/repos/mechvane/links.py#L67-L70)
 - **Was falsch ist:**
   Bei Senkungen (DIN 974-1 / ISO 4762), gestuften Zylindern oder koaxialen Innen-/Außenzylindern teilen sich mehrere Zylinderflächen dieselbe geometrische Achsenlinie.
   In `_match`:
@@ -110,7 +110,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 3. [Hoch] `update_links` stürzt mit `SolidCraftError` ab, wenn fixierte Unterbaugruppe verschobene Teile synchronisiert
 
-- **Fundstelle:** [inventa/links.py:616-625](file:///root/repos/inventa/inventa/links.py#L616-L625)
+- **Fundstelle:** [inventa/links.py:616-625](file:///root/repos/mechvane/inventa/links.py#L616-L625)
 - **Was falsch ist:**
   Wird eine Unterbaugruppe mit `grounded=True` eingefügt (z. B. Maschinenrahmen, Gehäuse), setzt `_insert_subassembly` (Zeile 461-465) auch die Kind-Occurrences in der Hauptbaugruppe auf `grounded=True`.
   Verschiebt sich später ein Bauteil in der Konstruktionsdatei der Unterbaugruppe, sammelt `_sync_subassemblies` die neue Position in `to_move`. In Zeile 624-625 ruft es auf:
@@ -143,7 +143,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 4. [Hoch] `server.edit_joint` stürzt bei Umbenennung eines Gelenks mit `KeyError` ab und hinterlässt verwaiste Metadaten
 
-- **Fundstelle:** [inventa/server.py:151-158](file:///root/repos/inventa/inventa/server.py#L151-L158), [inventa/links.py:107-113](file:///root/repos/inventa/inventa/links.py#L107-L113)
+- **Fundstelle:** [inventa/server.py:151-158](file:///root/repos/mechvane/inventa/server.py#L151-L158), [inventa/links.py:107-113](file:///root/repos/mechvane/inventa/links.py#L107-L113)
 - **Was falsch ist:**
   SolidCrafts `joint.edit`-Befehl unterstützt den Parameter `name`, um ein bestehendes Gelenk umzubenennen.
   In `server.py`:
@@ -173,7 +173,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 5. [Hoch] `finish_edit` speichert offene/aktualisierte Baugruppen nicht auf Festplatte; ungeöffnete Zwischenbaugruppen bleiben veraltet
 
-- **Fundstelle:** [inventa/inplace.py:184-210](file:///root/repos/inventa/inventa/inplace.py#L184-L210), [inventa/links.py:523-537](file:///root/repos/inventa/inventa/links.py#L523-L537)
+- **Fundstelle:** [inventa/inplace.py:184-210](file:///root/repos/mechvane/inventa/inplace.py#L184-L210), [inventa/links.py:523-537](file:///root/repos/mechvane/inventa/links.py#L523-L537)
 - **Was falsch ist:**
   1. `finish_edit` speichert zwar das geänderte Bauteil (`part_doc.save()`), ruft aber nach dem `update_links` in den verknüpfenden Baugruppen **kein `asm_doc.save()`** auf. Alle Baugruppen-Updates verbleiben ausschließlich im flüchtigen SolidCraft-Speicher. Werden die Baugruppen geschlossen oder stürzt der Server ab, sind die Änderungen in den Baugruppen verloren.
   2. Gravierender Datenverlust bei Unterbaugruppen: Befindet sich das bearbeitete Teil in einer Unterbaugruppe `sub.solidcraft`, die in `top.solidcraft` eingebunden ist, ist `sub.solidcraft` beim In-Place-Editing über `top` typischerweise **nicht** in `ws.docs` geöffnet. `finish_edit` aktualisiert nur offene Dokumente in `ws.docs`. Die Datei `sub.solidcraft` auf der Festplatte bleibt im alten Zustand.
@@ -192,7 +192,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 6. [Mittel] `inplace.resolve_occurrence` überspringt bei mehrstufigen Pfaden Zwischenstufen und liefert falsches Bauteil
 
-- **Fundstelle:** [inventa/inplace.py:25-50](file:///root/repos/inventa/inventa/inplace.py#L25-L50)
+- **Fundstelle:** [inventa/inplace.py:25-50](file:///root/repos/mechvane/inventa/inplace.py#L25-L50)
 - **Was falsch ist:**
   In `resolve_occurrence`:
   ```python
@@ -215,7 +215,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 7. [Mittel] `links.repair` verwirft Gelenkkonfigurationen wie `suppressed`, `angle` und `limits`
 
-- **Fundstelle:** [inventa/links.py:755-758](file:///root/repos/inventa/inventa/links.py#L755-L758)
+- **Fundstelle:** [inventa/links.py:755-758](file:///root/repos/mechvane/inventa/links.py#L755-L758)
 - **Was falsch ist:**
   In `links.repair()`:
   ```python
@@ -246,7 +246,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 8. [Mittel] Fehlende Bauteildatei führt zum Absturz von `check()`/`update_links()` und leckt Subprozess-Sitzungen
 
-- **Fundstelle:** [inventa/links.py:163-167](file:///root/repos/inventa/inventa/links.py#L163-L167), [inventa/links.py:711-715](file:///root/repos/inventa/inventa/links.py#L711-L715), [inventa/documents.py:93-97](file:///root/repos/inventa/inventa/documents.py#L93-L97)
+- **Fundstelle:** [inventa/links.py:163-167](file:///root/repos/mechvane/inventa/links.py#L163-L167), [inventa/links.py:711-715](file:///root/repos/mechvane/inventa/links.py#L711-L715), [inventa/documents.py:93-97](file:///root/repos/mechvane/inventa/documents.py#L93-L97)
 - **Was falsch ist:**
   1. `links.check` und `links.repair` rufen `ws.reader(file)` auf, ohne vorher zu prüfen, ob die Datei existiert (`Path(file).is_file()`).
   2. `ws.reader(path)` erzeugt zuerst eine neue SolidCraft-Sitzung (`s = self.session()`) und ruft dann `s.tool("open", ...)` auf. Wenn die Datei fehlt, wirft `open` eine `SolidCraftError`-Exception.
@@ -279,7 +279,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 9. [Mittel] Ungenaue Präfixsuche in `resolve_occurrence` (Fallback) wählt falsches Bauteil ohne Trennzeichenprüfung
 
-- **Fundstelle:** [inventa/inplace.py:57-60](file:///root/repos/inventa/inventa/inplace.py#L57-L60)
+- **Fundstelle:** [inventa/inplace.py:57-60](file:///root/repos/mechvane/inventa/inplace.py#L57-L60)
 - **Was falsch ist:**
   Im Fallback-Zweig von `resolve_occurrence`:
   ```python
@@ -307,7 +307,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 10. [Mittel] `links.resolve_occurrences` verliert bei Pfaden ohne Instanzindex das Subassembly-Präfix und bindet falsche Komponenten
 
-- **Fundstelle:** [inventa/links.py:207-210](file:///root/repos/inventa/inventa/links.py#L207-L210)
+- **Fundstelle:** [inventa/links.py:207-210](file:///root/repos/mechvane/inventa/links.py#L207-L210)
 - **Was falsch ist:**
   In `resolve_occurrences`:
   ```python
@@ -341,7 +341,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 11. [Niedrig] `tree.render` unterschlägt `assembly_features` in Baugruppen vollständig
 
-- **Fundstelle:** [inventa/tree.py:109](file:///root/repos/inventa/inventa/tree.py#L109), [inventa/tree.py:134-136](file:///root/repos/inventa/inventa/tree.py#L134-L136)
+- **Fundstelle:** [inventa/tree.py:109](file:///root/repos/mechvane/inventa/tree.py#L109), [inventa/tree.py:134-136](file:///root/repos/mechvane/inventa/tree.py#L134-L136)
 - **Was falsch ist:**
   `assembly_tree` liest `assembly_features: root.get("features", [])` aus.
   `tree.render(tree)` rendert für Baugruppen jedoch nur `occurrences` und `groups`. Baugruppen-Features (wie Durchgangsbohrungen oder Schnitte im Baugruppenkontext) werden in der Textansicht des Browsers komplett ignoriert.
@@ -363,7 +363,7 @@ Zusammenfassend wurden **12 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 12. [Niedrig] Fehlende Tests für Randfälle und fehlerhafte Annahmen in `tests/inventa/check.py`
 
-- **Fundstelle:** [tests/inventa/check.py:443-574](file:///root/repos/inventa/tests/inventa/check.py#L443-L574), [tests/inventa/check.py:1018-1100](file:///root/repos/inventa/tests/inventa/check.py#L1018-L1100)
+- **Fundstelle:** [tests/inventa/check.py:443-574](file:///root/repos/mechvane/tests/inventa/check.py#L443-L574), [tests/inventa/check.py:1018-1100](file:///root/repos/mechvane/tests/inventa/check.py#L1018-L1100)
 - **Was falsch ist:**
   Die bestehende Testsuite weist mehrere Lücken auf, wodurch kritische Randfälle nicht abgedeckt sind:
   1. **Axiale und planare Gelenkverschiebung:** Getestet wird bisher nur das Springen eines Gelenks auf eine andere Bohrung. Verschiebungen entlang der Achse oder auf derselben Fläche werden nicht getestet (Befund #1 blieb deshalb unbemerkt).

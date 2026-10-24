@@ -2,7 +2,7 @@
 
 - **Datum:** 2026-10-21
 - **Branch:** `gemini/inplace-fixes`
-- **Worktree:** `/root/repos/inventa-inplace`
+- **Worktree:** `/root/repos/mechvane-inplace`
 - **Geprüfter Ausgangscommit:** `bca360960e8fd08bcaa59fd52d5a6578cba335f1`
 - **Bearbeiter:** Gemini 3.8 Flash
 

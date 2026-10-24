@@ -18,7 +18,7 @@ Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
   sonst als Bauteil.
 - Jedes offene Dokument läuft in einer eigenen SolidCraft-Sitzung. Alle
   Sitzungen dürfen unter dem Arbeitsordner lesen und schreiben
-  (`MECHVANE_WORKSPACE`, in `.mcp.json` `/root/repos/inventa/workspace`, nicht
+  (`MECHVANE_WORKSPACE`, in `.mcp.json` `/root/repos/mechvane/workspace`, nicht
   im Git).
 
 ## Werkzeuge

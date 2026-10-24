@@ -109,9 +109,21 @@ def _match_assembly_face(doc, occ_name: str, origin, z) -> tuple[str | None, str
     return None, None
 
 
+def _joint_summary(joint_checks) -> str:
+    bad = sorted({j["joint"] for j in joint_checks if j.get("status") != "ok"})
+    if not joint_checks:
+        return "Assembly: no joints recorded by Mechvane"
+    if bad:
+        return f"Joint check: {len(bad)} joint(s) need attention: {', '.join(bad)}"
+    return f"Joint check: all {len({j['joint'] for j in joint_checks})} joints ok"
+
+
 def collect_findings(ws, doc, profile: str = "fdm_0.4") -> dict:
-    """Collect design rule findings (and joint link findings for assemblies)."""
-    dr = design_rules.check(doc.session, profile=profile)
+    """Collect design rule findings for a part, joint link findings for an assembly.
+
+    Design rules are part rules (like check_design): on an assembly they would treat screws and
+    plates as one printed body."""
+    dr = design_rules.check(doc.session, profile=profile) if doc.kind == PART else {}
     findings = []
 
     for c in dr.get("checks", []):
@@ -191,7 +203,7 @@ def collect_findings(ws, doc, profile: str = "fdm_0.4") -> dict:
         "status": verdict,
         "verdict": verdict,
         "profile": dr.get("profile", profile),
-        "summary": dr.get("summary", ""),
+        "summary": dr.get("summary") or _joint_summary(joint_checks),
         "findings": findings,
         "checks": findings,
         "rules": dr.get("rules", {}),

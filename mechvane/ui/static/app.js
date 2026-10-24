@@ -446,7 +446,7 @@ function renderOccurrenceNode(occ) {
   if (occ.grounded) {
     const gSpan = document.createElement("span");
     gSpan.className = "badge badge-neutral";
-    gSpan.textContent = "fest";
+    gSpan.textContent = "grounded";
     row.appendChild(gSpan);
   }
 
@@ -552,7 +552,7 @@ function updateTreeView(treeData) {
     if (occs.length > 0) {
       const oTitle = document.createElement("div");
       oTitle.className = "tree-section-title";
-      oTitle.textContent = `Komponenten (${occs.length})`;
+      oTitle.textContent = `Components (${occs.length})`;
       treeContentEl.appendChild(oTitle);
 
       const oList = document.createElement("ul");
@@ -671,6 +671,10 @@ function updateFindingsView(data, preserveSelection) {
   }
 }
 
+// Static mode (live demo on GitHub Pages): precomputed JSON under demos/<name>/, no polling.
+const STATIC = document.documentElement.dataset.static === "1";
+let demoBase = "";
+
 async function fetchJson(url) {
   const res = await fetch(url, { cache: "no-store" });
   const data = await res.json();
@@ -680,25 +684,29 @@ async function fetchJson(url) {
   return data;
 }
 
+function dataUrl(name) {
+  return STATIC ? `${demoBase}${name}.json` : `api/${name}`;
+}
+
 async function loadAll(initial = false) {
   try {
     statusEl.textContent = "Loading…";
     const [ver, mesh, tree, findings] = await Promise.all([
-      fetchJson("/api/version"),
-      fetchJson("/api/mesh"),
-      fetchJson("/api/tree"),
-      fetchJson("/api/findings"),
+      fetchJson(dataUrl("version")),
+      fetchJson(dataUrl("mesh")),
+      fetchJson(dataUrl("tree")),
+      fetchJson(dataUrl("findings")),
     ]);
     currentVersion = ver.version;
-    docNameEl.textContent = ver.name || "Dokument";
+    docNameEl.textContent = ver.name || "Document";
     docKindEl.textContent = ver.kind === "assembly" ? "Assembly" : "Part";
     docKindEl.hidden = false;
-    docPathEl.textContent = ver.path || "";
+    docPathEl.textContent = STATIC ? "" : (ver.path || "");
 
     updateMeshView(mesh, initial);
     updateTreeView(tree);
     updateFindingsView(findings, !initial);
-    statusEl.textContent = "Up to date";
+    statusEl.textContent = STATIC ? "Live demo, precomputed" : "Up to date";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
@@ -706,15 +714,42 @@ async function loadAll(initial = false) {
 
 async function pollVersion() {
   try {
-    const ver = await fetchJson("/api/version");
+    const ver = await fetchJson(dataUrl("version"));
     if (currentVersion !== null && ver.version !== currentVersion) {
       currentVersion = ver.version;
       await loadAll(false);
     }
   } catch (err) {
-    statusEl.textContent = `Verbindungsfehler`;
+    statusEl.textContent = "Connection lost";
   }
 }
 
-loadAll(true);
-setInterval(pollVersion, 2000);
+async function initStatic() {
+  const index = await fetchJson("demos/index.json");
+  const select = document.getElementById("demo-select");
+  for (const d of index.demos) {
+    const opt = document.createElement("option");
+    opt.value = d.name;
+    opt.textContent = d.title;
+    select.appendChild(opt);
+  }
+  const wanted = new URLSearchParams(location.search).get("demo");
+  if (wanted && index.demos.some((d) => d.name === wanted)) select.value = wanted;
+  const open = async (fit) => {
+    demoBase = `demos/${select.value}/`;
+    await loadAll(fit);
+  };
+  select.addEventListener("change", () => {
+    history.replaceState(null, "", `?demo=${select.value}`);
+    open(true);
+  });
+  document.getElementById("demo-bar").hidden = false;
+  await open(true);
+}
+
+if (STATIC) {
+  initStatic().catch((err) => { statusEl.textContent = `Error: ${err.message}`; });
+} else {
+  loadAll(true);
+  setInterval(pollVersion, 2000);
+}

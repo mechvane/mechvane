@@ -3723,6 +3723,13 @@ def web_ui_stage1_checks(ws):
            and any(j.get("name") == "PinInPlate" and j.get("status") == "ok" for j in asm_tree.get("joints", []))
            and bool(pin_xs) and abs((min(pin_xs) + max(pin_xs)) / 2.0 - 20.0) < 0.1,
            f"occ_joints={occ_joints} joints={asm_tree.get('joints')}")
+        # Part rules would treat the whole assembly as one printed body (every underside an overhang)
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/findings", timeout=10) as resp:
+            asm_findings = json.loads(resp.read().decode("utf-8"))
+        ok("web ui assembly: findings are joint checks only, no part design rules on the assembly",
+           asm_findings["findings"] and all(f["source"] == "links" for f in asm_findings["findings"])
+           and asm_findings["verdict"] == "ok" and "joints ok" in asm_findings["summary"],
+           f"summary={asm_findings.get('summary')} sources={[f['source'] for f in asm_findings['findings']]}")
     finally:
         srv_asm.shutdown()
         srv_asm.server_close()

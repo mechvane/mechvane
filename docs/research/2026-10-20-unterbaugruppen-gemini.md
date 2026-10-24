@@ -93,7 +93,7 @@ vier wichtige Eigenschaften von SolidCrafts Gelenksystem:
    `matrix` noch stillschweigend, unterstützt aber `translate`, `axis`, `angle`,
    `space: "local"` und `base_transform`. Durch Zerlegung einer starren
    4×4-Matrix in `(translate, axis, angle)` mit `base_transform: IDENTITY`
-   ([`geometry.move_params`](file:///root/repos/inventa-gemini/inventa/geometry.py#L63-L80))
+   ([`geometry.move_params`](file:///root/repos/mechvane-gemini/inventa/geometry.py#L63-L80))
    lässt sich jede lokale Pose auf Maschinenpräzision (`~1e-16`) setzen.
 
 ---
@@ -116,7 +116,7 @@ Werkzeug `insert_assembly` einzuführen):
 
 ### 2.2 Einfügen und Gelenk-Nachbildung (`links.insert` / `_insert_subassembly`)
 
-1. **Erkennung:** [`_is_assembly`](file:///root/repos/inventa-gemini/inventa/links.py#L207-L219)
+1. **Erkennung:** [`_is_assembly`](file:///root/repos/mechvane-gemini/inventa/links.py#L207-L219)
    liest `document.json` aus dem `.solidcraft`-Zip-Archiv (mit Fallback über
    `ws.reader`) und prüft `metadata["io.github.nilsgollub.inventa"]["kind"] == "assembly"`
    bzw. das Vorhandensein von `links`.
@@ -128,7 +128,7 @@ Werkzeug `insert_assembly` einzuführen):
    mit `occurrence.move` (`geometry.move_params`) auf seine lokale
    Unterbaugruppen-Transformation gesetzt.
 3. **Gelenke nachbilden:** Alle Gelenke der Unterbaugruppe werden in der
-   Oberbaugruppe über [`_recreate_sub_joint`](file:///root/repos/inventa-gemini/inventa/links.py#L246-L310)
+   Oberbaugruppe über [`_recreate_sub_joint`](file:///root/repos/mechvane-gemini/inventa/links.py#L246-L310)
    echt nachgebildet (`type`, `flip`, `offset`, `angle`, `values`, `limits`,
    `suppressed`), indem ihre Rahmen mit der Weltmatrix von `Sub:1` transformiert
    und in `joints` der Oberbaugruppe samt Bauteilflächen-Verankerung aus der
@@ -141,11 +141,11 @@ Werkzeug `insert_assembly` einzuführen):
 
 ### 2.3 Weltkoordinaten, äußere Gelenke und `#3330` (`links.py`)
 
-- [`_occurrences`](file:///root/repos/inventa-gemini/inventa/links.py#L31-L51)
+- [`_occurrences`](file:///root/repos/mechvane-gemini/inventa/links.py#L31-L51)
   berechnet `transform` als Weltmatrix über die gesamte `parent`-Kette
   (`geometry.mat_mul(cur["transform"], m)`) und bewahrt die lokale Matrix in
   `local_transform`.
-- [`resolve_occurrences`](file:///root/repos/inventa-gemini/inventa/links.py#L187-L204)
+- [`resolve_occurrences`](file:///root/repos/mechvane-gemini/inventa/links.py#L187-L204)
   erlaubt in `add_joint` und `edit_joint` neben dem direkten Occurrence-Namen
   (`Plate:1`) auch Pfadangaben wie `Sub:1/Plate:1` (einschließlich automatischer
   Auflösung auf `<Sub>_Plate:1` bei Namenskollision).
@@ -156,7 +156,7 @@ Werkzeug `insert_assembly` einzuführen):
 
 ### 2.4 `update_links` für Unterbaugruppen (`_sync_subassemblies`)
 
-[`_sync_subassemblies`](file:///root/repos/inventa-gemini/inventa/links.py#L441-L601)
+[`_sync_subassemblies`](file:///root/repos/mechvane-gemini/inventa/links.py#L441-L601)
 läuft am Anfang von `update_links` vor `component.update_links`:
 
 - Bestimmt zunächst den aktuellen starren Rahmen (`t_frame`) der Unterbaugruppe
@@ -175,8 +175,8 @@ läuft am Anfang von `update_links` vor `component.update_links`:
 
 ### 2.5 Browser (`tree.py`)
 
-- [`tree.assembly_tree`](file:///root/repos/inventa-gemini/inventa/tree.py#L121-L185)
-  und [`tree.render`](file:///root/repos/inventa-gemini/inventa/tree.py#L220-L236)
+- [`tree.assembly_tree`](file:///root/repos/mechvane-gemini/inventa/tree.py#L121-L185)
+  und [`tree.render`](file:///root/repos/mechvane-gemini/inventa/tree.py#L220-L236)
   stellen Unterbaugruppen-Occurrences mit ihrer Quelldatei (`Sub:1 (sub_unit.solidcraft)`)
   und rekursiv eingerückten Kind-Occurrences dar.
 - In der Ordneransicht (`groups=True`) erhalten Gelenke, deren beide Seiten in

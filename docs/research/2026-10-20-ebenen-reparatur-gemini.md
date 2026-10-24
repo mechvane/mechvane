@@ -1,6 +1,6 @@
 # Reparatur verschobener Gelenke an ebenen Flächen in inventa (Gemini, 2026-10-20)
 
-Bericht zur Untersuchung und Umsetzung der Reparatur von Gelenken an ebenen Flächen über Dateigrenzen hinweg (Problemstellung [#3330](https://github.com/tangency-labs/solidcraft/issues/3330)) im Ordner `/root/repos/inventa-ebenen` auf dem Branch `gemini/ebenen-reparatur`.
+Bericht zur Untersuchung und Umsetzung der Reparatur von Gelenken an ebenen Flächen über Dateigrenzen hinweg (Problemstellung [#3330](https://github.com/tangency-labs/solidcraft/issues/3330)) im Ordner `/root/repos/mechvane-ebenen` auf dem Branch `gemini/ebenen-reparatur`.
 
 ---
 
@@ -66,7 +66,7 @@ Damit werden auch Sprünge zwischen gleich hohen, koplanaren Teilflächen zuverl
 
 ## 4. Umsetzung
 
-Die Änderungen konzentrieren sich auf [`inventa/links.py`](file:///root/repos/inventa-ebenen/inventa/links.py):
+Die Änderungen konzentrieren sich auf [`inventa/links.py`](file:///root/repos/mechvane-ebenen/inventa/links.py):
 1. **`_match`**: Liefert für `kind == "plane"` den Schlüssel `offset` zurück.
 2. **`check`**: Verifiziert für Ebenen, dass die gefundene Fläche zur Ziel-Lineage gehört.
 3. **`_create_params`**: Erzeugt bei adoptierten Gelenken mit Versatz aus dem Schwerpunkt einen Punkt-Pick mit `z`-Richtung.
@@ -81,7 +81,7 @@ Die Änderungen konzentrieren sich auf [`inventa/links.py`](file:///root/repos/i
 
 ## 5. Verifikation und Testergebnisse
 
-In [`tests/inventa/check.py`](file:///root/repos/inventa-ebenen/tests/inventa/check.py) wurden umfassende Tests für Gelenke an ebenen Flächen ergänzt:
+In [`tests/inventa/check.py`](file:///root/repos/mechvane-ebenen/tests/inventa/check.py) wurden umfassende Tests für Gelenke an ebenen Flächen ergänzt:
 - **Platte-auf-Platte (`PlateOnPlate`):** Starres Gelenk auf einer Deckfläche (`Deck1`) eines Plattenbauteils.
 - **Fall #3330 auf Ebene:** Einfügen eines identischen Absatzes (`Deck0`) zeitlich vor `Deck1` in der Bauteildatei führt zum unbemerkten Verschieben des Gelenks; `update_links` erkennt und meldet `status="moved"`.
 - **Automatische Reparatur:** `update_links(repair_moved=True)` stellt das Gelenk auf `Deck1` (`x = 25`) wieder her.

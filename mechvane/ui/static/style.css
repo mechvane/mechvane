@@ -80,6 +80,31 @@ html, body {
   min-width: 0;
 }
 
+.demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.demo-bar[hidden] {
+  display: none;
+}
+
+.demo-bar select {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+.demo-bar a {
+  color: var(--selected-border);
+}
+
 .brand {
   font-weight: 700;
   font-size: 14px;

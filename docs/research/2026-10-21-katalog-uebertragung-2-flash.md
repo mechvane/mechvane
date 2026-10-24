@@ -2,7 +2,7 @@
 
 - **Datum:** 2026-10-21
 - **Verfasser:** Gemini 3.8 Flash
-- **Repo / Worktree:** `/root/repos/inventa-katalog` (Branch `gemini/katalog-schema`)
+- **Repo / Worktree:** `/root/repos/mechvane-katalog` (Branch `gemini/katalog-schema`)
 - **Schema-Prüfung:** `inventa.katalog.validate()` & `tests/inventa/check.py`
 
 ---

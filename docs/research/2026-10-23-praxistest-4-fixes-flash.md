@@ -3,7 +3,7 @@
 **Datum:** 2026-10-23  
 **Prüfer:** Gemini 3.8 Flash (High)  
 **Branch:** `gemini/praxistest-4-fixes`  
-**Workspace:** `/root/repos/inventa-praxis4fix`  
+**Workspace:** `/root/repos/mechvane-praxis4fix`  
 **Referenz-Testlauf:** Praxistest 4 (`docs/research/2026-10-23-praxistest-4-flash.md`)  
 
 ---

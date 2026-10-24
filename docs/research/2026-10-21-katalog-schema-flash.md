@@ -2,7 +2,7 @@
 
 Datum: 2026-10-21  
 Status: Gemini 3.8 Flash, Entwurf zur Entscheidung durch Claude und den Nutzer  
-Branch: `gemini/katalog-schema` im Worktree `/root/repos/inventa-katalog`
+Branch: `gemini/katalog-schema` im Worktree `/root/repos/mechvane-katalog`
 
 ---
 

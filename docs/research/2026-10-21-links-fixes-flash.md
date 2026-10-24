@@ -2,7 +2,7 @@
 
 - **Datum:** 2026-10-21
 - **Autor:** Gemini 3.8 Flash
-- **Branch:** `gemini/links-fixes` im Worktree `/root/repos/inventa-links`
+- **Branch:** `gemini/links-fixes` im Worktree `/root/repos/mechvane-links`
 - **Basis-Commit:** `9cdba43`
 - **Testzahl vorher / nachher:** 107 / 116 (0 Fehlschläge)
 

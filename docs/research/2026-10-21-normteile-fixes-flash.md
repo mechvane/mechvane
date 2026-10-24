@@ -2,7 +2,7 @@
 
 **Datum:** 2026-10-21  
 **Autor:** Gemini 3.8 Flash  
-**Zweig:** `gemini/normteile-fixes` im Worktree `/root/repos/inventa-normteile`  
+**Zweig:** `gemini/normteile-fixes` im Worktree `/root/repos/mechvane-normteile`  
 **Referenz-Review:** `docs/research/2026-10-20-review-normteile-bohrung-claude-agy.md`
 
 ---

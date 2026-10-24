@@ -2,7 +2,7 @@
 
 - **Datum:** 2026-10-21
 - **Verfasser:** Gemini 3.8 Flash
-- **Repo:** `/root/repos/inventa` (Branch `main`)
+- **Repo:** `/root/repos/mechvane` (Branch `main`)
 - **Prüfwerkzeug:** `python3 tools/check_sources.py`
 - **Quellen-Cache:** `/tmp/quellen-cache/`
 

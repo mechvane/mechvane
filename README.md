@@ -5,6 +5,9 @@ small and medium-sized companies), following the workflow of classic mechanical 
 and rethought for AI agents. The core stays small; domain modules (sheet metal, standard
 parts, frames, drawings …) load only when a document or the user needs them.
 
+**[Try the web UI in your browser](https://mechvane.github.io/mechvane/)**: example models with the model
+tree and design check findings, nothing to install.
+
 ![A joint jumps to the wrong bore after a part edit, update_links puts it back](docs/media/update_links.gif)
 
 *Change a part, and `update_links` notices that a joint jumped to a different bore and

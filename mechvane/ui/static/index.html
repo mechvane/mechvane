@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mechvane Web-UI</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="style.css">
   <script type="importmap">
   {
     "imports": {
@@ -22,9 +22,14 @@
       <span id="doc-kind" class="badge badge-neutral" hidden></span>
       <span id="doc-path" class="doc-path"></span>
     </div>
+    <div id="demo-bar" class="demo-bar" hidden>
+      <label for="demo-select">Example</label>
+      <select id="demo-select"></select>
+      <a href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
+    </div>
     <div class="topbar-right">
       <span id="verdict-badge" class="badge" hidden></span>
-      <span id="status-indicator" class="status-text">Bereit</span>
+      <span id="status-indicator" class="status-text">Ready</span>
     </div>
   </header>
 
@@ -56,6 +61,6 @@
     </aside>
   </div>
 
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

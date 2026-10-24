@@ -25,12 +25,12 @@ Bezug: Prüfung durch Claude (2026-10-21) in `docs/research/2026-10-20-argon-fix
 
 ### 2. Was geändert wurde
 
-* **Modellintegrität und Speicherstatus ([`inventa/geometry.py`](file:///root/repos/inventa-argonfix/inventa/geometry.py))**:
+* **Modellintegrität und Speicherstatus ([`inventa/geometry.py`](file:///root/repos/mechvane-argonfix/inventa/geometry.py))**:
   * Die Interferenzprüfung mit Prüfkugeln läuft innerhalb eines `try...finally`-Blocks abgesichert über `edit.checkpoint` und `edit.restore_checkpoint`.
   * Durch Tests nachgewiesen: Nach Aufruf von `query.find` und `design_rules.check` sind Körperanzahl (`bodies`), Feature-Anzahl (`timeline`), Undo-/Redo-Zähler (`undo`, `redo`) und der Geändert-Status (`dirty: False` bei zuvor gespeichertem Modell) exakt unverändert.
   * Ein nachfolgendes `edit.undo` rollt direkt den letzten Benutzerschritt zurück und greift nicht auf interne Prüfkörper zu.
 
-* **Fehlerbehandlung und koaxialer Fallback ([`inventa/geometry.py`](file:///root/repos/inventa-argonfix/inventa/geometry.py))**:
+* **Fehlerbehandlung und koaxialer Fallback ([`inventa/geometry.py`](file:///root/repos/mechvane-argonfix/inventa/geometry.py))**:
   * Im Fehlerfall der Interferenzprüfung (z. B. Ausnahme in `session.batch` oder `inspect.interference`) werden die betroffenen Gruppen nun **nicht** mehr in `handled` aufgenommen.
   * Ausnahmen werden nicht mehr stillschweigend mit `pass` verschluckt, sondern lösen eine Warnung aus:  
     `warnings.warn(f"classify_hole_groups: interference probe failed ({e}); falling back to geometric heuristics", UserWarning, stacklevel=2)`.
@@ -39,7 +39,7 @@ Bezug: Prüfung durch Claude (2026-10-21) in `docs/research/2026-10-20-argon-fix
     * Für einzelne Zylinder ohne koaxiale Innenzylinder und mit `operation in ("join", "new_body", "new")` (z. B. massiver Zapfen) gilt weiterhin `is_hole = False`.
     * Dadurch führt auch ein vollständiger Ausfall der Interferenzabfrage nicht mehr stillschweigend zu "kein Loch" für die Dom-Bohrung.
 
-* **Neue Prüfungen ([`tests/inventa/check.py`](file:///root/repos/inventa-argonfix/tests/inventa/check.py))**:
+* **Neue Prüfungen ([`tests/inventa/check.py`](file:///root/repos/mechvane-argonfix/tests/inventa/check.py))**:
   * **Test 11**: `design rules and query: model unchanged after checks (body count, timeline, undo/redo, dirty)`:
     Prüft nach `query.find` und `design_rules.check` auf einem gespeicherten Modell, dass `len(bodies)`, `len(timeline)`, `undo`, `redo` und `dirty == False` unverändert bleiben und `edit.undo` die vorherige Benutzer-Feature ansteuert.
   * **Test 12**: `design rules and query: probe failure falls back to geometric heuristics with warning without losing standoff bore`:

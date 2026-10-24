@@ -1,6 +1,6 @@
 > Gemini 3.8 Flash, nicht verifiziert. Lesendes Code-Review von `inventa/server.py`, `inventa/documents.py`, `inventa/solidcraft.py`, `inventa/sketch_rule.py` sowie den Tests in `tests/inventa/check.py`.
 > Datum: 2026-10-21. Geprüfter Commit auf `main`: `7d0dfb3f4c30c89707868358ac3f3dcee4e76567`.
-> Alle Befunde 1 bis 12 wurden durch eigenständige Reproduktionsskripte unter `/tmp/review2-*.py` mit `PYTHONPATH=/root/repos/inventa` gegen die installierte SolidCraft-CLI empirisch bestätigt und unter `docs/research/2026-10-21-review2-skripte/` abgelegt.
+> Alle Befunde 1 bis 12 wurden durch eigenständige Reproduktionsskripte unter `/tmp/review2-*.py` mit `PYTHONPATH=/root/repos/mechvane` gegen die installierte SolidCraft-CLI empirisch bestätigt und unter `docs/research/2026-10-21-review2-skripte/` abgelegt.
 
 ---
 
@@ -21,19 +21,19 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 | Nr. | Schweregrad | Modul / Fundstelle | Kurzbeschreibung | Empirisch bestätigt |
 |---|---|---|---|---|
-| 1 | **Hoch** | [`documents.py:46-56`](file:///root/repos/inventa/inventa/documents.py#L46-L56) | `Workspace.new()` überschreibt bestehende `.solidcraft`-Dateien auf der Festplatte stillschweigend ohne Prüfung | Ja (`review2-1`) |
-| 2 | **Hoch** | [`documents.py:58-76`](file:///root/repos/inventa/inventa/documents.py#L58-L76) | Öffnen derselben Datei unter unterschiedlichen Namen führt zu parallelen Sessions und Lost Updates | Ja (`review2-2`) |
-| 3 | **Hoch** | [`documents.py:49-56`](file:///root/repos/inventa/inventa/documents.py#L49-L56), [`documents.py:93-97`](file:///root/repos/inventa/inventa/documents.py#L93-L97) | Fehlgeschlagene `new()`- und `reader()`-Aufrufe lecken dauerhaft `solidcraft-cli`-Subprozesse | Ja (`review2-3`) |
-| 4 | **Hoch** | [`documents.py:40-44`](file:///root/repos/inventa/inventa/documents.py#L40-L44), [`server.py:31-59`](file:///root/repos/inventa/inventa/server.py#L31-L59) | Pfadtraversal und fehlende Workspace-Grenzprüfung in `_path()`, `new_part`, `new_assembly` und `open_document` | Ja (`review2-4`) |
-| 5 | **Hoch** | [`server.py:224-233`](file:///root/repos/inventa/inventa/server.py#L224-L233) | `screenshot`-Werkzeug überschreibt und zerstört CAD-Modelldateien (`.solidcraft`) mit PNG-Rohdaten | Ja (`review2-5`) |
-| 6 | **Mittel** | [`solidcraft.py:74-79`](file:///root/repos/inventa/inventa/solidcraft.py#L74-L79) | `Session.close()` hinterlässt Zombie-Prozesse (`<defunct>`) in der Prozesstabelle bei Timeout | Ja (`review2-6`) |
-| 7 | **Mittel** | [`solidcraft.py:32-38`](file:///root/repos/inventa/inventa/solidcraft.py#L32-L38) | Fehlende Zeitlimits in `Session._rpc()` führen bei hängendem SolidCraft zum Deadlock / Server-Freeze | Ja (`review2-7`) |
-| 8 | **Mittel** | [`solidcraft.py:11-79`](file:///root/repos/inventa/inventa/solidcraft.py#L11-L79) | Fehlende `__del__`-Methode in `Session` leckt Subprozesse bei Garbage Collection | Ja (`review2-8`) |
-| 9 | **Mittel** | [`sketch_rule.py:26-37`](file:///root/repos/inventa/inventa/sketch_rule.py#L26-L37) | `references()` ignoriert `path_sketch` bei `solid.sweep` und bricht die Skizzen-Besitzregel für Sweeps | Ja (`review2-9`) |
-| 10 | **Mittel** | [`server.py:77-80`](file:///root/repos/inventa/inventa/server.py#L77-L80), [`documents.py:85-87`](file:///root/repos/inventa/inventa/documents.py#L85-L87) | `close_document` verwirft ungespeicherte Änderungen trotz SolidCraft `dirty: True` stillschweigend | Ja (`review2-10`) |
-| 11 | **Niedrig** | [`server.py:348-356`](file:///root/repos/inventa/inventa/server.py#L348-L356), [`inplace.py:119-122`](file:///root/repos/inventa/inventa/inplace.py#L119-L122) | `to_part_coords` stürzt bei unvollständigen Punkt-Koordinaten mit unbehandeltem `IndexError` ab | Ja (`review2-11`) |
-| 12 | **Niedrig** | [`server.py:97-104`](file:///root/repos/inventa/inventa/server.py#L97-L104) | `run` hinterlässt nach erfolgreichem `batch` bei Fehler in `sketch_rule.enforce` inkonsistenten, teils modifizierten Zustand | Ja (`review2-12`) |
-| 13 | **Niedrig** | [`tests/inventa/check.py:1102-1206`](file:///root/repos/inventa/tests/inventa/check.py#L1102-L1206) | Gravierende Testlücken bei Server-Werkzeugen, Fehlerpfaden und Workspace-Grenzfällen | Codebeleg |
+| 1 | **Hoch** | [`documents.py:46-56`](file:///root/repos/mechvane/inventa/documents.py#L46-L56) | `Workspace.new()` überschreibt bestehende `.solidcraft`-Dateien auf der Festplatte stillschweigend ohne Prüfung | Ja (`review2-1`) |
+| 2 | **Hoch** | [`documents.py:58-76`](file:///root/repos/mechvane/inventa/documents.py#L58-L76) | Öffnen derselben Datei unter unterschiedlichen Namen führt zu parallelen Sessions und Lost Updates | Ja (`review2-2`) |
+| 3 | **Hoch** | [`documents.py:49-56`](file:///root/repos/mechvane/inventa/documents.py#L49-L56), [`documents.py:93-97`](file:///root/repos/mechvane/inventa/documents.py#L93-L97) | Fehlgeschlagene `new()`- und `reader()`-Aufrufe lecken dauerhaft `solidcraft-cli`-Subprozesse | Ja (`review2-3`) |
+| 4 | **Hoch** | [`documents.py:40-44`](file:///root/repos/mechvane/inventa/documents.py#L40-L44), [`server.py:31-59`](file:///root/repos/mechvane/inventa/server.py#L31-L59) | Pfadtraversal und fehlende Workspace-Grenzprüfung in `_path()`, `new_part`, `new_assembly` und `open_document` | Ja (`review2-4`) |
+| 5 | **Hoch** | [`server.py:224-233`](file:///root/repos/mechvane/inventa/server.py#L224-L233) | `screenshot`-Werkzeug überschreibt und zerstört CAD-Modelldateien (`.solidcraft`) mit PNG-Rohdaten | Ja (`review2-5`) |
+| 6 | **Mittel** | [`solidcraft.py:74-79`](file:///root/repos/mechvane/inventa/solidcraft.py#L74-L79) | `Session.close()` hinterlässt Zombie-Prozesse (`<defunct>`) in der Prozesstabelle bei Timeout | Ja (`review2-6`) |
+| 7 | **Mittel** | [`solidcraft.py:32-38`](file:///root/repos/mechvane/inventa/solidcraft.py#L32-L38) | Fehlende Zeitlimits in `Session._rpc()` führen bei hängendem SolidCraft zum Deadlock / Server-Freeze | Ja (`review2-7`) |
+| 8 | **Mittel** | [`solidcraft.py:11-79`](file:///root/repos/mechvane/inventa/solidcraft.py#L11-L79) | Fehlende `__del__`-Methode in `Session` leckt Subprozesse bei Garbage Collection | Ja (`review2-8`) |
+| 9 | **Mittel** | [`sketch_rule.py:26-37`](file:///root/repos/mechvane/inventa/sketch_rule.py#L26-L37) | `references()` ignoriert `path_sketch` bei `solid.sweep` und bricht die Skizzen-Besitzregel für Sweeps | Ja (`review2-9`) |
+| 10 | **Mittel** | [`server.py:77-80`](file:///root/repos/mechvane/inventa/server.py#L77-L80), [`documents.py:85-87`](file:///root/repos/mechvane/inventa/documents.py#L85-L87) | `close_document` verwirft ungespeicherte Änderungen trotz SolidCraft `dirty: True` stillschweigend | Ja (`review2-10`) |
+| 11 | **Niedrig** | [`server.py:348-356`](file:///root/repos/mechvane/inventa/server.py#L348-L356), [`inplace.py:119-122`](file:///root/repos/mechvane/inventa/inplace.py#L119-L122) | `to_part_coords` stürzt bei unvollständigen Punkt-Koordinaten mit unbehandeltem `IndexError` ab | Ja (`review2-11`) |
+| 12 | **Niedrig** | [`server.py:97-104`](file:///root/repos/mechvane/inventa/server.py#L97-L104) | `run` hinterlässt nach erfolgreichem `batch` bei Fehler in `sketch_rule.enforce` inkonsistenten, teils modifizierten Zustand | Ja (`review2-12`) |
+| 13 | **Niedrig** | [`tests/inventa/check.py:1102-1206`](file:///root/repos/mechvane/tests/inventa/check.py#L1102-L1206) | Gravierende Testlücken bei Server-Werkzeugen, Fehlerpfaden und Workspace-Grenzfällen | Codebeleg |
 
 ---
 
@@ -41,7 +41,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 1. [Hoch] `Workspace.new()` überschreibt bestehende `.solidcraft`-Dateien stillschweigend ohne Prüfung
 
-- **Fundstelle:** [inventa/documents.py:46-56](file:///root/repos/inventa/inventa/documents.py#L46-L56)
+- **Fundstelle:** [inventa/documents.py:46-56](file:///root/repos/mechvane/inventa/documents.py#L46-L56)
 - **Was falsch ist:**
   In `Workspace.new(self, kind, name, path=None)` wird lediglich geprüft, ob der logische Name bereits in der laufenden Sitzung geöffnet ist:
   ```python
@@ -73,7 +73,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 2. [Hoch] Öffnen derselben Datei unter unterschiedlichen Namen führt zu parallelen Sessions und Lost Updates
 
-- **Fundstelle:** [inventa/documents.py:58-76](file:///root/repos/inventa/inventa/documents.py#L58-L76)
+- **Fundstelle:** [inventa/documents.py:58-76](file:///root/repos/mechvane/inventa/documents.py#L58-L76)
 - **Was falsch ist:**
   `Workspace.open(self, path, name=None)` prüft ausschließlich den Schlüssel `name` im Wörterbuch `self.docs`:
   ```python
@@ -114,7 +114,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 3. [Hoch] Fehlgeschlagene `new()`- und `reader()`-Aufrufe lecken dauerhaft `solidcraft-cli`-Subprozesse
 
-- **Fundstelle:** [inventa/documents.py:49-56](file:///root/repos/inventa/inventa/documents.py#L49-L56), [inventa/documents.py:93-97](file:///root/repos/inventa/inventa/documents.py#L93-L97)
+- **Fundstelle:** [inventa/documents.py:49-56](file:///root/repos/mechvane/inventa/documents.py#L49-L56), [inventa/documents.py:93-97](file:///root/repos/mechvane/inventa/documents.py#L93-L97)
 - **Was falsch ist:**
   1. In `Workspace.new`:
      ```python
@@ -172,7 +172,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 4. [Hoch] Pfadtraversal und fehlende Workspace-Grenzprüfung in `_path()`, `new_part`, `new_assembly` und `open_document`
 
-- **Fundstelle:** [inventa/documents.py:40-44](file:///root/repos/inventa/inventa/documents.py#L40-L44), [inventa/server.py:31-33](file:///root/repos/inventa/inventa/server.py#L31-L33), [inventa/server.py:51-53](file:///root/repos/inventa/inventa/server.py#L51-L53), [inventa/server.py:57-59](file:///root/repos/inventa/inventa/server.py#L57-L59)
+- **Fundstelle:** [inventa/documents.py:40-44](file:///root/repos/mechvane/inventa/documents.py#L40-L44), [inventa/server.py:31-33](file:///root/repos/mechvane/inventa/server.py#L31-L33), [inventa/server.py:51-53](file:///root/repos/mechvane/inventa/server.py#L51-L53), [inventa/server.py:57-59](file:///root/repos/mechvane/inventa/server.py#L57-L59)
 - **Was falsch ist:**
   Die MCP-Dokumentation in `server.py` garantiert für Dokumentenpfade:
   `paths relative to the workspace`.
@@ -216,7 +216,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 5. [Hoch] `screenshot`-Werkzeug überschreibt und zerstört CAD-Modelldateien (`.solidcraft`) mit PNG-Rohdaten
 
-- **Fundstelle:** [inventa/server.py:224-233](file:///root/repos/inventa/inventa/server.py#L224-L233)
+- **Fundstelle:** [inventa/server.py:224-233](file:///root/repos/mechvane/inventa/server.py#L224-L233)
 - **Was falsch ist:**
   Das MCP-Werkzeug `screenshot(document, view, path)` speichert das gerenderte Bild auf der Festplatte, wenn `path` angegeben ist:
   ```python
@@ -248,7 +248,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 6. [Mittel] `Session.close()` hinterlässt Zombie-Prozesse (`<defunct>`) in der Prozesstabelle bei Timeout
 
-- **Fundstelle:** [inventa/solidcraft.py:74-79](file:///root/repos/inventa/inventa/solidcraft.py#L74-L79)
+- **Fundstelle:** [inventa/solidcraft.py:74-79](file:///root/repos/mechvane/inventa/solidcraft.py#L74-L79)
 - **Was falsch ist:**
   In `inventa/solidcraft.py:Session.close`:
   ```python
@@ -285,7 +285,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 7. [Mittel] Fehlende Zeitlimits in `Session._rpc()` führen bei hängendem SolidCraft zum Deadlock / Server-Freeze
 
-- **Fundstelle:** [inventa/solidcraft.py:32-38](file:///root/repos/inventa/inventa/solidcraft.py#L32-L38)
+- **Fundstelle:** [inventa/solidcraft.py:32-38](file:///root/repos/mechvane/inventa/solidcraft.py#L32-L38)
 - **Was falsch ist:**
   In `Session._rpc(self, method, params)`:
   ```python
@@ -311,7 +311,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 8. [Mittel] Fehlende `__del__`-Methode in `Session` leckt Subprozesse bei Garbage Collection
 
-- **Fundstelle:** [inventa/solidcraft.py:11-79](file:///root/repos/inventa/inventa/solidcraft.py#L11-L79)
+- **Fundstelle:** [inventa/solidcraft.py:11-79](file:///root/repos/mechvane/inventa/solidcraft.py#L11-L79)
 - **Was falsch ist:**
   Die Python-Standardklasse `subprocess.Popen` beendet bei der Freigabe durch den Garbage Collector den gestarteten Subprozess nicht; sie emittiert lediglich eine `ResourceWarning`.
   `Session` definiert zwar `close(self)`, implementiert jedoch **weder `__del__(self)` noch das Context-Manager-Protokoll (`__enter__` / `__exit__`)**.
@@ -345,7 +345,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 9. [Mittel] `references()` ignoriert `path_sketch` bei `solid.sweep` und bricht die Skizzen-Besitzregel für Sweeps
 
-- **Fundstelle:** [inventa/sketch_rule.py:26-37](file:///root/repos/inventa/inventa/sketch_rule.py#L26-L37)
+- **Fundstelle:** [inventa/sketch_rule.py:26-37](file:///root/repos/mechvane/inventa/sketch_rule.py#L26-L37)
 - **Was falsch ist:**
   In `sketch_rule.references(definition, ids)` werden Skizzenabhängigkeiten ausschließlich über das Attribut `k == "sketch"` ermittelt:
   ```python
@@ -385,7 +385,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 10. [Mittel] `close_document` verwirft ungespeicherte Änderungen trotz SolidCraft `dirty: True` stillschweigend
 
-- **Fundstelle:** [inventa/server.py:77-80](file:///root/repos/inventa/inventa/server.py#L77-L80), [inventa/documents.py:85-87](file:///root/repos/inventa/inventa/documents.py#L85-L87)
+- **Fundstelle:** [inventa/server.py:77-80](file:///root/repos/mechvane/inventa/server.py#L77-L80), [inventa/documents.py:85-87](file:///root/repos/mechvane/inventa/documents.py#L85-L87)
 - **Was falsch ist:**
   SolidCraft führt intern präzise Buch über ungespeicherte Änderungen: Nach Befehlen in der Timeline liefert `document.inspect` den booleschen Status `dirty: True`.
   Die inventa-Werkzeuge ignorieren dies jedoch vollständig:
@@ -414,7 +414,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 11. [Niedrig] `to_part_coords` stürzt bei unvollständigen Punkt-Koordinaten mit unbehandeltem `IndexError` ab
 
-- **Fundstelle:** [inventa/server.py:348-356](file:///root/repos/inventa/inventa/server.py#L348-L356), [inventa/inplace.py:119-122](file:///root/repos/inventa/inventa/inplace.py#L119-L122)
+- **Fundstelle:** [inventa/server.py:348-356](file:///root/repos/mechvane/inventa/server.py#L348-L356), [inventa/inplace.py:119-122](file:///root/repos/mechvane/inventa/inplace.py#L119-L122)
 - **Was falsch ist:**
   Das MCP-Werkzeug `to_part_coords(assembly, occurrence, point)` definiert `point: list[float]`.
   Es validiert jedoch nicht, dass `point` genau 3 Elemente `[x, y, z]` umfasst.
@@ -434,7 +434,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 12. [Niedrig] `server.py:run` hinterlässt nach erfolgreichem `batch` bei Fehler in `sketch_rule.enforce` inkonsistenten, teils modifizierten Zustand
 
-- **Fundstelle:** [inventa/server.py:97-104](file:///root/repos/inventa/inventa/server.py#L97-L104)
+- **Fundstelle:** [inventa/server.py:97-104](file:///root/repos/mechvane/inventa/server.py#L97-L104)
 - **Was falsch ist:**
   In `server.py:run`:
   ```python
@@ -461,7 +461,7 @@ Zusammenfassend wurden **13 Befunde** ermittelt: 5 mit Schweregrad **Hoch**, 5 m
 
 ### 13. [Niedrig] Gravierende Testlücken in `tests/inventa/check.py` für Server-Werkzeuge, Fehlerpfade und Workspace-Grenzfälle
 
-- **Fundstelle:** [tests/inventa/check.py:1102-1206](file:///root/repos/inventa/tests/inventa/check.py#L1102-L1206)
+- **Fundstelle:** [tests/inventa/check.py:1102-1206](file:///root/repos/mechvane/tests/inventa/check.py#L1102-L1206)
 - **Was falsch ist:**
   Die MCP-Servertests in `tests/inventa/check.py:mcp_server` decken nur den Schönwetterpfad einer Teilmenge der Werkzeuge ab:
   - 13 Werkzeuge des MCP-Servers werden **im MCP-Server-Test überhaupt nicht getestet**:
