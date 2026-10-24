@@ -3630,6 +3630,158 @@ def bolted_countersunk_checks(ws):
        f"res={res_edit['head']} tl={p_e1_tl} interf={interf_edit}")
 
 
+def web_ui_stage1_checks(ws):
+    import urllib.request
+    from mechvane.ui import collect_findings, collect_mesh, collect_tree, create_server
+
+    # 1. mesh.py against flange from tests/reference/flansch.build.json
+    flansch_path = Path(__file__).resolve().parents[1] / "reference" / "flansch.build.json"
+    fl_cmds = json.loads(flansch_path.read_text(encoding="utf-8"))["commands"]
+    fl_doc = ws.new(PART, "ui_flansch")
+    fl_doc.session.batch(fl_cmds)
+    sketch_rule.enforce(fl_doc.session)
+    fl_doc.save()
+
+    m_fl = collect_mesh(fl_doc)
+    b_fl = m_fl["bodies"][0]
+    raw_faces = fl_doc.session.cmd("model.faces", {"body": b_fl["name"]})["faces"]
+    n_verts = len(b_fl["positions"]) // 3
+    n_tris = len(b_fl["indices"]) // 3
+    face_idx_set = {f["index"] for f in b_fl["faces"]}
+    ok("web ui mesh.py: flange face count matches model.faces, valid triangle face_ids and face names present",
+       len(b_fl["faces"]) == len(raw_faces) == 18
+       and n_tris == len(b_fl["face_ids"]) > 0
+       and all(0 <= vi < n_verts for vi in b_fl["indices"])
+       and all(fid in face_idx_set for fid in b_fl["face_ids"])
+       and all(isinstance(f.get("name"), str) and bool(f["name"]) for f in b_fl["faces"]),
+       f"faces={len(b_fl['faces'])} raw={len(raw_faces)} tris={n_tris}")
+
+    # 2. Start server on port 0 in a thread, fetch all four endpoints and check shapes
+    srv = create_server(fl_doc.path, port=0)
+    port = srv.server_address[1]
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        def _get_json(ep):
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{ep}", timeout=10) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+
+        st_v, d_ver = _get_json("/api/version")
+        st_m, d_mesh = _get_json("/api/mesh")
+        st_t, d_tree = _get_json("/api/tree")
+        st_f, d_find = _get_json("/api/findings")
+        ok("web ui server: all four endpoints respond with valid JSON shapes",
+           st_v == 200 and isinstance(d_ver.get("mtime"), (int, float)) and d_ver.get("name") == "ui_flansch"
+           and st_m == 200 and len(d_mesh.get("bodies", [])) == 1
+           and st_t == 200 and d_tree.get("kind") == "part" and len(d_tree.get("features", [])) > 0
+           and st_f == 200 and "findings" in d_find and "verdict" in d_find,
+           f"ver={d_ver} tree_kind={d_tree.get('kind')} find_keys={list(d_find.keys())}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+    # 3. Assembly of two parts with a joint: tree contains the joint with status
+    p_a = ws.new(PART, "ui_part_a")
+    p_a.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 30, "height": 6, "corner": [0, 0, 0], "body_name": "PlateA"}},
+        {"command": "solid.cylinder", "params": {"diameter": 6, "height": 8, "base": [20, 15, -1], "operation": "cut", "name": "HoleA"}},
+    ])
+    p_a.save()
+
+    p_b = ws.new(PART, "ui_part_b")
+    p_b.session.cmd("solid.cylinder", {"diameter": 6, "height": 16, "base": [0, 0, 0], "body_name": "PinB"})
+    p_b.save()
+
+    asm = ws.new(ASSEMBLY, "ui_asm")
+    links.insert(ws, asm, p_a.path, name="Plate", grounded=True)
+    links.insert(ws, asm, p_b.path, name="Pin", translate=[50, 0, 0])
+    jp = {
+        "type": "revolute",
+        "name": "PinInPlate",
+        "a": {"occurrence": "Plate:1", "circle": [23, 15, 6]},
+        "b": {"occurrence": "Pin:1", "circle": [53, 0, 0]},
+    }
+    asm.session.cmd("joint.create", jp)
+    links.record(ws, asm, "PinInPlate", jp)
+    asm.save()
+
+    srv_asm = create_server(asm.path, port=0)
+    port_asm = srv_asm.server_address[1]
+    th_asm = threading.Thread(target=srv_asm.serve_forever, daemon=True)
+    th_asm.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/tree", timeout=10) as resp:
+            asm_tree = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/mesh", timeout=10) as resp:
+            asm_mesh = json.loads(resp.read().decode("utf-8"))
+        occ_joints = [j for o in asm_tree.get("occurrences", []) for j in o.get("joints", [])]
+        pin_body = next((b for b in asm_mesh.get("bodies", []) if "Pin" in b["name"]), None)
+        pin_xs = pin_body["positions"][0::3] if pin_body else []
+        ok("web ui assembly: tree contains joint with status from links.check and mesh is in world coordinates",
+           asm_tree.get("kind") == "assembly"
+           and any(j.get("name") == "PinInPlate" and j.get("status") == "ok" for j in occ_joints)
+           and any(j.get("name") == "PinInPlate" and j.get("status") == "ok" for j in asm_tree.get("joints", []))
+           and bool(pin_xs) and abs((min(pin_xs) + max(pin_xs)) / 2.0 - 20.0) < 0.1,
+           f"occ_joints={occ_joints} joints={asm_tree.get('joints')}")
+    finally:
+        srv_asm.shutdown()
+        srv_asm.server_close()
+
+    # 4. Part with intentional finding (countersink too close to wall as in Befund 8):
+    # finding arrives in /api/findings with a face name that exists in /api/mesh
+    cs_doc = ws.new(PART, "ui_cs_wall")
+    cs_doc.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 8, "corner": [0, 0, 0], "name": "Plate"}},
+        {"command": "solid.box", "params": {"length": 40, "width": 10, "height": 30, "corner": [0, 30, 8],
+                                            "operation": "join", "name": "Wall"}},
+        {"command": "solid.hole", "params": {"position": [20, 23.0, 8], "direction": [0, 0, -1], "clearance": "M6",
+                                             "depth": 8, "type": "countersink", "cs_diameter": 13.7,
+                                             "cs_angle": 90, "name": "CS"}},
+    ])
+    cs_doc.save()
+
+    srv_cs = create_server(cs_doc.path, port=0)
+    port_cs = srv_cs.server_address[1]
+    th_cs = threading.Thread(target=srv_cs.serve_forever, daemon=True)
+    th_cs.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/mesh", timeout=10) as resp:
+            cs_mesh = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/findings", timeout=10) as resp:
+            cs_findings = json.loads(resp.read().decode("utf-8"))
+
+        mesh_face_map = {f["name"]: f["index"] for b in cs_mesh.get("bodies", []) for f in b.get("faces", [])}
+        mesh_fids = {fid for b in cs_mesh.get("bodies", []) for fid in b.get("face_ids", [])}
+        cs_fail = next(
+            (f for f in cs_findings.get("findings", [])
+             if f.get("rule") == "countersink_clearance" and f.get("status") == "fail"),
+            None,
+        )
+        cs_face = cs_fail.get("face") if cs_fail else None
+        ok("web ui findings: countersink wall finding arrives in /api/findings with a face name present in /api/mesh",
+           cs_fail is not None and cs_face in mesh_face_map and mesh_face_map[cs_face] in mesh_fids,
+           f"cs_fail={cs_fail} mesh_faces={list(mesh_face_map.keys())}")
+
+        # 5. Reload on file change and HTTP 500 JSON recovery (server stays alive)
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/version", timeout=10) as resp:
+            v_before = json.loads(resp.read().decode("utf-8"))["version"]
+        cs_doc.session.cmd("solid.cylinder", {"diameter": 4, "height": 8, "base": [8, 8, 0], "operation": "cut", "name": "ExtraHole"})
+        cs_doc.save()
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/version", timeout=10) as resp:
+            v_after = json.loads(resp.read().decode("utf-8"))["version"]
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/tree", timeout=10) as resp:
+            tree_after = json.loads(resp.read().decode("utf-8"))
+        feat_names = [f.get("name") for f in tree_after.get("features", [])]
+        ok("web ui reload: file mtime change reloads document and updates tree",
+           v_after > v_before and "ExtraHole" in feat_names,
+           f"v_before={v_before} v_after={v_after} feats={feat_names}")
+    finally:
+        srv_cs.shutdown()
+        srv_cs.server_close()
+
+    ws.close_all()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="Mechvane-check-") as tmp:
         ws = Workspace(tmp)
@@ -3657,6 +3809,7 @@ def main():
             praxistest_5_fixes_checks(ws)
             bolted_anchor_associativity_checks(ws)
             bolted_countersunk_checks(ws)
+            web_ui_stage1_checks(ws)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

@@ -337,6 +337,41 @@ nach Vorbild des Autodesk Inventor „Edit in Place“:
      (z. B. Status `moved` nach [#3330](https://github.com/tangency-labs/solidcraft/issues/3330))
      sofort transparent als Warnungen sichtbar sind.
 
+## Web-UI (Stufe 1)
+
+Das Paket `mechvane/ui/` stellt eine rein lesende Web-Oberfläche für Bauteil- und Baugruppendateien bereit:
+
+```sh
+python3 -m mechvane.ui <datei.solidcraft> [--port 8765]
+```
+
+Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mit zentraler Sperre um alle Zugriffe auf die nicht-threadsichere SolidCraft-Sitzung) und öffnet die Datei über `Workspace`.
+
+### Ansicht
+
+- **Modellbaum (links):** Zeigt für Bauteile die Körper sowie den Feature-Verlauf mit untergeordneten Skizzen und dem Bauteilende (`tree.part_tree`), für Baugruppen die Komponenten-Occurrences samt Gelenken und deren Prüfstatus aus `links.check` (`tree.assembly_tree`).
+- **3D-Ansicht (Mitte):** `three.js` (`three@0.160.0` mit `OrbitControls` per Import-Map von `cdn.jsdelivr.net`), Z-Achse nach oben, Kamera beim ersten Laden automatisch auf die Bounding Sphere des Modells eingepasst, scharfe B-Rep-Flächenkanten über die Face-Tags aus dem `3mf-tagged`-Export.
+- **Befundliste (rechts):** Zeigt alle Befunde aus `design_rules.check` (und bei Baugruppen zusätzlich `links.check`), farbig nach Schwere (`fail`, `warn`, `ok`). Ein Klick auf einen Befund hebt die betroffenen B-Rep-Flächen im 3D-Modell über die Zuordnung `Flächenname → Index (model.faces) → ft:face-Dreiecke` farbig hervor. Hat ein Befund keinen passenden Flächenbezug im Netz, aber einen 3D-Punkt (`location.point`), erscheint dort ein 3D-Marker; ohne beides wird nur der Text ausgewählt.
+- **Automatisches Neu-Laden:** Die Seite fragt alle 2 s `/api/version` ab. Ändert sich die `mtime` der Datei auf der Festplatte, lädt der Server das Dokument in `Workspace` neu und der Browser aktualisiert Netz, Baum und Befunde ohne Zurücksetzen der Kamera.
+
+### JSON-Endpunkte
+
+| Endpunkt | Inhalt |
+|---|---|
+| `GET /api/version` | `{"version", "mtime", "name", "kind", "path"}` anhand der Datei-`mtime` |
+| `GET /api/mesh` | `{"bodies": [{"name", "positions": [x,y,z,…], "indices": […], "face_ids": […], "faces": [{"index", "name"}]}]}` aus `export(format="3mf-tagged")` und `model.faces` |
+| `GET /api/tree` | Modellbaum aus `tree.part_tree` bzw. `tree.assembly_tree` (bei Baugruppen angereichert mit Gelenkstatus aus `links.check`) |
+| `GET /api/findings` | Befunde aus `design_rules.check` sowie bei Baugruppen `links.check` |
+
+Fehler in den Endpunkten werden als JSON mit HTTP-Status 500 (`{"error": "…"}`) beantwortet; der Server bleibt weiter aktiv.
+
+### Grenzen (Stufe 1)
+
+- Rein lesend: keine Bearbeitung von Parametern, Features oder Gelenken im Browser.
+- `three.js` wird per Import-Map von `cdn.jsdelivr.net` geladen (erfordert im Browser Zugang zum CDN).
+- In Baugruppen prüft `/api/version` derzeit die `mtime` der geöffneten Hauptdatei; werden verknüpfte Bauteildateien separat geändert, aktualisiert sich die Ansicht nach `finish_edit` bzw. Speichern der Baugruppe.
+- Da SolidCraft verknüpfte Bauteile in Baugruppen als STEP einbettet, tragen Baugruppen-Körper STEP-Flächennamen (`F3:face:0` usw.) statt der Bauteil-Lineage-Namen; `collect_findings` ordnet Gelenkrahmen über `links._match` den Baugruppen-Flächen bzw. dem 3D-Gelenkursprung zu.
+
 ## Tests
 
 `python3 tests/mechvane/check.py` (~130 s, 129 Prüfungen): Skizzenregel,

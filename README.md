@@ -73,8 +73,14 @@ Phase 1: a Python prototype running as an MCP server on top of SolidCraft. Separ
 and assembly files, sketches owned by their feature, a model browser in the classic tree
 style, joints across files with checking and repair, standard parts (screws, nuts,
 washers, ball bearings), a bolted connection assistant with patterns, `check_design` with
-design rules, ISO 286 fits and a knowledge catalog of sourced standard values. There is
-no user interface of its own yet.
+design rules, ISO 286 fits and a knowledge catalog of sourced standard values. A read-only
+web UI (`python3 -m mechvane.ui <file.solidcraft> [--port 8765]`) shows the 3D model,
+the model browser tree and design/joint findings with interactive face highlighting.
+
+![Mechvane read-only web UI showing model tree, 3D viewport and highlighted countersink finding](docs/media/web-ui-1.png)
+
+*A countersink that notches the wall, highlighted on click (regenerate with
+`python3 tools/demo_web_ui.py`).*
 
 ## Contents
 

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechvane Web-UI</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">Mechvane</span>
+      <span id="doc-name" class="doc-name">—</span>
+      <span id="doc-kind" class="badge badge-neutral" hidden></span>
+      <span id="doc-path" class="doc-path"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="verdict-badge" class="badge" hidden></span>
+      <span id="status-indicator" class="status-text">Bereit</span>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="panel panel-left" aria-label="Model tree">
+      <div class="panel-header">
+        <h2>Model tree</h2>
+      </div>
+      <div id="tree-content" class="panel-body">
+        <div class="empty-state">Loading model tree…</div>
+      </div>
+    </aside>
+
+    <main class="viewport-container" aria-label="3D-Ansicht">
+      <div id="viewport" class="viewport"></div>
+      <div id="selection-banner" class="selection-banner" hidden></div>
+      <div class="viewport-hint">Z ↑ · Left: rotate · Right: pan · Wheel: zoom</div>
+    </main>
+
+    <aside class="panel panel-right" aria-label="Findings">
+      <div class="panel-header">
+        <h2>Findings</h2>
+        <span id="findings-count" class="count-pill">0</span>
+      </div>
+      <div id="findings-summary" class="findings-summary" hidden></div>
+      <div id="findings-content" class="panel-body">
+        <div class="empty-state">Loading findings…</div>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

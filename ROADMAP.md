@@ -130,6 +130,21 @@ Ziel: begründete Entscheidung, worauf Mechvane aufbaut.
 
 Unabhängig von der Plattformwahl zuerst das, was es woanders noch nicht gibt:
 
+**Meilenstein v0.1 (Ziel Ende Dezember 2026, Nutzer-OK 2026-10-23):** Grundlagen
+laufen und eine gute Web-UI für die Arbeit mit dem Agenten (Agent baut, Nutzer sieht,
+zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudget:
+
+1. UI Stufe 1: 3D-Ansicht, Modellbaum, Befunde, Neuladen (~1 Woche)
+2. UI Stufe 2: Fläche anklicken, Chat mit dem Agenten, Rückgängig (2–3 Wochen)
+3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen)
+4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
+   Schritt (2–3 Wochen)
+
+Nicht in v0.1: Modellieren von Hand (Skizzierer mit Bedingungen, Feature-Dialoge,
+Auswahl per Maus), geschätzt 4–6 Monate zusätzlich. Bis dahin Handarbeit in der
+SolidCraft-App; vorher prüfen, ob das mit Mechvane-Dateien sauber geht. Nach den
+ersten Praxistests entscheiden, ob ein eigener Skizzierer nötig ist.
+
 - [ ] **Mechvane-Schicht als MCP-Server** (nach ADR 0001): Bauteil- und
       Baugruppendateien öffnen/speichern, Verknüpfungen aktualisieren und
       Gelenk-Frames danach prüfen, Skizzenregel (verbrauchte Skizze direkt
@@ -168,6 +183,11 @@ Unabhängig von der Plattformwahl zuerst das, was es woanders noch nicht gibt:
       ISO 7089, Ruthex-Einsätze, 6000–6005
       ([Bericht](docs/research/2026-10-20-normteile-gemini.md)). Offen:
       Review durch ein zweites Modell, weitere Reihen (ISO 10642, ISO 4017).
+- [ ] **Eigene Web-UI** (Nutzer-OK 2026-10-23, Weg B statt SolidCraft-Panels):
+      Stufe 1 nur lesend (3D-Ansicht, Modellbaum, Befunde aus `check_design` und
+      `check_joints`), Stufe 2 Auswahl an den Agenten (Point and speak), Chat.
+      *Stand 2026-10-24:* Stufe 1 fertig (`python3 -m mechvane.ui <datei>`, Bericht
+      `docs/research/2026-10-24-web-ui-stufe1-argon.md`). Nächster Schritt: Stufe 2.
 - [ ] **Bohrungsassistent mit Verschraubung**: Schraube + Scheibe + Mutter
       + passende Bohrung in allen Bauteilen (Inventor „Verschraubung“).
       [Spezifikation](docs/research/2026-10-20-bohrungsassistent-spec.md).
