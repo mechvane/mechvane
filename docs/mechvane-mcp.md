@@ -362,6 +362,25 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 | `GET /api/mesh` | `{"bodies": [{"name", "positions": [x,y,z,…], "indices": […], "face_ids": […], "faces": [{"index", "name"}]}]}` aus `export(format="3mf-tagged")` und `model.faces` |
 | `GET /api/tree` | Modellbaum aus `tree.part_tree` bzw. `tree.assembly_tree` (bei Baugruppen angereichert mit Gelenkstatus aus `links.check`) |
 | `GET /api/findings` | Befunde aus `design_rules.check` sowie bei Baugruppen `links.check` |
+| `GET /api/files` | `{"document", "files"}`: das Dokument und bei Baugruppen die verknüpften Bauteildateien (nur diese sind lesbar und schreibbar) |
+| `GET /api/file/<name>` | Inhalt einer dieser Dateien |
+| `POST /api/file/<name>` | Datei aus der Web-App speichern (bis 64 MB), Dokument neu laden, `{"saved", "bytes", "findings", "update_links"?}` |
+
+### Modus „Modellieren“ (seit 2026-10-25)
+
+`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.21.0.zip`, beim ersten
+Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
+ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
+Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App
+liest OPFS nur beim Start, als `/opfs/<name>`), öffnet das Dokument mit `doc.open` und prüft jede
+Sekunde, ob die App eine Datei neu gespeichert hat. Dann geht sie per POST an den Server, der sie
+schreibt, neu lädt, prüft und bei Baugruppen `update_links` ausführt. Verknüpfungen speichert
+SolidCraft relativ (`path`), daher findet die App die Bauteile im OPFS; `component.links` meldet
+dort trotzdem `found: false`, weil es mit `std::fs` prüft. In der Live-Demo (statisch) liegen die
+Beispieldateien unter `demos/<name>/files/`, Speichern bleibt im Browser, die Befunde sind
+vorberechnet. Browsertest: `node tools/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
+Chromium; ohne GPU mit `CHROME_FLAGS=--disable-features=WebGPU`, sonst bleibt die Canvas im
+Screenshot leer).
 
 Fehler in den Endpunkten werden als JSON mit HTTP-Status 500 (`{"error": "…"}`) beantwortet; der Server bleibt weiter aktiv.
 

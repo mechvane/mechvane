@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechvane: Model</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .model-layout { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 48px); }
+    .model-layout iframe { width: 100%; height: 100%; border: 0; background: #343840; }
+    .model-side { overflow: auto; border-left: 1px solid var(--border, #ccc); padding: 12px; }
+    .model-side h2 { font-size: 14px; margin: 12px 0 6px; }
+    .model-side ul { list-style: none; padding: 0; margin: 0; }
+    .model-side li { padding: 6px 0; border-bottom: 1px solid var(--border, #eee); font-size: 13px; }
+    .sev-fail, .sev-error { color: #b42318; } .sev-warning { color: #b54708; } .sev-ok { color: #067647; }
+    .mode-switch a { margin-left: 12px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">Mechvane</span>
+      <span id="doc-name" class="doc-name">—</span>
+      <span class="mode-switch"><strong>Model</strong> <a href="./">Check</a></span>
+    </div>
+    <div class="topbar-right">
+      <span id="status" class="status-text">Loading SolidCraft…</span>
+    </div>
+  </header>
+  <div class="model-layout">
+    <iframe id="app" title="SolidCraft"></iframe>
+    <aside class="model-side" aria-label="Mechvane checks">
+      <p id="intro">Edit the design on the left and save it (Ctrl+S). Mechvane checks it again after every save.</p>
+      <h2>Findings</h2>
+      <div id="summary"></div>
+      <ul id="findings"></ul>
+      <h2 id="links-head" hidden>Links</h2>
+      <ul id="links" hidden></ul>
+    </aside>
+  </div>
+<script type="module">
+// "Model" mode: the SolidCraft web app edits the document in the browser's private file storage
+// (OPFS, read by the app at start as /opfs/<name>). This page puts the server's files there before
+// the app loads, opens the document and sends every file the app saves back to the server.
+const status = (t) => { document.getElementById("status").textContent = t; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const known = new Map();  // name -> lastModified of the copy this page wrote or sent
+// Static mode (live demo on GitHub Pages): the example's files and precomputed findings under
+// demos/<name>/, nothing is sent back.
+const STATIC = document.documentElement.dataset.static === "1";
+let base = "";
+const dataUrl = (name) => (STATIC ? `${base}${name}.json` : `api/${name}`);
+const fileUrl = (name) => (STATIC ? `${base}files/` : "api/file/") + encodeURIComponent(name);
+
+async function opfs() { return navigator.storage.getDirectory(); }
+
+async function putFile(dir, name, bytes) {
+  const h = await dir.getFileHandle(name, { create: true });
+  const w = await h.createWritable();
+  await w.write(bytes);
+  await w.close();
+  known.set(name, (await h.getFile()).lastModified);
+}
+
+function showFindings(f) {
+  document.getElementById("summary").textContent = f.summary || "";
+  const ul = document.getElementById("findings");
+  ul.replaceChildren();
+  const all = f.findings || [];
+  const list = all.filter((x) => (x.severity || x.status) !== "ok");
+  const passed = all.length - list.length;
+  if (passed || !all.length) {
+    const li = document.createElement("li");
+    li.className = "sev-ok";
+    li.textContent = all.length ? `${passed} check${passed === 1 ? "" : "s"} ok` : "No findings";
+    ul.append(li);
+  }
+  for (const x of list) {
+    const li = document.createElement("li");
+    li.className = "sev-" + (x.severity || "warning");
+    li.textContent = (x.rule || x.kind || "") + ": " + (x.message || x.text || JSON.stringify(x));
+    ul.append(li);
+  }
+}
+
+function showLinks(u) {
+  const ul = document.getElementById("links");
+  ul.replaceChildren();
+  const w = (u && u.warnings) || [];
+  const li = document.createElement("li");
+  li.className = w.length ? "sev-warning" : "sev-ok";
+  li.textContent = u ? (w.length ? w.join("; ") : "update_links: all joints on their faces") : "—";
+  ul.append(li);
+}
+
+async function waitForApi(win) {
+  for (let i = 0; i < 600; i++) {
+    if (win.solidcraft) return win.solidcraft;
+    await sleep(100);
+  }
+  throw new Error("SolidCraft did not start");
+}
+
+async function main() {
+  if (STATIC) {
+    const index = await (await fetch("demos/index.json")).json();
+    const wanted = new URLSearchParams(location.search).get("demo");
+    const demo = index.demos.find((d) => d.name === wanted) || index.demos[0];
+    base = `demos/${demo.name}/`;
+    document.querySelector(".mode-switch a").href = `./?demo=${demo.name}`;
+    document.getElementById("intro").textContent =
+      "Live demo: edit the example on the left by hand, it stays in this browser. The findings were computed for the example as it is; installed, Mechvane checks your design again after every save.";
+  }
+  const meta = await (await fetch(dataUrl("files"))).json();
+  document.getElementById("doc-name").textContent = meta.document;
+  if (meta.files.length > 1 && !STATIC) {
+    document.getElementById("links-head").hidden = false;
+    document.getElementById("links").hidden = false;
+  }
+  const dir = await opfs();
+  for (const name of meta.files) {
+    const bytes = new Uint8Array(await (await fetch(fileUrl(name))).arrayBuffer());
+    await putFile(dir, name, bytes);
+  }
+  showFindings(await (await fetch(dataUrl("findings"))).json());
+
+  const frame = document.getElementById("app");
+  frame.src = "sc/index.html";
+  await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+  const sc = await waitForApi(frame.contentWindow);
+  // The app reads OPFS asynchronously after it starts: try again until the file is there.
+  const path = "/opfs/" + meta.document;
+  // Opening too early leaves an error message in the app, so give it a moment first.
+  await sleep(1500);
+  for (let i = 0; ; i++) {
+    try { await sc.execute("doc.open", { path }); break; }
+    catch (e) { if (i >= 30) throw e; await sleep(1000); }
+  }
+  await sc.request("ui.home", { open: false });
+  window.mechvaneReady = true;
+  status("Ready");
+
+  // Send every file the app saved back to the server.
+  for (;;) {
+    await sleep(1000);
+    for (const name of meta.files) {
+      let file;
+      try { file = await (await dir.getFileHandle(name)).getFile(); } catch { continue; }
+      if (file.lastModified === known.get(name)) continue;
+      known.set(name, file.lastModified);
+      if (STATIC) {
+        status("Saved in this browser");
+        document.getElementById("summary").textContent =
+          "Saved in this browser. The live demo can't check edits again: install Mechvane to check your own designs after every save. The findings below are for the example as it was.";
+        continue;
+      }
+      status("Checking " + name + "…");
+      const r = await fetch("api/file/" + encodeURIComponent(name), { method: "POST", body: await file.arrayBuffer() });
+      const res = await r.json();
+      if (!r.ok) { status("Save failed: " + res.error); continue; }
+      showFindings(res.findings);
+      showLinks(res.update_links);
+      window.mechvaneLastSave = res;
+      status("Saved and checked " + name);
+    }
+  }
+}
+
+main().catch((e) => { status("Error: " + e.message); window.mechvaneError = e.message; });
+</script>
+</body>
+</html>

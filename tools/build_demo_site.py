@@ -16,6 +16,7 @@ sys.path.insert(0, str(REPO))
 from mechvane import bolted, links  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
 from mechvane.ui.mesh import collect_mesh  # noqa: E402
+from mechvane.ui import webapp  # noqa: E402
 from mechvane.ui.server import STATIC_DIR, collect_findings, collect_tree, collect_version  # noqa: E402
 
 
@@ -75,9 +76,12 @@ def main():
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(STATIC_DIR, out)
-    html = (out / "index.html").read_text(encoding="utf-8")
-    (out / "index.html").write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),
-                                    encoding="utf-8")
+    for page in ("index.html", "model.html"):
+        html = (out / page).read_text(encoding="utf-8")
+        (out / page).write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),
+                                encoding="utf-8")
+    # The SolidCraft web app for "Model by hand" (release asset, SHA256 checked in webapp.py)
+    shutil.copytree(webapp.webapp_dir(), out / "sc")
     index = []
     with tempfile.TemporaryDirectory() as tmp:
         ws = Workspace(tmp)
@@ -89,6 +93,16 @@ def main():
                 data = {"version": collect_version(doc), "mesh": collect_mesh(doc, tmp_dir=tmp),
                         "tree": collect_tree(ws, doc), "findings": collect_findings(ws, doc)}
                 data["version"]["path"] = ""
+                # The design files themselves, for the web app: the document and its linked parts
+                files = {doc.path.name: doc.path}
+                if doc.kind == ASSEMBLY:
+                    for link in links._links(doc.session).values():
+                        if link.get("file") and Path(link["file"]).is_file():
+                            files.setdefault(Path(link["file"]).name, Path(link["file"]))
+                (d / "files").mkdir()
+                for fname, src in files.items():
+                    shutil.copyfile(src, d / "files" / fname)
+                data["files"] = {"document": doc.path.name, "files": sorted(files)}
                 for body in data["mesh"].get("bodies", []):
                     body["positions"] = [round(v, 4) for v in body["positions"]]  # 0.1 µm, halves the download
                 for key, value in data.items():

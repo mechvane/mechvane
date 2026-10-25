@@ -7,14 +7,16 @@ from pathlib import Path
 import shutil
 import tempfile
 import threading
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from .. import design_rules, links, query, tree
+from . import webapp
 from ..documents import ASSEMBLY, PART, Workspace
 from ..solidcraft import Session
 from .mesh import collect_mesh
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+MAX_UPLOAD = 64 * 1024 * 1024
 
 _JOINT_PRIO = ("joint_missing", "file_missing", "face_missing", "origin_lost", "moved", "unverifiable", "ok")
 
@@ -258,6 +260,35 @@ class UIServer(ThreadingHTTPServer):
             self.mtime = cur
         return self.doc
 
+    def files(self) -> dict:
+        """Files the "Model" mode may load and save, by name: the open document and, for an
+        assembly, its linked part files."""
+        out = {self.file_path.name: self.file_path}
+        doc = self.ensure_current()
+        if doc.kind == ASSEMBLY:
+            for link in links._links(doc.session).values():
+                p = Path(link.get("file") or "")
+                if p.is_file():
+                    out.setdefault(p.name, p.resolve())
+        return out
+
+    def save(self, name: str, data: bytes) -> dict:
+        """Write a file saved in the web app, reload the document and check it again."""
+        target = self.files().get(name)
+        if target is None:
+            raise KeyError(name)
+        tmp = target.with_name(f".{target.name}.upload")
+        tmp.write_bytes(data)
+        os.replace(tmp, target)
+        if target != self.file_path:
+            # A linked part changed: reopen the assembly so update_links reads it again.
+            self.mtime = None
+        doc = self.ensure_current()
+        out = {"saved": name, "bytes": len(data), "findings": collect_findings(self.ws, doc)}
+        if doc.kind == ASSEMBLY:
+            out["update_links"] = links.update_links(self.ws, doc)
+        return out
+
     def server_close(self):
         try:
             super().server_close()
@@ -293,6 +324,43 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_bytes(self, data: bytes, content_type: str, cache: str = "no-store"):
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", cache)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _send_webapp(self, rel: str):
+        target = webapp.resolve(rel)
+        if target is None:
+            self._send_json(404, {"error": f"not in the SolidCraft web build: {rel}"})
+            return
+        self._send_bytes(target.read_bytes(), webapp.mime(target), cache="no-cache")
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        srv: UIServer = self.server  # type: ignore[assignment]
+        try:
+            if not path.startswith("/api/file/"):
+                self._send_json(404, {"error": f"unknown endpoint: {path}"})
+                return
+            length = int(self.headers.get("Content-Length") or 0)
+            if length <= 0 or length > MAX_UPLOAD:
+                self._send_json(413, {"error": f"expected 1 to {MAX_UPLOAD} bytes"})
+                return
+            data = self.rfile.read(length)
+            with srv.lock:
+                try:
+                    result = srv.save(unquote(path[len("/api/file/"):]), data)
+                except KeyError:
+                    self._send_json(404, {"error": "not a file of this document"})
+                    return
+            self._send_json(200, result)
+        except Exception as e:
+            self._send_json(500, {"error": str(e)})
+
     def do_GET(self):
         path = urlparse(self.path).path
         srv: UIServer = self.server  # type: ignore[assignment]
@@ -305,6 +373,25 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/style.css":
                 self._send_static("style.css", "text/css; charset=utf-8")
+                return
+            if path in ("/model", "/model.html"):
+                self._send_static("model.html", "text/html; charset=utf-8")
+                return
+            if path.startswith("/sc/"):
+                self._send_webapp(path[len("/sc/"):])
+                return
+            if path == "/api/files":
+                with srv.lock:
+                    names = sorted(srv.files())
+                self._send_json(200, {"document": srv.file_path.name, "files": names})
+                return
+            if path.startswith("/api/file/"):
+                with srv.lock:
+                    target = srv.files().get(unquote(path[len("/api/file/"):]))
+                if target is None:
+                    self._send_json(404, {"error": "not a file of this document"})
+                    return
+                self._send_bytes(target.read_bytes(), "application/octet-stream")
                 return
 
             if path == "/api/version":

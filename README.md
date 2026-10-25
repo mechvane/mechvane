@@ -79,6 +79,9 @@ washers, ball bearings), a bolted connection assistant with patterns, `check_des
 design rules, ISO 286 fits and a knowledge catalog of sourced standard values. A read-only
 web UI (`python3 -m mechvane.ui <file.solidcraft> [--port 8765]`) shows the 3D model,
 the model browser tree and design/joint findings with interactive face highlighting.
+Its "Model by hand" mode (`/model`) embeds the SolidCraft web app: edit the part or
+assembly with the mouse, save, and Mechvane checks it again and updates the links. The web
+app is downloaded once from the SolidCraft release and checked against a pinned SHA256.
 
 ![Mechvane read-only web UI showing model tree, 3D viewport and highlighted countersink finding](docs/media/web-ui-1.png)
 

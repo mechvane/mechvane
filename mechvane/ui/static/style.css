@@ -405,3 +405,4 @@ html, body {
   padding: 1px 6px;
   border-radius: 3px;
 }
+.mode-switch { margin-left: 12px; font-size: 13px; } .mode-switch a { margin-left: 8px; }

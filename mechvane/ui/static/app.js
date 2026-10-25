@@ -737,6 +737,7 @@ async function initStatic() {
   if (wanted && index.demos.some((d) => d.name === wanted)) select.value = wanted;
   const open = async (fit) => {
     demoBase = `demos/${select.value}/`;
+    document.getElementById("mode-model").href = `model?demo=${select.value}`;
     await loadAll(fit);
   };
   select.addEventListener("change", () => {

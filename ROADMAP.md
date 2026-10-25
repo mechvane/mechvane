@@ -134,16 +134,32 @@ Unabhängig von der Plattformwahl zuerst das, was es woanders noch nicht gibt:
 laufen und eine gute Web-UI für die Arbeit mit dem Agenten (Agent baut, Nutzer sieht,
 zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudget:
 
-1. UI Stufe 1: 3D-Ansicht, Modellbaum, Befunde, Neuladen (~1 Woche)
+1. UI Stufe 1: 3D-Ansicht, Modellbaum, Befunde, Neuladen (~1 Woche). *Fertig 2026-10-24.*
+1a. Einstieg für Besucher (Nutzer-OK 2026-10-24, vor Stufe 2): A Live-Demo auf GitHub Pages
+   (`tools/build_demo_site.py`, *gebaut 2026-10-24*, seit 2026-10-25 mit „Modellieren“), B Installation
+   in einem Schritt (`pip install git+…`, `mechvane setup` lädt SolidCraft-CLI und Web-App, `mechvane
+   ui --demo`), C Dateien in der UI öffnen: Ordner statt einer Datei, Auswahl und „Neues Bauteil“ im
+   Modus „Modellieren“ (Speichern zurück ist seit 1b da, ~½ Paket), D Windows-Test auf dem Surface. PyPI erst, wenn B auf Windows und Linux
+   läuft (erster Upload mit Token, danach Trusted Publishing).
+1b. Handbedienung: SolidCraft-Web-App (Release-Asset `solidcraft-web-*.zip`) in die UI einbetten,
+   Modi „Modellieren“ und „Prüfen“, Speichern zurück an Mechvane (Nutzer-OK 2026-10-24, zuerst Test).
+   *Test bestanden und umgesetzt 2026-10-25* (`/model`, Bauteile und Baugruppen mit verknüpften
+   Teilen). Offen: Befund anklicken → Fläche in der App markieren (`window.solidcraft`), Befunde
+   auch in der Demo nach dem Speichern (bräuchte die Prüfungen im Browser).
 2. UI Stufe 2: Fläche anklicken, Chat mit dem Agenten, Rückgängig (2–3 Wochen)
 3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen)
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
    Schritt (2–3 Wochen)
 
-Nicht in v0.1: Modellieren von Hand (Skizzierer mit Bedingungen, Feature-Dialoge,
-Auswahl per Maus), geschätzt 4–6 Monate zusätzlich. Bis dahin Handarbeit in der
-SolidCraft-App; vorher prüfen, ob das mit Mechvane-Dateien sauber geht. Nach den
-ersten Praxistests entscheiden, ob ein eigener Skizzierer nötig ist.
+Nicht in v0.1: ein eigener Skizzierer und eigene Feature-Dialoge (4–6 Monate). Von Hand
+modelliert wird in der eingebetteten SolidCraft-App (1b, geht mit Mechvane-Dateien sauber,
+2026-10-25). Nach den ersten Praxistests entscheiden, ob mehr nötig ist.
+
+**Prüfpunkt Sprache (nach v0.1, spätestens Januar 2027, Nutzer-OK 2026-10-24):** Mechvane bleibt
+bis v0.1 Python (ADR 0001: „Rust, sobald die Schnittstelle steht“). Dann neu entscheiden, früher,
+falls das SolidCraft-Plugin-System (#1221, WASM/WIT) fertig ist. Für Rust spricht: Prüfungen
+als SolidCraft-Plugin, ein einzelnes Programm ohne Python. Dagegen: Umbau, langsame Builds
+auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installation auch.
 
 - [ ] **Mechvane-Schicht als MCP-Server** (nach ADR 0001): Bauteil- und
       Baugruppendateien öffnen/speichern, Verknüpfungen aktualisieren und

@@ -3730,6 +3730,33 @@ def web_ui_stage1_checks(ws):
            asm_findings["findings"] and all(f["source"] == "links" for f in asm_findings["findings"])
            and asm_findings["verdict"] == "ok" and "joints ok" in asm_findings["summary"],
            f"summary={asm_findings.get('summary')} sources={[f['source'] for f in asm_findings['findings']]}")
+
+        # "Model" mode: the web app saves a linked part, the server writes it and updates the links
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/files", timeout=10) as resp:
+            files = json.loads(resp.read().decode("utf-8"))
+        original = p_a.path.read_bytes()
+        p_a.session.cmd("solid.cylinder", {"diameter": 6, "height": 8, "base": [8, 8, -1], "operation": "cut", "name": "HoleB"})
+        p_a.save()
+        edited = p_a.path.read_bytes()
+        p_a.path.write_bytes(original)
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", timeout=10) as resp:
+            served = resp.read()
+        req = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", data=edited, method="POST")
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            saved = json.loads(resp.read().decode("utf-8"))
+        try:
+            urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/other.solidcraft",
+                                                          data=b"x", method="POST"), timeout=10)
+            foreign = 200
+        except urllib.error.HTTPError as e:
+            foreign = e.code
+        ul = saved.get("update_links", {})
+        ok("web ui model mode: /api/files lists linked parts, POST writes the part and runs update_links",
+           files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
+           and served == original and p_a.path.read_bytes() == edited
+           and ul.get("update", {}).get("updated") == ["Plate"] and not ul.get("warnings")
+           and saved["findings"]["verdict"] == "ok" and foreign == 404,
+           f"files={files} update={ul.get('update')} verdict={saved.get('findings', {}).get('verdict')} foreign={foreign}")
     finally:
         srv_asm.shutdown()
         srv_asm.server_close()
