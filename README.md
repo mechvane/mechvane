@@ -88,6 +88,12 @@ app is downloaded once from the SolidCraft release and checked against a pinned 
 *A countersink that notches the wall, highlighted on click (regenerate with
 `python3 tools/demo_web_ui.py`).*
 
+![Model by hand: the SolidCraft web app embedded in Mechvane, the countersink moved away from the wall and Mechvane's findings updated after saving](docs/media/model-mode.png)
+
+*Model by hand: the same bracket in the embedded SolidCraft web app, the countersink moved away
+from the wall and saved, Mechvane checked it again (regenerate with `python3 tools/demo_model_ui.py`).
+Try it without installing: [live demo](https://mechvane.github.io/mechvane/model.html?demo=bracket).*
+
 ## Contents
 
 - [ROADMAP.md](ROADMAP.md): phases, decision points, risks

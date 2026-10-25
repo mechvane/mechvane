@@ -90,6 +90,9 @@ try {
     }
     await sleep(3000);
   }
+  // Park the pointer on the side panel, so no face of the model shows a hover highlight
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1450, y: 600 });
+  await sleep(1000);
   const shot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(out, Buffer.from(shot.result.data, "base64"));
 } catch (e) {
