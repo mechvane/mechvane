@@ -406,3 +406,17 @@ html, body {
   border-radius: 3px;
 }
 .mode-switch { margin-left: 12px; font-size: 13px; } .mode-switch a { margin-left: 8px; }
+
+/* Phone width: one column, the 3D view first, then findings and model tree; the page scrolls. */
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  .topbar { height: auto; min-height: 44px; flex-wrap: wrap; gap: 4px 10px; padding: 6px 12px; }
+  .topbar-left, .topbar-right, .demo-bar { flex-wrap: wrap; }
+  .doc-path { display: none; }
+  .mode-switch { margin-left: 0; }
+  .workspace { grid-template-columns: 1fr; height: auto; }
+  .viewport-container { order: -1; height: 60vh; }
+  .panel-left, .panel-right { border: 0; border-top: 1px solid var(--border); }
+  .panel-left { order: 1; }
+  .viewport-hint { display: none; }
+}

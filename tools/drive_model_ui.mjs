@@ -4,8 +4,10 @@
 //
 //   node tools/drive_model_ui.mjs <url> <out.png> [commands.json]
 //
-// commands.json: [{command, params}] run with window.solidcraft.execute before file.save.
+// commands.json: [{command, params}] run with window.solidcraft.execute before file.save. The pseudo
+// command "mechvane.pick" {finding: n} clicks the n-th clickable finding of the page instead (no save).
 // Prints a JSON report (the server's answer to the save, the app's errors) on stdout.
+// WINDOW_SIZE: e.g. "390,844" for a phone (default 1600,900).
 // CHROME: Chromium binary (default: Playwright's chromium under ~/.cache/ms-playwright).
 import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync, readdirSync, mkdtempSync } from "node:fs";
@@ -26,7 +28,7 @@ function chrome() {
 const profile = mkdtempSync(join(tmpdir(), "mv-chrome-"));
 const proc = spawn(chrome(), [
   "--headless=new", "--no-sandbox", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-  ...(process.env.CHROME_FLAGS ? process.env.CHROME_FLAGS.split(" ") : ["--enable-unsafe-webgpu"]), "--window-size=1600,900", `--user-data-dir=${profile}`,
+  ...(process.env.CHROME_FLAGS ? process.env.CHROME_FLAGS.split(" ") : ["--enable-unsafe-webgpu"]), `--window-size=${process.env.WINDOW_SIZE || "1600,900"}`, `--user-data-dir=${profile}`,
   "--remote-debugging-port=0", "about:blank",
 ], { stdio: ["ignore", "ignore", "pipe"] });
 
@@ -82,8 +84,16 @@ try {
   if (report.ready === true) {
     report.before = await evaluate(`${sc}.inspect().then(d => ({bodies: (d.bodies||[]).length, timeline: (d.timeline||[]).length, path: d.path, name: d.name}))`);
     report.results = [];
-    for (const c of commands) report.results.push(await evaluate(`${sc}.execute(${JSON.stringify(c.command)}, ${JSON.stringify(c.params || {})})`));
-    if (commands.length) {
+    for (const c of commands) {
+      if (c.command === "mechvane.pick") {
+        await evaluate(`document.querySelectorAll("#findings li.pick")[${c.params?.finding ?? 0}]?.click()`);
+        await waitFor("window.mechvanePicked", 15);
+        report.results.push(await evaluate(`window.mechvanePicked ? ${sc}.inspect().then(d => ({picked: window.mechvanePicked, selection: d.selection})) : {status: document.getElementById("status").textContent, picks: document.querySelectorAll("#findings li.pick").length}`));
+        continue;
+      }
+      report.results.push(await evaluate(`${sc}.execute(${JSON.stringify(c.command)}, ${JSON.stringify(c.params || {})})`));
+    }
+    if (commands.some((c) => c.command !== "mechvane.pick")) {
       await evaluate(`${sc}.execute("file.save", {})`);
       const s = await waitFor("window.mechvaneLastSave", 120);
       report.save = s && { saved: s.saved, bytes: s.bytes, summary: s.findings.summary, update_links: s.update_links };

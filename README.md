@@ -39,29 +39,42 @@ MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its own la
 
 ## Quick start
 
-Requirements: Python ≥ 3.11 with the `mcp` package, and `solidcraft-cli` v0.19.0 or later
-from a [SolidCraft release](https://github.com/tangency-labs/solidcraft/releases) on your
-`PATH` (or its path in `SOLIDCRAFT_CLI`). No build needed; rendering works headless too.
+Requirements: Python ≥ 3.11. Everything else comes with `mechvane setup`: it downloads the
+pinned `solidcraft-cli` and SolidCraft web app (v0.21.0) from the
+[SolidCraft release](https://github.com/tangency-labs/solidcraft/releases) for your platform
+(Linux x86_64/aarch64, Windows x64/arm64, macOS) and checks their SHA256. No build needed;
+rendering works headless too.
 
 ```sh
-git clone https://github.com/mechvane/mechvane && cd mechvane
-pip install mcp
-python3 tests/mechvane/check.py      # about 230 checks, a few minutes
-python3 tests/reference/check.py     # reference parts with expected values
+pip install git+https://github.com/mechvane/mechvane
+mechvane setup        # SolidCraft CLI and web app, about 90 MB, once
+mechvane ui --demo    # example models in the browser
+mechvane ui my-project/   # your own .solidcraft files
 ```
 
-As an MCP server for an agent (e.g. Claude Code), `.mcp.json` in the repo:
+An existing `solidcraft-cli` is used when you set `SOLIDCRAFT_CLI` or skip `mechvane setup`
+and have it on your `PATH`.
+
+As an MCP server for an agent (e.g. Claude Code), `.mcp.json` in your project:
 
 ```json
 {
   "mcpServers": {
     "mechvane": {
-      "command": "python3",
-      "args": ["-m", "mechvane"],
-      "env": {"MECHVANE_WORKSPACE": "./workspace", "PYTHONPATH": "."}
+      "command": "mechvane",
+      "args": ["mcp", "--workspace", "./workspace"]
     }
   }
 }
+```
+
+For development, clone the repo and run the checks:
+
+```sh
+git clone https://github.com/mechvane/mechvane && cd mechvane
+pip install -e .
+python3 tests/mechvane/check.py      # about 240 checks, a few minutes
+python3 tests/reference/check.py     # reference parts with expected values
 ```
 
 Then ask, for example: "Build an 80×40×8 plate with four M5 clearance holes, bolt it to a

@@ -7,6 +7,8 @@ import subprocess
 import threading
 import time
 
+from . import install
+
 
 class SolidCraftError(RuntimeError):
     """A SolidCraft tool or command reported an error."""
@@ -18,7 +20,7 @@ class Session:
     def __init__(self, allow_paths=(), executable=None, timeout=300.0):
         self.timeout = timeout
         self._closed = False
-        args = [executable or os.environ.get("SOLIDCRAFT_CLI") or "solidcraft-cli", "mcp"]
+        args = [executable or install.find_cli(), "mcp"]
         for p in allow_paths:
             args += ["--allow-path", str(p)]
         self._p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,

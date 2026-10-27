@@ -3,6 +3,25 @@
 Prototyp der Mechvane-Schicht nach [ADR 0001](adr/0001-grundlage-solidcraft.md),
 Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
 
+## Installation und Start (seit 2026-10-27)
+
+`pyproject.toml` macht Mechvane installierbar (`pip install git+https://github.com/mechvane/mechvane`,
+Entwicklung `pip install -e .`). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
+
+- `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
+  (`mechvane/ui/webapp.py`) in der festen Version 0.21.0 für die eigene Plattform in den Cache
+  (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
+  festgeschrieben, Entpacken mit Pfadprüfung.
+- `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
+  `--demo` baut beim ersten Mal die Beispiele aus `mechvane/examples.py` (dieselben wie die
+  Live-Demo) in `<cache>/demo`.
+- `mechvane mcp [--workspace <ordner>]` startet den MCP-Server (wie `python3 -m mechvane`).
+
+Welche CLI genommen wird: `SOLIDCRAFT_CLI`, sonst die aus `mechvane setup`, sonst
+`solidcraft-cli` im `PATH`. `mcp` ist auf `<2` begrenzt (2.x hat `FastMCP` umbenannt).
+Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/`SHA256` in
+`webapp.py` nachziehen (Summen aus dem Release, `gh api …/releases/tags/vX --jq '.assets[]'`).
+
 ## Modell
 
 - **Bauteil** = eine `.solidcraft`-Datei ohne Komponenten, mit eigenem
@@ -365,6 +384,9 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 | `GET /api/files` | `{"document", "files"}`: das Dokument und bei Baugruppen die verknüpften Bauteildateien (nur diese sind lesbar und schreibbar) |
 | `GET /api/file/<name>` | Inhalt einer dieser Dateien |
 | `POST /api/file/<name>` | Datei aus der Web-App speichern (bis 64 MB), Dokument neu laden, `{"saved", "bytes", "findings", "update_links"?}` |
+| `GET /api/project` | `{"folder", "current", "documents": [{"name", "kind"}]}`: Projektordner-Übersicht und Dokumentenliste; Art (`part`/`assembly`) wird direkt aus `document.json` ermittelt (mit mtime-Cache) |
+| `POST /api/open/<name>` | Aktuelles Dokument auf `<name>` umschalten, vorherige Sitzung schließen, liefert Antwort wie `GET /api/files` |
+| `POST /api/new` | Neues leeres Bauteil anlegen (`{"name": "…"}`), als aktuelles Dokument öffnen (nur im Ordner-Modus) |
 
 ### Modus „Modellieren“ (seit 2026-10-25)
 
@@ -381,6 +403,29 @@ Beispieldateien unter `demos/<name>/files/`, Speichern bleibt im Browser, die Be
 vorberechnet. Browsertest: `node tools/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
 Chromium; ohne GPU mit `CHROME_FLAGS=--disable-features=WebGPU`, sonst bleibt die Canvas im
 Screenshot leer).
+
+**Befund anklicken (seit 2026-10-26):** `collect_findings` gibt jedem Befund mit Fläche ein Feld
+`select` (`{type: "face", body, index, point}`, Index wie in `model.faces`, bei Baugruppen der
+Baugruppenkörper). Ein Klick in der Seitenleiste ruft in der App `select.set` auf (die Fläche ist dann
+ausgewählt wie nach einem Klick im Ansichtsfenster) und richtet die Kamera mit `ui.camera {target,
+distance ≤ 120}` auf den Punkt. Eine eigene Hervorhebungs-API braucht es dafür nicht, `select.set`
+gibt es seit 0.21.0. Im Browsertest klickt der Pseudo-Befehl `{"command": "mechvane.pick", "params":
+{"finding": 0}}` den ersten anklickbaren Befund. Getestet am Winkel (Senkung, Fläche 13) und an der
+verschraubten Baugruppe (`select.set` mit Baugruppenkörpern wie `Washer`, `TopPlate`).
+
+**Projektordner-Modus (seit 2026-10-26):** Der Server kann mit `python3 -m mechvane.ui <pfad>` bzw.
+`create_server(pfad)` auf eine einzelne `.solidcraft`-Datei oder auf einen ganzen Projektordner
+gestartet werden. Im Ordner-Modus bildet der Ordner die Workspace-Wurzel. Solange noch kein
+Dokument geöffnet ist, liefern Endpunkte, die ein Dokument voraussetzen, HTTP 409 (`{"error": "no document open"}`).
+Über `GET /api/project` werden alle `.solidcraft`-Dateien im Ordner mit ihrer Art (`part` oder `assembly`)
+aufgelistet; `POST /api/open/<name>` schaltet auf eine Datei um (404 bei Pfadüberläufen oder unbekannten Dateien),
+und `POST /api/new` mit `{"name": "…"}` erzeugt ein neues leeres Bauteil via `Workspace.new` (409 bei
+bestehenden Dateien, 400 bei unzulässigen Namen). In `model.html` zeigt eine Leiste „Project“ oben in der Seitenleiste
+die Dokumente samt Bauteil-/Baugruppen-Kennzeichnung und Umschaltung sowie einen Schalter für neue Bauteile; beim
+Laden ohne `?doc=` wird automatisch die erste Datei geöffnet. Im Einzeldatei-Modus bleibt das bisherige
+Verhalten unverändert.
+
+![Modus „Modellieren“ mit Projektordner und ausgewähltem Befund](media/model-folder.png)
 
 Fehler in den Endpunkten werden als JSON mit HTTP-Status 500 (`{"error": "…"}`) beantwortet; der Server bleibt weiter aktiv.
 

@@ -14,6 +14,22 @@
     .model-side li { padding: 6px 0; border-bottom: 1px solid var(--border, #eee); font-size: 13px; }
     .sev-fail, .sev-error { color: #b42318; } .sev-warning { color: #b54708; } .sev-ok { color: #067647; }
     .mode-switch a { margin-left: 12px; }
+    .model-side li.pick { cursor: pointer; } .model-side li.pick:hover { background: rgba(0,0,0,.04); }
+    .model-side li.picked { background: rgba(180,35,24,.08); }
+    @media (max-width: 760px) {
+      .model-layout { grid-template-columns: 1fr; height: auto; }
+      .model-layout iframe { height: 70vh; }
+      .model-side { border-left: 0; border-top: 1px solid var(--border, #ccc); }
+    }
+    .proj-section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border, #eee); }
+    .proj-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .proj-header h2 { font-size: 14px; margin: 0; }
+    .btn-new-part { font-size: 12px; padding: 3px 8px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border, #ccc); background: #f8f9fa; }
+    .btn-new-part:hover { background: #e9ecef; }
+    .proj-doc { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 13px; }
+    .proj-doc:hover { background: rgba(0,0,0,0.05); }
+    .proj-doc.active { font-weight: bold; background: rgba(0,0,0,0.08); }
+    .proj-kind { font-size: 11px; text-transform: capitalize; color: #666; padding: 1px 4px; border: 1px solid #ccc; border-radius: 3px; font-weight: normal; }
   </style>
 </head>
 <body>
@@ -30,7 +46,14 @@
   <div class="model-layout">
     <iframe id="app" title="SolidCraft"></iframe>
     <aside class="model-side" aria-label="Mechvane checks">
-      <p id="intro">Edit the design on the left and save it (Ctrl+S). Mechvane checks it again after every save.</p>
+      <div id="project-section" class="proj-section" hidden>
+        <div class="proj-header">
+          <h2>Project</h2>
+          <button id="btn-new-part" type="button" class="btn-new-part">New part</button>
+        </div>
+        <ul id="project-docs"></ul>
+      </div>
+      <p id="intro">Edit the design and save it (Ctrl+S). Mechvane checks it again after every save.</p>
       <h2>Findings</h2>
       <div id="summary"></div>
       <ul id="findings"></ul>
@@ -44,7 +67,8 @@
 // the app loads, opens the document and sends every file the app saves back to the server.
 const status = (t) => { document.getElementById("status").textContent = t; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const known = new Map();  // name -> lastModified of the copy this page wrote or sent
+const known = new Map();
+let app = null;  // window.solidcraft of the embedded app, once it has started  // name -> lastModified of the copy this page wrote or sent
 // Static mode (live demo on GitHub Pages): the example's files and precomputed findings under
 // demos/<name>/, nothing is sent back.
 const STATIC = document.documentElement.dataset.static === "1";
@@ -79,6 +103,23 @@ function showFindings(f) {
     const li = document.createElement("li");
     li.className = "sev-" + (x.severity || "warning");
     li.textContent = (x.rule || x.kind || "") + ": " + (x.message || x.text || JSON.stringify(x));
+    if (x.select) {
+      // Clicking a finding selects its face in the app (select.set, as with a click in the viewport)
+      li.classList.add("pick");
+      li.title = "Select the face in SolidCraft";
+      li.addEventListener("click", async () => {
+        if (!app) return;
+        try {
+          await app.execute("select.set", { items: [x.select] });
+          // Turn the camera to the face and move in, small faces are hard to see otherwise
+          const cam = await app.request("ui.camera", {});
+          await app.request("ui.camera", { target: x.select.point, distance: Math.min(cam.distance, 120) });
+          for (const o of ul.querySelectorAll(".picked")) o.classList.remove("picked");
+          li.classList.add("picked");
+          window.mechvanePicked = x.select;
+        } catch (e) { status("Could not select the face: " + e.message); }
+      });
+    }
     ul.append(li);
   }
 }
@@ -109,8 +150,84 @@ async function main() {
     base = `demos/${demo.name}/`;
     document.querySelector(".mode-switch a").href = `./?demo=${demo.name}`;
     document.getElementById("intro").textContent =
-      "Live demo: edit the example on the left by hand, it stays in this browser. The findings were computed for the example as it is; installed, Mechvane checks your design again after every save.";
+      "Live demo: edit the example by hand, it stays in this browser. The findings were computed for the example as it is; installed, Mechvane checks your design again after every save.";
   }
+
+  const urlParams = new URLSearchParams(location.search);
+  const docParam = urlParams.get("doc");
+
+  let project = null;
+  if (!STATIC) {
+    try {
+      const pr = await fetch("api/project");
+      if (pr.ok) project = await pr.json();
+    } catch {}
+  }
+
+  if (!STATIC && docParam) {
+    await fetch("api/open/" + encodeURIComponent(docParam), { method: "POST" });
+  } else if (!STATIC && project && project.mode === "folder" && !project.current) {
+    if (project.documents && project.documents.length > 0) {
+      location.replace("?doc=" + encodeURIComponent(project.documents[0].name));
+      return;
+    }
+  }
+
+  if (!STATIC && project && project.mode === "folder") {
+    const sec = document.getElementById("project-section");
+    sec.hidden = false;
+    const ul = document.getElementById("project-docs");
+    ul.replaceChildren();
+    const curName = docParam || project.current;
+    for (const d of (project.documents || [])) {
+      const li = document.createElement("li");
+      li.className = "proj-doc" + (d.name === curName ? " active" : "");
+      const spanName = document.createElement("span");
+      spanName.textContent = d.name;
+      const spanKind = document.createElement("span");
+      spanKind.className = "proj-kind";
+      spanKind.textContent = d.kind === "assembly" ? "Assembly" : "Part";
+      li.append(spanName, spanKind);
+      li.addEventListener("click", async () => {
+        if (d.name === curName) return;
+        status("Opening " + d.name + "…");
+        const r = await fetch("api/open/" + encodeURIComponent(d.name), { method: "POST" });
+        if (r.ok) {
+          location.href = "?doc=" + encodeURIComponent(d.name);
+        } else {
+          const res = await r.json().catch(() => ({}));
+          status("Failed to open: " + (res.error || r.statusText));
+        }
+      });
+      ul.append(li);
+    }
+    const btnNew = document.getElementById("btn-new-part");
+    btnNew.onclick = async () => {
+      const name = prompt("Name for new part:");
+      if (!name || !name.trim()) return;
+      status("Creating " + name.trim() + "…");
+      const r = await fetch("api/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert("Error creating part: " + (res.error || r.statusText));
+        status("Error: " + (res.error || r.statusText));
+        return;
+      }
+      const newName = res.document || (name.trim().endsWith(".solidcraft") ? name.trim() : name.trim() + ".solidcraft");
+      location.href = "?doc=" + encodeURIComponent(newName);
+    };
+
+    if (!project.current && !docParam && (!project.documents || project.documents.length === 0)) {
+      document.getElementById("doc-name").textContent = "No document open";
+      status("No documents in folder. Click 'New part' to create one.");
+      return;
+    }
+  }
+
   const meta = await (await fetch(dataUrl("files"))).json();
   document.getElementById("doc-name").textContent = meta.document;
   if (meta.files.length > 1 && !STATIC) {
@@ -128,6 +245,7 @@ async function main() {
   frame.src = "sc/index.html";
   await new Promise((r) => frame.addEventListener("load", r, { once: true }));
   const sc = await waitForApi(frame.contentWindow);
+  app = sc;
   // The app reads OPFS asynchronously after it starts: try again until the file is there.
   const path = "/opfs/" + meta.document;
   // Opening too early leaves an error message in the app, so give it a moment first.

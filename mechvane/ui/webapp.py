@@ -13,11 +13,12 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from ..install import CACHE
+
 VERSION = "0.21.0"
 ASSET = f"solidcraft-web-{VERSION}.zip"
 URL = f"https://github.com/tangency-labs/solidcraft/releases/download/v{VERSION}/{ASSET}"
 SHA256 = "747baf5c2df4bef92923614cae3f3ae59578f7ef8d9e929e77c0a2cdfeeaead0"
-CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "mechvane"
 
 MIME = {
     ".html": "text/html; charset=utf-8",

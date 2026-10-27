@@ -56,9 +56,35 @@ Freizeitprojekt mit KI-Unterstützung, keine Zusagen.
    RTX 2070 (`blender-render.sh`, Skill `homeserver-ops`) und Blender-MCP
    auf win-cad. Weg vermutlich: glTF- oder USD-Export plus Szenen-Skript,
    Rendern als Hintergrundjob, Bild zurück in Mechvane.
-9. **Testen an echten Teilen** aus dem eigenen Alltag (Druckteile für den
+10. **Bedienung am Ende möglichst nah an Inventor** (Nutzerwunsch 2026-10-26, Endziel der UI):
+   Wer Inventor kennt, soll ohne Umlernen arbeiten können. Gemeint sind Aufbau und Begriffe der
+   Oberfläche, nicht nur der Feature-Baum aus Grundsatz 5. **Optisch aber dunkler und schicker
+   als Inventor** (Nutzer 2026-10-26): dunkles Farbschema als Standard, moderne, ruhige
+   Gestaltung; vertraut ist die Bedienung, nicht das Aussehen.
+   - Multifunktionsleiste mit Inventor-Registern und -Befehlsnamen (Skizze erstellen, Extrusion,
+     Drehung, Bohrung, Abhängigkeit, Platzieren), Inventor-Tastenkürzel (z. B. E Extrusion,
+     D Bemaßung, F6 Startansicht), Kontextmenüs und Mini-Werkzeugleiste.
+   - Modellbrowser links, ViewCube, Mausbedienung und Navigationsleiste wie Inventor.
+   - Feature- und Abhängigkeitsdialoge mit den Inventor-Optionen und deren Reihenfolge, Bauteil-
+     und Baugruppenumgebung getrennt wie bei Inventor (Bauteil-, Baugruppen-, Skizzenumgebung).
+   - Weg: Heute ist die SolidCraft-Web-App eingebettet (1b), deren Oberfläche eher an Fusion
+     erinnert. Schritte dahin: zuerst Einstellungen und Plugin-Oberflächen von SolidCraft nutzen
+     (#1221, deklarative „surfaces“), dann eigene Mechvane-Oberfläche über dem SolidCraft-Kern, wo
+     das nicht reicht (ADR 0001: Kern unverändert). Vor dem Umsetzen eine Abgleichliste
+     Inventor ↔ SolidCraft ↔ Mechvane anlegen (Register, Befehle, Kürzel, Browser-Einträge), damit
+     jede UI-Stufe ein Stück näher rückt.
+   - Was Nutzer an Fusion besser finden: [Entscheidungsliste](docs/research/2026-10-26-fusion-vs-inventor-liste.md)
+     (25 Punkte plus Gegenprobe, je Punkt später „wie Fusion“ oder „wie Inventor“ entscheiden).
+11. **Testen an echten Teilen** aus dem eigenen Alltag (Druckteile für den
    Ultimaker, Vorrichtungen, Blechteile), Ergebnisse gegen Fusion/FreeCAD
    vergleichen (Volumen, Schwerpunkt, Bounding-Box).
+12. **Echte Desktop-App für Windows und Linux** (Nutzerwunsch 2026-10-26, Ziel): Mechvane als
+   eigenes Programm mit Installer, Startmenü-Eintrag und eigenem Fenster, offline nutzbar. Die
+   Browser-Variante (lokaler Server, Live-Demo) bleibt daneben bestehen. Weg in zwei Schritten:
+   für v0.1 App-Fenster und Offline-Betrieb über den Browser, danach die echte Desktop-App. Die
+   Wahl der Hülle (Tauri, Electron, pywebview, Qt) hängt am Prüfpunkt Sprache und daran, ob die
+   eingebettete SolidCraft-Web-App im jeweiligen Webview läuft (WebGL/WebGPU, unter Linux ist
+   Tauris WebKitGTK die Schwachstelle).
 
 ## Phase 0: Erkunden und entscheiden (ca. 2–4 Wochen)
 
@@ -138,28 +164,43 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
 1a. Einstieg für Besucher (Nutzer-OK 2026-10-24, vor Stufe 2): A Live-Demo auf GitHub Pages
    (`tools/build_demo_site.py`, *gebaut 2026-10-24*, seit 2026-10-25 mit „Modellieren“), B Installation
    in einem Schritt (`pip install git+…`, `mechvane setup` lädt SolidCraft-CLI und Web-App, `mechvane
-   ui --demo`), C Dateien in der UI öffnen: Ordner statt einer Datei, Auswahl und „Neues Bauteil“ im
-   Modus „Modellieren“ (Speichern zurück ist seit 1b da, ~½ Paket), D Windows-Test auf dem Surface. PyPI erst, wenn B auf Windows und Linux
+   ui --demo`; *unter Linux fertig 2026-10-27*, frische venv mit leerem Cache geprüft, Windows offen → D), C Dateien in der UI öffnen: Ordner statt einer Datei, Auswahl und „Neues Bauteil“ im
+   Modus „Modellieren“ (*fertig 2026-10-26*: `python3 -m mechvane.ui <ordner>`, `/api/project`, `/api/open`, `/api/new`), D Windows-Test auf dem Surface. PyPI erst, wenn B auf Windows und Linux
    läuft (erster Upload mit Token, danach Trusted Publishing).
 1b. Handbedienung: SolidCraft-Web-App (Release-Asset `solidcraft-web-*.zip`) in die UI einbetten,
    Modi „Modellieren“ und „Prüfen“, Speichern zurück an Mechvane (Nutzer-OK 2026-10-24, zuerst Test).
    *Test bestanden und umgesetzt 2026-10-25* (`/model`, Bauteile und Baugruppen mit verknüpften
-   Teilen). Offen: Befund anklicken → Fläche in der App markieren (`window.solidcraft`), Befunde
+   Teilen). Befund anklicken wählt die Fläche in der App aus (`select.set`, *fertig 2026-10-26*). Offen: Befunde
    auch in der Demo nach dem Speichern (bräuchte die Prüfungen im Browser).
-2. UI Stufe 2: Fläche anklicken, Chat mit dem Agenten, Rückgängig (2–3 Wochen)
+2. UI Stufe 2: Fläche anklicken, Chatfenster mit dem Agenten **mit Spracheingabe** (Point and speak,
+   Grundsatz 6: Auswahl plus gesprochener Auftrag gehen zusammen an den Agenten), Rückgängig
+   (2–3 Wochen). Vor dem Umsetzen entwerfen: Anbindung an den Agenten und Spracherkennung
+   (Browser-Spracheingabe oder Whisper), Deutsch und Fachbegriffe wie „Fase 1 × 45°“, „M6“
 3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen)
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
    Schritt (2–3 Wochen)
 
 Nicht in v0.1: ein eigener Skizzierer und eigene Feature-Dialoge (4–6 Monate). Von Hand
 modelliert wird in der eingebetteten SolidCraft-App (1b, geht mit Mechvane-Dateien sauber,
-2026-10-25). Nach den ersten Praxistests entscheiden, ob mehr nötig ist.
+2026-10-25). Nach den ersten Praxistests entscheiden, ob mehr nötig ist. Richtung für alle
+UI-Stufen: Bedienung möglichst nah an Inventor (Grundsatz 10).
+
+- [ ] Abgleichliste Inventor ↔ SolidCraft ↔ Mechvane (Register, Befehlsnamen, Tastenkürzel,
+      Browser, Dialoge), Recherche an Gemini, danach entscheiden, was über SolidCraft-
+      Einstellungen/Plugins geht und was eine eigene Oberfläche braucht.
 
 **Prüfpunkt Sprache (nach v0.1, spätestens Januar 2027, Nutzer-OK 2026-10-24):** Mechvane bleibt
 bis v0.1 Python (ADR 0001: „Rust, sobald die Schnittstelle steht“). Dann neu entscheiden, früher,
 falls das SolidCraft-Plugin-System (#1221, WASM/WIT) fertig ist. Für Rust spricht: Prüfungen
 als SolidCraft-Plugin, ein einzelnes Programm ohne Python. Dagegen: Umbau, langsame Builds
 auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installation auch.
+
+- [ ] **Desktop-App** (Grundsatz 12). Schritt 1 für v0.1, zusammen mit 1a B: three.js und alle
+      Abhängigkeiten mitliefern (offline), `mechvane ui` öffnet ein eigenes App-Fenster
+      (Chrome/Edge `--app=`), Startmenü-Verknüpfung unter Windows. Schritt 2 nach v0.1: echte
+      Desktop-App mit Installer für Windows und Linux; vorher Recherche der Hüllen (Gemini) und
+      ein Test, ob die SolidCraft-Web-App darin läuft. Entscheidung zusammen mit dem Prüfpunkt
+      Sprache (spätestens Januar 2027).
 
 - [ ] **Mechvane-Schicht als MCP-Server** (nach ADR 0001): Bauteil- und
       Baugruppendateien öffnen/speichern, Verknüpfungen aktualisieren und
@@ -201,7 +242,7 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Review durch ein zweites Modell, weitere Reihen (ISO 10642, ISO 4017).
 - [ ] **Eigene Web-UI** (Nutzer-OK 2026-10-23, Weg B statt SolidCraft-Panels):
       Stufe 1 nur lesend (3D-Ansicht, Modellbaum, Befunde aus `check_design` und
-      `check_joints`), Stufe 2 Auswahl an den Agenten (Point and speak), Chat.
+      `check_joints`), Stufe 2 Auswahl an den Agenten (Point and speak), Chatfenster mit Spracheingabe.
       *Stand 2026-10-24:* Stufe 1 fertig (`python3 -m mechvane.ui <datei>`, Bericht
       `docs/research/2026-10-24-web-ui-stufe1-argon.md`). Nächster Schritt: Stufe 2.
 - [ ] **Bohrungsassistent mit Verschraubung**: Schraube + Scheibe + Mutter

@@ -3730,6 +3730,11 @@ def web_ui_stage1_checks(ws):
            asm_findings["findings"] and all(f["source"] == "links" for f in asm_findings["findings"])
            and asm_findings["verdict"] == "ok" and "joints ok" in asm_findings["summary"],
            f"summary={asm_findings.get('summary')} sources={[f['source'] for f in asm_findings['findings']]}")
+        asm_sel = [f.get("select") for f in asm_findings["findings"]]
+        ok("web ui model mode: joint findings carry a select.set item on an assembly body",
+           asm_sel and all(x and x["type"] == "face" and x["body"] in {bd["name"] for bd in asm_mesh.get("bodies", [])}
+                           for x in asm_sel),
+           f"select={asm_sel}")
 
         # "Model" mode: the web app saves a linked part, the server writes it and updates the links
         with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/files", timeout=10) as resp:
@@ -3757,9 +3762,130 @@ def web_ui_stage1_checks(ws):
            and ul.get("update", {}).get("updated") == ["Plate"] and not ul.get("warnings")
            and saved["findings"]["verdict"] == "ok" and foreign == 404,
            f"files={files} update={ul.get('update')} verdict={saved.get('findings', {}).get('verdict')} foreign={foreign}")
+
+        # Single-file server retains old answer and rejects /api/new
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/project", timeout=10) as resp:
+            sf_proj = json.loads(resp.read().decode("utf-8"))
+        try:
+            req_sf_new = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/new",
+                                                data=json.dumps({"name": "X"}).encode("utf-8"),
+                                                headers={"Content-Type": "application/json"},
+                                                method="POST")
+            with urllib.request.urlopen(req_sf_new, timeout=10) as resp:
+                sf_new_code = resp.status
+        except urllib.error.HTTPError as e:
+            sf_new_code = e.code
     finally:
         srv_asm.shutdown()
         srv_asm.server_close()
+
+    # 3b. Folder server checks: listing with kinds, /api/open switching, /api/new creation and error handling
+    srv_fld = create_server(ws.root, port=0)
+    port_fld = srv_fld.server_address[1]
+    th_fld = threading.Thread(target=srv_fld.serve_forever, daemon=True)
+    th_fld.start()
+    try:
+        # GET /api/project initially: parts and assembly listed with correct kinds, no doc open
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
+            fld_proj = json.loads(resp.read().decode("utf-8"))
+        fld_kinds = {d["name"]: d["kind"] for d in fld_proj.get("documents", [])}
+
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/files", timeout=10)
+            no_doc_code = 200
+        except urllib.error.HTTPError as e:
+            no_doc_code = e.code
+
+        # /api/open/../../etc -> 404
+        try:
+            req_bad_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/../../etc", data=b"", method="POST")
+            with urllib.request.urlopen(req_bad_open, timeout=10) as resp:
+                bad_open_code = resp.status
+        except urllib.error.HTTPError as e:
+            bad_open_code = e.code
+
+        # /api/open switches (then /api/files lists the linked parts for the assembly)
+        req_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/ui_asm.solidcraft", data=b"", method="POST")
+        with urllib.request.urlopen(req_open, timeout=10) as resp:
+            opened_asm = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/files", timeout=10) as resp:
+            asm_files = json.loads(resp.read().decode("utf-8"))
+
+        # /api/new creates <name>.solidcraft as a part and it appears in /api/project
+        req_new = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
+                                         data=json.dumps({"name": "Bracket"}).encode("utf-8"),
+                                         headers={"Content-Type": "application/json"},
+                                         method="POST")
+        with urllib.request.urlopen(req_new, timeout=10) as resp:
+            created_part = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
+            fld_proj_after = json.loads(resp.read().decode("utf-8"))
+
+        # /api/new with an existing name -> 409
+        try:
+            req_dup = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
+                                             data=json.dumps({"name": "Bracket"}).encode("utf-8"),
+                                             headers={"Content-Type": "application/json"},
+                                             method="POST")
+            with urllib.request.urlopen(req_dup, timeout=10) as resp:
+                dup_code = resp.status
+        except urllib.error.HTTPError as e:
+            dup_code = e.code
+
+        # /api/new with '../x' -> 400
+        try:
+            req_trav = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
+                                              data=json.dumps({"name": "../x"}).encode("utf-8"),
+                                              headers={"Content-Type": "application/json"},
+                                              method="POST")
+            with urllib.request.urlopen(req_trav, timeout=10) as resp:
+                trav_code = resp.status
+        except urllib.error.HTTPError as e:
+            trav_code = e.code
+
+        ok("web ui folder mode: folder server lists parts and assembly with correct kinds, switches and creates parts",
+           fld_kinds.get("ui_asm.solidcraft") == "assembly"
+           and fld_kinds.get("ui_part_a.solidcraft") == "part"
+           and fld_kinds.get("ui_part_b.solidcraft") == "part"
+           and no_doc_code == 409 and bad_open_code == 404
+           and opened_asm["document"] == "ui_asm.solidcraft"
+           and opened_asm["files"] == asm_files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
+           and created_part["document"] == "Bracket.solidcraft"
+           and created_part["files"] == ["Bracket.solidcraft"]
+           and fld_proj_after["current"] == "Bracket.solidcraft"
+           and any(d["name"] == "Bracket.solidcraft" and d["kind"] == "part" for d in fld_proj_after.get("documents", []))
+           and dup_code == 409 and trav_code == 400
+           and files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
+           and sf_proj.get("current") == "ui_asm.solidcraft"
+           and sf_proj.get("documents") == [{"name": "ui_asm.solidcraft", "kind": "assembly"}]
+           and sf_new_code == 404,
+           f"kinds={fld_kinds} opened={opened_asm} created={created_part} dup={dup_code} trav={trav_code} bad_open={bad_open_code} sf_new={sf_new_code}")
+
+        # Corrupt .solidcraft file in folder mode: /api/project must return 200 and list remaining documents
+        corrupt_file = ws.root / "kaputt.solidcraft"
+        corrupt_file.write_text("kein zip", encoding="utf-8")
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
+                corrupt_code = resp.status
+                corrupt_proj = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            corrupt_code = e.code
+            corrupt_proj = {}
+        finally:
+            if corrupt_file.exists():
+                corrupt_file.unlink()
+
+        c_docs = {d["name"]: d.get("kind") for d in corrupt_proj.get("documents", [])}
+        ok("web ui folder mode: corrupt .solidcraft file does not break /api/project",
+           corrupt_code == 200
+           and "ui_asm.solidcraft" in c_docs
+           and "ui_part_a.solidcraft" in c_docs
+           and "ui_part_b.solidcraft" in c_docs
+           and ("kaputt.solidcraft" not in c_docs or c_docs.get("kaputt.solidcraft") == PART),
+           f"code={corrupt_code} docs={c_docs}")
+    finally:
+        srv_fld.shutdown()
+        srv_fld.server_close()
 
     # 4. Part with intentional finding (countersink too close to wall as in Befund 8):
     # finding arrives in /api/findings with a face name that exists in /api/mesh
@@ -3795,6 +3921,11 @@ def web_ui_stage1_checks(ws):
         ok("web ui findings: countersink wall finding arrives in /api/findings with a face name present in /api/mesh",
            cs_fail is not None and cs_face in mesh_face_map and mesh_face_map[cs_face] in mesh_fids,
            f"cs_fail={cs_fail} mesh_faces={list(mesh_face_map.keys())}")
+        cs_sel = (cs_fail or {}).get("select") or {}
+        ok("web ui model mode: the countersink finding carries a select.set item for its face (index as in /api/mesh)",
+           cs_sel.get("type") == "face" and cs_sel.get("index") == mesh_face_map.get(cs_face)
+           and cs_sel.get("body") in {b["name"] for b in cs_mesh.get("bodies", [])} and len(cs_sel.get("point") or []) == 3,
+           f"select={cs_sel} face={cs_face}")
 
         # 5. Reload on file change and HTTP 500 JSON recovery (server stays alive)
         with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/version", timeout=10) as resp:
@@ -3814,6 +3945,81 @@ def web_ui_stage1_checks(ws):
         srv_cs.server_close()
 
     ws.close_all()
+
+
+def install_checks(tmp):
+    """`mechvane setup` and the CLI lookup, offline: a local archive stands in for the release."""
+    import hashlib
+    import io
+    import os
+    import tarfile
+    import zipfile
+    from mechvane import cli, install
+    ref = Path(__file__).resolve().parents[1] / "reference" / "flansch.build.json"
+    ok("install: packaged flange example equals the reference build", ref.read_bytes()
+       == (Path(install.__file__).parent / "data" / "flange.build.json").read_bytes())
+    root = Path(tmp) / "install"
+    old = (install.CACHE, install.BASE_URL, dict(install.ASSETS), os.environ.pop("SOLIDCRAFT_CLI", None))
+    try:
+        install.CACHE = root / "cache"
+        src = root / "src"
+        src.mkdir(parents=True)
+        exe = install.exe_name()
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as t:
+            data = b"#!/bin/sh\necho solidcraft-cli 0.0.0\n"
+            info = tarfile.TarInfo(f"solidcraft-x/bin/{exe}")
+            info.size, info.mode = len(data), 0o644
+            t.addfile(info, io.BytesIO(data))
+        archive = src / "fake.tar.gz"
+        archive.write_bytes(buf.getvalue())
+        install.BASE_URL = src.as_uri() + "/"
+        key = install.platform_key()
+        install.ASSETS[key] = ("fake.tar.gz", "0" * 64)
+        try:
+            install.install_cli(log=lambda _: None)
+            bad_sha = False
+        except RuntimeError as e:
+            bad_sha = "SHA256" in str(e)
+        ok("install: wrong SHA256 is refused and nothing is kept",
+           bad_sha and not any(install.CACHE.glob("fake.tar.gz*")) and install.cached_cli() is None)
+        install.ASSETS[key] = ("fake.tar.gz", hashlib.sha256(archive.read_bytes()).hexdigest())
+        cli_path = install.install_cli(log=lambda _: None)
+        ok("install: archive unpacked, CLI found and executable", cli_path == install.cached_cli()
+           and cli_path.name == exe and (os.name == "nt" or os.access(cli_path, os.X_OK)), str(cli_path))
+        ok("install: cached CLI comes before PATH", install.find_cli() == str(cli_path))
+        os.environ["SOLIDCRAFT_CLI"] = "/opt/sc/solidcraft-cli"
+        ok("install: $SOLIDCRAFT_CLI comes first", install.find_cli() == "/opt/sc/solidcraft-cli")
+        del os.environ["SOLIDCRAFT_CLI"]
+        refused = 0
+        evil = root / "evil.zip"
+        with zipfile.ZipFile(evil, "w") as z:
+            z.writestr("../escape.txt", "x")
+        for name, path in (("evil.zip", evil),):
+            try:
+                install._extract(path, root / "out", name)
+            except RuntimeError:
+                refused += 1
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as t:
+            info = tarfile.TarInfo("bin/link")
+            info.type, info.linkname = tarfile.SYMTYPE, "/etc/passwd"
+            t.addfile(info)
+        (root / "evil.tar.gz").write_bytes(buf.getvalue())
+        try:
+            install._extract(root / "evil.tar.gz", root / "out2", "evil.tar.gz")
+        except (RuntimeError, tarfile.TarError):
+            refused += 1
+        ok("install: path traversal in zip and absolute symlink in tar are refused",
+           refused == 2 and not (root / "escape.txt").exists(), f"{refused}/2")
+    finally:
+        install.CACHE, install.BASE_URL = old[0], old[1]
+        install.ASSETS.clear()
+        install.ASSETS.update(old[2])
+        os.environ.pop("SOLIDCRAFT_CLI", None)
+        if old[3] is not None:
+            os.environ["SOLIDCRAFT_CLI"] = old[3]
+    ok("cli: `mechvane ui` on a missing path exits with 1", cli.main(["ui", str(root / "nope"), "--no-browser"]) == 1)
 
 
 def main():
@@ -3844,6 +4050,7 @@ def main():
             bolted_anchor_associativity_checks(ws)
             bolted_countersunk_checks(ws)
             web_ui_stage1_checks(ws)
+            install_checks(tmp)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")
