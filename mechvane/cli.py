@@ -20,7 +20,8 @@ from .ui import webapp
 def cmd_setup(args) -> int:
     cli = install.install_cli()
     print(f"SolidCraft CLI {install.VERSION}: {cli}")
-    out = subprocess.run([str(cli), "--version"], capture_output=True, text=True, timeout=60)
+    out = subprocess.run([str(cli), "--version"], capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", timeout=60)
     if out.returncode != 0:
         print(f"  but it does not start: {(out.stderr or out.stdout).strip()}", file=sys.stderr)
         return 1

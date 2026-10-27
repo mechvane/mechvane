@@ -40,9 +40,9 @@ def new_part(name: str, path: str | None = None, overwrite: bool = False) -> dic
 def standard_part(norm: str, size: str, length: float | None = None,
                   name: str | None = None, path: str | None = None,
                   overwrite: bool = False) -> dict:
-    """Create, save and keep open a parametric standard part file (norms: ISO 4762, ISO 10642, ISO 4032,
-    ISO 7089, Ruthex, DIN 625; length in mm is required for ISO 4762 and ISO 10642). Pass overwrite=True to
-    replace an existing file on disk."""
+    """Create, save and keep open a parametric standard part file (norms: ISO 4762, ISO 10642, ISO 4017,
+    ISO 4032, ISO 7089, Ruthex, DIN 625; length in mm is required for ISO 4762, ISO 10642 and ISO 4017).
+    Pass overwrite=True to replace an existing file on disk."""
     return _compact(standard_parts.create(ws, norm, size, length=length, name=name, path=path,
                                           overwrite=overwrite))
 
@@ -346,10 +346,12 @@ def screenshot(document: str, view: str = "iso", path: str | None = None):
 
 
 @mcp.tool()
-def check_design(document: str, profile: str = "fdm_0.4") -> dict:
-    """Check a part against design rules (wall thickness, hole edge distance, thread depth, printability)."""
+def check_design(document: str, profile: str = "fdm_0.4", build_direction: str = "+Z") -> dict:
+    """Check a part against design rules (wall thickness, hole edge distance, thread depth, printability).
+    `build_direction` selects the print direction ('+Z', '-Z', '+X', '-X', '+Y', '-Y'; default '+Z')."""
+    vec = design_rules.parse_build_direction(build_direction, allow_vector=False)
     doc = ws.get(document, PART)
-    return design_rules.check(doc.session, profile=profile)
+    return design_rules.check(doc.session, profile=profile, build_direction=vec)
 
 
 @mcp.tool()

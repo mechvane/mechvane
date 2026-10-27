@@ -13,6 +13,7 @@ PROFILES = {
         "thread_depth_factor": 1.5,       # >= 1.5 * d thread engagement depth
         "min_hole_diameter": 2.0,         # mm
         "max_overhang_angle": 45.0,       # degrees from vertical
+        "build_direction": [0, 0, 1],     # unit vector (+Z)
     },
     "cnc_alu": {
         "name": "CNC Fräsen (Aluminium)",
@@ -23,6 +24,45 @@ PROFILES = {
         "max_overhang_angle": None,       # no overhang constraint
     },
 }
+
+BUILD_DIRECTIONS = {
+    "+Z": [0, 0, 1],
+    "-Z": [0, 0, -1],
+    "+X": [1, 0, 0],
+    "-X": [-1, 0, 0],
+    "+Y": [0, 1, 0],
+    "-Y": [0, -1, 0],
+}
+
+
+def parse_build_direction(val, allow_vector: bool = True) -> list[float]:
+    """Parse build_direction from '+Z|-Z|+X|-X|+Y|-Y' or (if allow_vector) a 3D unit vector."""
+    if isinstance(val, str):
+        key = val.strip().upper()
+        if key in BUILD_DIRECTIONS:
+            return list(BUILD_DIRECTIONS[key])
+        raise ValueError(
+            f"invalid build_direction {val!r}, expected one of: {', '.join(BUILD_DIRECTIONS)}"
+        )
+    if allow_vector and isinstance(val, (list, tuple)) and len(val) == 3:
+        if all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in val):
+            n = g.norm(val)
+            if n > 1e-9:
+                u = [float(x) / n for x in val]
+                for vec in BUILD_DIRECTIONS.values():
+                    if g.dot(u, vec) > 1.0 - 1e-9:
+                        return list(vec)
+                return u
+    raise ValueError(
+        f"invalid build_direction {val!r}, expected one of: {', '.join(BUILD_DIRECTIONS)}"
+    )
+
+
+def _format_build_direction(d: list[float]) -> str:
+    for name, vec in BUILD_DIRECTIONS.items():
+        if g.dot(d, vec) > 1.0 - 1e-6:
+            return f"{name} ({vec})"
+    return str([round(x, 4) for x in d])
 
 # ISO metric coarse threads: (nominal_diameter_mm, pitch_mm, tap_drill_diameter_mm)
 ISO_METRIC_THREADS = [
@@ -49,16 +89,23 @@ def match_iso_tap_drill(diameter: float) -> tuple[float, float, float] | None:
     return None
 
 
-def _get_cfg(profile: str | dict) -> dict:
+def _get_cfg(profile: str | dict, build_direction: str | list[float] | None = None) -> dict:
     if isinstance(profile, str):
         if profile not in PROFILES:
             raise ValueError(f"unknown profile {profile!r}, available: {', '.join(PROFILES)}")
-        return dict(PROFILES[profile])
-    if isinstance(profile, dict):
+        base = dict(PROFILES[profile])
+    elif isinstance(profile, dict):
         base = dict(PROFILES.get("fdm_0.4", {}))
         base.update(profile)
-        return base
-    raise TypeError(f"profile must be str or dict, got {type(profile).__name__}")
+    else:
+        raise TypeError(f"profile must be str or dict, got {type(profile).__name__}")
+    if build_direction is not None:
+        base["build_direction"] = parse_build_direction(build_direction)
+    elif base.get("build_direction") is not None:
+        base["build_direction"] = parse_build_direction(base["build_direction"])
+    else:
+        base["build_direction"] = [0, 0, 1]
+    return base
 
 
 _eval_length = g.eval_length
@@ -191,6 +238,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             L = h.get("length", 0.0)
             t_h_min = c_proj - L / 2.0
             t_h_max = c_proj + L / 2.0
+        h["t_range"] = (t_h_min, t_h_max)
 
         side_faces = [f for f in faces if f.get("plane_normal") and abs(g.dot(f["plane_normal"], axis)) < 0.1]
         dist_faces = []
@@ -346,6 +394,13 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
                 # Coaxial holes (e.g. counterbore and bore of the same stepped hole) are not adjacent holes
                 if g.dist_to_line(h1["center"], h2["center"], h1["axis"]) < 0.05:
                     continue
+                # Holes that do not overlap along their axis (e.g. blind holes from opposite sides)
+                # are separated by material along the axis, not by a wall between them
+                if "t_range" in h1 and "t_range" in h2:
+                    sign = 1.0 if g.dot(h1["axis"], h2["axis"]) > 0 else -1.0
+                    r2 = sorted(sign * t for t in h2["t_range"])
+                    if min(h1["t_range"][1], r2[1]) - max(h1["t_range"][0], r2[0]) < 1e-3:
+                        continue
                 delta = g.sub(h1["center"], h2["center"])
                 proj_dist = g.norm(g.sub(delta, g.scale(h1["axis"], g.dot(delta, h1["axis"]))))
                 w_between = proj_dist - (h1["radius"] + h2["radius"])
@@ -444,24 +499,31 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
     # 3. Printability (FDM overhangs and small holes)
     max_oh = cfg.get("max_overhang_angle")
     if max_oh is not None:
-        z_min = bbox["min"][2]
+        d = g.unit(cfg.get("build_direction") or [0, 0, 1])
+        dir_label = _format_build_direction(d)
+        lo, hi = bbox["min"], bbox["max"]
+        corners = [[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
+        h_min = min(g.dot(c, d) for c in corners)
         sin_limit = math.sin(math.radians(max_oh))
         for f in faces:
             n = f.get("plane_normal")
-            if not n or n[2] >= -0.01:
+            if not n:
+                continue
+            nd = g.dot(n, d)
+            if nd >= -0.01:
                 continue
             # Build plate check
-            if n[2] <= -0.99 and abs(f["centroid"][2] - z_min) < 0.05:
+            if nd <= -0.99 and abs(g.dot(f["centroid"], d) - h_min) < 0.05:
                 continue
 
             # Downward face above print bed
-            if n[2] < -sin_limit:
+            if nd < -sin_limit:
                 rules["printability"]["status"] = "fail"
                 rules["printability"]["findings"].append({
                     "status": "fail",
                     "location": {"point": f["centroid"], "face": f["name"]},
                     "message": (f"Unsupported overhang on face {f['name']} (normal {n}, centroid {f['centroid']}) "
-                                f"exceeds {max_oh:.0f}° limit"),
+                                f"exceeds {max_oh:.0f}° limit in build direction {dir_label}"),
                 })
 
     min_hole_d = cfg.get("min_hole_diameter", 0)
@@ -481,10 +543,11 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
     return rules
 
 
-def check(session_or_doc, profile: str | dict = "fdm_0.4") -> dict:
+def check(session_or_doc, profile: str | dict = "fdm_0.4",
+          build_direction: str | list[float] | None = None) -> dict:
     """Check a part against design rules using the open SolidCraft session."""
     session = getattr(session_or_doc, "session", session_or_doc)
-    cfg = _get_cfg(profile)
+    cfg = _get_cfg(profile, build_direction=build_direction)
     profile_name = profile if isinstance(profile, str) else cfg.get("name", "custom")
 
     doc_info = session.cmd("document.inspect", {"measure": True})

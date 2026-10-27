@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 import threading
 from urllib.parse import unquote, urlparse
@@ -291,7 +292,8 @@ def detect_kind(p: Path, ws: Workspace | None = None) -> str:
 class UIServer(ThreadingHTTPServer):
     """ThreadingHTTPServer holding a locked Workspace and open Document."""
 
-    allow_reuse_address = True
+    # On Windows SO_REUSEADDR lets a second server bind the same port silently
+    allow_reuse_address = sys.platform != "win32"
     daemon_threads = True
 
     def __init__(self, server_address, RequestHandlerClass, path):
@@ -468,11 +470,14 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_static(self, filename: str, content_type: str):
-        target = STATIC_DIR / filename
-        if not target.is_file():
+    def _send_static(self, filename: str, content_type: str | None = None):
+        root = STATIC_DIR.resolve()
+        target = (root / unquote(filename)).resolve()
+        if (root not in target.parents and target != root) or not target.is_file():
             self._send_json(404, {"error": f"file not found: {filename}"})
             return
+        if content_type is None:
+            content_type = "text/plain; charset=utf-8" if target.name == "LICENSE" else webapp.mime(target)
         data = target.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -581,6 +586,12 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 return
             if path in ("/model", "/model.html"):
                 self._send_static("model.html", "text/html; charset=utf-8")
+                return
+            if path.startswith("/vendor/"):
+                self._send_static(path.lstrip("/"))
+                return
+            if path.startswith("/static/"):
+                self._send_static(path[len("/static/"):])
                 return
             if path.startswith("/sc/"):
                 self._send_webapp(path[len("/sc/"):])

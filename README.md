@@ -53,6 +53,8 @@ mechvane ui my-project/   # your own .solidcraft files
 ```
 
 Alpha: so far tested on Linux; Windows and macOS are expected to work but not yet tested.
+If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and
+`ui`, `mcp`) instead.
 
 An existing `solidcraft-cli` is used when you set `SOLIDCRAFT_CLI` or skip `mechvane setup`
 and have it on your `PATH`.

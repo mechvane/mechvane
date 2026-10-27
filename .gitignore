@@ -4,5 +4,5 @@ workspace/
 graphify-out/
 graphify-katalog/
 site/
-build/
+/build/
 *.egg-info/

@@ -6,7 +6,7 @@ Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
 ## Installation und Start (seit 2026-10-27)
 
 `pyproject.toml` macht Mechvane installierbar: `pip install mechvane` (PyPI seit 2026-10-27,
-`0.1.0a1`), Entwicklung `pip install -e .`. Neue Version: `version` in `pyproject.toml` erhöhen,
+`0.1.0a1`; `0.1.0a2` mit Windows-Korrekturen als erste Version per Tag), Entwicklung `pip install -e .`. Neue Version: `version` in `pyproject.toml` erhöhen,
 exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/publish.yml` lädt
 per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
@@ -277,7 +277,7 @@ Geprüfte Kriterien:
 1. **Randabstand von Bohrungen (`hole_edge_distance`):** Abstand Lochmitte zu Außenkanten $\ge 1{,}5 \times d$.
 2. **Mindestwandstärke (`min_wall_thickness`):** Wandstärke Bohrung zu Außenkanten sowie zwischen benachbarten Bohrungen $\ge 1{,}2\text{ mm}$ (FDM) bzw. $1{,}0\text{ mm}$ (CNC).
 3. **Einschraubtiefe (`thread_depth`):** Sacklöcher und Gewindebohrungen $\ge 1{,}5 \times d_{\text{nom}}$ tragende Gewindetiefe. Erkennt Gewinde aus `model.threads`, `HoleFeature` (`thread`) und gleicht Bohrungsdurchmesser mit ISO-Metrisch-Kernlöchern ab (z. B. Ø 4,2 für M5, Ø 5,0 für M6).
-4. **Druckbarkeit (`printability`, FDM):** Überhänge $> 45^\circ$ zur Vertikalen ohne Stütze (nach unten gerichtete Flächen oberhalb des Druckbetts $z_{\min}$), Mindestbohrungsdurchmesser ($\ge 2{,}0\text{ mm}$ für 0,4-mm-Düse).
+4. **Druckbarkeit (`printability`, FDM):** Überhänge $> 45^\circ$ zur Vertikalen ohne Stütze (nach unten gerichtete Flächen oberhalb des Druckbetts $z_{\min}$), Mindestbohrungsdurchmesser ($\ge 2{,}0\text{ mm}$ für 0,4-mm-Düse). Die Aufbaurichtung ist über `build_direction` (`+Z|-Z|+X|-X|+Y|-Y`, im Profil als Einheitsvektor, Standard `+Z` bzw. `[0, 0, 1]`) wählbar.
 5. **Senkung kerbt Nachbarwand (`countersink_clearance`, seit 2026-10-23):** SolidCraft schneidet den Senkkegel über die Eintrittsfläche hinaus. Steht eine Wand näher als der Senkradius, bleibt die Deckfläche des Werkzeugs (`…:csink:base`) als echte Fläche stehen; auf freier Fläche gibt es sie nicht. Jede solche Fläche ist ein `fail` (Praxistest 5, Befund 8).
 
 Ergebnis je Regel ist `ok`, `warn` oder `fail` mit Angabe von Ort (`location.point`, `location.face`) und technischer Begründung.

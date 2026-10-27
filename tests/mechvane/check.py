@@ -409,6 +409,12 @@ def standard_parts_checks(ws):
          + math.pi * (5.0 / 2) ** 2 * (16.0 - 3.10)
          - (math.sqrt(3) / 2) * 3.0 ** 2 * 1.9,
          [[-5.6, -5.6, -16.0], [5.6, 5.6, 0.0]]),
+        ("ISO 4017", "M6", 20, "ISO 4017 M6x20",
+         (math.sqrt(3) / 2) * 10.0 ** 2 * 4.0 + math.pi * (6.0 / 2) ** 2 * 20.0,
+         [[-10.0 / math.sqrt(3), -5.0, -20.0], [10.0 / math.sqrt(3), 5.0, 4.0]]),
+        ("ISO 4017", "M10", 40, "ISO 4017 M10x40",
+         (math.sqrt(3) / 2) * 16.0 ** 2 * 6.4 + math.pi * (10.0 / 2) ** 2 * 40.0,
+         [[-16.0 / math.sqrt(3), -8.0, -40.0], [16.0 / math.sqrt(3), 8.0, 6.4]]),
         ("ISO 4032", "M5", None, "ISO 4032 M5",
          ((math.sqrt(3) / 2) * 8.0 ** 2 - math.pi * (5.0 / 2) ** 2) * 4.7,
          [[-8.0 / math.sqrt(3), -4.0, 0.0], [8.0 / math.sqrt(3), 4.0, 4.7]]),
@@ -436,15 +442,37 @@ def standard_parts_checks(ws):
            abs(vol - v_exp) <= REL * v_exp
            and abs(standard_parts.expected_volume(norm, size, length) - v_exp) < 1e-9
            and _bbox_matches(bb, bb_exp)
+           and _bbox_matches(bb, standard_parts.expected_bbox(norm, size, length))
            and meta.get("kind") == PART
            and std.get("norm") == norm and std.get("size") == size and std.get("designation") == desig
            and res["sketch_rule"] == {"moved": [], "refused": []}
            and sketches_owned,
            f"vol={vol:.4f} (exp {v_exp:.4f}), bb={bb} (exp {bb_exp}), meta={meta}, tree={t}")
+        if norm == "ISO 4017":
+            s_exp = standard_parts.ISO_4017[size]["s"]
+            faces = doc.session.cmd("model.faces", {"body": "Screw"})["faces"]
+            f_neg_y = next(f for f in faces if f["name"] == "F2:side:l3")
+            f_pos_y = next(f for f in faces if f["name"] == "F2:side:l6")
+            m_flats = doc.session.cmd("inspect.measure", {"items": [
+                {"type": "face", "body": "Screw", "index": f_neg_y["index"], "point": f_neg_y["centroid"]},
+                {"type": "face", "body": "Screw", "index": f_pos_y["index"], "point": f_pos_y["centroid"]},
+            ]})
+            s_meas = m_flats["distance_mm"]
+            ok(f"standard part {desig}: width across flats s = {s_exp:g} mm by measurement",
+               abs(s_meas - s_exp) <= ABS and abs((bb[1][1] - bb[0][1]) - s_exp) <= ABS,
+               f"s_meas={s_meas} (exp {s_exp}), bb_y={bb[1][1] - bb[0][1]}")
         if norm == "Ruthex":
             hole = std.get("mounting_hole", {})
             ok("heat-set insert metadata includes mounting hole diameter and min_depth",
                hole == {"diameter": 4.0, "min_depth": 6.7}, str(std))
+
+    cat_4017 = server.list_standard_parts("DIN 933")
+    ok("ISO 4017 / DIN 933 resolved in resolve_norm, catalog and list_standard_parts",
+       standard_parts.resolve_norm("DIN 933") == "ISO 4017"
+       and standard_parts.catalog("DIN 933")["norm"] == "ISO 4017"
+       and cat_4017["norm"] == "ISO 4017"
+       and list(cat_4017["sizes"].keys()) == ["M3", "M4", "M5", "M6", "M8", "M10"],
+       str(cat_4017))
 
     # Parameters stay editable (parameters.change recomputes geometry) and metadata survives reopen.
     screw = ws.get("ISO_4762_M5x16", PART)
@@ -472,6 +500,8 @@ def standard_parts_checks(ws):
     # Invalid norm or size raises a clear ValueError without leaving a document open.
     bad_calls = [
         ("ISO 4762", "M7", 16),
+        ("ISO 4017", "M7", 20),
+        ("ISO 4017", "M6", None),
         ("ISO 4032", "M14", None),
         ("Ruthex", "M6", None),
         ("DIN 625", "6006", None),
@@ -779,6 +809,36 @@ def design_rule_checks(ws):
        r_oh_angle["rules"]["printability"]["status"] == "fail",
        str(r_oh_angle["rules"]["printability"]))
     ws.close("rule_oh_angle")
+
+    # 8b. Selectable build_direction: overhang fails in +Z, passes in -Z (overhang face lies on bed)
+    doc_bd = ws.new(PART, "rule_build_dir")
+    doc_bd.session.batch([
+        {"command": "solid.box", "params": {"length": 20, "width": 20, "height": 10, "corner": [0, 0, 0], "name": "Base"}},
+        {"command": "solid.box", "params": {"length": 40, "width": 20, "height": 10, "corner": [0, 0, 10], "operation": "join", "name": "Overhang"}},
+    ])
+    orig_ws_bd = server.ws
+    server.ws = ws
+    try:
+        r_bd_pz = server.check_design("rule_build_dir", build_direction="+Z")
+        r_bd_mz = server.check_design("rule_build_dir", build_direction="-Z")
+        r_bd_vec = design_rules.check(doc_bd.session, profile={"build_direction": [0, 0, -1]})
+        bad_bd = False
+        try:
+            server.check_design("rule_build_dir", build_direction="invalid")
+        except ValueError:
+            bad_bd = True
+    finally:
+        server.ws = orig_ws_bd
+    ok("design rules: build_direction +Z reports overhang, -Z (upside down on bed) reports none, invalid rejected",
+       r_bd_pz["verdict"] == "fail" and r_bd_pz["rules"]["printability"]["status"] == "fail"
+       and len(r_bd_pz["rules"]["printability"]["findings"]) == 1
+       and "+Z" in r_bd_pz["rules"]["printability"]["findings"][0]["message"]
+       and r_bd_mz["verdict"] == "ok" and r_bd_mz["rules"]["printability"]["status"] == "ok"
+       and r_bd_mz["rules"]["printability"]["findings"] == []
+       and r_bd_vec["verdict"] == "ok" and r_bd_vec["rules"]["printability"]["status"] == "ok"
+       and bad_bd,
+       f"+Z={r_bd_pz['rules']['printability']} -Z={r_bd_mz['rules']['printability']} bad={bad_bd}")
+    ws.close("rule_build_dir")
 
     # 9. Shallow blind hole warning sets thread_depth rule status and verdict to warn
     doc_shallow = ws.new(PART, "rule_shallow_blind")
@@ -3676,6 +3736,26 @@ def web_ui_stage1_checks(ws):
            and st_t == 200 and d_tree.get("kind") == "part" and len(d_tree.get("features", [])) > 0
            and st_f == 200 and "findings" in d_find and "verdict" in d_find,
            f"ver={d_ver} tree_kind={d_tree.get('kind')} find_keys={list(d_find.keys())}")
+
+        import re
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=10) as resp:
+            st_idx = resp.status
+            idx_html = resp.read().decode("utf-8")
+        scripts = re.findall(r"<script\b[^>]*>.*?</script>", idx_html, flags=re.IGNORECASE | re.DOTALL)
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/static/vendor/three/build/three.module.js", timeout=10) as resp:
+            st_three_static = resp.status
+            three_bytes = resp.read()
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/vendor/three/build/three.module.js", timeout=10) as resp:
+            st_three_rel = resp.status
+            resp.read()
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/vendor/three/examples/jsm/controls/OrbitControls.js", timeout=10) as resp:
+            st_orbit = resp.status
+            resp.read()
+        ok("web ui offline three.js: index.html has no http(s) URL in importmap or <script> tags and server serves local three.module.js",
+           st_idx == 200 and len(scripts) >= 2
+           and all("http://" not in s and "https://" not in s for s in scripts)
+           and st_three_static == 200 and st_three_rel == 200 and st_orbit == 200 and len(three_bytes) > 100000,
+           f"scripts={scripts} st_static={st_three_static} st_rel={st_three_rel} st_orbit={st_orbit} bytes={len(three_bytes)}")
     finally:
         srv.shutdown()
         srv.server_close()
@@ -3947,6 +4027,80 @@ def web_ui_stage1_checks(ws):
     ws.close_all()
 
 
+def argon_review_findings_checks(ws):
+    """Findings 1, 3 and 4 of the Argon review (docs/research/2026-10-27-review-gemini-bausteine-argon.md)."""
+    # Finding 1: a planar face with curved edges must still be tested against its boundary.
+    lp = ws.new(PART, "argon_lplate")
+    lp.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 5, "corner": [0, 0, 0],
+                                            "name": "A", "body_name": "LPlate"}},
+        {"command": "solid.box", "params": {"length": 20, "width": 20, "height": 5, "corner": [20, 20, 0],
+                                            "operation": "cut", "name": "Notch"}},
+        {"command": "solid.hole", "params": {"position": [10, 10, 5], "direction": [0, 0, -1],
+                                             "clearance": "M5", "depth": 5, "name": "H"}}])
+    faces = links._part_faces(lp.session)
+    cyl_faces = {f["name"]: f for f in faces if f.get("cylinder")}
+    top = next(f for f in faces if f.get("plane_normal") and f["plane_normal"][2] > 0.9
+               and abs(f["point"][2] - 5) < 1e-6)
+    f_edges = [e for e in lp.session.cmd("model.edges", {"body": "LPlate"})["edges"]
+               if top["name"] in e["name"].split("|")]
+    inside = {"material": [5, 30, 5], "notch": [30, 30, 5], "hole": [10, 10, 5], "beside_hole": [14, 10, 5]}
+    got = {k: bolted._point_in_face(p, top, f_edges, cyl_faces) for k, p in inside.items()}
+    # A point in an existing hole counts as on the face: bolting through an existing hole penetrates the part
+    ok("argon review 1: point-in-face uses the outer boundary of faces with arcs (notch outside, hole inside)",
+       got == {"material": True, "notch": False, "hole": True, "beside_hole": True}, str(got))
+    ws.close("argon_lplate")
+
+    # Finding 3: parallel blind holes from opposite sides without axial overlap are not adjacent.
+    blk = ws.new(PART, "argon_block")
+    blk.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 50, "corner": [0, 0, 0],
+                                            "name": "Block", "body_name": "Block"}},
+        {"command": "solid.hole", "params": {"position": [20, 20, 50], "direction": [0, 0, -1],
+                                             "diameter": 6, "depth": 10, "name": "HoleTop"}},
+        {"command": "solid.hole", "params": {"position": [24, 20, 0], "direction": [0, 0, 1],
+                                             "diameter": 6, "depth": 10, "name": "HoleBottom"}}])
+    res = design_rules.check(blk.session)
+    between = [f for r in res.get("bodies", [res]) for f in r.get("rules", r).get("min_wall_thickness", {}).get("findings", [])
+               if "between holes" in f.get("message", "")]
+    ok("argon review 3: offset blind holes from opposite sides, 30 mm apart axially, give no hole-to-hole finding",
+       not between, str(between))
+    ws.close("argon_block")
+
+    # Finding 4: a concentric anchor follows its occurrence when that is rotated and moved.
+    dom = ws.new(PART, "argon_dom")
+    dom.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 5, "corner": [-20, -20, 0],
+                                            "name": "Base", "body_name": "Dom"}},
+        {"command": "solid.cylinder", "params": {"diameter": 8, "height": 20, "base": [10, 0, 5],
+                                                 "operation": "join", "name": "Boss"}}])
+    dom.save()
+    lid = ws.new(PART, "argon_lid")
+    lid.session.cmd("solid.box", {"length": 40, "width": 40, "height": 3, "corner": [-20, -20, 0], "name": "Lid"})
+    lid.save()
+    asm = ws.new(ASSEMBLY, "argon_anchor")
+    links.insert(ws, asm, dom.path, name="Dom", grounded=True)
+    links.insert(ws, asm, lid.path, name="Lid", translate=[0, 0, 25], grounded=True)
+    asm.save()
+    res = bolted.bolted_connection(ws, "argon_anchor", placement={"position": [10, 0, 28], "direction": [0, 0, -1]},
+                                   size="M3", use_insert=True, counterbore=False, parts=["Lid:1", "Dom:1"])
+    anchor = asm.metadata()["bolted_connections"][res["id"]]["anchor"]
+    st0, p0, d0 = bolted._resolve_anchor(ws, asm, anchor)
+    moved = ws.new(ASSEMBLY, "argon_anchor_moved")
+    links.insert(ws, moved, dom.path, name="Dom", rotate={"axis": [0, 1, 0], "angle": 90},
+                 translate=[100, 0, 0], grounded=True)
+    st1, p1, d1 = bolted._resolve_anchor(ws, moved, anchor)
+    occ = next(o for o in links._occurrences(moved.session).values() if o["name"] == "Dom:1")
+    want_p = g.apply_point(occ["transform"], p0)
+    want_d = g.unit(g.apply_dir(occ["transform"], d0))
+    ok("argon review 4: concentric anchor keeps its local point and direction when the occurrence is rotated and moved",
+       anchor.get("kind") == "cylinder" and st0 == st1 == "ok"
+       and g.norm(g.sub(p1, want_p)) < 1e-3 and g.norm(g.sub(d1, want_d)) < 1e-6,
+       f"anchor={anchor.get('kind')} p0={p0} d0={d0} p1={p1} d1={d1} want={want_p} {want_d}")
+    for name in ("argon_anchor_moved", "argon_anchor", "argon_lid", "argon_dom"):
+        ws.close(name)
+
+
 def install_checks(tmp):
     """`mechvane setup` and the CLI lookup, offline: a local archive stands in for the release."""
     import hashlib
@@ -4050,6 +4204,7 @@ def main():
             bolted_anchor_associativity_checks(ws)
             bolted_countersunk_checks(ws)
             web_ui_stage1_checks(ws)
+            argon_review_findings_checks(ws)
             install_checks(tmp)
         finally:
             ws.close_all()

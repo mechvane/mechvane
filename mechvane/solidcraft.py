@@ -24,7 +24,8 @@ class Session:
         for p in allow_paths:
             args += ["--allow-path", str(p)]
         self._p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                   stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                                   stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                                   encoding="utf-8", errors="replace")  # not the Windows ANSI code page
         self._n = 0
         # A reader thread instead of select() on the pipe, which Windows does not support.
         self._lines = queue.Queue()

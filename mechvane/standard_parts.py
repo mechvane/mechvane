@@ -57,6 +57,27 @@ ISO_10642 = {
              "preferred_lengths": (20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100, 110, 120)},
 }
 
+# ISO 4017 (DIN EN ISO 4017, supersedes DIN 933): Hexagon head screws, fully threaded, product grade A.
+# Coarse thread pitch P per ISO 261 / ISO 724.
+# Dimensions in mm: d (thread nominal), P (pitch), s (width across flats nom=max),
+# k (head height nom), e (width across corners min, product grade A).
+# Verified against Westfield Fasteners (https://www.westfieldfasteners.co.uk/Standards/ScrewBolt-HexHd4017-M-THRfull.pdf)
+# and Fasten.it (https://www.fasten.it/en/norms/norm/din_en_iso_4017).
+ISO_4017 = {
+    "M3":  {"d": 3.0,  "P": 0.50, "s": 5.5,  "k": 2.0, "e": 6.01,
+            "preferred_lengths": (5, 6, 8, 10, 12, 16, 20, 25, 30)},
+    "M4":  {"d": 4.0,  "P": 0.70, "s": 7.0,  "k": 2.8, "e": 7.66,
+            "preferred_lengths": (6, 8, 10, 12, 16, 20, 25, 30, 35, 40)},
+    "M5":  {"d": 5.0,  "P": 0.80, "s": 8.0,  "k": 3.5, "e": 8.79,
+            "preferred_lengths": (8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50)},
+    "M6":  {"d": 6.0,  "P": 1.00, "s": 10.0, "k": 4.0, "e": 11.05,
+            "preferred_lengths": (10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60)},
+    "M8":  {"d": 8.0,  "P": 1.25, "s": 13.0, "k": 5.3, "e": 14.38,
+            "preferred_lengths": (12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80)},
+    "M10": {"d": 10.0, "P": 1.50, "s": 16.0, "k": 6.4, "e": 17.77,
+            "preferred_lengths": (16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100)},
+}
+
 # ISO 4032 (DIN EN ISO 4032, supersedes DIN 934): Hexagon regular nuts, style 1, product grades A/B.
 # Coarse thread pitch P per ISO 261 / ISO 724.
 # Dimensions in mm: d (thread nominal), P (pitch), s (width across flats max), m (nut height max).
@@ -142,6 +163,12 @@ NORMS = {
         "table": ISO_10642,
         "has_length": True,
     },
+    "ISO 4017": {
+        "name": "Hexagon head screw, fully threaded (Sechskantschraube mit Gewinde bis Kopf)",
+        "aliases": ("iso 4017", "iso4017", "din 933", "din933", "hex_screw", "hex_bolt", "sechskantschraube"),
+        "table": ISO_4017,
+        "has_length": True,
+    },
     "ISO 4032": {
         "name": "Hexagon regular nut, style 1 (Sechskantmutter Typ 1)",
         "aliases": ("iso 4032", "iso4032", "din 934", "din934", "hex_nut", "nut"),
@@ -221,7 +248,7 @@ def _normalize_size(canon: str, size: str, length: float | None):
     if s not in table:
         raise ValueError(f"unknown size {size!r} for {canon} (available: {', '.join(table)})")
 
-    if canon in ("ISO 4762", "ISO 10642"):
+    if canon in ("ISO 4762", "ISO 10642", "ISO 4017"):
         if length is None or not isinstance(length, (int, float)) or not math.isfinite(length) or length <= 0:
             raise ValueError(f"{canon} requires a positive length in mm")
         return s, float(length)
@@ -411,6 +438,45 @@ def spec(norm: str, size: str, length: float | None = None) -> dict:
             meta["warning"] = warnings[0]
         return {"standard": meta, "commands": cmds, "warnings": warnings}
 
+    if canon == "ISO 4017":
+        d, P, s, k, e = row["d"], row["P"], row["s"], row["k"], row["e"]
+        pref = row["preferred_lengths"]
+        is_pref = any(abs(norm_len - p) < 1e-6 for p in pref)
+        if not is_pref:
+            pref_str = ", ".join(_fmt_num(p) for p in pref)
+            warnings.append(
+                f"length {_fmt_num(norm_len)} mm is not a preferred length for ISO 4017 {norm_size} "
+                f"(preferred: {pref_str} mm)"
+            )
+        designation = f"ISO 4017 {norm_size}x{_fmt_num(norm_len)}"
+        dims = {"d": d, "P": P, "s": s, "k": k, "e": e, "l": norm_len}
+        cmds = [
+            _param("d", d, "nominal thread diameter"),
+            _param("P", P, "coarse thread pitch"),
+            _param("s", s, "width across flats"),
+            _param("k", k, "head height"),
+            _param("e", e, "width across corners"),
+            _param("l", norm_len, "nominal screw length"),
+        ]
+        cmds += _hex_extrude("HeadSketch", "Head", s / 2, "s / 2", "k", op="new", direction="positive", body_name="Screw")
+        cmds += _circle_extrude("ShankSketch", "Shank", d / 2, "d", "l", op="join", direction="negative")
+        cmds.append({"command": "solid.thread", "params": {
+            "face": [d / 2, 0, -norm_len / 2],
+            "designation": f"{norm_size}x{_fmt_num(P)}",
+            "name": "Thread",
+        }})
+        meta = {
+            "norm": canon,
+            "size": norm_size,
+            "length": norm_len,
+            "preferred_length": is_pref,
+            "designation": designation,
+            "dimensions": dims,
+        }
+        if warnings:
+            meta["warning"] = warnings[0]
+        return {"standard": meta, "commands": cmds, "warnings": warnings}
+
     if canon == "ISO 4032":
         d, P, s, m = row["d"], row["P"], row["s"], row["m"]
         designation = f"ISO 4032 {norm_size}"
@@ -513,6 +579,10 @@ def expected_volume(norm: str, size: str, length: float | None = None) -> float:
         shank = math.pi * r**2 * (dims["l"] - dims["k"])
         socket = (math.sqrt(3) / 2) * dims["s"] ** 2 * dims["t"]
         return head + shank - socket
+    if canon == "ISO 4017":
+        head = (math.sqrt(3) / 2) * dims["s"] ** 2 * dims["k"]
+        shank = math.pi * (dims["d"] / 2) ** 2 * dims["l"]
+        return head + shank
     if canon == "ISO 4032":
         hex_area = (math.sqrt(3) / 2) * dims["s"] ** 2
         bore_area = math.pi * (dims["d"] / 2) ** 2
@@ -537,6 +607,10 @@ def expected_bbox(norm: str, size: str, length: float | None = None) -> list[lis
     if canon == "ISO 10642":
         r = dims["dk"] / 2
         return [[-r, -r, -dims["l"]], [r, r, 0.0]]
+    if canon == "ISO 4017":
+        rx = dims["s"] / math.sqrt(3)
+        ry = dims["s"] / 2
+        return [[-rx, -ry, -dims["l"]], [rx, ry, dims["k"]]]
     if canon == "ISO 4032":
         rx = dims["s"] / math.sqrt(3)
         ry = dims["s"] / 2

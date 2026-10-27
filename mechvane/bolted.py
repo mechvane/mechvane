@@ -296,39 +296,69 @@ def _parse_placement(ws_or_doc, doc_or_placement, placement: dict | None = None)
     raise ValueError(f"unsupported placement type: {p_type!r}")
 
 
+def _edge_polyline(e: dict, normal: list[float], segments: int = 16) -> list[list[float]]:
+    """Points along an edge: [start, end] for a line, sampled points for an arc or full circle."""
+    a, m, b = e["start"], e.get("mid"), e["end"]
+    if m is None:
+        return [a, b]
+    if g.norm(g.sub(a, b)) < 1e-9:
+        # Full circle: start == end, mid is the opposite point
+        center = g.scale(g.add(a, m), 0.5)
+        sweep = 2 * math.pi
+        w = g.unit(normal)
+    else:
+        ab, am = g.sub(b, a), g.sub(m, a)
+        n = g.cross(ab, am)
+        nn = g.dot(n, n)
+        if nn < 1e-12 * max(g.dot(ab, ab), 1e-12) ** 2:
+            return [a, b]  # straight
+        center = g.add(a, g.scale(g.add(g.scale(g.cross(n, ab), g.dot(am, am)),
+                                        g.scale(g.cross(am, n), g.dot(ab, ab))), 1 / (2 * nn)))
+        w = g.unit(n)
+        sweep = None
+    u = g.unit(g.sub(a, center))
+    v = g.cross(w, u)
+    r = g.norm(g.sub(a, center))
+    if sweep is None:
+        def ang(p):
+            d = g.sub(p, center)
+            t = math.atan2(g.dot(d, v), g.dot(d, u))
+            return t if t > 1e-12 else t + 2 * math.pi
+        # Sweep from start to end the way round that passes mid
+        sweep = ang(b)
+        if ang(m) > sweep:
+            sweep -= 2 * math.pi
+    pts = []
+    for i in range(segments + 1):
+        t = sweep * i / segments
+        pts.append(g.add(center, g.add(g.scale(u, r * math.cos(t)), g.scale(v, r * math.sin(t)))))
+    return pts
+
+
+def _edge_loops(f_edges: list[dict], tol: float = 1e-4) -> list[list[dict]]:
+    """Group a face's edges into closed loops by chaining shared end points."""
+    left = list(f_edges)
+    loops = []
+    while left:
+        loop = [left.pop(0)]
+        start, cur = loop[0]["start"], loop[0]["end"]
+        while g.norm(g.sub(cur, start)) > tol:
+            nxt = next((e for e in left if g.norm(g.sub(e["start"], cur)) <= tol
+                        or g.norm(g.sub(e["end"], cur)) <= tol), None)
+            if nxt is None:
+                break
+            left.remove(nxt)
+            loop.append(nxt)
+            cur = nxt["end"] if g.norm(g.sub(nxt["start"], cur)) <= tol else nxt["start"]
+        loops.append(loop)
+    return loops
+
+
 def _point_in_face(x_loc: list[float], f: dict, f_edges: list[dict], cyl_faces: dict | None = None) -> bool:
-    """Check if point x_loc lies on planar face f using face boundary."""
+    """Check if point x_loc lies within the outer boundary of planar face f (arcs as polylines).
+    Inner loops are ignored on purpose: a bolt through an existing hole still penetrates the part."""
     if not f_edges:
         return True
-    margin = 1e-3
-    min_x = min(min(e["start"][0], e["end"][0]) for e in f_edges) - margin
-    max_x = max(max(e["start"][0], e["end"][0]) for e in f_edges) + margin
-    min_y = min(min(e["start"][1], e["end"][1]) for e in f_edges) - margin
-    max_y = max(max(e["start"][1], e["end"][1]) for e in f_edges) + margin
-    min_z = min(min(e["start"][2], e["end"][2]) for e in f_edges) - margin
-    max_z = max(max(e["start"][2], e["end"][2]) for e in f_edges) + margin
-
-    has_curved_edges = False
-    if cyl_faces:
-        for e in f_edges:
-            for fname in e["name"].split("|"):
-                if fname != f["name"] and fname in cyl_faces:
-                    has_curved_edges = True
-                    c = cyl_faces[fname].get("cylinder")
-                    if c:
-                        r = c["radius"]
-                        co = c["origin"]
-                        min_x = min(min_x, co[0] - r - margin)
-                        max_x = max(max_x, co[0] + r + margin)
-                        min_y = min(min_y, co[1] - r - margin)
-                        max_y = max(max_y, co[1] + r + margin)
-
-    if not (min_x <= x_loc[0] <= max_x and min_y <= x_loc[1] <= max_y and min_z <= x_loc[2] <= max_z):
-        return False
-
-    if has_curved_edges:
-        return True
-
     n = f.get("plane_normal")
     if not n:
         return True
@@ -336,15 +366,30 @@ def _point_in_face(x_loc: list[float], f: dict, f_edges: list[dict], cyl_faces: 
     drop = abs_n.index(max(abs_n))
     i1, i2 = [i for i in (0, 1, 2) if i != drop]
 
+    def area(polylines):
+        pts = [p for pl in polylines for p in pl]
+        return ((max(p[i1] for p in pts) - min(p[i1] for p in pts))
+                * (max(p[i2] for p in pts) - min(p[i2] for p in pts)))
+
+    loops = [[_edge_polyline(e, n) for e in loop] for loop in _edge_loops(f_edges)]
+    outer = max(loops, key=area)
+    pts = [p for pl in outer for p in pl]
+    margin = 1e-3
+    for i in range(3):
+        if not (min(p[i] for p in pts) - margin <= x_loc[i] <= max(p[i] for p in pts) + margin):
+            return False
+
+    # Even-odd ray crossing over the outer loop
     px, py = x_loc[i1], x_loc[i2]
     crossings = 0
-    for e in f_edges:
-        x1, y1 = e["start"][i1], e["start"][i2]
-        x2, y2 = e["end"][i1], e["end"][i2]
-        if (y1 <= py < y2) or (y2 <= py < y1):
-            x_int = x1 + (py - y1) * (x2 - x1) / (y2 - y1)
-            if x_int >= px - 1e-6:
-                crossings += 1
+    for pl in outer:
+        for p, q in zip(pl, pl[1:]):
+            x1, y1 = p[i1], p[i2]
+            x2, y2 = q[i1], q[i2]
+            if (y1 <= py < y2) or (y2 <= py < y1):
+                x_int = x1 + (py - y1) * (x2 - x1) / (y2 - y1)
+                if x_int >= px - 1e-6:
+                    crossings += 1
     return (crossings % 2) == 1
 
 
@@ -515,6 +560,8 @@ def _determine_anchor(ws, doc, ray_pos: list[float], ray_dir: list[float], penet
                 "dir_sign": dir_sign,
                 "recorded_pos": [round(x, 6) for x in ray_pos],
                 "recorded_dir": [round(x, 6) for x in ray_dir],
+                "recorded_pos_local": [round(x, 6) for x in p_loc],
+                "recorded_dir_local": [round(x, 6) for x in d_loc],
             }
 
     # Priority 2: Entry face of topmost part + distance to two edges / local offset
@@ -638,20 +685,19 @@ def _resolve_anchor(ws, doc, anchor: dict) -> tuple[str, list[float] | None, lis
         c = f.get("cylinder")
         if not c:
             return "anchor_lost", None, None
-        c_axis_w = g.unit(g.apply_dir(occ["transform"], c["axis"]))
-        c_orig_w = g.apply_point(occ["transform"], c["origin"])
-        rec_pos = anchor.get("recorded_pos")
-        rec_dir = anchor.get("recorded_dir", [0, 0, -1])
+        t_occ = occ["transform"]
+        c_axis = g.unit(c["axis"])
+        # Work in part coordinates so the anchor follows its occurrence when that moves or turns.
+        # Anchors recorded before 2026-10-27 only have world values; read them in the current frame.
+        t_inv = g.invert_rigid(t_occ)
+        rec_pos = anchor.get("recorded_pos_local") or g.apply_point(t_inv, anchor.get("recorded_pos"))
+        rec_dir = anchor.get("recorded_dir_local") or g.apply_dir(t_inv, anchor.get("recorded_dir", [0, 0, -1]))
 
-        # Project recorded_pos onto the new cylinder axis line to preserve height along the ray
-        proj_dist = g.dot(g.sub(rec_pos, c_orig_w), c_axis_w)
-        new_p_world = g.add(c_orig_w, g.scale(c_axis_w, proj_dist))
-
-        # Align direction with recorded_dir
-        if g.dot(c_axis_w, rec_dir) >= 0:
-            new_d_world = c_axis_w
-        else:
-            new_d_world = g.scale(c_axis_w, -1.0)
+        # Project the recorded point onto the (possibly moved) cylinder axis, keeping its height
+        proj_dist = g.dot(g.sub(rec_pos, c["origin"]), c_axis)
+        new_p_world = g.apply_point(t_occ, g.add(c["origin"], g.scale(c_axis, proj_dist)))
+        new_d_loc = c_axis if g.dot(c_axis, rec_dir) >= 0 else g.scale(c_axis, -1.0)
+        new_d_world = g.unit(g.apply_dir(t_occ, new_d_loc))
 
         return "ok", new_p_world, new_d_world
 
