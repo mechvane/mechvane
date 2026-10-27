@@ -5,8 +5,10 @@ Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
 
 ## Installation und Start (seit 2026-10-27)
 
-`pyproject.toml` macht Mechvane installierbar (`pip install git+https://github.com/mechvane/mechvane`,
-Entwicklung `pip install -e .`). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
+`pyproject.toml` macht Mechvane installierbar: `pip install mechvane` (PyPI seit 2026-10-27,
+`0.1.0a1`), Entwicklung `pip install -e .`. Neue Version: `version` in `pyproject.toml` erhöhen,
+exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/publish.yml` lädt
+per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
   (`mechvane/ui/webapp.py`) in der festen Version 0.21.0 für die eigene Plattform in den Cache

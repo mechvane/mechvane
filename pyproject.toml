@@ -4,13 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mechvane"
-version = "0.1.0.dev0"
+version = "0.1.0a1"
 description = "Parametric 3D CAD for everyday mechanical engineering, with AI agents, built on SolidCraft"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT OR Apache-2.0"
 license-files = ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE"]
 dependencies = ["mcp>=1.20,<2"]
+keywords = ["cad", "parametric", "mechanical-engineering", "mcp", "solidcraft", "ai-agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+
+[project.urls]
+Homepage = "https://github.com/mechvane/mechvane"
+Demo = "https://mechvane.github.io/mechvane/"
+Roadmap = "https://github.com/mechvane/mechvane/blob/main/ROADMAP.md"
+Issues = "https://github.com/mechvane/mechvane/issues"
 
 [project.scripts]
 mechvane = "mechvane.cli:main"

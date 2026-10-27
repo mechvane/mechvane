@@ -8,7 +8,7 @@ parts, frames, drawings …) load only when a document or the user needs them.
 **[Try the web UI in your browser](https://mechvane.github.io/mechvane/)**: example models with the model
 tree and design check findings, nothing to install.
 
-![A joint jumps to the wrong bore after a part edit, update_links puts it back](docs/media/update_links.gif)
+![A joint jumps to the wrong bore after a part edit, update_links puts it back](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/update_links.gif)
 
 *Change a part, and `update_links` notices that a joint jumped to a different bore and
 repairs it (regenerate with `python3 tools/demo_update_links.py`).*
@@ -35,7 +35,7 @@ repairs it (regenerate with `python3 tools/demo_update_links.py`).*
 Mechvane builds on [SolidCraft](https://github.com/tangency-labs/solidcraft) (Rust,
 Apache-2.0), an open CAD kernel and app where "everything is a command", with a built-in
 MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its own layer on top
-([ADR 0001](docs/adr/0001-grundlage-solidcraft.md)).
+([ADR 0001](https://github.com/mechvane/mechvane/blob/main/docs/adr/0001-grundlage-solidcraft.md)).
 
 ## Quick start
 
@@ -46,11 +46,13 @@ pinned `solidcraft-cli` and SolidCraft web app (v0.21.0) from the
 rendering works headless too.
 
 ```sh
-pip install git+https://github.com/mechvane/mechvane
+pip install mechvane
 mechvane setup        # SolidCraft CLI and web app, about 90 MB, once
 mechvane ui --demo    # example models in the browser
 mechvane ui my-project/   # your own .solidcraft files
 ```
+
+Alpha: so far tested on Linux; Windows and macOS are expected to work but not yet tested.
 
 An existing `solidcraft-cli` is used when you set `SOLIDCRAFT_CLI` or skip `mechvane setup`
 and have it on your `PATH`.
@@ -81,7 +83,7 @@ Then ask, for example: "Build an 80×40×8 plate with four M5 clearance holes, b
 bracket and check the design." The agent uses `new_part`, `run`, `bolted_connection`,
 `add_joint` and `check_design`. When a part changes, `update_links` finds joints that
 jumped to a different face and repairs them.
-Windows: [docs/installation-windows.md](docs/installation-windows.md) (German).
+Windows: [docs/installation-windows.md](https://github.com/mechvane/mechvane/blob/main/docs/installation-windows.md) (German).
 
 ## Status
 
@@ -96,12 +98,12 @@ Its "Model by hand" mode (`/model`) embeds the SolidCraft web app: edit the part
 assembly with the mouse, save, and Mechvane checks it again and updates the links. The web
 app is downloaded once from the SolidCraft release and checked against a pinned SHA256.
 
-![Mechvane read-only web UI showing model tree, 3D viewport and highlighted countersink finding](docs/media/web-ui-1.png)
+![Mechvane read-only web UI showing model tree, 3D viewport and highlighted countersink finding](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/web-ui-1.png)
 
 *A countersink that notches the wall, highlighted on click (regenerate with
 `python3 tools/demo_web_ui.py`).*
 
-![Model by hand: the SolidCraft web app embedded in Mechvane, the countersink moved away from the wall and Mechvane's findings updated after saving](docs/media/model-mode.png)
+![Model by hand: the SolidCraft web app embedded in Mechvane, the countersink moved away from the wall and Mechvane's findings updated after saving](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/model-mode.png)
 
 *Model by hand: the same bracket in the embedded SolidCraft web app, the countersink moved away
 from the wall and saved, Mechvane checked it again (regenerate with `python3 tools/demo_model_ui.py`).
@@ -109,11 +111,11 @@ Try it without installing: [live demo](https://mechvane.github.io/mechvane/model
 
 ## Contents
 
-- [ROADMAP.md](ROADMAP.md): phases, decision points, risks
-- [docs/adr/](docs/adr/): architecture decisions
-- [MCP server](docs/mechvane-mcp.md) (`mechvane/`): tools, data model, test reports
-- [tests/](tests/): layer checks and reference parts
-- [docs/research/](docs/research/): research notes and practice tests, dated. Notes
+- [ROADMAP.md](https://github.com/mechvane/mechvane/blob/main/ROADMAP.md): phases, decision points, risks
+- [docs/adr/](https://github.com/mechvane/mechvane/tree/main/docs/adr): architecture decisions
+- [MCP server](https://github.com/mechvane/mechvane/blob/main/docs/mechvane-mcp.md) (`mechvane/`): tools, data model, test reports
+- [tests/](https://github.com/mechvane/mechvane/tree/main/tests): layer checks and reference parts
+- [docs/research/](https://github.com/mechvane/mechvane/tree/main/docs/research): research notes and practice tests, dated. Notes
   marked as drafts (e.g. `-flash`, `-gemini`) are unverified unless a check note says
   otherwise.
 
@@ -124,7 +126,7 @@ Most project documentation is in German for now; code and comments are in Englis
 MIT OR Apache-2.0, at your option (`LICENSE-MIT`, `LICENSE-APACHE`), like SolidCraft, so
 code can move in both directions. Contributions are under the same terms. AGPL slicers
 such as CuraEngine only run as separate processes and are not part of Mechvane
-(`NOTICE`). See [CONTRIBUTING.md](CONTRIBUTING.md).
+(`NOTICE`). See [CONTRIBUTING.md](https://github.com/mechvane/mechvane/blob/main/CONTRIBUTING.md).
 
 Mechvane is an independent project and is not affiliated with Autodesk or any other CAD
 vendor. Product names only describe workflows.
