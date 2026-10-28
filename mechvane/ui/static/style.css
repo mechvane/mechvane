@@ -109,6 +109,14 @@ html, body {
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-logo {
+  width: 20px;
+  height: 20px;
 }
 
 .doc-name {

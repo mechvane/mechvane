@@ -587,6 +587,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path in ("/model", "/model.html"):
                 self._send_static("model.html", "text/html; charset=utf-8")
                 return
+            if path in ("/favicon.ico", "/logo.svg"):
+                self._send_static(path.lstrip("/"))
+                return
             if path.startswith("/vendor/"):
                 self._send_static(path.lstrip("/"))
                 return

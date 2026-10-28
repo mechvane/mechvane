@@ -1,8 +1,16 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/logo-wordmark-dark.png">
+  <img alt="Mechvane" src="https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/logo-wordmark-light.png" width="320">
+</picture>
+
 # Mechvane
 
+**You and your agent on the same model.**
+
 Parametric 3D CAD for everyday mechanical engineering (individual engineers, makers,
-small and medium-sized companies), following the workflow of classic mechanical CAD systems
-and rethought for AI agents. The core stays small; domain modules (sheet metal, standard
+small and medium-sized companies), following the workflow of classic mechanical CAD systems.
+Model by hand, hand a step to an AI agent, or both: you work on the same parts and get the
+same design checks either way. The core stays small; domain modules (sheet metal, standard
 parts, frames, drawings …) load only when a document or the user needs them.
 
 **[Try the web UI in your browser](https://mechvane.dev/)**: example models with the model
@@ -15,14 +23,14 @@ repairs it (regenerate with `python3 tools/demo_update_links.py`).*
 
 ## Guiding principles
 
-- **Agents are first-class operators.** Every action is a typed command. GUI, scripts,
+- **One model, many hands.** Every action is a typed command. You in the GUI, your scripts,
   plugins and AI agents (MCP) share one interface, with undo, batch rollback and precise
-  error messages.
-- **Agents with engineering knowledge.** An open, sourced knowledge catalog: standard
+  error messages, so you can pick up where your agent left off and the other way round.
+- **Engineering knowledge for you and your agent.** An open, sourced knowledge catalog: standard
   values from freely accessible sources, best practice from public handbooks and design
   guides, our own measurement series on the printer. Every rule carries its source,
-  rationale, exceptions and severity (error or hint), so agents design like experienced
-  engineers and `check_design` does not guess.
+  rationale, exceptions and severity (error or hint), so `check_design` does not guess and
+  an agent proposes what an experienced engineer would.
 - **No dead weight.** What monolithic CAD suites carry around (piping, cable harness, BIM,
   rendering studio …) is a plugin here or left out.
 - **Proven workflows where they work.** Design accelerators (bolted connections, shafts,
