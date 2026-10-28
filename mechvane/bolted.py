@@ -1120,6 +1120,44 @@ def bolted_connection(
         anchor_k = _determine_anchor(ws, doc, rays[k][0], rays[k][1], pen_k)
         anchors.append(anchor_k)
 
+    stored_pattern = None
+    if pattern:
+        stored_pattern = dict(pattern)
+        t_occ = None
+        if anchors and anchors[0].get("occurrence"):
+            occs = {o["name"]: o for o in links._occurrences(doc.session).values()}
+            occ_a = occs.get(anchors[0]["occurrence"])
+            if occ_a:
+                t_occ = occ_a.get("transform")
+        if t_occ:
+            t_inv = g.invert_rigid(t_occ)
+            pat_type = (stored_pattern.get("type") or "").strip().lower()
+            if pat_type in ("circular", "circle"):
+                axis_w = stored_pattern.get("axis", [0.0, 0.0, 1.0])
+                axis_loc = g.unit(g.apply_dir(t_inv, axis_w))
+                stored_pattern["axis_local"] = [round(x, 6) for x in axis_loc]
+
+                axis_pt_w = stored_pattern.get("axis_point", [0.0, 0.0, 0.0])
+                axis_pt_loc = g.apply_point(t_inv, axis_pt_w)
+                stored_pattern["axis_point_local"] = [round(x, 6) for x in axis_pt_loc]
+            elif pat_type in ("rectangular", "grid"):
+                dirs_w = stored_pattern.get("directions", [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                dirs_loc = [g.unit(g.apply_dir(t_inv, d)) for d in dirs_w]
+                stored_pattern["directions_local"] = [[round(x, 6) for x in d] for d in dirs_loc]
+                if "direction" in stored_pattern:
+                    dir_loc = g.unit(g.apply_dir(t_inv, stored_pattern["direction"]))
+                    stored_pattern["direction_local"] = [round(x, 6) for x in dir_loc]
+            elif pat_type in ("linear", "line"):
+                if "direction" in stored_pattern:
+                    dir_loc = g.unit(g.apply_dir(t_inv, stored_pattern.get("direction", [1.0, 0.0, 0.0])))
+                    stored_pattern["direction_local"] = [round(x, 6) for x in dir_loc]
+                if "directions" in stored_pattern:
+                    dirs_loc = [g.unit(g.apply_dir(t_inv, d)) for d in stored_pattern["directions"]]
+                    stored_pattern["directions_local"] = [[round(x, 6) for x in d] for d in dirs_loc]
+
+        if anchors:
+            anchors[0]["pattern"] = dict(stored_pattern)
+
     # Back up the assembly and every pierced part file for rollback
     backup_dir, backup = _backup_files([doc.path] + [p["file"] for p in all_penetrations[0]])
 
@@ -1185,9 +1223,10 @@ def bolted_connection(
                         "direction": loc_dir,
                         "clearance": canon_size,
                         "fit": sc_fit,
-                        "depth": p_k["thickness"],
                         "name": feat_name,
                     }
+                    if not (is_top and prev.get("countersink")):
+                        hole_params["depth"] = p_k["thickness"]
                     if is_top and prev.get("countersink"):
                         hole_params["type"] = "countersink"
                         hole_params["cs_diameter"] = prev["cs_diameter"]
@@ -1330,6 +1369,16 @@ def bolted_connection(
                     "b": {"occurrence": inst_screw, "point": p_screw_bearing, "z": g.scale(dir_k, -1.0)},
                 }
                 s.cmd("joint.create", screw_jp)
+
+                # Verify screw shank orientation in world coordinates: shank extends along dir_k
+                occs_now = {o["name"]: o for o in links._occurrences(s).values()}
+                if inst_screw in occs_now:
+                    shank_w = g.unit(g.apply_dir(occs_now[inst_screw]["transform"], [0.0, 0.0, -1.0]))
+                    if g.dot(shank_w, dir_k) < 0.5:
+                        needed_flip = not screw_jp.get("flip", False)
+                        s.cmd("joint.edit", {"joint": screw_jname, "flip": needed_flip})
+                        screw_jp["flip"] = needed_flip
+
                 links.record(ws, doc, screw_jname, screw_jp)
                 inst_joints.append(screw_jname)
                 all_created_joints.append(screw_jname)
@@ -1444,7 +1493,7 @@ def bolted_connection(
             "anchors": anchors,
             "parameters": {
                 "placement": placement,
-                "pattern": pattern,
+                "pattern": stored_pattern,
                 "size": canon_size,
                 "fasteners": fasteners,
                 "fit": fit,
@@ -1474,7 +1523,7 @@ def bolted_connection(
             "parts": parts_meta,
             "joints": all_created_joints,
             "components": all_created_components,
-            "pattern": pattern,
+            "pattern": stored_pattern,
             "count": N,
             "instances": instances_meta,
             "countersink": prev.get("countersink", False),
@@ -1725,7 +1774,50 @@ def check_and_update_bolted_connections(ws, doc, repair: bool = False) -> list[d
             continue
 
         has_moved, shifted_by = _check_anchor_movement(anchor, new_pos, new_dir)
-        if not has_moved:
+
+        occs = {o["name"]: o for o in links._occurrences(doc.session).values()}
+        anchor_occ = occs.get(anchor.get("occurrence"))
+        t_occ = anchor_occ.get("transform") if anchor_occ else None
+
+        old_params = dict(conn_meta.get("parameters", {}))
+        pattern_params = None
+        if old_params.get("pattern"):
+            pattern_params = dict(old_params["pattern"])
+        elif conn_meta.get("pattern"):
+            pattern_params = dict(conn_meta["pattern"])
+        elif anchor.get("pattern"):
+            pattern_params = dict(anchor["pattern"])
+
+        # Check if pattern has local recorded values from anchor if missing in pattern_params
+        if pattern_params and anchor.get("pattern"):
+            for lk in ("axis_local", "axis_point_local", "directions_local", "direction_local"):
+                if lk in anchor["pattern"] and lk not in pattern_params:
+                    pattern_params[lk] = anchor["pattern"][lk]
+
+        pattern_changed = False
+        if pattern_params and t_occ:
+            p_type = (pattern_params.get("type") or "").strip().lower()
+            if p_type in ("circular", "circle"):
+                if "axis_local" in pattern_params:
+                    cur_axis = g.unit(g.apply_dir(t_occ, pattern_params["axis_local"]))
+                    if g.norm(g.sub(cur_axis, pattern_params.get("axis", [0, 0, 1]))) > 1e-3:
+                        pattern_changed = True
+                if "axis_point_local" in pattern_params:
+                    cur_ap = g.apply_point(t_occ, pattern_params["axis_point_local"])
+                    if g.norm(g.sub(cur_ap, pattern_params.get("axis_point", [0, 0, 0]))) > 1e-3:
+                        pattern_changed = True
+            elif p_type in ("rectangular", "grid", "linear", "line"):
+                if "directions_local" in pattern_params:
+                    cur_dirs = [g.unit(g.apply_dir(t_occ, d)) for d in pattern_params["directions_local"]]
+                    old_dirs = pattern_params.get("directions", [])
+                    if any(g.norm(g.sub(cd, od)) > 1e-3 for cd, od in zip(cur_dirs, old_dirs)):
+                        pattern_changed = True
+                if "direction_local" in pattern_params:
+                    cur_d = g.unit(g.apply_dir(t_occ, pattern_params["direction_local"]))
+                    if g.norm(g.sub(cur_d, pattern_params.get("direction", [1, 0, 0]))) > 1e-3:
+                        pattern_changed = True
+
+        if not has_moved and not pattern_changed:
             results.append({
                 "id": conn_id,
                 "status": "ok",
@@ -1742,21 +1834,52 @@ def check_and_update_bolted_connections(ws, doc, repair: bool = False) -> list[d
             continue
 
         try:
-            old_params = dict(conn_meta.get("parameters", {}))
             old_placement = dict(old_params.get("placement") or {})
             new_placement = dict(old_placement)
             new_placement["position"] = [round(x, 6) for x in new_pos]
             new_placement["direction"] = [round(x, 6) for x in new_dir]
             new_placement["type"] = "point"
 
-            pattern_params = None
-            if old_params.get("pattern"):
-                pattern_params = dict(old_params["pattern"])
-                if "axis_point" in pattern_params:
-                    old_ap = pattern_params["axis_point"]
-                    pattern_params["axis_point"] = [
-                        round(old_ap[i] + shifted_by[i], 6) for i in range(3)
-                    ]
+            if pattern_params:
+                p_type = (pattern_params.get("type") or "").strip().lower()
+                if p_type in ("circular", "circle"):
+                    if t_occ and ("axis_local" in pattern_params or "axis_point_local" in pattern_params):
+                        if "axis_local" in pattern_params:
+                            new_axis = g.unit(g.apply_dir(t_occ, pattern_params["axis_local"]))
+                            pattern_params["axis"] = [round(x, 6) for x in new_axis]
+                        if "axis_point_local" in pattern_params:
+                            new_ap = g.apply_point(t_occ, pattern_params["axis_point_local"])
+                            pattern_params["axis_point"] = [round(x, 6) for x in new_ap]
+                        elif "axis_point" in pattern_params:
+                            old_ap = pattern_params["axis_point"]
+                            pattern_params["axis_point"] = [
+                                round(old_ap[i] + shifted_by[i], 6) for i in range(3)
+                            ]
+                    else:
+                        # Legacy behavior: axis remains unchanged, axis_point is shifted by shifted_by
+                        if "axis_point" in pattern_params:
+                            old_ap = pattern_params["axis_point"]
+                            pattern_params["axis_point"] = [
+                                round(old_ap[i] + shifted_by[i], 6) for i in range(3)
+                            ]
+                elif p_type in ("rectangular", "grid"):
+                    if t_occ and ("directions_local" in pattern_params or "direction_local" in pattern_params):
+                        if "directions_local" in pattern_params:
+                            new_dirs = [g.unit(g.apply_dir(t_occ, d)) for d in pattern_params["directions_local"]]
+                            pattern_params["directions"] = [[round(x, 6) for x in d] for d in new_dirs]
+                        if "direction_local" in pattern_params:
+                            new_d = g.unit(g.apply_dir(t_occ, pattern_params["direction_local"]))
+                            pattern_params["direction"] = [round(x, 6) for x in new_d]
+                    # Legacy behavior: directions unchanged
+                elif p_type in ("linear", "line"):
+                    if t_occ and ("direction_local" in pattern_params or "directions_local" in pattern_params):
+                        if "direction_local" in pattern_params:
+                            new_d = g.unit(g.apply_dir(t_occ, pattern_params["direction_local"]))
+                            pattern_params["direction"] = [round(x, 6) for x in new_d]
+                        if "directions_local" in pattern_params:
+                            new_dirs = [g.unit(g.apply_dir(t_occ, d)) for d in pattern_params["directions_local"]]
+                            pattern_params["directions"] = [[round(x, 6) for x in d] for d in new_dirs]
+                    # Legacy behavior: directions unchanged
 
             edit_bolted_connection(
                 ws,

@@ -1,12 +1,30 @@
 # Mechvane: Installation unter Windows
 
-> **Hinweis (2026-10-23):** Der Client liest die SolidCraft-Ausgabe jetzt in einem eigenen
-> Lesethread statt mit `select` auf Pipes und läuft damit wieder unter Windows (unter
-> Windows selbst noch nicht erneut getestet).
+## Schnellweg mit pip (seit 0.1.0a2, getestet 2026-10-27)
 
-Diese Anleitung beschreibt die Installation und Inbetriebnahme von **Mechvane** auf einem Windows-Rechner (getestet auf Windows 11 x64 / Surface Laptop mit Python 3.14.7 und SolidCraft 0.17.0).
+```powershell
+python -m venv $HOME\mechvane-venv
+$HOME\mechvane-venv\Scripts\pip install mechvane
+$HOME\mechvane-venv\Scripts\mechvane setup       # SolidCraft-CLI und Web-App, ca. 90 MB, einmalig
+$HOME\mechvane-venv\Scripts\mechvane ui --demo   # Beispielmodelle im Browser
+```
 
-Die Installation erfolgt vollständig ohne Administratorrechte und ohne Eingriff ins Betriebssystem (kein MSI-Installer, kein Registry-Eintrag, kein systemweites `pip install`, keine PATH-Änderung). Alles liegt isoliert unter `C:\Users\<Benutzer>\mechvane\`.
+`mechvane setup` legt alles unter `%LOCALAPPDATA%\mechvane` ab (portables
+SolidCraft-ZIP 0.21.0, SHA256 geprüft). Ohne venv geht auch `pip install --user mechvane`;
+findet Windows `mechvane` dann nicht, `python -m mechvane setup` (bzw. `ui`, `mcp`) nehmen.
+
+Getestet auf der Windows-11-VM (x64, Build 26220) mit einer venv aus CPython 3.13.13
+(das Python aus Blender 5.2, auf der VM ist kein python.org-Python installiert):
+`pip install mechvane` (0.1.0a2) → `mechvane setup` in 48 s → `mechvane ui --demo` baut die
+Beispielmodelle in 14 s; Check-Ansicht (3D-Modell, Modellbaum, Befunde, markierte Fläche)
+und „Model by hand“ (eingebettete SolidCraft-Web-App) im Edge geprüft, alle
+API-Endpunkte für Teil und Baugruppe liefern 200; `mechvane mcp` beantwortet
+`initialize`, `tools/list` und legt mit `new_part` eine Datei an. Bekannt: 0.1.0a2 lässt pro
+SolidCraft-Sitzung einen leeren Ordner `%TEMP%\solidcraft-mcp-*` zurück (Fehler in
+SolidCraft 0.21.0, [Issue #7836](https://github.com/tangency-labs/solidcraft/issues/7836); ab 0.1.0a3 räumt Mechvane selbst auf).
+
+Der Rest dieser Anleitung beschreibt den älteren Weg von Hand (Repository-Kopie,
+SolidCraft 0.17.0), nur noch für Entwicklung am Repository nötig.
 
 ---
 

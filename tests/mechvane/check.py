@@ -425,7 +425,7 @@ def standard_parts_checks(ws):
          math.pi * ((4.6 / 2) ** 2 - (3.0 / 2) ** 2) * 5.7,
          [[-2.3, -2.3, 0.0], [2.3, 2.3, 5.7]]),
         ("DIN 625", "6000", None, "DIN 625 6000",
-         math.pi * ((26.0 / 2) ** 2 - (10.0 / 2) ** 2) * 8.0,
+         math.pi * ((26.0 / 2) ** 2 - (10.0 / 2) ** 2) * 8.0 - math.pi * 0.3 ** 2 * (26.0 + 10.0),
          [[-13.0, -13.0, 0.0], [13.0, 13.0, 8.0]]),
     ]
     for norm, size, length, desig, v_exp, bb_exp in cases:
@@ -532,8 +532,9 @@ def standard_parts_checks(ws):
             standard_parts.create(ws, "ISO 4762", "M5", length=16)
         except Exception:
             create_failed = True
+        bad_file = ws.root / "ISO_4762_M5_Bad.solidcraft"
         ok("creation failure cleans up open document from workspace",
-           create_failed and "ISO_4762_M5_Bad" not in ws.docs)
+           create_failed and "ISO_4762_M5_Bad" not in ws.docs and not bad_file.exists())
     finally:
         standard_parts.spec = orig_spec
 
@@ -1013,7 +1014,10 @@ def bolted_connection_checks(ws):
     # Part origins lie on the part axis, so each origin in world coordinates must be on x=y=0.
     origins = [g.apply_point(t, [0.0, 0.0, 0.0]) for t in (t_screw, t_nut, t_washer)]
     world_coaxial = all(abs(o[0]) < 1e-4 and abs(o[1]) < 1e-4 for o in origins)
-    ok("bolted connection: screw sits coaxial to hole", coaxial and world_coaxial, f"{fa} vs {fb}, origins={origins}")
+    # Head bearing surface of screw sits flush on top plate at z = 10.0 (Befund 11)
+    head_seated = abs(origins[0][2] - 10.0) < 1e-3
+    ok("bolted connection: screw sits coaxial to hole", coaxial and world_coaxial and head_seated,
+       f"{fa} vs {fb}, origins={origins}")
 
     # Check interference (no collision screw/hole)
     interf = asm.session.cmd("inspect.interference", {})
@@ -1158,7 +1162,9 @@ def bolted_connection_checks(ws):
     coaxial_blind = (abs(fa_bl["origin"][0] - fb_bl["origin"][0]) < 1e-4
                      and abs(fa_bl["origin"][1] - fb_bl["origin"][1]) < 1e-4
                      and abs(g.dot(fa_bl["z"], fb_bl["z"]) - 1.0) < 1e-4)
-    ok("bolted connection blind: screw sits coaxial to hole", coaxial_blind, f"{fa_bl} vs {fb_bl}")
+    # Head bearing surface sits at top plate surface at z = 10.0 (Befund 11)
+    head_seated_blind = abs(fa_bl["origin"][2] - 10.0) < 1e-4
+    ok("bolted connection blind: screw sits coaxial to hole", coaxial_blind and head_seated_blind, f"{fa_bl} vs {fb_bl}")
 
     chk_blind = links.check(ws, asm_blind)
     ok("bolted connection blind: check_joints is green (all ok)",
@@ -2597,8 +2603,11 @@ def server_fixes_checks(tmp, ws):
         class _FakeProc:
             stdout = _FakeStdout()
             stdin = None
+            pid = -1
             def wait(self, *a, **kw):
                 pass
+            def poll(self):
+                return 0
             def kill(self):
                 pass
 
@@ -3164,10 +3173,10 @@ def praxistest_3_fixes_checks(ws):
 
     ok("praxistest 3 / finding 1: DIN 625 supports 608 and miniature bearings with verified catalog dimensions",
        d_608 == {"d": 8.0, "D": 22.0, "B": 7.0, "r": 0.3}
-       and abs(v_608 - math.pi * ((22.0 / 2) ** 2 - (8.0 / 2) ** 2) * 7.0) < 1e-6
+       and abs(v_608 - (math.pi * ((22.0 / 2) ** 2 - (8.0 / 2) ** 2) * 7.0 - math.pi * 0.3 ** 2 * (22.0 + 8.0))) < 1e-6
        and bb_608 == [[-11.0, -11.0, 0.0], [11.0, 11.0, 7.0]]
        and d_623 == {"d": 3.0, "D": 10.0, "B": 4.0, "r": 0.15}
-       and abs(v_623 - math.pi * ((10.0 / 2) ** 2 - (3.0 / 2) ** 2) * 4.0) < 1e-6,
+       and abs(v_623 - (math.pi * ((10.0 / 2) ** 2 - (3.0 / 2) ** 2) * 4.0 - math.pi * 0.15 ** 2 * (10.0 + 3.0))) < 1e-6,
        f"d_608={d_608}, d_623={d_623}")
 
     # Befund 7: check_design top-level status field matching verdict
@@ -4101,6 +4110,183 @@ def argon_review_findings_checks(ws):
         ws.close(name)
 
 
+def argon_review_findings_5_8_checks(ws):
+    """Findings 5 and 8 of the Argon review (docs/research/2026-10-27-review-gemini-bausteine-argon.md)."""
+    # Finding 5: hole edge distance to external cylindrical surface (outside cylinder).
+    # Hand calculation:
+    # Plate: 50 x 60 x 10 mm (x in [0, 50], y in [0, 60], z in [0, 10]).
+    # Cylindrical Zapfen: joined at base [50, 30, 0], diameter 20 mm (R = 10 mm), height 10 mm.
+    # Zapfen axis is at (x=50, y=30) along Z.
+    # Hole: drilled at [35, 30, 10], depth 10 mm, diameter 4 mm (d = 4 mm, radius r = 2 mm).
+    # Axis distance: d_axes = 50 - 35 = 15.0 mm.
+    # Expected distance from hole center (Lochmitte) to cylinder surface:
+    #   dist = d_axes - R = 15.0 - 10.0 = 5.0 mm.
+    # (Physical wall thickness from hole edge to cylinder surface: 5.0 - r = 3.0 mm).
+    # Required edge distance: 1.5 * d = 1.5 * 4.0 = 6.0 mm from hole center.
+    # Since dist = 5.0 mm < 6.0 mm, hole_edge_distance must report 'fail' with value 5.0 mm.
+    # The buggy code calculated d_axes - R + r = 15 - 10 + 2 = 7.0 mm (reporting false 'ok').
+    p5 = ws.new(PART, "argon_finding5")
+    p5.session.batch([
+        {"command": "solid.box", "params": {"length": 50, "width": 60, "height": 10, "corner": [0, 0, 0],
+                                            "name": "Base", "body_name": "Part5"}},
+        {"command": "solid.cylinder", "params": {"diameter": 20, "height": 10, "base": [50, 30, 0],
+                                                 "operation": "join", "name": "Zapfen"}},
+        {"command": "solid.hole", "params": {"position": [35, 30, 10], "direction": [0, 0, -1],
+                                             "diameter": 4, "depth": 10, "name": "Hole"}},
+    ])
+    res5 = design_rules.check(p5.session)
+    edge_findings = res5["rules"]["hole_edge_distance"]["findings"]
+    f5 = edge_findings[0] if edge_findings else {}
+    ok("argon review 5: hole edge distance to external cylinder outside calculates d_axes - R from hole center",
+       f5.get("status") == "fail" and abs(f5.get("value", 0.0) - 5.0) < 1e-3
+       and abs(f5.get("threshold", 0.0) - 6.0) < 1e-3,
+       f"status={f5.get('status')} val={f5.get('value')} thresh={f5.get('threshold')} msg={f5.get('message')}")
+    ws.close("argon_finding5")
+
+    # Finding 8: two coaxial threaded holes (M6 depth 10 from top, M6 depth 16 from bottom)
+    # separated by solid material along the same axis line.
+    # Hand calculation:
+    # Block: 40 x 40 x 50 mm (z in [0, 50]).
+    # HoleTop: position [20, 20, 50], depth 10 mm (z: 50 -> 40), ThreadTop: M6x1, depth 10 mm.
+    # HoleBottom: position [20, 20, 0], depth 16 mm (z: 0 -> 16), ThreadBottom: M6x1, depth 16 mm.
+    # Material between hole bottoms: z = 16 to z = 40 (24 mm solid material).
+    # Expected:
+    # - Both holes extracted as distinct hole entries.
+    # - HoleTop matches ThreadTop (depth 10.0 mm), HoleBottom matches ThreadBottom (depth 16.0 mm).
+    # - thread_depth findings contain both holes with depths 10.0 and 16.0 mm (both >= 9.0 mm threshold).
+    # The buggy code lumped both into one hole or assigned ThreadTop to both holes.
+    blk8 = ws.new(PART, "argon_finding8")
+    blk8.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 50, "corner": [0, 0, 0],
+                                            "name": "Block", "body_name": "Block8"}},
+        {"command": "solid.hole", "params": {"position": [20, 20, 50], "direction": [0, 0, -1],
+                                             "diameter": 5.0, "depth": 10, "name": "HoleTop"}},
+        {"command": "solid.thread", "params": {"face": [22.5, 20, 45], "designation": "M6x1", "name": "ThreadTop"}},
+        {"command": "solid.hole", "params": {"position": [20, 20, 0], "direction": [0, 0, 1],
+                                             "diameter": 5.0, "depth": 16, "name": "HoleBottom"}},
+        {"command": "solid.thread", "params": {"face": [22.5, 20, 8], "designation": "M6x1", "name": "ThreadBottom"}},
+    ])
+    res8 = design_rules.check(blk8.session)
+    th_findings = res8["rules"]["thread_depth"]["findings"]
+    th_vals = sorted(round(f.get("value", 0.0), 1) for f in th_findings)
+    ok("argon review 8: two coaxial threaded holes are matched to their respective axial threads without overwriting",
+       len(th_findings) == 2 and th_vals == [10.0, 16.0]
+       and all(f.get("status") == "ok" for f in th_findings),
+       f"count={len(th_findings)} values={th_vals} findings={th_findings}")
+    ws.close("argon_finding8")
+
+def argon_review_findings_7_10_12_checks(ws):
+    """Findings 7, 10 and 12 of the Argon review (docs/research/2026-10-27-review-gemini-bausteine-argon.md)."""
+    # Finding 7 and 10:
+    # If standard_parts.create fails after ws.new, a newly created file must be removed from disk.
+    # A subsequent call without overwrite=True must then succeed.
+    orig_spec = standard_parts.spec
+    try:
+        standard_parts.spec = lambda *a, **kw: {
+            "standard": {"norm": "ISO 4762", "size": "M5", "designation": "argon_fail_test"},
+            "commands": [{"command": "nonexistent.command.fails"}],
+            "warnings": [],
+        }
+        failed_new = False
+        try:
+            standard_parts.create(ws, "ISO 4762", "M5", length=16)
+        except Exception:
+            failed_new = True
+        f_new = ws.root / "argon_fail_test.solidcraft"
+        new_file_cleaned = not f_new.exists()
+    finally:
+        standard_parts.spec = orig_spec
+
+    # Now verify that a retry without overwrite succeeds because the orphaned file was deleted
+    retry_ok = False
+    try:
+        res_retry = standard_parts.create(ws, "ISO 4762", "M5", length=16, name="argon_fail_test")
+        retry_ok = res_retry.get("name") == "argon_fail_test"
+        ws.close("argon_fail_test")
+    except Exception:
+        retry_ok = False
+    if f_new.exists():
+        f_new.unlink(missing_ok=True)
+
+    ok("argon review 7 and 10: failed creation cleans up newly created file from disk, retry succeeds without overwrite",
+       failed_new and new_file_cleaned and retry_ok)
+
+    # Finding 7 (overwrite=True):
+    # An already existing file must NOT be deleted when create with overwrite=True fails.
+    pre_doc = ws.new(PART, "argon_existing_test")
+    pre_doc.session.batch([{"command": "solid.box", "params": {"length": 10, "width": 10, "height": 10, "name": "B"}}])
+    pre_doc.save()
+    f_existing = pre_doc.path
+    ws.close("argon_existing_test")
+    assert f_existing.exists(), "precondition: existing file must exist on disk"
+
+    orig_spec = standard_parts.spec
+    try:
+        standard_parts.spec = lambda *a, **kw: {
+            "standard": {"norm": "ISO 4762", "size": "M5", "designation": "argon_existing_test"},
+            "commands": [{"command": "nonexistent.command.fails"}],
+            "warnings": [],
+        }
+        failed_overwrite = False
+        try:
+            standard_parts.create(ws, "ISO 4762", "M5", length=16, name="argon_existing_test", overwrite=True)
+        except Exception:
+            failed_overwrite = True
+        preserved = f_existing.exists()
+    finally:
+        standard_parts.spec = orig_spec
+    if f_existing.exists():
+        f_existing.unlink(missing_ok=True)
+
+    ok("argon review 7: failed creation with overwrite=True preserves pre-existing file on disk",
+       failed_overwrite and preserved)
+
+    # Finding 12:
+    # DIN 625 deep groove ball bearing model must have chamfers with dimension r on outer and inner ring edges.
+    sp_bearing = standard_parts.create(ws, "DIN 625", "6000", name="argon_bearing_6000")
+    b_doc = ws.get("argon_bearing_6000", PART)
+    b_insp = b_doc.session.cmd("document.inspect", {"measure": True})
+    b_timeline = [f["name"] for f in b_insp.get("timeline", [])]
+    b_faces = b_doc.session.cmd("model.faces", {"body": "Bearing"})["faces"]
+    b_has_chamfer_faces = any("blend" in f["name"] or "chamfer" in f["name"].lower() for f in b_faces)
+    b_body = b_insp["bodies"][0]
+    b_vol = b_body["volume_mm3"]
+    b_bb = [b_body["bbox"]["min"], b_body["bbox"]["max"]]
+    v_exp = standard_parts.expected_volume("DIN 625", "6000")
+    bb_exp = standard_parts.expected_bbox("DIN 625", "6000")
+
+    # The chamfer feature must be in the timeline, chamfer blend faces present,
+    # volume within envelope tolerance (< 2%), and bounding box identical to unchamfered cylinder.
+    ok("argon review 12: DIN 625 bearing model includes chamfer with dimension r at outer and inner edges",
+       "Chamfer" in b_timeline and b_has_chamfer_faces and b_body["faces"] == 8
+       and abs(b_vol - v_exp) / v_exp < 0.02
+       and all(abs(b_bb[i][j] - bb_exp[i][j]) < 0.05 for i in (0, 1) for j in range(3)),
+       f"timeline={b_timeline} chamfer_faces={b_has_chamfer_faces} faces={b_body['faces']} vol={b_vol} exp={v_exp} bb={b_bb} bb_exp={bb_exp}")
+
+    # Ensure parameter r remains editable and updates the chamfer
+    sp_b_param = standard_parts.create(ws, "DIN 625", "608", name="argon_bearing_param")
+    p_doc = ws.get("argon_bearing_param", PART)
+    v_r1 = p_doc.session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
+    p_doc.session.cmd("parameters.change", {"name": "r", "expression": "0.5 mm"})
+    v_r2 = p_doc.session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
+    ok("argon review 12: DIN 625 bearing chamfer updates parametrically when parameter r is changed",
+       v_r2 < v_r1, f"v_r1={v_r1} v_r2={v_r2}")
+
+    for name in ("argon_bearing_param", "argon_bearing_6000"):
+        ws.close(name)
+
+
+def scratch_dir_checks():
+    """SolidCraft leaves an empty solidcraft-mcp-<pid>-<n> folder in the temp dir per session."""
+    import tempfile
+    from mechvane.solidcraft import Session
+    s = Session()
+    pid = s._p.pid
+    s.close()
+    left = [p.name for p in Path(tempfile.gettempdir()).glob(f"solidcraft-mcp-{pid}-*")]
+    ok("session: close removes the server's empty scratch folder", not left, str(left))
+
+
 def install_checks(tmp):
     """`mechvane setup` and the CLI lookup, offline: a local archive stands in for the release."""
     import hashlib
@@ -4176,6 +4362,248 @@ def install_checks(tmp):
     ok("cli: `mechvane ui` on a missing path exits with 1", cli.main(["ui", str(root / "nope"), "--no-browser"]) == 1)
 
 
+def argon_review_finding_6_checks(ws):
+    """Argon Finding 6: pattern update follows rotated anchor component."""
+    # 1. Circular pattern (3 screws) on Dom + Lid, Dom subsequently rotated 90 deg around Y
+    dom = ws.new(PART, "argon6_dom")
+    dom.session.batch([
+        {"command": "solid.box", "params": {"length": 60, "width": 60, "height": 10, "corner": [-30, -30, 0],
+                                            "name": "Base", "body_name": "Dom"}},
+        {"command": "solid.cylinder", "params": {"diameter": 10, "height": 20, "base": [0, 0, 10],
+                                                 "operation": "join", "name": "Boss"}}
+    ])
+    dom.save()
+    lid = ws.new(PART, "argon6_lid")
+    lid.session.cmd("solid.box", {"length": 60, "width": 60, "height": 5, "corner": [-30, -30, 0], "name": "Lid"})
+    lid.save()
+
+    asm_circ = ws.new(ASSEMBLY, "argon6_circ_asm")
+    links.insert(ws, asm_circ, dom.path, name="Dom", grounded=True)
+    links.insert(ws, asm_circ, lid.path, name="Lid", translate=[0, 0, 30], grounded=True)
+    asm_circ.save()
+
+    circ_pat = {"type": "circular", "count": 3, "axis_point": [0, 0, 0], "axis": [0, 0, 1]}
+    res_circ = bolted.bolted_connection(
+        ws, "argon6_circ_asm",
+        placement={"position": [15, 0, 35], "direction": [0, 0, -1]},
+        size="M3",
+        counterbore=False,
+        pattern=circ_pat,
+        parts=["Lid:1", "Dom:1"],
+    )
+    asm_circ.save()
+
+    meta_circ0 = asm_circ.metadata()["bolted_connections"][res_circ["id"]]
+    orig_circ_pos = [inst["position"] for inst in meta_circ0["instances"]]
+
+    # Rotate Dom and Lid by 90 deg around Y and translate Dom to [100, 0, 0]
+    moved_circ = ws.new(ASSEMBLY, "argon6_circ_moved")
+    links.insert(ws, moved_circ, dom.path, name="Dom", rotate={"axis": [0, 1, 0], "angle": 90},
+                 translate=[100, 0, 0], grounded=True)
+    links.insert(ws, moved_circ, lid.path, name="Lid", rotate={"axis": [0, 1, 0], "angle": 90},
+                 translate=[130, 0, 0], grounded=True)
+    moved_circ.set_metadata(asm_circ.metadata())
+    moved_circ.save()
+
+    occ_dom = next(o for o in links._occurrences(moved_circ.session).values() if o["name"] == "Dom:1")
+    want_circ_pos = [g.apply_point(occ_dom["transform"], p) for p in orig_circ_pos]
+
+    rep_circ = bolted.check_and_update_bolted_connections(ws, moved_circ, repair=True)
+    b_rep_circ = next((r for r in rep_circ if r["id"] == res_circ["id"]), {})
+    meta_circ1 = moved_circ.metadata()["bolted_connections"][res_circ["id"]]
+    got_circ_pos = [inst["position"] for inst in meta_circ1.get("instances", [])]
+
+    circ_ok = (b_rep_circ.get("status") == "moved_repaired"
+               and len(got_circ_pos) == len(want_circ_pos)
+               and all(g.norm(g.sub(got, want)) < 1e-3 for got, want in zip(got_circ_pos, want_circ_pos)))
+    ok("argon review 6: circular pattern holes follow rotated anchor occurrence (90 deg around Y)",
+       circ_ok,
+       f"status={b_rep_circ.get('status')} got={got_circ_pos} want={want_circ_pos}")
+
+    for name in ("argon6_circ_moved", "argon6_circ_asm", "argon6_lid", "argon6_dom"):
+        ws.close(name)
+
+    # 2. Rectangular pattern (2x2) on Plate1 + Plate2, Plate1 subsequently rotated 90 deg around Y
+    p1 = ws.new(PART, "argon6_p1")
+    p1.session.cmd("solid.box", {"length": 80, "width": 80, "height": 10, "corner": [-40, -40, 0],
+                                 "name": "Box1", "body_name": "Plate1"})
+    p1.save()
+    p2 = ws.new(PART, "argon6_p2")
+    p2.session.cmd("solid.box", {"length": 80, "width": 80, "height": 10, "corner": [-40, -40, 0],
+                                 "name": "Box2", "body_name": "Plate2"})
+    p2.save()
+
+    asm_rect = ws.new(ASSEMBLY, "argon6_rect_asm")
+    links.insert(ws, asm_rect, p1.path, name="Plate1", grounded=True)
+    links.insert(ws, asm_rect, p2.path, name="Plate2", translate=[0, 0, -10], grounded=True)
+    asm_rect.save()
+
+    rect_pat = {"type": "rectangular", "count": [2, 2], "spacing": [20, 20], "directions": [[1, 0, 0], [0, 1, 0]]}
+    res_rect = bolted.bolted_connection(
+        ws, "argon6_rect_asm",
+        placement={"position": [-10, -10, 10], "direction": [0, 0, -1]},
+        size="M3",
+        counterbore=False,
+        pattern=rect_pat,
+        parts=["Plate1:1", "Plate2:1"],
+    )
+    asm_rect.save()
+
+    meta_rect0 = asm_rect.metadata()["bolted_connections"][res_rect["id"]]
+    orig_rect_pos = [inst["position"] for inst in meta_rect0["instances"]]
+
+    moved_rect = ws.new(ASSEMBLY, "argon6_rect_moved")
+    links.insert(ws, moved_rect, p1.path, name="Plate1", rotate={"axis": [0, 1, 0], "angle": 90},
+                 translate=[100, 0, 0], grounded=True)
+    links.insert(ws, moved_rect, p2.path, name="Plate2", rotate={"axis": [0, 1, 0], "angle": 90},
+                 translate=[100, 0, 0], grounded=True)
+    moved_rect.set_metadata(asm_rect.metadata())
+    moved_rect.save()
+
+    occ_p1 = next(o for o in links._occurrences(moved_rect.session).values() if o["name"] == "Plate1:1")
+    want_rect_pos = [g.apply_point(occ_p1["transform"], p) for p in orig_rect_pos]
+
+    rep_rect = bolted.check_and_update_bolted_connections(ws, moved_rect, repair=True)
+    b_rep_rect = next((r for r in rep_rect if r["id"] == res_rect["id"]), {})
+    meta_rect1 = moved_rect.metadata()["bolted_connections"][res_rect["id"]]
+    got_rect_pos = [inst["position"] for inst in meta_rect1.get("instances", [])]
+
+    rect_ok = (b_rep_rect.get("status") == "moved_repaired"
+               and len(got_rect_pos) == len(want_rect_pos)
+               and all(g.norm(g.sub(got, want)) < 1e-3 for got, want in zip(got_rect_pos, want_rect_pos)))
+    ok("argon review 6: rectangular pattern holes follow rotated anchor occurrence (90 deg around Y)",
+       rect_ok,
+       f"status={b_rep_rect.get('status')} got={got_rect_pos} want={want_rect_pos}")
+
+    for name in ("argon6_rect_moved", "argon6_rect_asm", "argon6_p2", "argon6_p1"):
+        ws.close(name)
+
+    # 3. Legacy pattern dataset without local vectors: shifts axis_point without rotating axis
+    dom_l = ws.new(PART, "argon6_leg_dom")
+    dom_l.session.batch([
+        {"command": "solid.box", "params": {"length": 60, "width": 60, "height": 10, "corner": [-30, -30, 0],
+                                            "name": "Base", "body_name": "Dom"}},
+        {"command": "solid.cylinder", "params": {"diameter": 10, "height": 20, "base": [0, 0, 10],
+                                                 "operation": "join", "name": "Boss"}}
+    ])
+    dom_l.save()
+    lid_l = ws.new(PART, "argon6_leg_lid")
+    lid_l.session.cmd("solid.box", {"length": 60, "width": 60, "height": 5, "corner": [-30, -30, 0], "name": "Lid"})
+    lid_l.save()
+
+    asm_leg = ws.new(ASSEMBLY, "argon6_leg_asm")
+    links.insert(ws, asm_leg, dom_l.path, name="Dom", grounded=True)
+    links.insert(ws, asm_leg, lid_l.path, name="Lid", translate=[0, 0, 30], grounded=True)
+    asm_leg.save()
+
+    res_leg = bolted.bolted_connection(
+        ws, "argon6_leg_asm",
+        placement={"position": [15, 0, 35], "direction": [0, 0, -1]},
+        size="M3",
+        counterbore=False,
+        pattern={"type": "circular", "count": 3, "axis_point": [0, 0, 0], "axis": [0, 0, 1]},
+        parts=["Lid:1", "Dom:1"],
+    )
+    # Strip local pattern keys to simulate a legacy connection record created before Befund 6
+    meta_leg = asm_leg.metadata()
+    c_rec = meta_leg["bolted_connections"][res_leg["id"]]
+    c_rec.get("parameters", {}).get("pattern", {}).pop("axis_local", None)
+    c_rec.get("parameters", {}).get("pattern", {}).pop("axis_point_local", None)
+    c_rec.get("pattern", {}).pop("axis_local", None)
+    c_rec.get("pattern", {}).pop("axis_point_local", None)
+    if "anchor" in c_rec and isinstance(c_rec["anchor"], dict):
+        c_rec["anchor"].pop("pattern", None)
+    asm_leg.set_metadata(meta_leg)
+    asm_leg.save()
+
+    # Shift Dom and Lid by [10, 0, 0] without rotation
+    moved_leg = ws.new(ASSEMBLY, "argon6_leg_moved")
+    links.insert(ws, moved_leg, dom_l.path, name="Dom", translate=[10, 0, 0], grounded=True)
+    links.insert(ws, moved_leg, lid_l.path, name="Lid", translate=[10, 0, 30], grounded=True)
+    moved_leg.set_metadata(asm_leg.metadata())
+    moved_leg.save()
+
+    rep_leg = bolted.check_and_update_bolted_connections(ws, moved_leg, repair=True)
+    b_rep_leg = next((r for r in rep_leg if r["id"] == res_leg["id"]), {})
+    meta_leg_after = moved_leg.metadata()["bolted_connections"][res_leg["id"]]
+    pat_after = meta_leg_after.get("parameters", {}).get("pattern", {})
+    got_leg_pos = [inst["position"] for inst in meta_leg_after.get("instances", [])]
+    want_leg_pos = [[25.0, 0.0, 35.0], [2.5, 12.990381, 35.0], [2.5, -12.990381, 35.0]]
+
+    leg_ok = (b_rep_leg.get("status") == "moved_repaired"
+              and pat_after.get("axis") == [0, 0, 1]
+              and all(abs(a - b) < 1e-3 for a, b in zip(pat_after.get("axis_point", []), [10.0, 0.0, 0.0]))
+              and len(got_leg_pos) == 3
+              and all(g.norm(g.sub(got, want)) < 1e-3 for got, want in zip(got_leg_pos, want_leg_pos)))
+    ok("argon review 6: legacy pattern without local vectors shifts axis_point without rotating axis",
+       leg_ok,
+       f"status={b_rep_leg.get('status')} pat={pat_after} got={got_leg_pos}")
+
+    for name in ("argon6_leg_moved", "argon6_leg_asm", "argon6_leg_lid", "argon6_leg_dom"):
+        ws.close(name)
+
+
+def argon_review_findings_9_11_checks(ws):
+    """Findings 9 and 11 of the Argon review (docs/research/2026-10-27-review-gemini-bausteine-argon.md)."""
+    # Finding 9: Countersunk screw (ISO 10642) shank orientation must align with installation direction in rotated setups (+X).
+    p1 = ws.new(PART, "argon9_p1")
+    p1.session.cmd("solid.box", {"length": 10, "width": 40, "height": 40, "corner": [0, -20, -20], "body_name": "P1", "name": "B1"})
+    p1.save()
+
+    p2 = ws.new(PART, "argon9_p2")
+    p2.session.cmd("solid.box", {"length": 10, "width": 40, "height": 40, "corner": [10, -20, -20], "body_name": "P2", "name": "B2"})
+    p2.save()
+
+    asm9 = ws.new(ASSEMBLY, "argon9_asm")
+    links.insert(ws, asm9, p1.path, name="P1", grounded=True)
+    links.insert(ws, asm9, p2.path, name="P2", grounded=True)
+    asm9.save()
+
+    res9 = bolted.bolted_connection(
+        ws, "argon9_asm",
+        placement={"position": [0, 0, 0], "direction": [1, 0, 0]},
+        size="M5",
+        head="countersunk",
+    )
+    occs9 = {o["name"]: o for o in links._occurrences(asm9.session).values()}
+    t_screw9 = occs9[res9["screw"]]["transform"]
+    shank_w9 = g.unit(g.apply_dir(t_screw9, [0.0, 0.0, -1.0]))
+    interf9 = asm9.session.cmd("inspect.interference")
+    chk9 = links.check(ws, asm9)
+    ok("argon review 9: countersunk screw in +X direction aligns shank with installation direction",
+       g.dot(shank_w9, [1, 0, 0]) > 0.95 and interf9.get("count") == 0 and all(c["status"] == "ok" for c in chk9),
+       f"dot={g.dot(shank_w9, [1, 0, 0])} shank_w={shank_w9} interf={interf9}")
+    for name in ("argon9_asm", "argon9_p2", "argon9_p1"):
+        ws.close(name)
+
+    # Finding 11: Z seating height of screw head matches top plate surface at z = 10.0
+    p1_11 = ws.new(PART, "argon11_p1")
+    p1_11.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0], "body_name": "P1", "name": "B1"})
+    p1_11.save()
+
+    p2_11 = ws.new(PART, "argon11_p2")
+    p2_11.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0], "body_name": "P2", "name": "B2"})
+    p2_11.save()
+
+    asm11 = ws.new(ASSEMBLY, "argon11_asm")
+    links.insert(ws, asm11, p1_11.path, name="P1", grounded=True)
+    links.insert(ws, asm11, p2_11.path, name="P2", translate=[0, 0, -8], grounded=True)
+    asm11.save()
+
+    res11 = bolted.bolted_connection(
+        ws, "argon11_asm",
+        placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+        size="M5",
+        counterbore=False,
+    )
+    occs11 = {o["name"]: o for o in links._occurrences(asm11.session).values()}
+    origin11 = g.apply_point(occs11[res11["screw"]]["transform"], [0.0, 0.0, 0.0])
+    ok("argon review 11: screw head seating height matches top plate surface at z = 10.0",
+       abs(origin11[2] - 10.0) < 1e-3, f"z={origin11[2]}")
+    for name in ("argon11_asm", "argon11_p2", "argon11_p1"):
+        ws.close(name)
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="Mechvane-check-") as tmp:
         ws = Workspace(tmp)
@@ -4205,7 +4633,12 @@ def main():
             bolted_countersunk_checks(ws)
             web_ui_stage1_checks(ws)
             argon_review_findings_checks(ws)
+            argon_review_findings_5_8_checks(ws)
+            argon_review_findings_7_10_12_checks(ws)
+            argon_review_finding_6_checks(ws)
+            argon_review_findings_9_11_checks(ws)
             install_checks(tmp)
+            scratch_dir_checks()
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

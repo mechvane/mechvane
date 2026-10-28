@@ -115,7 +115,16 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
                    timeline_map: dict, threads: list[dict]) -> tuple[list[dict], list[dict]]:
     """Group cylindrical faces sharing an axis and radius into logical holes and external cylinders."""
     cyl_faces = [f for f in faces if f.get("cylinder")]
-    groups = g.group_cylindrical_faces(cyl_faces)
+    feat_cyl_faces = {}
+    for f in cyl_faces:
+        parts = f["name"].split(":")
+        fid = parts[0] if parts[0].startswith("F") and parts[0][1:].isdigit() else None
+        feat_cyl_faces.setdefault(fid, []).append(f)
+
+    groups = []
+    for f_list in feat_cyl_faces.values():
+        groups.extend(g.group_cylindrical_faces(f_list))
+
     is_hole_list = g.classify_hole_groups(session, body_name, groups, timeline_map, threads, bbox)
 
     holes = []
@@ -169,13 +178,6 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
             if end_caps:
                 is_blind = True
 
-        # Thread match
-        matched_thread = None
-        for th in threads:
-            if th.get("internal") and g.dist_to_line(th["axis_point"], p0, axis) < 0.05:
-                matched_thread = th
-                break
-
         holes.append({
             "faces": [f["name"] for f in grp],
             "representative_point": grp[0]["point"],
@@ -186,8 +188,47 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
             "length": length,
             "feature": feat_info,
             "is_blind": is_blind,
-            "thread": matched_thread,
+            "thread": None,
         })
+
+    # Thread match: internal threads matched by collinearity and axial overlap.
+    # Each thread is assigned to at most one hole, matching highest axial overlap first.
+    candidates = []
+    for h_idx, h in enumerate(holes):
+        h_axis = h["axis"]
+        h_center = h["center"]
+        h_L = h.get("length", 0.0)
+        c_proj = g.dot(h_center, h_axis)
+        h_t_min = c_proj - h_L / 2.0
+        h_t_max = c_proj + h_L / 2.0
+        for th_idx, th in enumerate(threads):
+            if not th.get("internal"):
+                continue
+            th_axis = th.get("axis")
+            if th_axis and not g.parallel(th_axis, h_axis, tol=1e-3):
+                continue
+            if g.dist_to_line(th["axis_point"], h_center, h_axis) >= 0.05:
+                continue
+            t_axis = g.unit(th_axis) if th_axis else h_axis
+            th_start_pt = g.add(th["axis_point"], g.scale(t_axis, th.get("start", 0.0)))
+            th_end_pt = g.add(th["axis_point"], g.scale(t_axis, th.get("end", 0.0)))
+            t_th_start = g.dot(th_start_pt, h_axis)
+            t_th_end = g.dot(th_end_pt, h_axis)
+            th_t_min = min(t_th_start, t_th_end)
+            th_t_max = max(t_th_start, t_th_end)
+            overlap = min(h_t_max, th_t_max) - max(h_t_min, th_t_min)
+            axial_dist = abs((th_t_min + th_t_max) / 2.0 - c_proj)
+            if overlap > -0.05:
+                candidates.append((overlap, -axial_dist, h_idx, th_idx))
+
+    used_holes = set()
+    used_threads = set()
+    for overlap, neg_dist, h_idx, th_idx in sorted(candidates, reverse=True):
+        if h_idx not in used_holes and th_idx not in used_threads:
+            holes[h_idx]["thread"] = threads[th_idx]
+            used_holes.add(h_idx)
+            used_threads.add(th_idx)
+
     return holes, ext_cylinders
 
 
@@ -296,7 +337,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if d_axes + r <= ec["radius"] + 1e-4:
                 dist = ec["radius"] - d_axes
             else:
-                dist = d_axes - ec["radius"] + r
+                dist = d_axes - ec["radius"]
             dist_faces.append((dist, ec["faces"][0]))
 
         # Distance to bounding box only along lateral axes orthogonal to cylinder axis

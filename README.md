@@ -52,7 +52,7 @@ mechvane ui --demo    # example models in the browser
 mechvane ui my-project/   # your own .solidcraft files
 ```
 
-Alpha: so far tested on Linux; Windows and macOS are expected to work but not yet tested.
+Alpha: tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
 If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and
 `ui`, `mcp`) instead.
 

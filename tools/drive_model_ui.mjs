@@ -10,7 +10,7 @@
 // WINDOW_SIZE: e.g. "390,844" for a phone (default 1600,900).
 // CHROME: Chromium binary (default: Playwright's chromium under ~/.cache/ms-playwright).
 import { spawn } from "node:child_process";
-import { readFileSync, writeFileSync, readdirSync, mkdtempSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -111,5 +111,6 @@ try {
   report.logs = logs.slice(0, 20);
   console.log(JSON.stringify(report, null, 1));
   ws.close();
+  proc.once("exit", () => rmSync(profile, { recursive: true, force: true }));
   proc.kill();
 }

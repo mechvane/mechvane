@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import subprocess
+import tempfile
 import threading
 import time
 
@@ -163,3 +164,21 @@ class Session:
                     self._p.stdout.close()
                 except OSError:
                     pass
+            if self._p.poll() is not None:
+                _remove_scratch_dirs(self._p.pid)
+
+
+def _remove_scratch_dirs(pid):
+    """Remove the empty `<temp>/solidcraft-mcp-<pid>-<n>` folders the server makes at startup
+    and leaves behind on exit (SolidCraft 0.21.0); folders with content stay."""
+    prefix = f"solidcraft-mcp-{pid}-"
+    try:
+        entries = list(os.scandir(tempfile.gettempdir()))
+    except OSError:
+        return
+    for e in entries:
+        if e.name.startswith(prefix):
+            try:
+                os.rmdir(e.path)
+            except OSError:
+                pass

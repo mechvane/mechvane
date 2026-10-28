@@ -556,6 +556,20 @@ def spec(norm: str, size: str, length: float | None = None) -> dict:
             cmds.append(_param("r", r, "minimum chamfer dimension"))
         cmds += _circle_extrude("OuterSketch", "Ring", D / 2, "D", "B", op="new", body_name="Bearing")
         cmds += _circle_extrude("BoreSketch", "Bore", d / 2, "d", "B", op="cut")
+        if r is not None and r > 0:
+            cmds.append({
+                "command": "solid.chamfer",
+                "params": {
+                    "edges": [
+                        [0, D / 2, B], [0, -D / 2, B],
+                        [0, D / 2, 0], [0, -D / 2, 0],
+                        [0, d / 2, B], [0, -d / 2, B],
+                        [0, d / 2, 0], [0, -d / 2, 0],
+                    ],
+                    "distance": "r",
+                    "name": "Chamfer",
+                },
+            })
         meta = {"norm": canon, "size": norm_size, "designation": designation, "dimensions": dims}
         return {"standard": meta, "commands": cmds, "warnings": warnings}
 
@@ -592,7 +606,10 @@ def expected_volume(norm: str, size: str, length: float | None = None) -> float:
     if canon == "Ruthex":
         return math.pi * ((dims["D"] / 2) ** 2 - (dims["d"] / 2) ** 2) * dims["L"]
     if canon == "DIN 625":
-        return math.pi * ((dims["D"] / 2) ** 2 - (dims["d"] / 2) ** 2) * dims["B"]
+        r = dims.get("r", 0.0)
+        v_cyl = math.pi * ((dims["D"] / 2) ** 2 - (dims["d"] / 2) ** 2) * dims["B"]
+        v_chamfers = math.pi * r**2 * (dims["D"] + dims["d"])
+        return v_cyl - v_chamfers
     raise ValueError(canon)
 
 
@@ -622,6 +639,7 @@ def expected_bbox(norm: str, size: str, length: float | None = None) -> list[lis
         r = dims["D"] / 2
         return [[-r, -r, 0.0], [r, r, dims["L"]]]
     if canon == "DIN 625":
+        # The cylindrical and end faces retain the full envelope extent [[-D/2, -D/2, 0], [D/2, D/2, B]].
         r = dims["D"] / 2
         return [[-r, -r, 0.0], [r, r, dims["B"]]]
     raise ValueError(canon)
@@ -634,6 +652,8 @@ def create(ws, norm: str, size: str, length: float | None = None,
     sp = spec(norm, size, length)
     std_meta = sp["standard"]
     doc_name = name or (Path(path).stem if path else std_meta["designation"].replace(" ", "_"))
+    doc_path = ws._path(doc_name, path)
+    existed_before = doc_path.exists()
     doc = ws.new(PART, doc_name, path, overwrite=overwrite)
     try:
         doc.session.batch(sp["commands"])
@@ -641,7 +661,14 @@ def create(ws, norm: str, size: str, length: float | None = None,
         doc.set_metadata({"kind": PART, "format": 1, "standard": std_meta})
         doc.save()
     except Exception:
-        ws.close(doc_name)
+        try:
+            ws.close(doc_name)
+        finally:
+            if not existed_before and doc_path.exists():
+                try:
+                    doc_path.unlink()
+                except OSError:
+                    pass
         raise
     out = dict(doc.info(), standard=std_meta, sketch_rule=sr)
     if sp["warnings"]:
