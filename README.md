@@ -5,7 +5,7 @@ small and medium-sized companies), following the workflow of classic mechanical 
 and rethought for AI agents. The core stays small; domain modules (sheet metal, standard
 parts, frames, drawings …) load only when a document or the user needs them.
 
-**[Try the web UI in your browser](https://mechvane.github.io/mechvane/)**: example models with the model
+**[Try the web UI in your browser](https://mechvane.dev/)**: example models with the model
 tree and design check findings, nothing to install.
 
 ![A joint jumps to the wrong bore after a part edit, update_links puts it back](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/update_links.gif)
@@ -109,7 +109,7 @@ app is downloaded once from the SolidCraft release and checked against a pinned 
 
 *Model by hand: the same bracket in the embedded SolidCraft web app, the countersink moved away
 from the wall and saved, Mechvane checked it again (regenerate with `python3 tools/demo_model_ui.py`).
-Try it without installing: [live demo](https://mechvane.github.io/mechvane/model.html?demo=bracket).*
+Try it without installing: [live demo](https://mechvane.dev/model.html?demo=bracket).*
 
 ## Contents
 

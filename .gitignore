@@ -6,3 +6,4 @@ graphify-katalog/
 site/
 /build/
 *.egg-info/
+.cloudflare/

@@ -24,7 +24,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/mechvane/mechvane"
-Demo = "https://mechvane.github.io/mechvane/"
+Demo = "https://mechvane.dev/"
 Roadmap = "https://github.com/mechvane/mechvane/blob/main/ROADMAP.md"
 Issues = "https://github.com/mechvane/mechvane/issues"
 
