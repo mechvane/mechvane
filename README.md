@@ -126,6 +126,7 @@ Try it without installing: [live demo](https://mechvane.dev/model.html?demo=brac
 
 ## Contents
 
+- [CHANGELOG.md](https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md): what changed in each release
 - [ROADMAP.md](https://github.com/mechvane/mechvane/blob/main/ROADMAP.md): phases, decision points, risks
 - [docs/adr/](https://github.com/mechvane/mechvane/tree/main/docs/adr): architecture decisions
 - [MCP server](https://github.com/mechvane/mechvane/blob/main/docs/mechvane-mcp.md) (`mechvane/`): tools, data model, test reports

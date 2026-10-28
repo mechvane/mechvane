@@ -27,6 +27,7 @@ Homepage = "https://github.com/mechvane/mechvane"
 Demo = "https://mechvane.dev/"
 Roadmap = "https://github.com/mechvane/mechvane/blob/main/ROADMAP.md"
 Issues = "https://github.com/mechvane/mechvane/issues"
+Changelog = "https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md"
 
 [project.scripts]
 mechvane = "mechvane.cli:main"
