@@ -175,7 +175,8 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
    auch in der Demo nach dem Speichern (bräuchte die Prüfungen im Browser).
 2. UI Stufe 2: Fläche anklicken, Chatfenster mit dem Agenten **mit Spracheingabe** (Point and speak,
    Grundsatz 6: Auswahl plus gesprochener Auftrag gehen zusammen an den Agenten), Rückgängig
-   (2–3 Wochen). Vor dem Umsetzen entwerfen: Anbindung an den Agenten und Spracherkennung
+   (2–3 Wochen). Entwurf: [ADR 0003](docs/adr/0003-point-and-speak.md) (angenommen 2026-10-28,
+   Argon-Review eingearbeitet). Vor dem Umsetzen entwerfen: Anbindung an den Agenten und Spracherkennung
    (Browser-Spracheingabe oder Whisper), Deutsch und Fachbegriffe wie „Fase 1 × 45°“, „M6“
 3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen)
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
@@ -198,10 +199,71 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 
 - [ ] **Desktop-App** (Grundsatz 12). Schritt 1 für v0.1, zusammen mit 1a B: three.js und alle
       Abhängigkeiten mitliefern (offline), `mechvane ui` öffnet ein eigenes App-Fenster
-      (Chrome/Edge `--app=`), Startmenü-Verknüpfung unter Windows. Schritt 2 nach v0.1: echte
+      (Chrome/Edge `--app=`), Startmenü-Verknüpfung unter Windows. *Schritt 1 umgesetzt 2026-10-28*
+      (`mechvane/ui/appwindow.py`, `mechvane shortcut`, unter Linux und Windows getestet, Sichtprüfung offen). Schritt 2 nach v0.1: echte
       Desktop-App mit Installer für Windows und Linux; vorher Recherche der Hüllen (Gemini) und
       ein Test, ob die SolidCraft-Web-App darin läuft. Entscheidung zusammen mit dem Prüfpunkt
       Sprache (spätestens Januar 2027).
+
+- [ ] **Private Online-Version unter `app.mechvane.dev`** (Nutzerwunsch 2026-10-28, aus der
+      Homeserver-Session): die eigene Web-UI aus jedem Browser erreichen, auch ohne Tailscale; nur
+      für den Nutzer, kein öffentlicher Dienst. Einordnen **nach Web-UI Stufe 2** (vorher zeigt die
+      UI nur an); der MCP-Fernzugang kann früher kommen. Vorschlag:
+      - Mechvane läuft im Homelab (eigener kleiner LXC oder Steuer-Container), UI als
+        systemd-Dienst, keine Cloud-Kosten.
+      - Cloudflare Tunnel (`cloudflared`, nur ausgehend): kein Port am Router, Heim-IP verborgen.
+      - Cloudflare Access davor, nur das Google-Konto des Nutzers. Pflicht, weil die UI keinen
+        eigenen Login hat und Agent und Dateizugriff (ADR 0003) dahinter liegen.
+      - Optional `mcp.mechvane.dev`: Mechvane-MCP über HTTP auf demselben Weg, damit Claude (App,
+        Handy) direkt an den Modellen arbeiten kann; Anmeldung für Remote-MCP hinter Access klären.
+      - `mechvane.dev` bleibt die öffentliche Demo (GitHub Pages), `www` und `mechvane.com` leiten
+        weiter wie bisher.
+      - DNS und Access richtet der Nutzer per cf-CLI ein (Befehle vorbereiten), LXC und Dienst die
+        Homeserver-Session, die danach auch die Homeserver-Doku nachzieht.
+
+- [ ] **Eigene Oberfläche, SolidCraft nur noch im Hintergrund** (Entscheidung Nutzer 2026-10-28): Am
+      Ende sieht man nur die Mechvane-Oberfläche, SolidCraft rechnet und zeichnet darunter. In der App,
+      der README und allen öffentlichen Texten bleibt SolidCraft ausdrücklich genannt. Weg in Stufen:
+      - Bis v0.1 wie jetzt: eigene Oberfläche für Prüfen und Chat, SolidCraft-Web-App zum Modellieren.
+      - Danach eigene Dialoge für die häufigsten Features über den Server (headless `solidcraft-cli`,
+        wie Modus „Prüfen“ und Agent); das braucht kein Live-Ziehen.
+      - Skizzierer und Live-Vorschau mit dem SolidCraft-Kern im Browser: Web-App eingebettet, ihre
+        Oberfläche ausgeblendet. Grundlage ist der Einbettmodus `?embed&open=` (SolidCraft #6252, ab
+        0.23.0, nur lesend). Unser Wunsch nach `?embed=viewport&edit` (nur Ansicht, bearbeitbar über
+        `window.solidcraft`) und `doc.open {reload}` liegt als
+        [SolidCraft #8517](https://github.com/tangency-labs/solidcraft/issues/8517) (2026-10-28).
+      - Für Desktop- und Android-App später der Kern als Bibliothek (Rust/WASM), entschieden mit dem
+        Prüfpunkt Sprache.
+      - SolidCraft auf 0.25.1 aktualisiert (2026-10-28), der Einbettmodus ist damit verfügbar.
+
+- [ ] **Native Android-App** (Nutzerwunsch 2026-10-28): Mechvane unterwegs auf dem Handy, vor allem
+      zum Ansehen, Prüfen und für Point and speak (Fläche antippen, Auftrag sprechen). Einordnen nach
+      Stufe 2 und `app.mechvane.dev`, denn die App braucht zunächst einen Server: Mechvane läuft in
+      Python mit `solidcraft-cli`, beides gibt es für Android nicht. Vorschlag:
+      - Kotlin mit Jetpack Compose, Verbindung zum eigenen Mechvane-Server (Homelab über
+        `app.mechvane.dev` hinter Cloudflare Access, zu Hause auch LAN/Tailscale).
+      - Eigene native Teile: 3D-Ansicht aus `/api/mesh` (z. B. Filament oder SceneView), Modellbaum,
+        Befunde, Chat mit dem Agenten über `/api/agent/*`, Spracheingabe über Androids
+        `SpeechRecognizer`, der Deutsch auch offline kann (passt zu ADR 0003, Abschnitt 4).
+      - Modellieren von Hand bleibt vorerst in der Web-App (WebView mit der SolidCraft-Web-App als
+        Notlösung, 50-MB-wasm, auf dem Handy zu prüfen).
+      - Vorher klären: Anmeldung gegen Cloudflare Access aus einer App (Service-Token oder
+        Browser-Login), Offline-Ansicht zuletzt geladener Modelle.
+      - Verteilung zuerst über das eigene F-Droid-Repo im Homelab, Play Store später.
+      - Später prüfen: SolidCraft-Kern als Android-Bibliothek (Rust), dann ginge mehr ohne Server;
+        hängt am Prüfpunkt Sprache.
+
+- [ ] **Funktions- und Modulwünsche direkt aus der App** (Nutzerwunsch 2026-10-28): Knopf
+      „Wunsch äußern“ in der Web-UI (beide Modi, auch in der Live-Demo). Vorschlag: Er öffnet ein
+      vorausgefülltes GitHub-Issue (`issues/new?template=…&title=…&body=…`) im öffentlichen Repo,
+      angemeldet ist der Nutzer selbst, Mechvane braucht kein Token und schickt nichts von allein.
+      Vorbefüllt: Art (Funktion, Fachmodul, Normteil, Prüfregel, Fehler), kurze Beschreibung,
+      optional Mechvane- und SolidCraft-Version, Betriebssystem, offenes Dokument nur als Name.
+      Dazu eine Issue-Vorlage (`.github/ISSUE_TEMPLATE/feature_request.yml`) mit Labels pro Art,
+      damit Wünsche sortierbar sind und Gemini-Queue/Tagesplan sie aufgreifen können. Mit Stufe 2:
+      „Schreib das als Wunsch auf“ im Chat, der Agent formuliert das Issue, der Nutzer schickt es
+      ab. Ohne GitHub-Konto später ggf. ein Formular (offen). Klein (ca. ½ Tag), passt vor v0.1.
+      Vorlage im öffentlichen Repo erst nach OK.
 
 - [ ] **Mechvane-Schicht als MCP-Server** (nach ADR 0001): Bauteil- und
       Baugruppendateien öffnen/speichern, Verknüpfungen aktualisieren und

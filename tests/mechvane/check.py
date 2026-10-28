@@ -238,9 +238,9 @@ def joints_across_files(ws):
     part.save()
     r = links.update_links(ws, asm)
     moved = [w for w in r["warnings"] if w["status"] == "moved"]
-    ok("new hole before it: Mechvane reports the joint moved", bool(moved), f"x = {joint_x(asm)}, {r['joints']}")
-    if joint_x(asm) == 20.0:
-        print("     (SolidCraft kept the joint on its hole: #3330 may be fixed upstream)")
+    # SolidCraft up to 0.21 moved the joint (#3330, fixed upstream since 0.22): then Mechvane must say so
+    ok("new hole before it: the joint stays on its hole, or Mechvane reports it moved",
+       bool(moved) or (joint_x(asm) == 20.0 and not r["warnings"]), f"x = {joint_x(asm)}, {r['joints']}")
     r = links.update_links(ws, asm, repair_moved=True)
     ok("repair puts the joint back on its hole (x = 20)", joint_x(asm) == 20.0 and not r["warnings"],
        f"x = {joint_x(asm)}, {r}")
@@ -257,7 +257,8 @@ def joints_across_files(ws):
     part.session.cmd("timeline.roll_to", {})
     part.save()
     r = links.update_links(ws, asm, repair_moved=True)
-    ok("adopted joint: repair puts it back on its hole (x = 20)", joint_x(asm) == 20.0 and r["repaired"] and not r["warnings"],
+    ok("adopted joint: on its hole (x = 20) after update_links, repaired where it had moved",
+       joint_x(asm) == 20.0 and not r["warnings"],
        f"x = {joint_x(asm)}, {r}")
 
     # 3. The recorded face disappears.
@@ -349,7 +350,8 @@ def joints_across_files(ws):
 
     r = links.update_links(ws, p_asm)
     moved_p = [w for w in r["warnings"] if w.get("joint") == "PlateOnPlate" and w.get("status") == "moved"]
-    ok("plane #3330: update_links reports joint moved", bool(moved_p), str(r["warnings"]))
+    ok("plane #3330: the joint stays, or update_links reports it moved",
+       bool(moved_p) or not [w for w in r["warnings"] if w.get("joint") == "PlateOnPlate"], str(r["warnings"]))
 
     r = links.update_links(ws, p_asm, repair_moved=True)
     pj = next(j for j in p_asm.session.cmd("joint.list")["joints"] if j["name"] == "PlateOnPlate")
@@ -635,8 +637,8 @@ def subassemblies(ws):
     plate.save()
     r = links.update_links(ws, top)
     moved_w = [w for w in r["warnings"] if w["joint"] == "SubOnBase" and w["status"] == "moved"]
-    ok("subassembly #3330: new hole before BaseHole is reported on the outer joint",
-       bool(moved_w), f"{r['warnings']} {r['joints']}")
+    ok("subassembly #3330: new hole before BaseHole: the outer joint stays, or the move is reported",
+       bool(moved_w) or not [w for w in r["warnings"] if w["joint"] == "SubOnBase"], f"{r['warnings']} {r['joints']}")
     r = links.update_links(ws, top, repair_moved=True)
     occs = {o["name"]: o for o in links._occurrences(top.session).values()}
     ok("subassembly #3330: repair puts outer joint back on BaseHole and restores subassembly position",
@@ -2032,6 +2034,7 @@ def semantic_queries(ws):
     # 5. In an assembly, world coordinates are correct
     asm = ws.new(ASSEMBLY, "query_asm")
     ins = asm.session.cmd("component.insert_design", {"path": str(plate.path), "name": "PlateOcc"})
+    asm.session.cmd("occurrence.ground", {"occurrence": ins["occurrence"], "grounded": False})  # grounded since 0.25
     asm.session.cmd("occurrence.move", {"occurrence": ins["occurrence"], "translate": [100, 200, 50], "space": "local"})
 
     asm_deck = query.find(asm, "faces", {"type": "plane", "normal": [0, 0, 1]})
@@ -2113,9 +2116,12 @@ def edit_in_place_checks(ws):
 
     fin2 = inplace.finish_edit(ws, "eip_plate")
     moved_w = [w for w in fin2["warnings"] if w.get("status") == "moved"]
-    ok("finish_edit: new hole before it (#3330) reports moved",
-       bool(moved_w) and any(w["status"] == "moved" for w in fin2["assemblies"]["eip_asm"]["warnings"]),
-       f"{fin2['warnings']}")
+    j_x2 = round(next(j for j in asm.session.cmd("joint.list")["joints"] if j["name"] == "PinInHole")["frame_a"]["origin"][0], 4)
+    # SolidCraft up to 0.21 moved the joint (#3330, fixed upstream since 0.22): then it must be reported
+    ok("finish_edit: new hole before it (#3330): the joint stays on its hole, or the move is reported",
+       (bool(moved_w) and any(w["status"] == "moved" for w in fin2["assemblies"]["eip_asm"]["warnings"]))
+       or (j_x2 == 20.0 and not fin2["warnings"]),
+       f"x={j_x2} {fin2['warnings']}")
 
     # 4. edit_in_place on subassembly occurrence path ("Sub:1/Plate:1")
     sub = ws.new(ASSEMBLY, "eip_sub")
@@ -3406,7 +3412,7 @@ def praxistest_4_fixes_checks(ws):
     repaired_joints = [x["joint"] for x in rep_upd.get("repaired", [])]
 
     ok("praxistest 4 / finding 8: update_links with repair=True repairs origin_lost and reports result per joint",
-       b8_broken_status == "origin_lost" and "StiftAufDom" in repaired_joints
+       b8_broken_status in ("origin_lost", "moved") and "StiftAufDom" in repaired_joints  # "moved" since 0.25
        and b8_rep_status == "ok",
        f"broken_status={b8_broken_status}, rep_upd={rep_upd}, rep_status={b8_rep_status}")
 
@@ -4362,6 +4368,451 @@ def install_checks(tmp):
     ok("cli: `mechvane ui` on a missing path exits with 1", cli.main(["ui", str(root / "nope"), "--no-browser"]) == 1)
 
 
+def appwindow_checks(tmp):
+    """`mechvane ui` app window and `mechvane shortcut`, with a fake browser script."""
+    import os
+    import socket
+    import stat
+    import time
+    import webbrowser
+    from mechvane import install
+    from mechvane.ui import appwindow, server as ui_server
+
+    root = Path(tmp) / "appwindow"
+    root.mkdir()
+    old = (os.environ.get("MECHVANE_BROWSER"), appwindow.HANDOFF_S, webbrowser.open, install.CACHE,
+           os.environ.get("XDG_DATA_HOME"))
+    tabs = []
+    try:
+        install.CACHE = root / "cache"
+        appwindow.HANDOFF_S = 0.5
+        webbrowser.open = lambda url: tabs.append(url)
+
+        def fake(name, body):
+            f = root / name
+            f.write_text("#!/bin/sh\n" + body + "\n")
+            f.chmod(f.stat().st_mode | stat.S_IEXEC)
+            os.environ["MECHVANE_BROWSER"] = str(f)
+            return f
+
+        fake("args.sh", f'echo "$@" > {root}/args.txt; sleep 1.2')
+        closed = threading.Event()
+        opened = appwindow.open_window("http://127.0.0.1:1/", on_close=closed.set)
+        args = (root / "args.txt").read_text() if (root / "args.txt").exists() else ""
+        ok("appwindow: app window with its own profile, server stops when it closes",
+           opened and "--app=http://127.0.0.1:1/" in args and f"--user-data-dir={install.CACHE / 'app-profile'}" in args
+           and closed.wait(5) and not tabs, f"{opened} {args!r} {tabs}")
+
+        fake("handoff.sh", "exit 0")
+        closed = threading.Event()
+        opened = appwindow.open_window("http://127.0.0.1:2/", on_close=closed.set)
+        time.sleep(0.2)
+        ok("appwindow: window handed to an open instance keeps the server running",
+           opened and not closed.is_set() and not tabs, f"{opened} {tabs}")
+
+        fake("broken.sh", "exit 3")
+        opened = appwindow.open_window("http://127.0.0.1:3/")
+        os.environ["MECHVANE_BROWSER"] = str(root / "missing-browser")
+        opened2 = appwindow.open_window("http://127.0.0.1:4/")
+        ok("appwindow: falls back to a browser tab when the app window does not start",
+           not opened and not opened2 and tabs == ["http://127.0.0.1:3/", "http://127.0.0.1:4/"], f"{tabs}")
+
+        # A busy port falls back to a free one; the opener gets the real URL and can stop the server
+        part = next(Path(__file__).resolve().parents[2].glob("docs/research/*/flansch.solidcraft"))
+        busy = socket.socket()
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        busy_port = busy.getsockname()[1]
+        got = []
+        done = threading.Thread(target=ui_server.run_server, args=(str(part),),
+                                kwargs={"port": busy_port, "opener": lambda url, stop: (got.append(url), stop())},
+                                daemon=True)
+        done.start()
+        done.join(15)
+        busy.close()
+        ok("appwindow: busy port falls back to a free one, stop() ends the server",
+           not done.is_alive() and len(got) == 1 and got[0].startswith("http://127.0.0.1:")
+           and not got[0].endswith(f":{busy_port}/"), f"{got}")
+
+        os.environ["XDG_DATA_HOME"] = str(root / "share")
+        entry = appwindow.create_shortcut(root / "My Parts")
+        text = entry.read_text()
+        ok("appwindow: start menu entry opens the project folder with the Mechvane icon",
+           entry == root / "share/applications/mechvane.desktop" and (root / "My Parts").is_dir()
+           and f'-m mechvane ui "{root / "My Parts"}"' in text and f"Icon={install.CACHE / 'logo.svg'}" in text
+           and (install.CACHE / "logo.svg").is_file(), text)
+    finally:
+        appwindow.HANDOFF_S, webbrowser.open, install.CACHE = old[1], old[2], old[3]
+        for key, val in (("MECHVANE_BROWSER", old[0]), ("XDG_DATA_HOME", old[4])):
+            os.environ.pop(key, None)
+            if val is not None:
+                os.environ[key] = val
+
+
+def feature_request_checks(tmp, ws=None):
+    """Checks for 'Request a feature' UI button, dialog module request.js, and /api/about."""
+    import shutil
+    import threading
+    import urllib.request
+    from mechvane import install, __version__
+    from mechvane.ui import create_server, collect_about
+    from mechvane.ui.server import STATIC_DIR
+
+    # 1. /api/about direct check
+    about_direct = collect_about()
+    ok("feature request: collect_about returns mechvane and solidcraft versions",
+       about_direct.get("mechvane") == __version__ and about_direct.get("solidcraft") == install.VERSION,
+       f"{about_direct}")
+
+    # 2. Server endpoints: /api/about, /request.js, /, /model
+    if ws is None:
+        ws = Workspace(tmp)
+        own_ws = True
+    else:
+        own_ws = False
+    doc = ws.new(PART, "feature_request_test_doc")
+
+    srv = create_server(doc.path, port=0)
+    port = srv.server_address[1]
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        def _get(path):
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as resp:
+                return resp.status, resp.headers.get_content_type(), resp.read()
+
+        # Check /api/about endpoint
+        st_about, ct_about, body_about = _get("/api/about")
+        d_about = json.loads(body_about.decode("utf-8"))
+        ok("feature request: /api/about responds with 200 and both versions",
+           st_about == 200 and d_about.get("mechvane") == __version__ and d_about.get("solidcraft") == install.VERSION,
+           f"status={st_about} ct={ct_about} body={d_about}")
+
+        # Check /request.js endpoint
+        st_req, ct_req, body_req = _get("/request.js")
+        ok("feature request: /request.js served with 200 and javascript content type",
+           st_req == 200 and "javascript" in ct_req.lower() and len(body_req) > 0,
+           f"status={st_req} ct={ct_req} len={len(body_req)}")
+
+        # Check / and /model deliver HTML with button and request.js
+        st_idx, _, body_idx = _get("/")
+        idx_html = body_idx.decode("utf-8")
+        ok("feature request: index.html served with button and request.js",
+           st_idx == 200 and "Request a feature" in idx_html and "request.js" in idx_html,
+           f"idx_len={len(idx_html)}")
+
+        st_model, _, body_model = _get("/model")
+        model_html = body_model.decode("utf-8")
+        ok("feature request: model.html served with button and request.js",
+           st_model == 200 and "Request a feature" in model_html and "request.js" in model_html,
+           f"model_len={len(model_html)}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        ws.close("feature_request_test_doc")
+        if own_ws:
+            ws.close_all()
+
+    # 3. Static files on disk
+    idx_disk = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    model_disk = (STATIC_DIR / "model.html").read_text(encoding="utf-8")
+    req_disk = (STATIC_DIR / "request.js").read_text(encoding="utf-8")
+    ok("feature request: both HTML pages bind button and request.js",
+       "Request a feature" in idx_disk and "request.js" in idx_disk
+       and "Request a feature" in model_disk and "request.js" in model_disk,
+       "disk HTML check")
+
+    ok("feature request: request.js constructs github issue URL with parameters",
+       "https://github.com/mechvane/mechvane/issues/new" in req_disk
+       and "URLSearchParams" in req_disk and "dialog" in req_disk,
+       "request.js logic check")
+
+    # 4. build_demo_site includes request.js and about.json
+    build_script = (Path(__file__).resolve().parents[2] / "tools" / "build_demo_site.py").read_text(encoding="utf-8")
+    ok("feature request: build_demo_site.py copies STATIC_DIR and writes about.json",
+       "STATIC_DIR" in build_script and "about.json" in build_script,
+       "build_demo_site.py content check")
+
+    out_demo = Path(tmp) / "demo_site_test"
+    if out_demo.exists():
+        shutil.rmtree(out_demo)
+    shutil.copytree(STATIC_DIR, out_demo)
+    for page in ("index.html", "model.html"):
+        html = (out_demo / page).read_text(encoding="utf-8")
+        (out_demo / page).write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),
+                                     encoding="utf-8")
+    (out_demo / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": "live demo"}), encoding="utf-8")
+
+    ok("feature request: build_demo_site output directory includes request.js and about.json",
+       (out_demo / "request.js").is_file() and (out_demo / "about.json").is_file()
+       and "data-static=\"1\"" in (out_demo / "index.html").read_text(encoding="utf-8"),
+       f"out_demo files: {[p.name for p in out_demo.glob('*')]}")
+
+
+def agent_turns_checks(tmp):
+    """Web UI agent turns (ADR 0003) against tests/mechvane/fake_acp_agent.py, and the MCP side:
+    files changed on disk are opened again, MECHVANE_AUTOSAVE saves after each tool call."""
+    import os
+    import time
+    import urllib.request
+    from mechvane import install
+    from mechvane.ui import agent as ag, server as ui_server
+
+    d = ag.decide
+    ok("agent: Mechvane modelling runs, other tools, file commands and deletions are declined",
+       d("mcp__mechvane__run", {"commands": [{"command": "solid.chamfer", "params": {"edges": [[0, 0, 0]]}}]})[0]
+       and d("mcp__mechvane__run", {"commands": [{"command": "solid.sweep", "params": {"path": [3, 4]}}]})[0]
+       and d("mcp__mechvane__check_design", {})[0]
+       and not d("Bash", {"command": "ls"})[0]
+       and not d("mcp__mechvane__run", {"commands": [{"command": "file.export", "params": {"path": "x.step"}}]})[0]
+       and not d("mcp__mechvane__command", {"command": "sketch.insert_dxf", "params": {"path": "a/b.dxf"}})[0]
+       and not d("mcp__mechvane__delete_feature", {"feature": "Box1"})[0]
+       and not d("mcp__mechvane__screenshot", {"path": "/tmp/s.png"})[0])
+
+    root = Path(tmp) / "agent"
+    folder = root / "proj"
+    folder.mkdir(parents=True)
+    old_cache = install.CACHE
+    install.CACHE = root / "cache"
+    fake = [sys.executable, str(Path(__file__).resolve().parent / "fake_acp_agent.py")]
+
+    def features(name):
+        w = Workspace(folder)
+        try:
+            return len(w.open(name).session.cmd("document.inspect").get("timeline") or [])
+        finally:
+            w.close_all()
+
+    def wait_idle(turns, seconds=60):
+        end = time.monotonic() + seconds
+        while turns.busy and time.monotonic() < end:
+            time.sleep(0.2)
+        return not turns.busy
+
+    try:
+        w = Workspace(folder)
+        plate = w.new(PART, "plate")
+        plate.session.cmd("solid.box", {"length": 20, "width": 20, "height": 10})
+        plate.save()
+        w.close_all()
+        n0 = features("plate.solidcraft")
+
+        changed = []
+        turns = ag.AgentTurns(folder, on_files_changed=lambda: changed.append(1), command=fake)
+        turns.send("edit please", [{"kind": "face", "name": "F1:box:top"}], "plate.solidcraft")
+        idle = wait_idle(turns)
+        ev = turns.events_since(0)["events"]
+        text = "".join(e.get("text", "") for e in ev if e["type"] == "text")
+        done = [e for e in ev if e["type"] == "done"]
+        declined = sorted(e["tool"] for e in ev if e["type"] == "declined")
+        ok("agent: a turn runs, edits the project and reports changed files",
+           idle and done and done[0]["changed"] == ["extra.solidcraft", "plate.solidcraft"]
+           and features("plate.solidcraft") == n0 + 1 and changed, f"{ev}")
+        ok("agent: only the modelling call is allowed (export, shell and delete declined)",
+           '"run chamfer": true' in text and '"run export": false' in text and '"Bash": false' in text
+           and '"delete_feature": false' in text and declined == ["Bash", "delete_feature", "run"], text + str(declined))
+
+        out = turns.undo()
+        ok("agent: undo puts the files back and removes files the turn added",
+           out["removed"] == ["extra.solidcraft"] and not (folder / "extra.solidcraft").exists()
+           and features("plate.solidcraft") == n0, f"{out}")
+        turns.redo()
+        ok("agent: redo puts the turn back", (folder / "extra.solidcraft").exists()
+           and features("plate.solidcraft") == n0 + 1)
+
+        turns.send("edit again", None, "plate.solidcraft")
+        if not wait_idle(turns):
+            ok("agent: second turn ends", False, str(turns.events_since(0)["events"][-3:]))
+            return
+        os.utime(folder / "plate.solidcraft", ns=(time.time_ns(), time.time_ns() + 5_000_000_000))
+        try:
+            turns.undo()
+            refused = False
+        except PermissionError:
+            refused = True
+        out = turns.undo(force=True)
+        ok("agent: undo after a later change by hand needs force", refused and features("plate.solidcraft") == n0 + 1)
+
+        turns.send("slow edit", None, "plate.solidcraft")
+        time.sleep(4)
+        stopping = turns.stop()
+        wait_idle(turns)
+        last = turns.events_since(0)["events"][-1]
+        ok("agent: Stop ends the turn and restores the files",
+           stopping and last.get("status") == "stopped" and features("plate.solidcraft") == n0 + 1
+           and turns.turns[-1]["state"] == "stopped", f"{last}")
+
+        turns.send("crash edit", None, "plate.solidcraft")
+        wait_idle(turns)
+        last = turns.events_since(0)["events"][-1]
+        ok("agent: an agent that dies mid-turn leaves the files as before",
+           last["type"] == "error" and features("plate.solidcraft") == n0 + 1, f"{last}")
+        turns.close()
+
+        # The UI server: endpoints, and no saving by hand while the agent works
+        os.environ["MECHVANE_AGENT"] = " ".join(f'"{x}"' for x in fake)
+        srv = ui_server.create_server(str(folder / "plate.solidcraft"), port=0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+
+        def post(path, body=b"{}"):
+            req = urllib.request.Request(base + path, data=body, method="POST")
+            try:
+                with urllib.request.urlopen(req) as r:
+                    return r.status, json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read())
+        try:
+            st, res = post("/api/agent/send", json.dumps({"text": "slow edit"}).encode())
+            time.sleep(3)
+            busy_save = post("/api/file/plate.solidcraft", b"x" * 10)[0]
+            second = post("/api/agent/send", json.dumps({"text": "more"}).encode())[0]
+            post("/api/agent/stop")
+            for _ in range(100):
+                with urllib.request.urlopen(base + "/api/agent/events?since=0") as r:
+                    evs = json.loads(r.read())
+                if not evs["busy"]:
+                    break
+                time.sleep(0.2)
+            ok("agent: UI server runs turns, refuses saving and a second message while busy",
+               st == 200 and res == {"turn": 1} and busy_save == 409 and second == 409 and not evs["busy"]
+               and evs["events"][-1].get("status") == "stopped", f"{st} {busy_save} {second} {evs['events'][-1:]}")
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            os.environ.pop("MECHVANE_AGENT", None)
+
+        # MCP side: a document changed on disk is opened again; autosave after each tool call
+        w1, w2 = Workspace(folder), Workspace(folder)
+        try:
+            a = w1.open("plate.solidcraft")
+            b = w2.open("plate.solidcraft")
+            b.session.cmd("solid.box", {"length": 3, "width": 3, "height": 3, "corner": [0, 0, 20], "operation": "join"})
+            b.save()
+            n_disk = len(b.session.cmd("document.inspect")["timeline"])
+            again = w1.get("plate")
+            fresh = again is a and len(again.session.cmd("document.inspect")["timeline"]) == n_disk
+            again.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [0, 0, 30], "operation": "join"})
+            b.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [5, 5, 30], "operation": "join"})
+            b.save()
+            try:
+                w1.get("plate")
+                conflict = False
+            except ValueError:
+                conflict = True
+        finally:
+            w1.close_all()
+            w2.close_all()
+        ok("documents: a file changed on disk is opened again, unsaved changes are not overwritten", fresh and conflict)
+
+        old_ws = server.ws
+        server.ws = Workspace(folder)
+        os.environ["MECHVANE_AUTOSAVE"] = "1"
+        try:
+            server.open_document("plate.solidcraft")
+            before = (folder / "plate.solidcraft").stat().st_mtime_ns
+            server.run("plate", [{"command": "solid.box", "params": {"length": 1, "width": 1, "height": 1,
+                                                                    "corner": [9, 9, 40], "operation": "join"}}])
+            saved = (folder / "plate.solidcraft").stat().st_mtime_ns != before and not server.ws.get("plate").dirty()
+        finally:
+            os.environ.pop("MECHVANE_AUTOSAVE", None)
+            server.ws.close_all()
+            server.ws = old_ws
+        ok("server: MECHVANE_AUTOSAVE saves changed documents after each tool call", saved)
+    finally:
+        install.CACHE = old_cache
+
+
+def selection_checks(tmp):
+    """/api/resolve_selection: the app's selection in Mechvane's names, for a part and an assembly."""
+    import urllib.request
+    from mechvane import examples
+    from mechvane.ui import selection, server as ui_server
+
+    folder = Path(tmp) / "selection"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        examples.bracket(w)
+        examples.bolted_plates(w)
+    finally:
+        w.close_all()
+    w = Workspace(folder)
+    try:
+        br = w.open("bracket.solidcraft")
+        face = next(f for f in br.session.cmd("model.faces", {"body": "Bracket"})["faces"] if f["name"] == "F4:csink:base")
+        r = selection.resolve(w, br, [{"type": "face", "body": "Bracket", "index": face["index"], "point": [42.2, 30.4, 8.9]},
+                                      {"type": "edge", "body": "Bracket", "index": 0, "point": [0, 0, 0]}])
+        ok("selection: a part face gets its Mechvane name, feature, normal, click and centroid",
+           r[0]["name"] == "F4:csink:base" and r[0]["feature"] == "CountersinkNearWall" and r[0]["normal"] == [0.0, 0.0, -1.0]
+           and r[0]["click"] == [42.2, 30.4, 8.9] and "centroid" in r[0] and r[1]["kind"] == "edge" and r[1].get("length"), str(r))
+        asm = w.open("bolted_plates.solidcraft")
+        f = next(f for f in asm.session.cmd("model.faces", {"body": "TopPlate"})["faces"]
+                 if (f.get("plane_normal") or [0])[-1:] == [1.0])
+        r = selection.resolve(w, asm, [{"type": "face", "body": "TopPlate", "index": f["index"], "point": f.get("point") or f["centroid"]}])
+        ok("selection: an assembly face is named in its part file",
+           r[0].get("part") == "top_plate.solidcraft" and r[0].get("occurrence") == "TopPlate:1"
+           and r[0].get("name", "").startswith("F") and ":face:" not in r[0]["name"], str(r))
+    finally:
+        w.close_all()
+
+    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/resolve_selection", method="POST",
+                                     data=json.dumps({"items": [{"type": "face", "body": "Bracket", "index": face["index"],
+                                                                 "point": [42.2, 30.4, 8.9]}]}).encode())
+        with urllib.request.urlopen(req) as resp:
+            got = json.loads(resp.read())
+        ok("selection: /api/resolve_selection answers with the resolved items",
+           got["selection"][0]["name"] == "F4:csink:base", str(got))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def speech_checks(tmp):
+    """Spoken requests cleaned up in code (mechvane/speech.py) and /api/speech with the model's names."""
+    import urllib.request
+    from mechvane import examples, speech
+    from mechvane.ui import server as ui_server
+
+    names = ["CountersinkNearWall", "BasePlate", "Wall"]
+    cases = {
+        "da eine Phase eins mal fünfundvierzig Grad": "da eine Fase 1 × 45°",
+        "mittig eine Gewindebohrung Em sechs": "mittig eine Gewindebohrung M6",
+        "Rundung Er zwei an der Kante": "Rundung R2 an der Kante",
+        "Wandstärke eins Komma fünf Millimeter": "Wandstärke 1.5 mm",
+        "Rechteck vierzig mal dreißig, Höhe hundertzwanzig": "Rechteck 40 × 30, Höhe 120",
+        "zweihundertfünfzig Millimeter": "250 mm",
+        "base plate um fünf Grad drehen": "BasePlate um 5° drehen",
+        "die Senkung countersink near wal zwei Millimeter nach links": "die Senkung CountersinkNearWall 2 mm nach links",
+        "eine Bohrung an der Wand": "eine Bohrung an der Wand",
+    }
+    bad = {t: speech.normalize(t, names) for t, want in cases.items() if speech.normalize(t, names) != want}
+    ok("speech: numbers, units, Fase, M6/R2 and model names from spoken German", not bad, str(bad))
+
+    folder = Path(tmp) / "speech"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        examples.bracket(w)
+    finally:
+        w.close_all()
+    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/speech", method="POST",
+                                     data=json.dumps({"text": "an countersink near wall eine Phase eins mal fünfundvierzig Grad"}).encode())
+        with urllib.request.urlopen(req) as resp:
+            got = json.loads(resp.read())
+        ok("speech: /api/speech uses the open model's names",
+           got["text"] == "an CountersinkNearWall eine Fase 1 × 45°", str(got))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 def argon_review_finding_6_checks(ws):
     """Argon Finding 6: pattern update follows rotated anchor component."""
     # 1. Circular pattern (3 screws) on Dom + Lid, Dom subsequently rotated 90 deg around Y
@@ -4638,6 +5089,11 @@ def main():
             argon_review_finding_6_checks(ws)
             argon_review_findings_9_11_checks(ws)
             install_checks(tmp)
+            appwindow_checks(tmp)
+            feature_request_checks(tmp, ws)
+            agent_turns_checks(tmp)
+            selection_checks(tmp)
+            speech_checks(tmp)
             scratch_dir_checks()
         finally:
             ws.close_all()

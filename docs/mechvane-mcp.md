@@ -11,7 +11,7 @@ exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/p
 per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
-  (`mechvane/ui/webapp.py`) in der festen Version 0.21.0 für die eigene Plattform in den Cache
+  (`mechvane/ui/webapp.py`) in der festen Version 0.25.1 (seit 2026-10-28) für die eigene Plattform in den Cache
   (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
   festgeschrieben, Entpacken mit Pfadprüfung.
 - `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
@@ -374,11 +374,13 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 - **3D-Ansicht (Mitte):** `three.js` (`three@0.160.0` mit `OrbitControls` per Import-Map von `cdn.jsdelivr.net`), Z-Achse nach oben, Kamera beim ersten Laden automatisch auf die Bounding Sphere des Modells eingepasst, scharfe B-Rep-Flächenkanten über die Face-Tags aus dem `3mf-tagged`-Export.
 - **Befundliste (rechts):** Zeigt alle Befunde aus `design_rules.check` (und bei Baugruppen zusätzlich `links.check`), farbig nach Schwere (`fail`, `warn`, `ok`). Ein Klick auf einen Befund hebt die betroffenen B-Rep-Flächen im 3D-Modell über die Zuordnung `Flächenname → Index (model.faces) → ft:face-Dreiecke` farbig hervor. Hat ein Befund keinen passenden Flächenbezug im Netz, aber einen 3D-Punkt (`location.point`), erscheint dort ein 3D-Marker; ohne beides wird nur der Text ausgewählt.
 - **Automatisches Neu-Laden:** Die Seite fragt alle 2 s `/api/version` ab. Ändert sich die `mtime` der Datei auf der Festplatte, lädt der Server das Dokument in `Workspace` neu und der Browser aktualisiert Netz, Baum und Befunde ohne Zurücksetzen der Kamera.
+- **Funktions- und Modulwünsche:** Über den Textknopf „Request a feature“ in der Kopfzeile beider Seiten öffnet sich ein kompakter Dialog für Wünsche und Fehlerberichte (Art wie Feature, Module, Standard part, Design rule oder Bug, Titel und mehrzeilige Beschreibung). Bei gesetztem Häkchen werden Versionsnummern (`/api/about`), der Browser-Typ und der Name des offenen Modells (ohne Pfad oder Dateiinhalte) angehängt. Der Knopf „Open on GitHub“ öffnet ein vorbereitetes Issue im GitHub-Repo in einem neuen Browser-Tab; Mechvane selbst sendet keine Daten ab.
 
 ### JSON-Endpunkte
 
 | Endpunkt | Inhalt |
 |---|---|
+| `GET /api/about` | `{"mechvane", "solidcraft"}`: Paketversion von Mechvane und Version des eingebundenen SolidCraft-Releases |
 | `GET /api/version` | `{"version", "mtime", "name", "kind", "path"}` anhand der Datei-`mtime` |
 | `GET /api/mesh` | `{"bodies": [{"name", "positions": [x,y,z,…], "indices": […], "face_ids": […], "faces": [{"index", "name"}]}]}` aus `export(format="3mf-tagged")` und `model.faces` |
 | `GET /api/tree` | Modellbaum aus `tree.part_tree` bzw. `tree.assembly_tree` (bei Baugruppen angereichert mit Gelenkstatus aus `links.check`) |
@@ -392,7 +394,7 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 ### Modus „Modellieren“ (seit 2026-10-25)
 
-`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.21.0.zip`, beim ersten
+`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.25.1.zip`, beim ersten
 Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
 ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
 Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App
@@ -437,6 +439,57 @@ Fehler in den Endpunkten werden als JSON mit HTTP-Status 500 (`{"error": "…"}`
 - `three.js` wird per Import-Map von `cdn.jsdelivr.net` geladen (erfordert im Browser Zugang zum CDN).
 - In Baugruppen prüft `/api/version` derzeit die `mtime` der geöffneten Hauptdatei; werden verknüpfte Bauteildateien separat geändert, aktualisiert sich die Ansicht nach `finish_edit` bzw. Speichern der Baugruppe.
 - Da SolidCraft verknüpfte Bauteile in Baugruppen als STEP einbettet, tragen Baugruppen-Körper STEP-Flächennamen (`F3:face:0` usw.) statt der Bauteil-Lineage-Namen; `collect_findings` ordnet Gelenkrahmen über `links._match` den Baugruppen-Flächen bzw. dem 3D-Gelenkursprung zu.
+
+### Agent in der Web-UI (Stufe 2, Server-Seite seit 2026-10-28)
+
+Nach [ADR 0003](adr/0003-point-and-speak.md). `mechvane/ui/agent.py` startet den Agenten des Nutzers
+über ACP (`$MECHVANE_AGENT` als Befehlszeile, sonst `claude-agent-acp` im PATH) in einem leeren Ordner,
+ohne Dateisystem und Terminal, beim Claude-Adapter ohne eigene Werkzeuge (`tools: []`,
+`settingSources: []`, `strictMcpConfig`). Er bekommt nur `mechvane mcp --workspace <projekt>` mit
+`MECHVANE_AUTOSAVE=1`. Jeder Werkzeugaufruf kommt als `session/request_permission` an; `decide()`
+erlaubt Mechvane-Werkzeuge und lehnt ab: fremde Werkzeuge, Löschen (`delete_*`, `close_document`),
+`file.*`/`doc.*`-Befehle und Parameter mit Dateinamen in `run`/`command`, `screenshot` mit `path`.
+
+Endpunkte des UI-Servers:
+
+| Endpunkt | Wirkung |
+|---|---|
+| `POST /api/agent/send` `{text, selection?}` | startet einen Zug (409, solange einer läuft) |
+| `GET /api/agent/events?since=n` | Ereignisse ab n: `text`, `tool`, `declined`, `status`, `done` (geänderte Dateien), `error`; dazu `busy` und `undo` (Text des Zuges, den Rückgängig zurücknimmt) |
+| `POST /api/agent/stop` | bricht ab und stellt den Stand vor dem Zug her |
+| `POST /api/agent/undo` `{force?}` / `redo` | Zug zurücknehmen bzw. wiederherstellen; 409, wenn seitdem von Hand gespeichert wurde (außer `force`) |
+
+Während eines Zuges lehnt der Server `POST /api/file/*`, `/api/open/*` und `/api/new` mit 409 ab. Vor
+jedem Zug kopiert er alle `.solidcraft`-Dateien des Projekts nach `~/.cache/mechvane/history/<projekt>/`
+(außerhalb der Ordner, in die Sitzungen schreiben dürfen); Stop, ein Abbruch des Agenten oder ein Fehler
+stellen diesen Stand wieder her, im Zug neu angelegte Dateien werden entfernt.
+
+`Workspace` liest ein Dokument neu ein, wenn sich seine Datei seit dem Laden oder Speichern geändert
+hat (gleiche Sitzung, gleiches `Document`); mit ungespeicherten Änderungen gibt es stattdessen einen
+Fehler. `MECHVANE_AUTOSAVE=1` lässt den MCP-Server nach jedem Werkzeugaufruf alle geänderten Dokumente
+speichern. Tests: `agent_turns_checks` gegen `tests/mechvane/fake_acp_agent.py` (kein Kontingent);
+einmal mit echtem Claude Code geprüft (Fase an der Wand, Export abgelehnt, Rückgängig, 36 s).
+**Chat-Spalte in „Modellieren“ (seit 2026-10-28):** Gestaltung nach Claude Code in VS Code (eigene
+Nachrichten als Blase, Werkzeuge als Zeilen mit Statuspunkt, Eingabe unten, Senden wird zu Stop,
+Rückgängig/Wiederherstellen im Kopf, Prüfungen aufklappbar darunter). Vor dem Senden speichert die
+Seite in der App (`file.save`), lädt hoch und schickt die Auswahl (`ui.selection`) mit; während des
+Zuges ist die App gesperrt. Danach lädt sie die Dateien neu ins OPFS, startet die App neu und setzt
+die Kamera zurück (`ui.home {open: false}` vorher, sonst bleibt die Startseite der App offen).
+Browsertest mit Fake-Agent: Zug 5 s, Rückgängig 2,6 s (Software-Rendering).
+**Auswahl (seit 2026-10-28):** `POST /api/resolve_selection {items}` übersetzt die Auswahl der App
+(`{type, body, index, point}`) in Mechvane-Namen: Flächenname, erzeugendes Feature, Normale bzw.
+Radius und Achse, Klickpunkt (`click`, „da“) und Schwerpunkt (`centroid`, „mittig“); Kanten mit Name
+und Länge. In Baugruppen sucht `mechvane/ui/selection.py` die Fläche in der verknüpften Bauteildatei
+(inverse Matrix der Occurrence, `links._match`) und nennt Teil, Occurrence und Bauteilfläche. Der Chat
+schickt die aufgelöste Auswahl mit und zeigt die Namen unter der Nachricht.
+
+**Sprache (erste Fassung 2026-10-28):** Mikrofon-Knopf im Eingabefeld (gedrückt halten, nur wo der Browser
+`SpeechRecognition` hat: Chrome, Edge), Deutsch, beim ersten Mal Zustimmung zum Online-Dienst des
+Browsers (Merker in `localStorage`). Der erkannte Text geht an `POST /api/speech`, `mechvane/speech.py`
+macht im Code daraus Zahlen und Einheiten („eins mal fünfundvierzig Grad“ → „1 × 45°“, „Em sechs“ → „M6“,
+„Phase“ → „Fase“) und erkennt Namen aus dem offenen Modell (Features, Körper, Parameter, Occurrences).
+Der Text steht danach im Eingabefeld und wird erst mit Enter gesendet. Offen: Whisper auf dem Server
+(offline), Auswahl beim Drücken festhalten, Vergleich mit gesprochenen Testsätzen.
 
 ## Tests
 

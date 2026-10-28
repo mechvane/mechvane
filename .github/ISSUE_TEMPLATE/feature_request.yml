@@ -1,0 +1,38 @@
+name: Feature or module request
+description: Suggest a feature, a domain module, a standard part or a design rule for Mechvane
+title: "[Feature] "
+labels: ["request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape Mechvane! The "Request a feature" button in the app fills this in for you.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Feature
+        - Module
+        - Standard part
+        - Design rule
+        - Bug
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What should Mechvane do? A short example helps.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What would it make easier in your work?
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Mechvane and SolidCraft version, browser, operating system (optional)

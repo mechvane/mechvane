@@ -17,7 +17,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "tools"))
 
-from build_demo_site import bracket  # noqa: E402
+from mechvane.examples import bracket  # noqa: E402
 from mechvane.documents import Workspace  # noqa: E402
 from mechvane.ui import create_server  # noqa: E402
 from mechvane.ui.webapp import webapp_dir  # noqa: E402

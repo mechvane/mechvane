@@ -6,11 +6,19 @@
 python -m venv $HOME\mechvane-venv
 $HOME\mechvane-venv\Scripts\pip install mechvane
 $HOME\mechvane-venv\Scripts\mechvane setup       # SolidCraft-CLI und Web-App, ca. 90 MB, einmalig
-$HOME\mechvane-venv\Scripts\mechvane ui --demo   # Beispielmodelle im Browser
+$HOME\mechvane-venv\Scripts\mechvane ui --demo   # Beispielmodelle im eigenen App-Fenster
+$HOME\mechvane-venv\Scripts\mechvane shortcut    # optional: Startmenü-Eintrag „Mechvane“ für ~\Mechvane
 ```
 
+`mechvane ui` öffnet ein eigenes App-Fenster mit Chrome oder Edge (Edge ist unter Windows immer
+da); wer das Fenster schließt, beendet Mechvane. Der Startmenü-Eintrag startet ohne Konsolenfenster
+(`pythonw`). Getestet am 2026-10-28 auf der Windows-11-VM: `mechvane shortcut` legt
+`Mechvane.lnk` im Startmenü an (Ziel `pythonw.exe`, Icon `%LOCALAPPDATA%\mechvane\mechvane.ico`),
+`mechvane ui` startet Chrome mit `--app` und eigenem Profil, nach dem Schließen des Fensters endet der
+Server. Nur über SSH geprüft; wie das Fenster am Bildschirm aussieht, steht noch aus.
+
 `mechvane setup` legt alles unter `%LOCALAPPDATA%\mechvane` ab (portables
-SolidCraft-ZIP 0.21.0, SHA256 geprüft). Ohne venv geht auch `pip install --user mechvane`;
+SolidCraft-ZIP 0.25.1 seit 2026-10-28, vorher 0.21.0, SHA256 geprüft). Ohne venv geht auch `pip install --user mechvane`;
 findet Windows `mechvane` dann nicht, `python -m mechvane setup` (bzw. `ui`, `mcp`) nehmen.
 
 Getestet auf der Windows-11-VM (x64, Build 26220) mit einer venv aus CPython 3.13.13

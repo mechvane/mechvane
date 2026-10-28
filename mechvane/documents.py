@@ -18,6 +18,16 @@ def _validate_name(name: str):
 class Document:
     def __init__(self, name, kind, path, session):
         self.name, self.kind, self.path, self.session = name, kind, Path(path), session
+        self.mtime = self.disk_mtime()  # file state this session was loaded from or last saved to
+
+    def disk_mtime(self):
+        try:
+            return self.path.stat().st_mtime_ns
+        except OSError:
+            return None
+
+    def dirty(self) -> bool:
+        return bool(self.session.cmd("document.inspect").get("dirty"))
 
     def metadata(self):
         meta = self.session.cmd("document.metadata").get("metadata") or {}
@@ -28,6 +38,7 @@ class Document:
 
     def save(self):
         self.session.tool("save", {"path": str(self.path)})
+        self.mtime = self.disk_mtime()
 
     def info(self):
         return {"name": self.name, "kind": self.kind, "path": str(self.path)}
@@ -85,7 +96,7 @@ class Workspace:
             if doc.path.resolve() == p:
                 if name and name != doc.name:
                     raise ValueError(f"document {str(p)!r} is already open under name {doc.name!r}")
-                return doc
+                return self._fresh(doc)
         name = name or p.stem
         if not name:
             raise ValueError(f"cannot determine document name from path {str(p)!r}")
@@ -111,11 +122,26 @@ class Workspace:
             raise KeyError(f"no open document {name!r} (open: {', '.join(self.docs) or 'none'})")
         if kind and doc.kind != kind:
             raise ValueError(f"{name!r} is a {doc.kind}, not a {kind}")
+        return self._fresh(doc)
+
+    def _fresh(self, doc):
+        """The document, read again from its file if that changed on disk since it was loaded or saved
+        here (saved by hand in the web UI, or by another process). Reloads in the same session and
+        Document, so callers holding it keep a working reference."""
+        cur = doc.disk_mtime()
+        if cur is None or doc.mtime is None or cur == doc.mtime:
+            return doc
+        if doc.dirty():
+            raise ValueError(f"{doc.name!r} changed on disk and has unsaved changes here: "
+                             f"save it to keep these changes, or close it with discard=True to load the file")
+        doc.session.tool("open", {"path": str(doc.path)})
+        doc.mtime = cur
         return doc
 
     def close(self, name):
-        self.get(name).session.close()
-        del self.docs[name]
+        if name not in self.docs:
+            self.get(name)  # the usual error
+        self.docs.pop(name).session.close()
 
     def close_all(self):
         for name in list(self.docs):

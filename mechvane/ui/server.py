@@ -8,11 +8,11 @@ import shutil
 import sys
 import tempfile
 import threading
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
-from .. import design_rules, links, query, tree
-from . import webapp
+from .. import design_rules, links, query, speech, tree
+from . import agent as agent_mod, selection, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
 from ..solidcraft import Session
@@ -40,6 +40,15 @@ def _pick_joint_status(entries: list[dict]) -> str:
         if p in statuses:
             return p
     return next(iter(statuses))
+
+
+def collect_about() -> dict:
+    """Return package and SolidCraft version info."""
+    from .. import __version__, install
+    return {
+        "mechvane": __version__,
+        "solidcraft": install.VERSION,
+    }
 
 
 def collect_version(doc) -> dict:
@@ -148,6 +157,17 @@ def _add_selections(doc, findings):
                 item["select"] = {"type": "face", "body": body, "index": f["index"],
                                   "point": f.get("point") or f.get("centroid")}
                 break
+
+
+def model_names(doc) -> list[str]:
+    """Names a user may say about the open document: features, bodies, parameters, occurrences."""
+    s = doc.session
+    insp = s.cmd("document.inspect", {"measure": False})
+    names = [f["name"] for f in insp.get("timeline", [])] + [b["name"] for b in insp.get("bodies", [])]
+    names += [p.get("name") for p in insp.get("parameters", []) if isinstance(p, dict)]
+    if doc.kind == ASSEMBLY:
+        names += [o["name"] for o in links._occurrences(s).values()]
+    return sorted({n for n in names if n})
 
 
 def _joint_summary(joint_checks) -> str:
@@ -340,6 +360,20 @@ class UIServer(ThreadingHTTPServer):
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             raise FileNotFoundError(f"not a file or directory: {self.path}")
 
+    @property
+    def agent(self) -> "agent_mod.AgentTurns":
+        """The chat with the user's agent (ADR 0003), started on first use."""
+        if getattr(self, "_agent", None) is None:
+            self._agent = agent_mod.AgentTurns(self.ws.root, on_files_changed=self._files_changed)
+        return self._agent
+
+    def agent_busy(self) -> bool:
+        return getattr(self, "_agent", None) is not None and self._agent.busy
+
+    def _files_changed(self):
+        with self.lock:
+            self.mtime = None  # ensure_current opens the document again
+
     def _get_kind(self, p: Path) -> str:
         mtime = p.stat().st_mtime
         key = (p.name, mtime)
@@ -452,6 +486,8 @@ class UIServer(ThreadingHTTPServer):
         try:
             super().server_close()
         finally:
+            if getattr(self, "_agent", None) is not None:
+                self._agent.close()
             with self.lock:
                 self.ws.close_all()
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
@@ -501,10 +537,88 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_bytes(target.read_bytes(), webapp.mime(target), cache="no-cache")
 
+    def _json_body(self, limit: int = 65536):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length < 0 or length > limit:
+            raise ValueError("invalid content length")
+        if not length:
+            return {}
+        body = json.loads(self.rfile.read(length).decode("utf-8"))
+        if not isinstance(body, dict):
+            raise ValueError("expected a JSON object")
+        return body
+
+    def _agent_post(self, srv, path):
+        try:
+            body = self._json_body()
+        except ValueError as e:
+            self._send_json(400, {"error": str(e)})
+            return
+        turns = srv.agent
+        if path == "/api/agent/send":
+            text = body.get("text")
+            if not isinstance(text, str) or not text.strip():
+                self._send_json(400, {"error": "text required"})
+                return
+            doc = srv.file_path.name if srv.file_path else None
+            try:
+                turn = turns.send(text.strip(), body.get("selection"), doc)
+            except RuntimeError as e:
+                self._send_json(409, {"error": str(e)})
+                return
+            self._send_json(200, {"turn": turn})
+        elif path == "/api/agent/stop":
+            self._send_json(200, {"stopping": turns.stop()})
+        elif path in ("/api/agent/undo", "/api/agent/redo"):
+            try:
+                out = turns.undo(force=bool(body.get("force"))) if path.endswith("undo") else turns.redo()
+            except LookupError as e:
+                self._send_json(404, {"error": str(e)})
+                return
+            except (PermissionError, RuntimeError) as e:
+                self._send_json(409, {"error": str(e)})
+                return
+            self._send_json(200, out)
+        else:
+            self._send_json(404, {"error": f"not found: {path}"})
+
     def do_POST(self):
         path = urlparse(self.path).path
         srv: UIServer = self.server  # type: ignore[assignment]
         try:
+            if path.startswith("/api/agent/"):
+                self._agent_post(srv, path)
+                return
+            if path == "/api/speech":
+                try:
+                    text = self._json_body().get("text")
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                if not isinstance(text, str):
+                    self._send_json(400, {"error": "text required"})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    names = model_names(doc) if doc else []
+                self._send_json(200, {"text": speech.normalize(text, names)})
+                return
+            if path == "/api/resolve_selection":
+                try:
+                    items = self._json_body().get("items") or []
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    self._send_json(200, {"selection": selection.resolve(srv.ws, doc, items)})
+                return
+            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new")):
+                self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})
+                return
             if path.startswith("/api/open/"):
                 name = unquote(path[len("/api/open/"):])
                 if not name:
@@ -572,14 +686,25 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": str(e)})
 
     def do_GET(self):
-        path = urlparse(self.path).path
+        url = urlparse(self.path)
+        path = url.path
         srv: UIServer = self.server  # type: ignore[assignment]
         try:
+            if path == "/api/agent/events":
+                try:
+                    since = int((parse_qs(url.query).get("since") or ["0"])[0])
+                except ValueError:
+                    since = 0
+                self._send_json(200, srv.agent.events_since(max(0, since)))
+                return
             if path in ("/", "/index.html"):
                 self._send_static("index.html", "text/html; charset=utf-8")
                 return
             if path == "/app.js":
                 self._send_static("app.js", "application/javascript; charset=utf-8")
+                return
+            if path == "/request.js":
+                self._send_static("request.js", "application/javascript; charset=utf-8")
                 return
             if path == "/style.css":
                 self._send_static("style.css", "text/css; charset=utf-8")
@@ -623,6 +748,10 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                     self._send_json(404, {"error": "not a file of this document"})
                     return
                 self._send_bytes(target.read_bytes(), "application/octet-stream")
+                return
+
+            if path == "/api/about":
+                self._send_json(200, collect_about())
                 return
 
             if path == "/api/version":
@@ -675,12 +804,23 @@ def create_server(path, port: int = 8765, host: str = "127.0.0.1") -> UIServer:
     return UIServer((host, port), UIRequestHandler, path)
 
 
-def run_server(path, port: int = 8765):
-    """Run the UI server on 127.0.0.1:<port> until interrupted."""
-    srv = create_server(path, port=port, host="127.0.0.1")
+def run_server(path, port: int = 8765, opener=None):
+    """Run the UI server on 127.0.0.1:<port> until interrupted.
+
+    A busy port falls back to a free one. opener(url, stop) is called once the server listens;
+    stop() ends the server (used when the app window is closed)."""
+    try:
+        srv = create_server(path, port=port, host="127.0.0.1")
+    except OSError:
+        if not port:
+            raise
+        srv = create_server(path, port=0, host="127.0.0.1")
     actual_port = srv.server_address[1]
     target_name = srv.folder_path.name if srv.is_folder else srv.file_path.name
-    print(f"Mechvane UI running at http://127.0.0.1:{actual_port}/ ({target_name})", flush=True)
+    url = f"http://127.0.0.1:{actual_port}/"
+    print(f"Mechvane UI running at {url} ({target_name})", flush=True)
+    if opener:
+        threading.Thread(target=opener, args=(url, srv.shutdown), daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

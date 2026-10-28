@@ -2,6 +2,7 @@
 sketch ownership and joint checks across file boundaries. Run: python3 -m mechvane"""
 
 import base64
+import functools
 import os
 from pathlib import Path
 import re
@@ -25,6 +26,28 @@ mcp = FastMCP(
         "face. Save with save_document."
     ),
 )
+
+
+def _autosave_tool(*args, **kwargs):
+    """mcp.tool that, with MECHVANE_AUTOSAVE=1, saves every changed open document after each call.
+    The web UI runs the agent's turns with it, so a turn ends with everything on disk."""
+    register = _mcp_tool(*args, **kwargs)
+
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapped(*a, **k):
+            try:
+                return fn(*a, **k)
+            finally:
+                if os.environ.get("MECHVANE_AUTOSAVE") == "1":
+                    for doc in list(ws.docs.values()):
+                        if doc.dirty():
+                            doc.save()
+        return register(wrapped)
+    return deco
+
+
+_mcp_tool, mcp.tool = mcp.tool, _autosave_tool
 ws = Workspace(os.environ.get("MECHVANE_WORKSPACE") or os.environ.get("INVENTA_WORKSPACE")
                or os.path.join(os.getcwd(), "workspace"))
 
@@ -96,7 +119,7 @@ def save_document(document: str) -> dict:
 def close_document(document: str, discard: bool = False) -> dict:
     """Close an open document without saving. If the document has unsaved changes,
     raises an error unless discard=True."""
-    doc = ws.get(document)
+    doc = ws.docs.get(document) or ws.get(document)  # no reload check: closing is how to drop a stale copy
     is_dirty = doc.session.cmd("document.inspect").get("dirty", False)
     if is_dirty and not discard:
         raise ValueError(

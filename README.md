@@ -48,7 +48,7 @@ MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its own la
 ## Quick start
 
 Requirements: Python ≥ 3.11. Everything else comes with `mechvane setup`: it downloads the
-pinned `solidcraft-cli` and SolidCraft web app (v0.21.0) from the
+pinned `solidcraft-cli` and SolidCraft web app (v0.25.1) from the
 [SolidCraft release](https://github.com/tangency-labs/solidcraft/releases) for your platform
 (Linux x86_64/aarch64, Windows x64/arm64, macOS) and checks their SHA256. No build needed;
 rendering works headless too.
@@ -56,9 +56,14 @@ rendering works headless too.
 ```sh
 pip install mechvane
 mechvane setup        # SolidCraft CLI and web app, about 90 MB, once
-mechvane ui --demo    # example models in the browser
+mechvane ui --demo    # example models in their own app window
 mechvane ui my-project/   # your own .solidcraft files
+mechvane shortcut     # optional: start menu entry for ~/Mechvane (Windows, Linux)
 ```
+
+`mechvane ui` opens an app window when Chrome, Edge, Chromium or Brave is installed (no tabs, no
+address bar; closing it stops Mechvane), otherwise a tab in your default browser. `--browser`
+always uses a tab. Everything runs locally and offline after `mechvane setup`.
 
 Alpha: tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
 If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and

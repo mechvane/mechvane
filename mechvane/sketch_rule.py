@@ -24,8 +24,9 @@ def references(definition, ids):
 
     def walk(v):
         if isinstance(v, dict):
-            if v.get("type") in ("construction", "plane", "axis", "point") and ("name" in v or "id" in v):
-                out.add(v["name"] if "name" in v else ids.get(v.get("id")))
+            # A work feature by name (up to 0.21) or by feature id ("feature": 1, since 0.25)
+            if v.get("type") in ("construction", "plane", "axis", "point") and ("name" in v or "id" in v or "feature" in v):
+                out.add(v["name"] if "name" in v else ids.get(v.get("id", v.get("feature"))))
             for k, x in v.items():
                 if k in ("sketch", "path_sketch") and isinstance(x, int):
                     out.add(ids.get(x))

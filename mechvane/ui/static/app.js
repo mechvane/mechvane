@@ -51,15 +51,13 @@ let selectedFindingIndex = null;
 let cameraFitted = false;
 let modelRadius = 50;
 
-const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
-
 function applyThemeColors() {
-  const isDark = darkMedia.matches;
+  // Dark unless the page asks for the light theme (style.css)
+  const isDark = document.documentElement.dataset.theme !== "light";
   scene.background = new THREE.Color(isDark ? 0x111418 : 0xf3f5f8);
   renderScene();
 }
 
-darkMedia.addEventListener("change", applyThemeColors);
 applyThemeColors();
 
 function renderScene() {
@@ -163,7 +161,7 @@ function updateMeshView(meshData, fitCamera) {
   clearGroup(modelGroup);
   clearGroup(highlightGroup);
 
-  const isDark = darkMedia.matches;
+  const isDark = document.documentElement.dataset.theme !== "light";
   const bodyColors = isDark
     ? [0x6e85a1, 0x7b9689, 0x998478, 0x827b9c, 0x74929c]
     : [0x94a8be, 0x9db4a9, 0xb8a598, 0xa39cb8, 0x93b0b8];

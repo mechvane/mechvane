@@ -21,7 +21,9 @@ class Session:
     def __init__(self, allow_paths=(), executable=None, timeout=300.0):
         self.timeout = timeout
         self._closed = False
-        args = [executable or install.find_cli(), "mcp"]
+        # --headless: since 0.25 a plain `mcp` joins a running SolidCraft app instead; each Mechvane
+        # document needs its own session
+        args = [executable or install.find_cli(), "mcp", "--headless"]
         for p in allow_paths:
             args += ["--allow-path", str(p)]
         self._p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -125,7 +127,14 @@ class Session:
         try:
             return json.loads(text)
         except ValueError:
+            pass
+        # Since 0.25 a headless session appends a plain-text note after the JSON ("Note: this is a
+        # headless session ..."): keep the JSON value at the start.
+        try:
+            value, end = json.JSONDecoder().raw_decode(text.lstrip())
+        except ValueError:
             return text
+        return value
 
     def cmd(self, command, params=None, timeout=None):
         """Run one engine command."""

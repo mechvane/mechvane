@@ -63,6 +63,7 @@ def main():
         finally:
             ws.close_all()
     (out / "demos" / "index.json").write_text(json.dumps({"demos": index}, indent=1), encoding="utf-8")
+    (out / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": "live demo"}, indent=1), encoding="utf-8")
     (out / ".nojekyll").write_text("")
     print(f"wrote {out}")
 

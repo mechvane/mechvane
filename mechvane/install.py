@@ -16,7 +16,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-VERSION = "0.21.0"
+VERSION = "0.25.1"
 BASE_URL = f"https://github.com/tangency-labs/solidcraft/releases/download/v{VERSION}/"
 
 if sys.platform == "win32" and os.environ.get("LOCALAPPDATA"):
@@ -27,15 +27,15 @@ else:
 # Release assets per (system, machine), SHA256 from the GitHub release.
 ASSETS = {
     ("linux", "x86_64"): (f"solidcraft-{VERSION}-linux-x86_64.tar.gz",
-                          "24f87864f9b06aa3788f114725ea81e24968ab08f8ec8eaa4d56bf4a0b0f1fb8"),
+                          "5e467b42530808c75e19f4993247d9ab736e700a1532e40eab2bd3da42a2db2f"),
     ("linux", "aarch64"): (f"solidcraft-{VERSION}-linux-aarch64.tar.gz",
-                           "aa6b3148fd1decfff575f243e642f378f9f755848d4f8d20e4b44453b329149b"),
+                           "f15533ed58edfe06265570033691a6a6d7e0bad0f265d20d2b7f6a05583b78bf"),
     ("windows", "x86_64"): (f"solidcraft-{VERSION}-windows-x64-portable.zip",
-                            "290fb179c3a8c5336e8cc4a6cd63cd5258d0a64762d87d964376dd4f032746c1"),
+                            "10b54687df26c0699ebee72c07764cfb9cd87239a1a4770f52af3ed136970a74"),
     ("windows", "aarch64"): (f"solidcraft-{VERSION}-windows-arm64-portable.zip",
-                             "0a22b0eb52500a67b68cc9ef9368bc58ed1f0debbaf100ab74097b9ee37beada"),
+                             "b3cefec7e368737c519b2b7b4acffc4cfe05f512832dcb7b4f19fdf8fb429026"),
     ("darwin", "universal"): (f"solidcraft-cli-{VERSION}-macos-universal.zip",
-                              "b86e19b128c0dcffd5e4365beaf991f98d1a176ed1734a3ae5fabba7e750c6ea"),
+                              "44ee5a4d7177c19f8f0109abf8209550c1188e4df0a76e3876c25ebcbbfe38b8"),
 }
 
 MACHINES = {"amd64": "x86_64", "x64": "x86_64", "x86_64": "x86_64", "arm64": "aarch64", "aarch64": "aarch64"}

@@ -8,16 +8,17 @@
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
   <style>
-    .model-layout { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 48px); }
+    .model-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 48px); }
     .model-layout iframe { width: 100%; height: 100%; border: 0; background: #343840; }
-    .model-side { overflow: auto; border-left: 1px solid var(--border, #ccc); padding: 12px; }
+    .model-side { background: var(--panel-bg); overflow: auto; border-left: 1px solid var(--border, #ccc); padding: 12px; }
+    .model-side.has-chat { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 8px; }
     .model-side h2 { font-size: 14px; margin: 12px 0 6px; }
     .model-side ul { list-style: none; padding: 0; margin: 0; }
     .model-side li { padding: 6px 0; border-bottom: 1px solid var(--border, #eee); font-size: 13px; }
-    .sev-fail, .sev-error { color: #b42318; } .sev-warning { color: #b54708; } .sev-ok { color: #067647; }
+    .sev-fail, .sev-error { color: var(--fail-fg); } .sev-warning { color: var(--warn-fg); } .sev-ok { color: var(--ok-fg); }
     .mode-switch a { margin-left: 12px; }
-    .model-side li.pick { cursor: pointer; } .model-side li.pick:hover { background: rgba(0,0,0,.04); }
-    .model-side li.picked { background: rgba(180,35,24,.08); }
+    .model-side li.pick { cursor: pointer; } .model-side li.pick:hover { background: var(--hover-bg); }
+    .model-side li.picked { background: var(--fail-bg); }
     @media (max-width: 760px) {
       .model-layout { grid-template-columns: 1fr; height: auto; }
       .model-layout iframe { height: 70vh; }
@@ -26,12 +27,58 @@
     .proj-section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border, #eee); }
     .proj-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .proj-header h2 { font-size: 14px; margin: 0; }
-    .btn-new-part { font-size: 12px; padding: 3px 8px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border, #ccc); background: #f8f9fa; }
-    .btn-new-part:hover { background: #e9ecef; }
+    .btn-new-part { font-size: 12px; padding: 3px 8px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border, #ccc); background: var(--hover-bg); color: inherit; }
+    .btn-new-part:hover { background: var(--selected-bg); }
     .proj-doc { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 13px; }
-    .proj-doc:hover { background: rgba(0,0,0,0.05); }
-    .proj-doc.active { font-weight: bold; background: rgba(0,0,0,0.08); }
-    .proj-kind { font-size: 11px; text-transform: capitalize; color: #666; padding: 1px 4px; border: 1px solid #ccc; border-radius: 3px; font-weight: normal; }
+    .proj-doc:hover { background: var(--hover-bg); }
+    .proj-doc.active { font-weight: bold; background: var(--selected-bg); }
+    /* Agent chat, after Claude Code in VS Code: your messages as bubbles, the agent's as plain text,
+       tool calls as compact rows with a status dot, the composer at the bottom */
+    .chat { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .chat[hidden] { display: none; }
+    .chat-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .chat-head h2 { margin: 0; }
+    .chat-head-actions { display: flex; gap: 2px; }
+    .chat-head-actions button { font: inherit; font-size: 12px; color: var(--text-muted, #666); background: none; border: 0;
+                                padding: 2px 6px; border-radius: 4px; cursor: pointer; max-width: 210px;
+                                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-head-actions button:hover { background: var(--hover-bg, #f0f3f6); color: var(--text, #222); }
+    .model-side ul.chat-log { flex: 1; min-height: 120px; overflow: auto; margin: 8px 0; padding-right: 2px; }
+    .chat-log li { border: 0; padding: 0; margin: 0 0 10px; font-size: 13px; line-height: 1.5;
+                   white-space: pre-wrap; overflow-wrap: anywhere; }
+    .chat-log .you { background: var(--hover-bg, #f0f3f6); border: 1px solid var(--border, #e5e7eb); border-radius: 8px;
+                     padding: 6px 10px; }
+    .chat-log .you .sel { display: block; font-size: 11px; color: var(--text-muted, #666); }
+    .chat-log .tool { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+                      margin-bottom: 4px; color: var(--text-muted, #666); }
+    .chat-log .tool::before { content: "●"; margin-right: 6px; color: #9ca3af; }
+    .chat-log .tool.ok::before { color: #22c55e; } .chat-log .tool.failed::before { color: #ef4444; }
+    .chat-log .tool.declined::before { color: #f59e0b; } .chat-log .tool.declined { color: var(--warn-fg, #b45309); }
+    .chat-log .tool.running::before { animation: pulse 1s infinite; }
+    .chat-log .note { font-size: 12px; color: var(--text-muted, #666); }
+    .chat-log .err { color: var(--fail-fg, #b91c1c); }
+    .chat-log .working { font-size: 12px; color: #d97757; }
+    .chat-log .working::before { content: "✻"; display: inline-block; margin-right: 6px; animation: spin 2s linear infinite; }
+    @keyframes pulse { 50% { opacity: .3; } } @keyframes spin { to { transform: rotate(360deg); } }
+    .composer { border: 1px solid var(--border, #ccc); border-radius: 10px; background: var(--panel-bg, #fff);
+                padding: 6px 6px 6px 10px; }
+    .composer:focus-within { border-color: var(--selected-border, #2563eb); }
+    .chat-input { width: 100%; box-sizing: border-box; min-height: 40px; max-height: 160px; font: inherit; font-size: 13px;
+                  border: 0; outline: 0; padding: 2px 0; background: transparent; color: inherit; resize: none; }
+    .composer-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .composer-hint { font-size: 11px; color: var(--text-muted, #666); }
+    .send-btn { width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer; font-size: 15px; line-height: 1;
+                background: #d97757; color: #fff; }
+    .send-btn:disabled { opacity: .4; cursor: default; }
+    .composer-buttons { display: flex; gap: 6px; align-items: center; }
+    .mic-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border, #ccc); cursor: pointer;
+               background: transparent; font-size: 13px; line-height: 1; touch-action: none; }
+    .mic-btn.listening { background: #d97757; border-color: #d97757; animation: pulse 1s infinite; }
+    .send-btn.stop { background: var(--text, #222); color: var(--bg, #111); font-size: 11px; }
+    .side-details { border-top: 1px solid var(--border, #eee); margin-top: 8px; padding-top: 4px; max-height: 32vh; overflow: auto; }
+    .side-details summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 6px 0; }
+    .side-details h2 { font-size: 13px; }
+    .proj-kind { font-size: 11px; text-transform: capitalize; color: var(--text-muted); padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; font-weight: normal; }
   </style>
 </head>
 <body>
@@ -42,6 +89,7 @@
       <span class="mode-switch"><strong>Model</strong> <a href="./">Check</a></span>
     </div>
     <div class="topbar-right">
+      <button id="btn-request-feature" type="button" class="btn-text">Request a feature</button>
       <span id="status" class="status-text">Loading SolidCraft…</span>
     </div>
   </header>
@@ -55,12 +103,34 @@
         </div>
         <ul id="project-docs"></ul>
       </div>
-      <p id="intro">Edit the design and save it (Ctrl+S). Mechvane checks it again after every save.</p>
-      <h2>Findings</h2>
-      <div id="summary"></div>
-      <ul id="findings"></ul>
-      <h2 id="links-head" hidden>Links</h2>
-      <ul id="links" hidden></ul>
+      <section id="chat" class="chat" hidden aria-label="Agent">
+        <div class="chat-head">
+          <h2>Agent</h2>
+          <div class="chat-head-actions">
+            <button id="chat-undo" type="button" hidden title="Undo the agent's last turn"></button>
+            <button id="chat-redo" type="button" hidden title="Put the undone turn back">↷ Redo</button>
+          </div>
+        </div>
+        <ul id="chat-log" class="chat-log" aria-live="polite"></ul>
+        <div class="composer">
+          <textarea id="chat-input" class="chat-input" rows="2" placeholder="Select a face or edge, then say what to do, e.g. &quot;a 1 × 45° chamfer here&quot;"></textarea>
+          <div class="composer-row">
+            <span id="chat-hint" class="composer-hint">Enter to send · Shift+Enter for a new line</span>
+            <span class="composer-buttons">
+              <button id="chat-mic" type="button" class="mic-btn" hidden title="Hold to speak" aria-label="Hold to speak">🎤</button>
+              <button id="chat-send" type="button" class="send-btn" title="Send" aria-label="Send">↑</button>
+            </span>
+          </div>
+        </div>
+      </section>
+      <div id="checks">
+        <p id="intro">Edit the design and save it (Ctrl+S). Mechvane checks it again after every save.</p>
+        <h2>Findings</h2>
+        <div id="summary"></div>
+        <ul id="findings"></ul>
+        <h2 id="links-head" hidden>Links</h2>
+        <ul id="links" hidden></ul>
+      </div>
     </aside>
   </div>
 <script type="module">
@@ -70,7 +140,10 @@
 const status = (t) => { document.getElementById("status").textContent = t; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const known = new Map();
-let app = null;  // window.solidcraft of the embedded app, once it has started  // name -> lastModified of the copy this page wrote or sent
+let app = null;  // window.solidcraft of the embedded app, once it has started
+let paused = false;  // no sending saved files to the server while the agent works on them
+let ctx = null;  // {meta, dir, frame}: the files the app edits, their OPFS folder and the app's iframe
+let spokenSelection = null;  // the selection when the microphone was pressed: what "here" meant
 // Static mode (live demo on GitHub Pages): the example's files and precomputed findings under
 // demos/<name>/, nothing is sent back.
 const STATIC = document.documentElement.dataset.static === "1";
@@ -243,12 +316,27 @@ async function main() {
   }
   showFindings(await (await fetch(dataUrl("findings"))).json());
 
-  const frame = document.getElementById("app");
-  frame.src = "sc/index.html";
+  ctx = { meta, dir, frame: document.getElementById("app") };
+  await startApp();
+  window.mechvaneReady = true;
+  status("Ready");
+  if (!STATIC) initChat();
+
+  // Send every file the app saved back to the server.
+  for (;;) {
+    await sleep(1000);
+    if (!paused) await syncSaved();
+  }
+}
+
+// Load the app into the iframe and open the document. The app reads OPFS only when it starts and
+// doc.open does not read an open design again, so after the agent changed a file the app starts anew.
+async function startApp(camera) {
+  const { meta, frame } = ctx;
+  frame.src = "sc/index.html?t=" + Date.now();
   await new Promise((r) => frame.addEventListener("load", r, { once: true }));
   const sc = await waitForApi(frame.contentWindow);
   app = sc;
-  // The app reads OPFS asynchronously after it starts: try again until the file is there.
   const path = "/opfs/" + meta.document;
   // Opening too early leaves an error message in the app, so give it a moment first.
   await sleep(1500);
@@ -256,37 +344,245 @@ async function main() {
     try { await sc.execute("doc.open", { path }); break; }
     catch (e) { if (i >= 30) throw e; await sleep(1000); }
   }
-  await sc.request("ui.home", { open: false });
-  window.mechvaneReady = true;
-  status("Ready");
+  await sc.request("ui.home", { open: false });  // closes the app's start page
+  if (camera) await sc.request("ui.camera", camera).catch(() => {});
+}
 
-  // Send every file the app saved back to the server.
-  for (;;) {
-    await sleep(1000);
-    for (const name of meta.files) {
-      let file;
-      try { file = await (await dir.getFileHandle(name)).getFile(); } catch { continue; }
-      if (file.lastModified === known.get(name)) continue;
-      known.set(name, file.lastModified);
-      if (STATIC) {
-        status("Saved in this browser");
-        document.getElementById("summary").textContent =
-          "Saved in this browser. The live demo can't check edits again: install Mechvane to check your own designs after every save. The findings below are for the example as it was.";
-        continue;
+// Send the files the app saved since the last look to the server, which checks them.
+async function syncSaved() {
+  const { meta, dir } = ctx;
+  for (const name of meta.files) {
+    let file;
+    try { file = await (await dir.getFileHandle(name)).getFile(); } catch { continue; }
+    if (file.lastModified === known.get(name)) continue;
+    known.set(name, file.lastModified);
+    if (STATIC) {
+      status("Saved in this browser");
+      document.getElementById("summary").textContent =
+        "Saved in this browser. The live demo can't check edits again: install Mechvane to check your own designs after every save. The findings below are for the example as it was.";
+      continue;
+    }
+    status("Checking " + name + "…");
+    const r = await fetch("api/file/" + encodeURIComponent(name), { method: "POST", body: await file.arrayBuffer() });
+    const res = await r.json();
+    if (!r.ok) { status("Save failed: " + res.error); throw new Error(res.error); }
+    showFindings(res.findings);
+    showLinks(res.update_links);
+    window.mechvaneLastSave = res;
+    status("Saved and checked " + name);
+  }
+}
+
+// After an agent turn, undo or redo: the server's files into OPFS, the app started anew where the
+// camera was, findings checked again.
+async function reloadFromServer() {
+  status("Loading the agent's changes…");
+  const camera = await app.request("ui.camera", {}).catch(() => null);
+  ctx.meta = await (await fetch("api/files")).json();
+  for (const name of ctx.meta.files) {
+    const bytes = new Uint8Array(await (await fetch(fileUrl(name))).arrayBuffer());
+    await putFile(ctx.dir, name, bytes);
+  }
+  await startApp(camera && { target: camera.target, distance: camera.distance, yaw: camera.yaw, pitch: camera.pitch });
+  showFindings(await (await fetch("api/findings")).json());
+  status("Ready");
+}
+
+// The agent chat (ADR 0003): one turn at a time on the files; the app is locked meanwhile.
+function initChat() {
+  const $ = (id) => document.getElementById(id);
+  $("chat").hidden = false;
+  // Chat fills the side panel; findings move into a collapsible part below it
+  document.querySelector(".model-side").classList.add("has-chat");
+  const details = document.createElement("details");
+  details.className = "side-details";
+  details.open = true;
+  const summary = document.createElement("summary");
+  summary.textContent = "Checks";
+  details.append(summary, ...$("checks").childNodes);
+  $("checks").replaceWith(details);
+  for (const h of details.querySelectorAll("h2")) if (h.textContent === "Findings") h.remove();
+
+  const log = $("chat-log");
+  let next = 0, busy = false, agentText = null, working = null;
+  const add = (cls, text) => {
+    const li = document.createElement("li");
+    li.className = cls;
+    li.textContent = text;
+    (working ? working.before(li) : log.append(li));
+    log.scrollTop = log.scrollHeight;
+    return li;
+  };
+  const tools = new Map();
+  const show = (state) => {
+    busy = state.busy;
+    const btn = $("chat-send");
+    btn.classList.toggle("stop", busy);
+    btn.textContent = busy ? "■" : "↑";
+    btn.title = busy ? "Stop" : "Send";
+    $("chat-undo").hidden = busy || !state.undo;
+    $("chat-undo").textContent = state.undo ? "↶ Undo: " + state.undo : "";
+    if (busy && !working) { working = document.createElement("li"); working.className = "working"; working.textContent = "Working…"; log.append(working); }
+    if (!busy && working) { working.remove(); working = null; }
+    ctx.frame.style.pointerEvents = busy ? "none" : "";
+    ctx.frame.style.opacity = busy ? ".6" : "";
+  };
+  let polling = false;
+  async function poll(initial = false) {
+    if (polling) return;
+    polling = true;
+    try {
+      for (;;) {
+        const st = await (await fetch("api/agent/events?since=" + next)).json();
+        next = st.next;
+        let reload = false;
+        for (const e of st.events) {
+          if (e.type === "user") {
+            agentText = null;
+            const li = add("you", e.text);
+            if (e.selected) {
+              const sel = document.createElement("span");
+              sel.className = "sel";
+              sel.textContent = e.selection_names && e.selection_names.length
+                ? "Selected: " + e.selection_names.join(", ") : `${e.selected} selected in the model`;
+              li.append(sel);
+            }
+          } else if (e.type === "text") {
+            if (!agentText) agentText = add("agent", "");
+            agentText.textContent += e.text;
+          } else if (e.type === "tool" && e.tool) {
+            agentText = null;
+            tools.set(e.id, add("tool running", e.tool));
+          } else if (e.type === "tool" && tools.has(e.id)) {
+            tools.get(e.id).className = "tool " + (e.status === "failed" ? "failed" : "ok");
+          } else if (e.type === "declined") {
+            agentText = null;
+            add("tool declined", `${e.tool}: declined, ${e.reason}`);
+          } else if (e.type === "done") {
+            agentText = null;
+            reload = e.changed.length > 0 || e.removed.length > 0;
+            add("note", reload ? "✓ Changed " + [...e.changed, ...e.removed].join(", ") : "No files changed");
+          } else if (e.type === "status" && e.status === "stopped") {
+            add("note", "Stopped. The files are as before this message.");
+            reload = true;
+          } else if (e.type === "error") {
+            add("err", `Error: ${e.error}. The files are as before this message.`);
+            reload = true;
+          } else if (e.type === "undone" || e.type === "redone") {
+            add("note", e.type === "undone" ? "↶ Undone" : "↷ Redone");
+            reload = true;
+          }
+        }
+        show(st);
+        if (st.busy) $("chat-redo").hidden = true;
+        if (reload && !initial) await reloadFromServer();  // on page load the app already has these files
+        if (!st.busy) break;
+        await sleep(700);
       }
-      status("Checking " + name + "…");
-      const r = await fetch("api/file/" + encodeURIComponent(name), { method: "POST", body: await file.arrayBuffer() });
-      const res = await r.json();
-      if (!r.ok) { status("Save failed: " + res.error); continue; }
-      showFindings(res.findings);
-      showLinks(res.update_links);
-      window.mechvaneLastSave = res;
-      status("Saved and checked " + name);
+    } finally {
+      polling = false;
+      paused = false;
     }
   }
+  async function send() {
+    const text = $("chat-input").value.trim();
+    if (!text || busy) return;
+    paused = true;
+    try {
+      // The agent works on the server's files: save what is in the app first and wait until it is there
+      await app.execute("file.save", {});
+      await sleep(300);
+      await syncSaved();
+    } catch (e) {
+      paused = false;
+      status("Could not save before sending: " + e.message);
+      return;
+    }
+    // The selection in Mechvane's names (face name, feature, click point), for the agent
+    let sel = spokenSelection || await app.request("ui.selection", {}).then((r) => r.selection || []).catch(() => []);
+    spokenSelection = null;
+    if (sel.length) {
+      const rr = await fetch("api/resolve_selection", { method: "POST", body: JSON.stringify({ items: sel }) });
+      if (rr.ok) sel = (await rr.json()).selection;
+    }
+    $("chat-input").value = "";
+    const r = await fetch("api/agent/send", { method: "POST", body: JSON.stringify({ text, selection: sel }) });
+    const res = await r.json();
+    if (!r.ok) { add("err", res.error); paused = false; return; }
+    show({ busy: true, undo: null });
+    poll();
+  }
+  async function act(path, label) {
+    paused = true;
+    const r = await fetch("api/agent/" + path, { method: "POST", body: "{}" });
+    const res = await r.json();
+    if (!r.ok) {
+      paused = false;
+      if (r.status === 409 && path === "undo" && confirm(res.error + "\n\nUndo anyway?")) {
+        await fetch("api/agent/undo", { method: "POST", body: JSON.stringify({ force: true }) });
+      } else { add("err", label + ": " + res.error); return; }
+    }
+    if (path === "undo") $("chat-redo").hidden = false;
+    if (path === "redo") $("chat-redo").hidden = true;
+    await poll();
+  }
+  $("chat-send").addEventListener("click", () => (busy ? fetch("api/agent/stop", { method: "POST", body: "{}" }) : send()));
+  $("chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+  initSpeech($("chat-mic"), $("chat-input"), $("chat-hint"));
+  $("chat-undo").addEventListener("click", () => act("undo", "Undo"));
+  $("chat-redo").addEventListener("click", () => act("redo", "Redo"));
+  poll(true);
+}
+// Hold the microphone button and speak (ADR 0003, 4): the browser's speech recognition, then
+// Mechvane's clean-up (numbers, units, "Fase", names in the model) on the server.
+function initSpeech(btn, input, hint) {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Rec) return;  // Firefox, WebKitGTK: type instead (Whisper on the server comes later)
+  btn.hidden = false;
+  const KEY = "mechvane.speech.ok";
+  const allowed = () => { try { return localStorage.getItem(KEY) === "1"; } catch { return false; } };
+  let rec = null, heard = "", before = "";
+  const start = (e) => {
+    e.preventDefault();
+    if (!allowed()) {
+      if (!confirm("Speech input uses your browser's online speech service (Google for Chrome, Microsoft for Edge): what you say is sent there to be written down. Turn it on?")) return;
+      try { localStorage.setItem(KEY, "1"); } catch {}
+    }
+    heard = "";
+    before = input.value;
+    // "da", "here": what was selected when the user started to speak, even if it changes before sending
+    app.request("ui.selection", {}).then((r) => { if ((r.selection || []).length) spokenSelection = r.selection; }).catch(() => {});
+    rec = new Rec();
+    rec.lang = "de-DE";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (ev) => {
+      let final = "", interim = "";
+      for (const r of ev.results) (r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript));
+      heard = final || interim;
+      input.value = (before ? before + " " : "") + heard;
+    };
+    rec.onerror = (ev) => { hint.textContent = "Speech: " + ev.error; };
+    rec.onend = async () => {
+      btn.classList.remove("listening");
+      rec = null;
+      if (!heard.trim()) return;
+      const r = await fetch("api/speech", { method: "POST", body: JSON.stringify({ text: heard }) }).catch(() => null);
+      const clean = r && r.ok ? (await r.json()).text : heard;
+      input.value = (before ? before + " " : "") + clean;
+      input.focus();
+    };
+    btn.classList.add("listening");
+    rec.start();
+  };
+  const stop = () => { if (rec) rec.stop(); };
+  btn.addEventListener("pointerdown", start);
+  btn.addEventListener("pointerup", stop);
+  btn.addEventListener("pointerleave", stop);
 }
 
 main().catch((e) => { status("Error: " + e.message); window.mechvaneError = e.message; });
 </script>
+<script type="module" src="request.js"></script>
 </body>
 </html>

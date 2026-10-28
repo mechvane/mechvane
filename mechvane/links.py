@@ -467,7 +467,7 @@ def insert(ws, doc, part_path, name=None, translate=None, rotate=None, grounded=
             params["translate"] = translate
         if parent:
             params["parent"] = parent
-        r = s.cmd("component.insert_design", params)
+        r = _insert_design(s, params)
         occ = r.get("occurrence")
         if occ is not None and rotate:
             s.cmd("occurrence.move", _move_params(occ, translate=translate, rotate=rotate))
@@ -475,6 +475,15 @@ def insert(ws, doc, part_path, name=None, translate=None, rotate=None, grounded=
             s.cmd("occurrence.ground", {"occurrence": occ, "grounded": True})
         return r
     return _insert_subassembly(ws, doc, p, name=name, translate=translate, rotate=rotate, grounded=grounded, parent=parent)
+
+
+def _insert_design(s, params):
+    """component.insert_design with the new occurrence left free. Since 0.25 SolidCraft grounds a
+    design's first part when it is inserted; Mechvane grounds only on request (insert_part grounded)."""
+    r = s.cmd("component.insert_design", params)
+    if r.get("occurrence") is not None:
+        s.cmd("occurrence.ground", {"occurrence": r["occurrence"], "grounded": False})
+    return r
 
 
 def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grounded=False, parent=None):
@@ -493,6 +502,7 @@ def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grou
     sub_name = _unique_comp_name(s, name or u_root["name"] or p.stem)
     made = s.cmd("component.create", {"name": sub_name, "parent": parent or "root", "activate": False})
     sub_comp, sub_occ_id = made["component"], made["occurrence"]
+    s.cmd("occurrence.ground", {"occurrence": sub_occ_id, "grounded": False})  # grounded on creation since 0.25
     if translate or rotate:
         s.cmd("occurrence.move", _move_params(sub_occ_id, translate=translate, rotate=rotate))
     if grounded:
@@ -509,7 +519,7 @@ def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grou
                     ins = s.cmd("occurrence.copy", {"component": comp_map[uo["component"]], "parent": target_parent})
                 else:
                     cname = _unique_comp_name(s, uc["name"], prefix=sub_name)
-                    ins = s.cmd("component.insert_design", {"path": link["file"], "name": cname, "parent": target_parent})
+                    ins = _insert_design(s, {"path": link["file"], "name": cname, "parent": target_parent})
                     comp_map[uo["component"]] = ins["component"]
                 child_occ = ins["occurrence"]
                 if not g.same_mat(uo["transform"], g.IDENTITY):
@@ -518,6 +528,7 @@ def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grou
             elif uc.get("children"):
                 cname = _unique_comp_name(s, uc["name"], prefix=sub_name)
                 nested = s.cmd("component.create", {"name": cname, "parent": target_parent, "activate": False})
+                s.cmd("occurrence.ground", {"occurrence": nested["occurrence"], "grounded": False})
                 if not g.same_mat(uo["transform"], g.IDENTITY):
                     s.cmd("occurrence.move", dict(g.move_params(uo["transform"]), occurrence=nested["occurrence"]))
                 occ_map[uo["id"]] = nested["occurrence"]
@@ -677,7 +688,7 @@ def _sync_subassemblies(ws, doc):
             link = u_links[uo["component"]]
             if u_oname not in old_parts:
                 cname = _unique_comp_name(s, u_comps[uo["component"]]["name"], prefix=sub_name)
-                ins = s.cmd("component.insert_design", {"path": link["file"], "name": cname, "parent": comp["id"]})
+                ins = _insert_design(s, {"path": link["file"], "name": cname, "parent": comp["id"]})
                 child_occ = ins["occurrence"]
                 target_local = g.mat_mul(t_frame, uo["transform"])
                 if not g.same_mat(target_local, g.IDENTITY):
