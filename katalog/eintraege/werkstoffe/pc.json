@@ -1,0 +1,126 @@
+{
+  "id": "pc",
+  "aussage": "Amorpher thermoplastischer Kunststoff Polycarbonat (PC-Platte) nach DIN EN ISO 527 mit hohem Schlagwiderstand und optischer Transparenz.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.19,
+        1.2
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (Zug)",
+      "bereich": [
+        2200,
+        2300
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.37,
+      "einheit": ""
+    },
+    {
+      "name": "Streckgrenze / Zugfestigkeit Rm",
+      "bereich": [
+        65,
+        69
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung",
+      "bereich": [
+        80,
+        90
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "wert": 82,
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.25,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient",
+      "wert": 80,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT",
+      "wert": 140,
+      "einheit": "°C"
+    },
+    {
+      "name": "Dauergebrauchstemperatur",
+      "wert": 120,
+      "einheit": "°C"
+    },
+    {
+      "name": "Kurzzeitgebrauchstemperatur max.",
+      "wert": 140,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 40,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PC",
+      "Polycarbonat",
+      "TECANAT",
+      "Sustanat PC",
+      "Makrolon",
+      "Lexan"
+    ],
+    "verfahren": [
+      "Zerspanung",
+      "Warmformen",
+      "Biegen"
+    ],
+    "feature": [
+      "Sichtfenster",
+      "Schutzabdeckung",
+      "Frontblende",
+      "Gehaeuse"
+    ],
+    "groesse": [
+      "Platte",
+      "Zuschnitt"
+    ],
+    "festigkeitsklasse": [
+      "Standard"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ensingerplastics.com/en/shapes/tecanat-natural",
+      "stelle": "Technische Daten TECANAT natural",
+      "zitat": "Modulus of elasticity (tensile test)",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://www.roechling.com/fileadmin/assets/Technical%20Data%20Sheet%20Sustanat%C2%AE%20PC%20natural%20591046%20EN.pdf",
+      "stelle": "Seite 1, Technical Data Sheet Sustanat PC natural",
+      "zitat": "Yield stress DIN EN ISO 527 MPa",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Exzellente Zähigkeit und Splitterfreiheit über weiten Temperaturbereich (-40 bis +120 °C) prädestiniert Polycarbonat für Maschinenschutzverkleidungen.",
+  "ausnahmen": "Kerbempfindlich und empfindlich gegen Spannungsrissbildung bei Kontakt mit ungeeigneten Lösemitteln, Fetten oder aggressiven Kühlmitteln.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

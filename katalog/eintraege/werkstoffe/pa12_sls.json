@@ -1,0 +1,125 @@
+{
+  "id": "pa12_sls",
+  "aussage": "Polyamid 12 fuer das selektive Lasersintern (SLS) und Multi Jet Fusion (MJF) nach ISO 527 fuer isotrope Funktionsprototypen und Kleinserien.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        0.93,
+        1.01
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (XY-Druckrichtung)",
+      "wert": 1700,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Elastizitaetsmodul (Z-Druckrichtung)",
+      "wert": 1800,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.38,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (XY-Druckrichtung)",
+      "wert": 48,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm (Z-Druckrichtung)",
+      "wert": 48,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (XY-Druckrichtung)",
+      "bereich": [
+        20,
+        24
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Bruchdehnung (Z-Druckrichtung)",
+      "wert": 15,
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "wert": 75,
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (0.45 MPa)",
+      "bereich": [
+        163,
+        171
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 80,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.22,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 28,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PA12 SLS",
+      "PA 2200",
+      "HP PA 12",
+      "Polyamid 12"
+    ],
+    "verfahren": [
+      "SLS",
+      "MJF",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Funktionsbauteil",
+      "Gehaeuse",
+      "Schnappverschluss",
+      "Kanal"
+    ],
+    "groesse": [
+      "beliebig"
+    ],
+    "festigkeitsklasse": [
+      "gesintert"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.epfl.ch/schools/sti/ateliers/wp-content/uploads/2018/05/sls_PA2200_EOS.pdf",
+      "stelle": "Seite 1-2, General material properties, Mechanical properties",
+      "zitat": "Density of laser-sintered part EOS method",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://proto3000.com/wp-content/uploads/2021/07/Proto3000_HP-PA12-material-datasheet-1.pdf",
+      "stelle": "Seite 2, Mechanical properties XY & Z",
+      "zitat": "Tensile strength, max load, XY",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Pulverbettverfahren erreichen hohe Isotropie (Zugfestigkeit 48 MPa in XY und Z) ohne Stützstrukturen. Geringe Feuchtigkeitsaufnahme sichert hohe Maßhaltigkeit.",
+  "ausnahmen": "Oberflächenrauheit des Pulverbetts (Ra ca. 8–15 µm) erfordert bei Dichtsitzen oder Gleitflächen spanende Nachbearbeitung oder Gleitschleifen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

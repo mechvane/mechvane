@@ -18,8 +18,13 @@ TENS = {"zwanzig": 20, "dreißig": 30, "vierzig": 40, "fünfzig": 50, "sechzig":
         "achtzig": 80, "neunzig": 90}
 
 # Terms speech recognition gets wrong in a CAD context (glossary column "Verwechslungsgefahr")
+# "Phase" is a chamfer ("Fase") only where a size or an edge is in the sentence: "in dieser Phase des
+# Entwurfs" stays as it is
+CHAMFER_CONTEXT = re.compile(r"\d|\b(?:mal|Grad|Kante|Kanten|Ecke|Ecken|mm|Millimeter|eins|zwei|drei|vier|fünf|"
+                             r"sechs|sieben|acht|neun|zehn|halb)\b", re.I)
 TERMS = [
-    (r"\bPhasen?\b", lambda m: "Fasen" if m.group(0).endswith("n") else "Fase"),
+    (r"\bPhasen?\b", lambda m: (("Fasen" if m.group(0).endswith("n") else "Fase")
+                                 if CHAMFER_CONTEXT.search(m.string) else m.group(0))),
     (r"\bFilet\b", "Fillet"), (r"\b(?:Tsch|Sch)ämfer\b", "Chamfer"),
     (r"\bKlangloch\b", "Langloch"), (r"\bBemessung\b", "Bemaßung"),
     (r"\bSenkbohrung\b", "Senkung"),
@@ -48,8 +53,20 @@ def _number(word: str) -> int | None:
     return None
 
 
+def _halves(text: str) -> str:
+    """ "einhalb" -> 0.5, "zweieinhalb" / "eineinhalb" -> 2.5 / 1.5."""
+    def half(m):
+        whole = m.group(1).lower()
+        if not whole:
+            return "0.5"
+        n = 1 if whole in ("ein", "eins") else _number(whole)
+        return m.group(0) if n is None else f"{n}.5"
+    return re.sub(r"\b(\w*?)einhalb\b", half, text, flags=re.I)
+
+
 def _numbers(text: str) -> str:
     """Number words to digits; "Komma" between numbers makes a decimal: "eins Komma fünf" -> "1.5"."""
+    text = _halves(text)
     out = []
     for tok in re.split(r"(\s+)", text):
         n = _number(tok.strip(".,;:!?")) if tok.strip() else None
@@ -59,18 +76,23 @@ def _numbers(text: str) -> str:
         else:
             out.append(tok)
     s = "".join(out)
+    s = re.sub(r"\bein\s+(?=(?:mal|×|Komma|mm|Grad)\b)", "1 ", s, flags=re.I)
     s = re.sub(r"\b(\d+)\s+Komma\s+(\d+)\b", r"\1.\2", s, flags=re.I)
     s = re.sub(r"\b(\d+),(\d+)\b", r"\1.\2", s)
-    s = re.sub(r"\bein\s+(?=(?:mal|×|Komma|mm|Grad)\b)", "1 ", s, flags=re.I)
     return s
 
 
 def _units(s: str) -> str:
     s = re.sub(r"(\d)\s*(?:mal|x|\*)\s*(\d)", r"\1 × \2", s, flags=re.I)
     s = re.sub(r"(\d)\s*Grad\b", r"\1°", s, flags=re.I)
-    # Thread and radius designations: "Em sechs" / "M 6" -> "M6", "Er zwei" / "R 2" -> "R2"
-    s = re.sub(r"\b(?:Em|M)\s*(\d+(?:\.\d+)?)\b", r"M\1", s)
-    s = re.sub(r"\b(?:Er|R)\s+(\d+(?:\.\d+)?)\b", r"R\1", s)
+    s = re.sub(r"(\d)\s*Prozent\b", r"\1 %", s, flags=re.I)
+    s = re.sub(r"\bDurchmesser\s+(\d+(?:\.\d+)?)", r"Ø\1", s, flags=re.I)
+    # Thread and radius designations: "Em sechs" / "m sechs" / "M 6" -> "M6", "Er zwei" / "R 2" -> "R2";
+    # a lowercase "er" only where the sentence is about rounding ("dann bohrt er 5 Löcher" stays)
+    s = re.sub(r"\b(?:em|m)\s*(\d+(?:\.\d+)?)\b", r"M\1", s, flags=re.I)
+    radius = re.compile(r"\b(?:Er|R)\s+(\d+(?:\.\d+)?)\b" if not re.search(r"rund|radius|fillet", s, re.I)
+                        else r"\b(?:er|r)\s+(\d+(?:\.\d+)?)\b", 0 if not re.search(r"rund|radius|fillet", s, re.I) else re.I)
+    s = radius.sub(r"R\1", s)
     return s
 
 
@@ -85,10 +107,14 @@ def _names(s: str, names) -> str:
         best = None
         spans = []
         for j in range(min(len(words), i + 5), i, -1):
-            # numbers and units never belong to a name
-            if any(re.search(r"\d|^(mm|cm|°|×)$", w) for w in words[i:j]):
+            # units never belong to a name; a number only when the whole run is exactly a name ("hole 1")
+            if any(re.search(r"^(mm|cm|°|×|%)$", w) for w in words[i:j]):
                 continue
             cand = re.sub(r"[^0-9a-zäöüß]", "", "".join(words[i:j]).lower())
+            if any(re.search(r"\d", w) for w in words[i:j]):
+                if cand in keys and not re.fullmatch(r"\d+", cand):
+                    spans.append((j, cand))
+                continue
             if len(cand) >= 4 and not (j - i == 1 and cand not in keys):
                 spans.append((j, cand))
         # an exact run of words first; a near miss only when it is about as long as the name

@@ -5,12 +5,15 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0a8] - 2026-10-29
+
+Built and tested with SolidCraft 0.25.1.
 
 ### Added
 
-- **Material library for SolidCraft** (`katalog/werkstoffe.solidcraft-library.json`): the 16 catalog
-  materials, each with density, a matching look and an engineering card (stiffness, strength, thermal
+- **Material library for SolidCraft** (`katalog/werkstoffe.solidcraft-library.json`): the 28 catalog
+  materials (structural, free-cutting and stainless steels, aluminium alloys and casting, cast iron, copper,
+  brass, POM, PA6, PA6-GF30, PC, PA12, and the 3D-printing materials PLA, PETG, ASA, TPU, PA-CF), each with density, a matching look and an engineering card (stiffness, strength, thermal
   values) that names the source of every value. Assign e.g. "EN AW-6082 T6" instead of a generic
   "Aluminum"; mass and the thread-depth check then use it. Rebuild with `tools/katalog_to_solidcraft.py`.
 - **Example: the Mechvane logo as a real assembly** (`docs/examples/logo_showcase/`): welded steel M on a
@@ -25,6 +28,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Chat with your agent (tested with Claude Code on Windows): after Undo, Redo or Stop the agent is told with
+  the next message, so it no longer offers to redo what you just undid; Undo only writes back the files the
+  turn changed (other files keep their timestamps); a failed tool call shows its error text in the chat.
+- Spoken requests: lowercase "m six"/"m6" become M6, "two and a half" and decimals with "ein Komma" are read,
+  percent, diameter (Ø) and model names with a digit are recognised; "Phase" only becomes "Fase" (chamfer) where a
+  size or an edge is mentioned. 44 spoken test sentences guard this.
 - `bolted_connection` drilled at a wrong height ("position … is not on a face") when there was a gap or a
   spacer between the plates and the lower part had a chamfer: the extended plane of the chamfer counted as
   a hit. The cause: a chamfer's face name contains "|", which also separates the two faces in an edge
@@ -179,6 +188,7 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a8]: https://github.com/mechvane/mechvane/compare/v0.1.0a7...v0.1.0a8
 [0.1.0a7]: https://github.com/mechvane/mechvane/compare/v0.1.0a6...v0.1.0a7
 [0.1.0a6]: https://github.com/mechvane/mechvane/compare/v0.1.0a5...v0.1.0a6
 [0.1.0a5]: https://github.com/mechvane/mechvane/compare/v0.1.0a4...v0.1.0a5

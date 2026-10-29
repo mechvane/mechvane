@@ -1,0 +1,131 @@
+{
+  "id": "11smnpb30",
+  "aussage": "Unlegierter Weichautomatenstahl 11SMnPb30 (Werkstoffnummer 1.0718) nach DIN EN ISO 683-4 für hochproduktive Drehteilserien.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 210,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (+C, 16 < d <= 40 mm)",
+      "wert": 375,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm (+SH)",
+      "bereich": [
+        380,
+        570
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm (+C, 16 < d <= 40 mm)",
+      "bereich": [
+        460,
+        710
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A5 min. (+C)",
+      "wert": 8,
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte (+SH)",
+      "bereich": [
+        112,
+        169
+      ],
+      "einheit": "HB"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        45,
+        50
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 11.5,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 300,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 304,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "11SMnPb30",
+      "1.0718",
+      "Automatenstahl",
+      "SAE 12L14"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Bohren",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Drehteil",
+      "Muffe",
+      "Gewindebolzen",
+      "Stift"
+    ],
+    "groesse": [
+      "d <= 100 mm"
+    ],
+    "festigkeitsklasse": [
+      "+SH",
+      "+C"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://en.saarstahl.com/app/uploads/2024/03/20200618100734-11SMnPb30-englisch.pdf",
+      "stelle": "Seite 1, Mechanical properties +SH & +C",
+      "zitat": "Free-cutting steel for bulk applications for joining elements",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "http://stahl-seltmann.de/page/datasheet/0715-18.pdf",
+      "stelle": "Seite 1, Mechanische Eigenschaften",
+      "zitat": "Automatenstahl, optimiert für spanende Fertigungsverfahren auf automatisierten Werkzeugmaschinen",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "zitat": "Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Durch Bleizusatz (0,20–0,35 % Pb) und hohen Schwefelgehalt bilden sich feine Bleiteilchen, die als inneres Schmiermittel wirken, Schnittkräfte senken und extrem kurze Spanbrüche ermöglichen.",
+  "ausnahmen": "Wegen des Bleigehaltes und Heißbruchgefahr grundsätzlich nicht schweißgeeignet. Nicht für Bauteile mit hohen dynamischen Zug- und Biegewechselbeanspruchungen empfohlen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

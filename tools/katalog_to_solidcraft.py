@@ -43,6 +43,18 @@ LOOKS = {
     "pa6_trocken": ("PA6 (dry)", "polymer", "#e9e3d2", 0.0, 0.5),
     "pla": ("PLA (3D print)", "polymer", "#d9d9d6", 0.0, 0.5),
     "petg": ("PETG (3D print)", "polymer", "#c9d8de", 0.0, 0.3),
+    "11smnpb30": ("11SMnPb30", "metal", "#868b91", 1.0, 0.4),
+    "1_4305": ("1.4305 (X8CrNiS18-9)", "metal", "#b6babe", 1.0, 0.25),
+    "1_4571": ("1.4571 (X6CrNiMoTi17-12-2)", "metal", "#b2b7bc", 1.0, 0.25),
+    "cu_etp": ("Cu-ETP (CW004A)", "metal", "#d27a4a", 1.0, 0.2),
+    "en_ac_42100": ("EN AC-42100 T6", "metal", "#b9bdc2", 1.0, 0.5),
+    "en_aw_2007": ("EN AW-2007", "metal", "#c0c4c9", 1.0, 0.3),
+    "pa12_sls": ("PA12 (SLS)", "polymer", "#ecebe6", 0.0, 0.7),
+    "pa6_gf30": ("PA6-GF30", "polymer", "#2b2b2c", 0.0, 0.55),
+    "pa_cf": ("PA-CF (3D print)", "polymer", "#2a2b2d", 0.0, 0.6),
+    "pc": ("PC", "polymer", "#dfe7ec", 0.0, 0.15),
+    "asa": ("ASA (3D print)", "polymer", "#d8d9d6", 0.0, 0.5),
+    "tpu_95a": ("TPU 95A (3D print)", "polymer", "#3a3b3d", 0.0, 0.7),
 }
 
 TO_SI = {"mpa": 1e6, "n/mm²": 1e6, "kn/mm²": 1e9, "gpa": 1e9, "kg/dm³": 1000.0, "g/cm³": 1000.0,

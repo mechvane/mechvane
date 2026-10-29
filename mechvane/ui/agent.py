@@ -9,6 +9,7 @@ Protocol (ACP), works on the project files through the Mechvane MCP server, one 
 - AgentTurns: one turn after the other, its events for the page, Stop and Undo.
 """
 
+import filecmp
 import hashlib
 import json
 import os
@@ -172,7 +173,10 @@ class AcpAgent:
             self.on_event({"type": "tool", "id": u.get("toolCallId"), "tool": title.removeprefix(MECHVANE_TOOL),
                            "status": u.get("status") or "pending"})
         elif kind == "tool_call_update" and u.get("status") in ("completed", "failed"):
-            self.on_event({"type": "tool", "id": u.get("toolCallId"), "status": u["status"]})
+            ev = {"type": "tool", "id": u.get("toolCallId"), "status": u["status"]}
+            if u["status"] == "failed":
+                ev["error"] = _tool_error(u)
+            self.on_event(ev)
 
     def prompt(self, text: str) -> str:
         """Send one message and wait for the turn to end; returns the stop reason."""
@@ -190,6 +194,19 @@ class AcpAgent:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
         shutil.rmtree(self.cwd, ignore_errors=True)
+
+
+def _tool_error(u: dict) -> str:
+    """The error text of a failed tool call, from its content or raw output (ACP), else a plain note."""
+    parts = []
+    for c in u.get("content") or []:
+        inner = c.get("content") if isinstance(c, dict) else None
+        if isinstance(inner, dict) and inner.get("text"):
+            parts.append(inner["text"])
+    raw = u.get("rawOutput")
+    if not parts and raw:
+        parts.append(raw if isinstance(raw, str) else json.dumps(raw)[:500])
+    return " ".join(parts)[:500] or "the tool call failed without an error message"
 
 
 def project_files(folder: Path) -> dict[str, Path]:
@@ -233,13 +250,18 @@ class Snapshot:
             if rel not in keep:
                 p.unlink()
                 removed.append(rel)
+        restored = []
         for rel in keep:
             target = self.folder / rel
+            # files the turn did not touch stay as they are, with their timestamps
+            if target.is_file() and filecmp.cmp(self.dir / rel, target, shallow=False):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             tmp = target.with_name(f".{target.name}.restore")
             shutil.copy2(self.dir / rel, tmp)
             os.replace(tmp, target)
-        return {"restored": sorted(keep), "removed": sorted(removed)}
+            restored.append(rel)
+        return {"restored": sorted(restored), "removed": sorted(removed)}
 
 
 class AgentTurns:
@@ -256,6 +278,7 @@ class AgentTurns:
         self.busy = False
         self.events: list[dict] = []
         self.turns: list[dict] = []  # {id, text, snapshot, after, state, summary}
+        self.notes: list[str] = []  # for the agent, sent with the next message
         self.agent: AcpAgent | None = None
         self._stop = False
 
@@ -292,9 +315,15 @@ class AgentTurns:
         threading.Thread(target=self._run, args=(turn, text, selection, document), daemon=True).start()
         return turn["id"]
 
+    def _note(self, text: str):
+        """Something the agent's own history does not show (undo, redo, a stopped turn); goes with the next message."""
+        self.notes.append(text)
+
     def _message(self, text, selection, document):
         context = {"document": document, "selection": selection or []}
-        return ("You work on a Mechvane CAD project with the user, through the mechvane MCP tools only. "
+        notes, self.notes = self.notes, []
+        prefix = "".join(f"Note: {n}\n" for n in notes)
+        return prefix + ("You work on a Mechvane CAD project with the user, through the mechvane MCP tools only. "
                 "Changes are saved automatically after each tool call. Model with features that stay editable "
                 "in the tree. The user's selection uses Mechvane face names; `click` is where they clicked.\n"
                 f"Context: {json.dumps(context)}\n\nUser: {text}")
@@ -313,6 +342,8 @@ class AgentTurns:
             if self._stop or reason == "cancelled":
                 turn["state"] = "stopped"
                 self._event({"type": "status", "status": "stopped", **turn["snapshot"].restore()})
+                self._note(f"the user stopped your turn {turn['id']} ({turn['text']!r}); the files are back as "
+                           "they were before it.")
             else:
                 turn["state"] = "done"
                 turn["after"] = _state(self.folder)
@@ -354,6 +385,8 @@ class AgentTurns:
             out = turn["snapshot"].restore()
             turn["undone"] = True
             turn["redo"] = redo
+            self._note(f"the user undid your turn {turn['id']} ({turn['text']!r}); the project files are back as "
+                       "they were before it. Do not redo it unless the user asks.")
         self._event({"type": "undone", "turn_id": turn["id"], **out})
         self.on_files_changed()
         return out
@@ -370,6 +403,7 @@ class AgentTurns:
             out = turn.pop("redo").restore()
             turn["undone"] = False
             turn["after"] = _state(self.folder)
+            self._note(f"the user redid your turn {turn['id']} ({turn['text']!r}); its changes are back in the files.")
         self._event({"type": "redone", "turn_id": turn["id"], **out})
         self.on_files_changed()
         return out

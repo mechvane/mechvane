@@ -172,7 +172,7 @@
         {
           "status": "progress",
           "title": "Material database",
-          "text": "16 materials so far (steels, aluminium alloys, cast iron, brass, POM, PA6, PLA, PETG), every value with its source, ready to assign in SolidCraft as a material library; more to come."
+          "text": "28 materials so far (steels, stainless steels, aluminium alloys and casting, cast iron, copper, brass, engineering plastics and 3D-printing materials), every value with its source, ready to assign in SolidCraft as a material library."
         },
         {
           "status": "planned",

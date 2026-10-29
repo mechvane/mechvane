@@ -108,6 +108,32 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/appearance-1335761b3a06c864",
+      "revision": "1335761b3a06c8645fb34dc98f70f30855ce8fff3bad5895be76802c231a3b04",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "EN AW-2007",
+          "color": [
+            192,
+            196,
+            201
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.3,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/appearance-18bd0e73acfe61a3",
       "revision": "18bd0e73acfe61a34028ab45e77a82540d94dac170e85bca514b6187e6a61188",
       "provenance": {
@@ -160,6 +186,32 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/appearance-480907f104fd1dce",
+      "revision": "480907f104fd1dce2ea5b9c11e8e50b3dcba6a8e05e512c083dae1419ecffb5e",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "Cu-ETP (CW004A)",
+          "color": [
+            210,
+            122,
+            74
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.2,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/appearance-4a466a6bd11c7b9b",
       "revision": "4a466a6bd11c7b9b270845891e1cc5806bd3a6f4a635899c4a7f35380d0fec4f",
       "provenance": {
@@ -180,6 +232,32 @@
           "pbr": {
             "metallic": 1.0,
             "roughness": 0.65,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-6a8bcb93f822dbb4",
+      "revision": "6a8bcb93f822dbb49e6e2abcf6ce3724e40bc857baf2198f3d8da0460f2603a5",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "TPU 95A (3D print)",
+          "color": [
+            58,
+            59,
+            61
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.7,
             "dielectric_ior": 1.5
           }
         }
@@ -212,6 +290,58 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/appearance-723271c4e8f99669",
+      "revision": "723271c4e8f99669f2edc7fd5fb97a64a0025d79a7249c0fc766657885c15458",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "PA-CF (3D print)",
+          "color": [
+            42,
+            43,
+            45
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.6,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-7b68080a0ba2cf90",
+      "revision": "7b68080a0ba2cf90c2f6a46b02f2f7d29a5e2f4baba5cac88c9af1f93cd276ba",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "1.4305 (X8CrNiS18-9)",
+          "color": [
+            182,
+            186,
+            190
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.25,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/appearance-868268bc3f99da06",
       "revision": "868268bc3f99da06471ca3d5ded2db36e001c148abe90ca0e241e5f4539a434a",
       "provenance": {
@@ -232,6 +362,58 @@
           "pbr": {
             "metallic": 1.0,
             "roughness": 0.35,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-916ce7e732a3304f",
+      "revision": "916ce7e732a3304f4f055a827f994ce5a1b2df45f30ebab22b6035d3bb961cb3",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "EN AC-42100 T6",
+          "color": [
+            185,
+            189,
+            194
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.5,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-ab043fba2c525e82",
+      "revision": "ab043fba2c525e829a194c58192f81fe28869a81fc8be4e3d1de638d3a1588a3",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "PA6-GF30",
+          "color": [
+            43,
+            43,
+            44
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.55,
             "dielectric_ior": 1.5
           }
         }
@@ -290,6 +472,58 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/appearance-c268ad0b67b43356",
+      "revision": "c268ad0b67b433560834108bb0f2e16e7a0f2a939ccc0ffcb3d363eae62aeb16",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "ASA (3D print)",
+          "color": [
+            216,
+            217,
+            214
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-c2d26a0429185d96",
+      "revision": "c2d26a0429185d96d764e942a5289c59b35b0f3692ed0bd182d1fc304a328684",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "PC",
+          "color": [
+            223,
+            231,
+            236
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.15,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/appearance-c5fd19397e128f73",
       "revision": "c5fd19397e128f7397e9614532c618841465d0c4fcec6352ce2b8302b9fb0507",
       "provenance": {
@@ -342,6 +576,58 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/appearance-d75fae4787d1e093",
+      "revision": "d75fae4787d1e093b8811ca4153b400f7515bd42cf030de8f3c3a7e687fe9f2b",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "1.4571 (X6CrNiMoTi17-12-2)",
+          "color": [
+            178,
+            183,
+            188
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.25,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-da32e691cf75c4e8",
+      "revision": "da32e691cf75c4e8a7c27332df7d13e0aab84276654547bc405b6139ec699e98",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "PA12 (SLS)",
+          "color": [
+            236,
+            235,
+            230
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 0.0,
+            "roughness": 0.7,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/appearance-de122925bc215e45",
       "revision": "de122925bc215e4548533c8f97f1e6a9ec3d125592b8b13080f826ab05ef5c6a",
       "provenance": {
@@ -362,6 +648,32 @@
           "pbr": {
             "metallic": 1.0,
             "roughness": 0.45,
+            "dielectric_ior": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/appearance-e302fec305ff73df",
+      "revision": "e302fec305ff73df89c086f941f2d9045bfb1798511a09a3690a04663bd93749",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "appearance",
+        "value": {
+          "name": "11SMnPb30",
+          "color": [
+            134,
+            139,
+            145
+          ],
+          "opacity": 1.0,
+          "pbr": {
+            "metallic": 1.0,
+            "roughness": 0.4,
             "dielectric_ior": 1.5
           }
         }
@@ -750,6 +1062,151 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/material-352f963623682c0b",
+      "revision": "352f963623682c0b7e8124a2a101fefd63f1994b94ecf1beefce0bf0c9f5cdd0",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "PA6-GF30",
+          "density_g_cm3": 1.355,
+          "appearance": {
+            "name": "PA6-GF30",
+            "color": [
+              43,
+              43,
+              44
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.55,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "PA6-GF30",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Technische Daten TECAMID 6 GF30 black",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.ensingerplastics.com/en/shapes/tecamid-6-gf30-black"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Technical Data Sheet Sustamid 6 GF 30 black",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.roechling.com/fileadmin/assets/69/10/Sustamid%C2%AE%206%20GF%2030%20black%20%E2%80%93%20Technical%20Data%20Sheet%20(EN)%20[591069].pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 1355.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 5100000000.0,
+                    "poisson_ratio": 0.35
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 85000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 65000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.41,
+                    0.41,
+                    0.41
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.00006,
+                    0.00006,
+                    0.00006
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA6-GF30, Polyamid 6 GF30"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/material-48d2c9bccd58b0e3",
       "revision": "48d2c9bccd58b0e3281bb8ce9df29d978af8e96a3bd8252b3503e4e5b35820d2",
       "provenance": {
@@ -907,6 +1364,171 @@
                   "moisture_dry_basis_kg_kg": null,
                   "strain_rate_per_s": null,
                   "state": "S235JR, 1.0038"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-49a1d01f76a3bc68",
+      "revision": "49a1d01f76a3bc68a574435c94422acd42f9db3cc974ef19bdd041dd921533f0",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "1.4305 (X8CrNiS18-9)",
+          "density_g_cm3": 7.9,
+          "appearance": {
+            "name": "1.4305 (X8CrNiS18-9)",
+            "color": [
+              182,
+              186,
+              190
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.25,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "1.4305 (X8CrNiS18-9)",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Physikalische und mechanische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://swisssteel-group.com/content-media/documents/_import/1.4305_de.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Abschnitt Physikalische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.thyssenkrupp-materials.ch/de/downloads/werkstoffdatenblaetter-edelstahl-rostfrei/datenblatt-remanit-4305"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 7900.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 200000000000.0,
+                    "poisson_ratio": 0.3
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 500000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 190000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 400000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    15.0,
+                    15.0,
+                    15.0
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.000016,
+                    0.000016,
+                    0.000016
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4305, X8CrNiS18-9"
                 }
               }
             ]
@@ -1080,6 +1702,628 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/material-4eb151a947ca2447",
+      "revision": "4eb151a947ca244724b552cda341394d733d137a39135a9e5e2949eea4fcb331",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "1.4571 (X6CrNiMoTi17-12-2)",
+          "density_g_cm3": 8.0,
+          "appearance": {
+            "name": "1.4571 (X6CrNiMoTi17-12-2)",
+            "color": [
+              178,
+              183,
+              188
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.25,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "1.4571 (X6CrNiMoTi17-12-2)",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Physikalische und mechanische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://swisssteel-group.com/content-media/documents/_import/1.4571_de.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1-3, Werkstoffdatenblatt 1.4571",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://ucpcdn.thyssenkrupp.com/_legacy/UCPthyssenkruppBAMXAustria/assets.files/download/rsh_datenblatt_4571.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 8000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 200000000000.0,
+                    "poisson_ratio": 0.3
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 500000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 200000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 400000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    15.0,
+                    15.0,
+                    15.0
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.000016,
+                    0.000016,
+                    0.000016
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "1.4571, X6CrNiMoTi17-12-2"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-5d1e5703d4fed2e2",
+      "revision": "5d1e5703d4fed2e2193740518cc7e71a253598ba1a1436ec0286b44644baf641",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "11SMnPb30",
+          "density_g_cm3": 7.85,
+          "appearance": {
+            "name": "11SMnPb30",
+            "color": [
+              134,
+              139,
+              145
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.4,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "11SMnPb30",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1, Mechanical properties +SH & +C",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://en.saarstahl.com/app/uploads/2024/03/20200618100734-11SMnPb30-englisch.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Mechanische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "http://stahl-seltmann.de/page/datasheet/0715-18.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 7850.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 210000000000.0,
+                    "poisson_ratio": 0.3
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 380000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 375000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 304000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    47.5,
+                    47.5,
+                    47.5
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.0000115,
+                    0.0000115,
+                    0.0000115
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "11SMnPb30, 1.0718"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-64200584ec35dc08",
+      "revision": "64200584ec35dc086549a9520648f5bba738e0c10688584d4905269803530b61",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "EN AC-42100 T6",
+          "density_g_cm3": 2.66,
+          "appearance": {
+            "name": "EN AC-42100 T6",
+            "color": [
+              185,
+              189,
+              194
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.5,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "EN AC-42100 T6",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Zusammensetzung, mechanische und physikalische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://germannguss.ch/wp-content/uploads/2018/10/EN-AC-AlSi7Mg0.3.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Mechanische Eigenschaften Sandguss und Kokillenguss T6",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://hegi.ch/media/1199/technisches-merkblatt-alsi7mg.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 2660.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 72000000000.0,
+                    "poisson_ratio": 0.33
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 230000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 190000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 120000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    157.5,
+                    157.5,
+                    157.5
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.000022,
+                    0.000022,
+                    0.000022
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AC-42100, AlSi7Mg0,3"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-6c4428ccb1c83432",
+      "revision": "6c4428ccb1c834323d5e09e44573428e5427259b6811b2b17d74d1ad8ce1b79e",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "ASA (3D print)",
+          "density_g_cm3": 1.1,
+          "appearance": {
+            "name": "ASA (3D print)",
+            "color": [
+              216,
+              217,
+              214
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.5,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "ASA (3D print)",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Abschnitte Physical, Thermal and Mechanical Properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/abs-asa/polymaker-tm-asa"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1-2, Mechanical properties of 3D printed testing specimens",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://prusament.com/wp-content/uploads/2022/10/ASA_Prusament_TDS_2022_16_EN.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 1100.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "ASA, Acrylnitril-Styrol-Acrylat"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 1989500000.0,
+                    "poisson_ratio": 0.35
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "ASA, Acrylnitril-Styrol-Acrylat, XY print direction"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 32000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "ASA, Acrylnitril-Styrol-Acrylat, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 24000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "ASA, Acrylnitril-Styrol-Acrylat, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.17,
+                    0.17,
+                    0.17
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "ASA, Acrylnitril-Styrol-Acrylat"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/material-792c2e199a76de8f",
       "revision": "792c2e199a76de8fda7ce10152ad0aaf1158039beffcc38c4741965b52baa451",
       "provenance": {
@@ -1206,6 +2450,151 @@
                   "moisture_dry_basis_kg_kg": null,
                   "strain_rate_per_s": null,
                   "state": "PLA, Polylactid"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-7b59686d97360365",
+      "revision": "7b59686d973603652d905017f82511cad7a87354aeb0fef5ae812431767c6785",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "PC",
+          "density_g_cm3": 1.195,
+          "appearance": {
+            "name": "PC",
+            "color": [
+              223,
+              231,
+              236
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.15,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "PC",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Technische Daten TECANAT natural",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.ensingerplastics.com/en/shapes/tecanat-natural"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Technical Data Sheet Sustanat PC natural",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.roechling.com/fileadmin/assets/Technical%20Data%20Sheet%20Sustanat%C2%AE%20PC%20natural%20591046%20EN.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 1195.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 2250000000.0,
+                    "poisson_ratio": 0.37
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 65000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 40000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.25,
+                    0.25,
+                    0.25
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.00008,
+                    0.00008,
+                    0.00008
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PC, Polycarbonat"
                 }
               }
             ]
@@ -1995,6 +3384,298 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/material-a777fd3af92e3f21",
+      "revision": "a777fd3af92e3f218fd2e68992f916053408a3fe986458d8223899d657a20760",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "EN AW-2007",
+          "density_g_cm3": 2.85,
+          "appearance": {
+            "name": "EN AW-2007",
+            "color": [
+              192,
+              196,
+              201
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.3,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "EN AW-2007",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-4, Werkstoffdatenblatt EN AW-2007",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://datenblaetter.thyssenkrupp.ch/en_aw_2007_0618.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Kennwerttabelle Zustand kaltausgehärtet",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-2007.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 2850.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 73000000000.0,
+                    "poisson_ratio": 0.33
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 370000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 250000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 222000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    145.0,
+                    145.0,
+                    145.0
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.000024,
+                    0.000024,
+                    0.000024
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "EN AW-2007, AlCuMgPb"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-c72eb15088eb6b40",
+      "revision": "c72eb15088eb6b40112297853579cede54c13661bbd602fcd2ca68148295f34e",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "PA12 (SLS)",
+          "density_g_cm3": 0.97,
+          "appearance": {
+            "name": "PA12 (SLS)",
+            "color": [
+              236,
+              235,
+              230
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.7,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "PA12 (SLS)",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, General material properties, Mechanical properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.epfl.ch/schools/sti/ateliers/wp-content/uploads/2018/05/sls_PA2200_EOS.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 2, Mechanical properties XY & Z",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://proto3000.com/wp-content/uploads/2021/07/Proto3000_HP-PA12-material-datasheet-1.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 970.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA12 SLS, PA 2200"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 1700000000.0,
+                    "poisson_ratio": 0.38
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA12 SLS, PA 2200, XY print direction"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 48000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA12 SLS, PA 2200, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 28000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA12 SLS, PA 2200, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.22,
+                    0.22,
+                    0.22
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA12 SLS, PA 2200"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/material-caa31d861fefdda8",
       "revision": "caa31d861fefdda8b829f111b1c75e1c6b3201eafe605b1996024af3c42e3e8a",
       "provenance": {
@@ -2160,6 +3841,116 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/material-ceff5c9f1f5e2998",
+      "revision": "ceff5c9f1f5e29985cae36afa538e5ed19cb5b0e363d0640e88abe82e3669b8c",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "TPU 95A (3D print)",
+          "density_g_cm3": 1.205,
+          "appearance": {
+            "name": "TPU 95A (3D print)",
+            "color": [
+              58,
+              59,
+              61
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.7,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "TPU 95A (3D print)",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Abschnitt Physical and Mechanical Properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/tpu/polyflex-tm-tpu95-hf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1-2, Typical material properties & Mechanical properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://storage.googleapis.com/prusa3d-content-prod-14e8-wordpress-prusament-prod/2025/05/80316f6d-tds-prusament_tpu_95a_en-1.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 1205.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "TPU 95A, Thermoplastisches Polyurethan"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 26600000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "TPU 95A, Thermoplastisches Polyurethan, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 15000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "TPU 95A, Thermoplastisches Polyurethan, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.19,
+                    0.19,
+                    0.19
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "TPU 95A, Thermoplastisches Polyurethan"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/material-d2030165e55d54da",
       "revision": "d2030165e55d54da82fb89dd86c95a6461d7e9a3f70cdd00242d058ebe3f0f24",
       "provenance": {
@@ -2317,6 +4108,164 @@
                   "moisture_dry_basis_kg_kg": null,
                   "strain_rate_per_s": null,
                   "state": "CuZn39Pb3, CW614N"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-d2201e431148634c",
+      "revision": "d2201e431148634c6d814478b049b40c89bbb211121869d64498a3a7b80238bf",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "Cu-ETP (CW004A)",
+          "density_g_cm3": 8.93,
+          "appearance": {
+            "name": "Cu-ETP (CW004A)",
+            "color": [
+              210,
+              122,
+              74
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.2,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "Cu-ETP (CW004A)",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Physical and Mechanical properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.wieland.com/cn/content/download/18989/file/K18-K32_EN.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1-3, Physikalische und mechanische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://ucpcdn.thyssenkrupp.com/_binary/UCPthyssenkruppBAMMaterialsSchulte/c7d04687-2eee-4b99-b612-bbf2cff12534/Werkstoffdatenblatt-CW004A.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 8930.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 118500000000.0,
+                    "poisson_ratio": 0.34
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 200000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 120000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 160000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    389.5,
+                    389.5,
+                    389.5
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.0000177,
+                    0.0000177,
+                    0.0000177
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "Cu-ETP, CW004A"
                 }
               }
             ]
@@ -2799,6 +4748,133 @@
                   "moisture_dry_basis_kg_kg": null,
                   "strain_rate_per_s": null,
                   "state": "C45, 1.0503"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-edd74c3863842661",
+      "revision": "edd74c3863842661632557cad73fa8eb62f1c3430734b31c5f262863b04f6f11",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "PA-CF (3D print)",
+          "density_g_cm3": 1.1,
+          "appearance": {
+            "name": "PA-CF (3D print)",
+            "color": [
+              42,
+              43,
+              45
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 0.0,
+              "roughness": 0.6,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "PA-CF (3D print)",
+            "family": "polymer",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Physical and Mechanical Properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://wiki.bambulab.com/filament-acc/petcf-ppacf/c750bddfb8e44af6ae9f7dd9625fa458.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1-2, Typical material properties & Mechanical properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://prusament.com/wp-content/uploads/2022/08/TDS_PA11CFB.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 1100.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA-CF, PA6-CF"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 3465000000.0,
+                    "poisson_ratio": 0.35
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA-CF, PA6-CF, XY print direction"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 42000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA-CF, PA6-CF, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 30000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA-CF, PA6-CF, minimum of XY and Z"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    0.35,
+                    0.35,
+                    0.35
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "PA-CF, PA6-CF"
                 }
               }
             ]

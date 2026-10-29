@@ -886,8 +886,8 @@ def design_rule_checks(ws):
     doc_mat.session.cmd("library.apply", {"path": str(lib_path), "entry": ent["id"], "revision": ent["revision"],
                                           "targets": {"bodies": [body]}})
     r_lib = design_rules.check(doc_mat.session)
-    ok("catalog library: 16 materials with physical cards; EN AW-6082 T6 assigned from it counts as soft aluminium",
-       len(mats) == 16 and all(e["definition"]["value"].get("physical_card") for e in mats)
+    ok("catalog library: all catalog materials with physical cards; EN AW-6082 T6 assigned from it counts as soft aluminium",
+       len(mats) == len(list((Path(__file__).resolve().parents[2] / "katalog" / "eintraege" / "werkstoffe").glob("*.json"))) and all(e["definition"]["value"].get("physical_card") for e in mats)
        and r_lib["material"] == "alu" and r_lib["rules"]["thread_depth"]["status"] == "fail",
        f"{len(mats)} {r_lib['material']} {r_lib['rules']['thread_depth']['status']}")
     ws.close("rule_material")
@@ -4630,6 +4630,10 @@ def agent_turns_checks(tmp):
         plate.save()
         w.close_all()
         n0 = features("plate.solidcraft")
+        # a file no turn touches: undo must leave it alone, timestamps included
+        import shutil as _sh
+        _sh.copy2(folder / "plate.solidcraft", folder / "other.solidcraft")
+        other_mtime = (folder / "other.solidcraft").stat().st_mtime_ns
 
         changed = []
         turns = ag.AgentTurns(folder, on_files_changed=lambda: changed.append(1), command=fake)
@@ -4647,6 +4651,12 @@ def agent_turns_checks(tmp):
            and '"delete_feature": false' in text and declined == ["Bash", "delete_feature", "run"], text + str(declined))
 
         out = turns.undo()
+        ok("agent: undo writes back only the files the turn changed",
+           "other.solidcraft" not in out["restored"] and (folder / "other.solidcraft").stat().st_mtime_ns == other_mtime,
+           f"{out}")
+        msg = turns._message("next", None, "plate.solidcraft")
+        ok("agent: after undo the next message tells the agent, once",
+           "undid your turn 1" in msg and "undid" not in turns._message("again", None, None), msg[:200])
         ok("agent: undo puts the files back and removes files the turn added",
            out["removed"] == ["extra.solidcraft"] and not (folder / "extra.solidcraft").exists()
            and features("plate.solidcraft") == n0, f"{out}")
@@ -4845,6 +4855,32 @@ def speech_checks(tmp):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def speech_cases_checks():
+    """Verify test cases from speech_cases.json (issue #21).
+
+    All cases marked 'ok' must match speech.normalize(heard, names).
+    Cases marked 'open' are counted and reported, not treated as failures.
+    """
+    from mechvane import speech
+
+    cases_path = Path(__file__).resolve().parent / "speech_cases.json"
+    with open(cases_path, encoding="utf-8") as f:
+        cases = json.load(f)
+
+    ok_cases = [c for c in cases if c.get("status") == "ok"]
+    open_cases = [c for c in cases if c.get("status") == "open"]
+
+    bad = []
+    for c in ok_cases:
+        got = speech.normalize(c["heard"], c.get("names", []))
+        if got != c["expected"]:
+            bad.append((c["heard"], got, c["expected"]))
+
+    ok(f"speech cases: {len(ok_cases)} ok ({len(open_cases)} open, {len(cases)} total)",
+       len(cases) >= 40 and not bad,
+       f"bad={bad}" if bad else f"case count {len(cases)} < 40")
 
 
 def params_checks(tmp):
@@ -5531,6 +5567,7 @@ def main():
             agent_turns_checks(tmp)
             selection_checks(tmp)
             speech_checks(tmp)
+            speech_cases_checks()
             params_checks(tmp)
             viewtools_checks(tmp)
             roadmap_json_checks()

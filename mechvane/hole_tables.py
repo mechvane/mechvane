@@ -267,6 +267,9 @@ _MATERIAL_ALIASES = {
     "en_aw_5083_h111": "alu",
     "en_aw_7075_t6": "alu_wrought",
     "cuzn39pb3_(cw614n)": "brass",
+    "11smnpb30": "steel",
+    "en_ac_42100_t6": "alu_cast",
+    "en_aw_2007": "alu_wrought",   # Rm 370 MPa and more, above the Bossard row's 330
 }
 
 

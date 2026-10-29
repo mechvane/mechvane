@@ -1,0 +1,364 @@
+[
+ {
+  "heard": "Wandstärke eins Komma fünf Millimeter",
+  "expected": "Wandstärke 1.5 mm",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Dezimalzahl mit Zahlwort 'eins Komma fünf' und Maßeinheit 'Millimeter' wird zu '1.5 mm' zusammengeführt."
+ },
+ {
+  "heard": "Rechteck vierzig mal dreißig, Höhe hundertzwanzig",
+  "expected": "Rechteck 40 × 30, Höhe 120",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Zehner- und Hunderter-Zahlwörter sowie Multiplikationswort 'mal' werden zu Ziffern und '×' normalisiert."
+ },
+ {
+  "heard": "Platte zweihundertfünfzig auf einhundertfünfzehn",
+  "expected": "Platte 250 auf 115",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Zusammengesetzte Hunderter-Zahlen 'zweihundertfünfzig' (250) und 'einhundertfünfzehn' (115)."
+ },
+ {
+  "heard": "Bohrung sieben Komma fünfundzwanzig Millimeter",
+  "expected": "Bohrung 7.25 mm",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Dezimalkomma mit zweistelliger Nachkommazahl 'fünfundzwanzig' wird zu '7.25 mm'."
+ },
+ {
+  "heard": "Plattendicke ein Komma fünf Millimeter",
+  "expected": "Plattendicke 1.5 mm",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Zahlwort 'ein' vor Komma wird von _numbers() erst nach dem Dezimal-Regex ersetzt, Resultat ist '1 Komma 5 mm' statt '1.5 mm'."
+ },
+ {
+  "heard": "Abstand zweieinhalb Millimeter",
+  "expected": "Abstand 2.5 mm",
+  "names": [],
+  "category": "Zahlen",
+  "status": "ok",
+  "note": "Zusammengesetztes Bruchzahlwort 'zweieinhalb' wird von _number() nicht unterstützt und bleibt als Text 'zweieinhalb mm' stehen."
+ },
+ {
+  "heard": "Länge zehn Zentimeter und Breite fünfzig Millimeter",
+  "expected": "Länge 10 cm und Breite 50 mm",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Umwandlung der Längeneinheiten 'Zentimeter' in 'cm' und 'Millimeter' in 'mm'."
+ },
+ {
+  "heard": "Drehung um neunzig Grad",
+  "expected": "Drehung um 90°",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Winkeleinheit 'Grad' nach Zahlwort wird zum Gradsymbol '°'."
+ },
+ {
+  "heard": "um ein Millimeter erhöhen",
+  "expected": "um 1 mm erhöhen",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Zahlwort 'ein' direkt vor Einheit 'mm' (aus 'Millimeter') wird zur Ziffer 1."
+ },
+ {
+  "heard": "Winkel drei Komma fünf Grad",
+  "expected": "Winkel 3.5°",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Dezimaler Winkelwert mit Komma und Einheit 'Grad' wird zu '3.5°'."
+ },
+ {
+  "heard": "Skalierung um fünfzehn Prozent",
+  "expected": "Skalierung um 15 %",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Einheit 'Prozent' wird von _units() noch nicht zum Symbol '%' normalisiert, bleibt als '15 Prozent' stehen."
+ },
+ {
+  "heard": "zehn Prozent Steigung",
+  "expected": "10 % Steigung",
+  "names": [],
+  "category": "Einheiten",
+  "status": "ok",
+  "note": "Prozentangabe am Satzanfang wird zu '10 Prozent' statt '10 %'."
+ },
+ {
+  "heard": "da eine Phase zwei mal fünfundvierzig Grad",
+  "expected": "da eine Fase 2 × 45°",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Typischer STT-Homophonfehler 'Phase' wird zu 'Fase', Multiplikation zu '×' und 'Grad' zu '°'."
+ },
+ {
+  "heard": "beidseitig Phasen drei mal fünfundvierzig Grad",
+  "expected": "beidseitig Fasen 3 × 45°",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Pluralform 'Phasen' wird korrekt zu 'Fasen' bereinigt."
+ },
+ {
+  "heard": "Rundung Er zwei an der Kante",
+  "expected": "Rundung R2 an der Kante",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Gesprochene Radiusbezeichnung 'Er zwei' wird zu 'R2' zusammengezogen."
+ },
+ {
+  "heard": "hier ein Filet und an der Kante ein Tschämfer",
+  "expected": "hier ein Fillet und an der Kante ein Chamfer",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Englische CAD-Fachbegriffe in deutscher Aussprache ('Filet', 'Tschämfer') werden zu 'Fillet' und 'Chamfer'."
+ },
+ {
+  "heard": "Rundung er fünf an der Ecke",
+  "expected": "Rundung R5 an der Ecke",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Klein geschriebenes 'er fünf' wird von _units() wegen fehlendem case-insensitive Flag bei (?:Er|R) zu 'er 5' statt 'R5'."
+ },
+ {
+  "heard": "Kante verrunden mit Rz vier",
+  "expected": "Kante verrunden mit Rz 4",
+  "names": [],
+  "category": "Fasen/Rundungen",
+  "status": "ok",
+  "note": "Rz ist ein Rauheitskennwert; keine Umdeutung zu R4 (Entscheidung Claude 2026-10-29)."
+ },
+ {
+  "heard": "mittig eine Gewindebohrung Em sechs",
+  "expected": "mittig eine Gewindebohrung M6",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Metrische Gewindebezeichnung 'Em sechs' wird zu 'M6'."
+ },
+ {
+  "heard": "eine Senkbohrung für M vier",
+  "expected": "eine Senkung für M4",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Fachbegriff 'Senkbohrung' wird zu 'Senkung' und 'M vier' zu 'M4'."
+ },
+ {
+  "heard": "hier ein Klangloch zwanzig mal zehn",
+  "expected": "hier ein Langloch 20 × 10",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Typischer akustischer STT-Erkennungsfehler 'Klangloch' wird zu 'Langloch'."
+ },
+ {
+  "heard": "Gewindebohrung Em zwölf mit Tiefe fünfzehn",
+  "expected": "Gewindebohrung M12 mit Tiefe 15",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Größeres Regelgewinde 'Em zwölf' wird zu 'M12' und 'fünfzehn' zu '15'."
+ },
+ {
+  "heard": "Bohrung Durchmesser acht Millimeter",
+  "expected": "Bohrung Ø8 mm",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Fachbegriff 'Durchmesser' vor Maßzahl wird von speech.py noch nicht zum CAD-Kurzzeichen 'Ø' zusammengezogen."
+ },
+ {
+  "heard": "ein Durchgangsloch fünf Millimeter",
+  "expected": "ein Durchgangsloch 5 mm",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "status": "ok",
+  "note": "Die Wortwahl des Nutzers bleibt; nur Zahl und Einheit werden normalisiert (Entscheidung Claude 2026-10-29)."
+ },
+ {
+  "heard": "um fünf Millimeter nach links verschieben",
+  "expected": "um 5 mm nach links verschieben",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Verschiebeanweisung mit Richtungsangabe und Maß 'fünf Millimeter' wird zu '5 mm'."
+ },
+ {
+  "heard": "doppelt so dick machen",
+  "expected": "doppelt so dick machen",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Relative Geometrieanweisung ohne explizite Maße bleibt als natürlichsprachlicher Prompt für den Agenten erhalten."
+ },
+ {
+  "heard": "Kante um drei Millimeter nach oben versetzen",
+  "expected": "Kante um 3 mm nach oben versetzen",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Offset-Änderung mit Richtungsangabe und Maßzahl."
+ },
+ {
+  "heard": "um zwanzig Millimeter in X Richtung bewegen",
+  "expected": "um 20 mm in X Richtung bewegen",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Achsenbezogene Translation im 3D-Raum mit normalisierter Maßangabe '20 mm'."
+ },
+ {
+  "heard": "Wandstärke verdoppeln",
+  "expected": "Wandstärke verdoppeln",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Verdopplungsanweisung an den Modellierungsagenten bleibt unverändert."
+ },
+ {
+  "heard": "um einhalb Millimeter nach rechts",
+  "expected": "um 0.5 mm nach rechts",
+  "names": [],
+  "category": "Bewegen/Ändern",
+  "status": "ok",
+  "note": "Feinverschiebung mit Bruchzahl 'einhalb' wird von _number() nicht zu '0.5' aufgelöst."
+ },
+ {
+  "heard": "countersink near wall um zwei Millimeter vertiefen",
+  "expected": "CountersinkNearWall um 2 mm vertiefen",
+  "names": [
+   "CountersinkNearWall"
+  ],
+  "category": "Modellnamen",
+  "status": "ok",
+  "note": "Mehrteiliger englischer Modellname wird über _names() zum genauen CamelCase-Featurenamen zusammengesetzt."
+ },
+ {
+  "heard": "base plate um fünf Grad drehen",
+  "expected": "BasePlate um 5° drehen",
+  "names": [
+   "BasePlate"
+  ],
+  "category": "Modellnamen",
+  "status": "ok",
+  "note": "Getrennt gesprochener Komponentenname 'BasePlate' wird gemappt und Drehwinkel '5°' normalisiert."
+ },
+ {
+  "heard": "den baring seat um drei Millimeter verschieben",
+  "expected": "den BearingSeat um 3 mm verschieben",
+  "names": [
+   "BearingSeat"
+  ],
+  "category": "Modellnamen",
+  "status": "ok",
+  "note": "Fuzzy-Matching über difflib fängt Erkennungsfehler ('baring' statt 'bearing') im Modellnamen ab."
+ },
+ {
+  "heard": "an mounting bracket eine Fase zwei mal fünfundvierzig Grad",
+  "expected": "an MountingBracket eine Fase 2 × 45°",
+  "names": [
+   "MountingBracket"
+  ],
+  "category": "Modellnamen",
+  "status": "ok",
+  "note": "Zusammengesetzter Modellname 'MountingBracket' im Kontext einer Fasen-Anweisung."
+ },
+ {
+  "heard": "hole eins zwei Millimeter nach links",
+  "expected": "Hole1 2 mm nach links",
+  "names": [
+   "Hole1"
+  ],
+  "category": "Modellnamen",
+  "status": "ok",
+  "note": "Modellname mit Ziffer ('Hole1') wird nicht aufgelöst, da _names() Wortspannen mit Ziffern pauschal überspringt."
+ },
+ {
+  "heard": "eine Bohrung an der Wand",
+  "expected": "eine Bohrung an der Wand",
+  "names": [],
+  "category": "Unverändert",
+  "status": "ok",
+  "note": "Unbestimmter Artikel 'eine' vor Substantiv darf nicht zur Ziffer '1' überkorrigiert werden."
+ },
+ {
+  "heard": "bitte das Bauteil speichern",
+  "expected": "bitte das Bauteil speichern",
+  "names": [],
+  "category": "Unverändert",
+  "status": "ok",
+  "note": "Allgemeiner System- und Menübefehl ohne Maßangaben bleibt vollständig erhalten."
+ },
+ {
+  "heard": "zeige die Baugruppe von oben",
+  "expected": "zeige die Baugruppe von oben",
+  "names": [],
+  "category": "Unverändert",
+  "status": "ok",
+  "note": "Befehl zur Ansichtssteuerung ohne parametrische Änderungen bleibt unverändert."
+ },
+ {
+  "heard": "Abstand zwischen den Bohrungen messen",
+  "expected": "Abstand zwischen den Bohrungen messen",
+  "names": [],
+  "category": "Unverändert",
+  "status": "ok",
+  "note": "Messanweisung an den Agenten ohne Ersetzungsbedarf bleibt unverändert."
+ },
+ {
+  "heard": "in dieser Phase des Entwurfs nichts ändern",
+  "expected": "in dieser Phase des Entwurfs nichts ändern",
+  "names": [],
+  "category": "Unverändert",
+  "status": "ok",
+  "note": "Überkorrektur: TERMS ersetzt das deutsche Wort 'Phase' (Projektphase/Entwurfsphase) fälschlich kontextlos durch 'Fase'."
+ },
+ {
+  "heard": "hier m sechs durchgehend",
+  "expected": "hier M6 durchgehend",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "note": "Praxistest Surface 2026-10-29",
+  "status": "ok"
+ },
+ {
+  "heard": "eine Bohrung m6",
+  "expected": "eine Bohrung M6",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "note": "Praxistest Surface 2026-10-29",
+  "status": "ok"
+ },
+ {
+  "heard": "Gewinde em sechs",
+  "expected": "Gewinde M6",
+  "names": [],
+  "category": "Gewinde und Bohrungen",
+  "note": "Praxistest Surface 2026-10-29",
+  "status": "ok"
+ },
+ {
+  "heard": "dann bohrt er fünf Löcher",
+  "expected": "dann bohrt er 5 Löcher",
+  "names": [],
+  "category": "Unverändert",
+  "note": "kleines 'er' außerhalb einer Rundung bleibt",
+  "status": "ok"
+ }
+]

@@ -1,0 +1,116 @@
+{
+  "id": "1_4305",
+  "aussage": "Austenitischer nichtrostender Schwefel-Automatenstahl 1.4305 (X8CrNiS18-9 / AISI 303) nach DIN EN 10088-3 für zerspante Serienteile.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.9,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul bei 20 °C",
+      "wert": 200,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (d <= 160 mm)",
+      "wert": 190,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        500,
+        750
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung A5 min.",
+      "wert": 35,
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte max.",
+      "wert": 230,
+      "einheit": "HB"
+    },
+    {
+      "name": "Waermeleitfaehigkeit bei 20 °C",
+      "wert": 15,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 16.0,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 400,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 400,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "1.4305",
+      "X8CrNiS18-9",
+      "AISI 303",
+      "Edelstahl rostfrei"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Drehteil",
+      "Welle",
+      "Schraube",
+      "Bolzen",
+      "Fitting"
+    ],
+    "groesse": [
+      "d <= 160 mm"
+    ],
+    "festigkeitsklasse": [
+      "+AT"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://swisssteel-group.com/content-media/documents/_import/1.4305_de.pdf",
+      "stelle": "Seite 1-2, Physikalische und mechanische Eigenschaften",
+      "zitat": "Acidur 4305 ist ein nichtrostender austenitischer",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://www.thyssenkrupp-materials.ch/de/downloads/werkstoffdatenblaetter-edelstahl-rostfrei/datenblatt-remanit-4305",
+      "stelle": "Abschnitt Physikalische Eigenschaften",
+      "zitat": "REMANIT-4305 gehört zur Gruppe der austenitischen Stähle",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "zitat": "Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Sulfidische Einschlüsse (Schwefelgehalt 0,15–0,35 %) sorgen für optimalen Spanbruch und verringern den Werkzeugverschleiß bei automatisierter spanender Serienfertigung.",
+  "ausnahmen": "Wegen Heißrissgefahr ungeeignet für Schweißkonstruktionen. Eingeschränkte Korrosionsbeständigkeit gegenüber chlorid- und säurehaltigen Medien im Vergleich zu 1.4301.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

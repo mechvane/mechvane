@@ -387,7 +387,9 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
 - [ ] **Schweißen** (Nutzerwunsch 2026-10-29): Schweißnähte als eigene Features (Kehlnaht, Stumpfnaht,
       Nahtdicke a, Länge, umlaufend), Schweißbaugruppen, Nahtsymbole nach ISO 2553 in der Zeichnung,
       eigenes Aussehen der Naht. Bisher im Testmodell nur als konkave Rundung am Fuß
-      (`tools/build_logo_showcase.py`).
+      (`tools/build_logo_showcase.py`). Grundlagen recherchiert (#19):
+      [Schweißen im CAD](docs/research/2026-10-30-schweissen-grundlagen-flash.md) mit Vorschlag fürs Datenmodell
+      (Vorbereitung, Nähte, Nachbearbeitung wie Inventor; Naht als Volumen oder kosmetisch).
 - [ ] **Blech-Ergänzungen** (falls upstream noch Lücken): Blechregeln-
       Bibliothek, Abwicklungs-DXF für Laser-Dienstleister.
 - [ ] **Konstruktionsassistenten**: Welle (Absätze, Nuten, Sicherungsringe),

@@ -455,7 +455,9 @@ function initChat() {
             agentText = null;
             tools.set(e.id, add("tool running", e.tool));
           } else if (e.type === "tool" && tools.has(e.id)) {
-            tools.get(e.id).className = "tool " + (e.status === "failed" ? "failed" : "ok");
+            const el = tools.get(e.id);
+            el.className = "tool " + (e.status === "failed" ? "failed" : "ok");
+            if (e.status === "failed" && e.error) el.title = e.error, el.textContent += ` – ${e.error.slice(0, 160)}`;
           } else if (e.type === "declined") {
             agentText = null;
             add("tool declined", `${e.tool}: declined, ${e.reason}`);

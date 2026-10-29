@@ -1,0 +1,116 @@
+{
+  "id": "tpu_95a",
+  "aussage": "Thermoplastisches Polyurethan TPU 95A fuer den flexiblen FDM-3D-Druck nach ISO 37 fuer elastische Puffer, Daempfer und Dichtungen.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.16,
+        1.25
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Modul bei 100% Dehnung",
+      "bereich": [
+        8.9,
+        15.5
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.45,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (Horizontal / XY)",
+      "bereich": [
+        26.6,
+        41.4
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (Horizontal / XY)",
+      "bereich": [
+        495,
+        563
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte A",
+      "bereich": [
+        92,
+        95
+      ],
+      "einheit": "Shore A"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT",
+      "wert": 78,
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 70,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.19,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 15,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "TPU 95A",
+      "Thermoplastisches Polyurethan",
+      "PolyFlex TPU95",
+      "Prusament TPU 95A"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF-Druck"
+    ],
+    "feature": [
+      "Dichtung",
+      "Daempfer",
+      "Puffer",
+      "Manschette",
+      "Rolle"
+    ],
+    "groesse": [
+      "beliebig"
+    ],
+    "festigkeitsklasse": [
+      "95A"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/tpu/polyflex-tm-tpu95-hf",
+      "stelle": "Abschnitt Physical and Mechanical Properties",
+      "zitat": "Stress at 100% strain (X-Y)",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://storage.googleapis.com/prusa3d-content-prod-14e8-wordpress-prusament-prod/2025/05/80316f6d-tds-prusament_tpu_95a_en-1.pdf",
+      "stelle": "Seite 1-2, Typical material properties & Mechanical properties",
+      "zitat": "Mechanical properties of 3D printed testing specimens",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Hohe Elastizität mit Reißdehnung über 500 % und hervorragender Verschleißfestigkeit bei Shore 95A. Ausgezeichnete Schichthaftung im FDM-Verfahren.",
+  "ausnahmen": "Erfordert Direktantriebs-Extruder (Direct Drive) und geringe Druckgeschwindigkeiten zur Vermeidung von Filamentstauchung im Zulaufkanal.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -1,0 +1,129 @@
+{
+  "id": "en_aw_2007",
+  "aussage": "Kaltausgehaertete Aluminium-Automatenlegierung EN AW-2007 (AlCuMgPb / 3.1645 / T4) nach DIN EN 755-2 für schnelle Zerspanung.",
+  "werte": [
+    {
+      "name": "Dichte bei 20 °C",
+      "wert": 2.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 73000,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.33,
+      "einheit": ""
+    },
+    {
+      "name": "0,2-Streckgrenze Rp0,2",
+      "bereich": [
+        250,
+        325
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        370,
+        470
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A5",
+      "bereich": [
+        6,
+        8
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Brinellhaerte",
+      "bereich": [
+        100,
+        140
+      ],
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        130,
+        160
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 24.0,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 100,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 222,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "EN AW-2007",
+      "AlCuMgPb",
+      "AlCu4PbMgMn",
+      "3.1645"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Bohren",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Drehteil",
+      "Fraesteil",
+      "Schraube",
+      "Huelse"
+    ],
+    "groesse": [
+      "d <= 60 mm"
+    ],
+    "festigkeitsklasse": [
+      "T4",
+      "T3"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://datenblaetter.thyssenkrupp.ch/en_aw_2007_0618.pdf",
+      "stelle": "Seite 1-4, Werkstoffdatenblatt EN AW-2007",
+      "zitat": "Werkstoffdatenblatt EN AW-2007",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-2007.pdf",
+      "stelle": "Seite 1, Kennwerttabelle Zustand kaltausgehärtet",
+      "zitat": "Legierungsbeschreibung AlCuMgPb F37",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "zitat": "Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Durch Bleizusatz exzellent zerspanbare Al-Kupfer-Legierung mit hohen Festigkeiten (Rm bis 470 MPa). Bildet sehr kurze Späne und schont Zerspanungswerkzeuge.",
+  "ausnahmen": "Aufgrund des Kupfer- und Bleigehalts nicht schweißbar und korrosionsempfindlich gegen Witterung und Salzwasser. Nicht dekorativ eloxierbar.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

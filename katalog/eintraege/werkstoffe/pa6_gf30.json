@@ -1,0 +1,126 @@
+{
+  "id": "pa6_gf30",
+  "aussage": "Glasfaserverstaerktes Polyamid 6 mit 30 % Glasfaseranteil nach ISO 1874 fuer dimensionsstabile und mechanisch hochbelastete Bauteile.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.35,
+        1.36
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (Zug, trocken)",
+      "bereich": [
+        4500,
+        5700
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.35,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        85,
+        98
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung",
+      "bereich": [
+        4,
+        5
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "bereich": [
+        84,
+        86
+      ],
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.41,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient",
+      "wert": 60,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT",
+      "wert": 200,
+      "einheit": "°C"
+    },
+    {
+      "name": "Dauergebrauchstemperatur",
+      "wert": 100,
+      "einheit": "°C"
+    },
+    {
+      "name": "Kurzzeitgebrauchstemperatur max.",
+      "wert": 180,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 65,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PA6-GF30",
+      "Polyamid 6 GF30",
+      "TECAMID 6 GF30",
+      "Sustamid 6 GF 30"
+    ],
+    "verfahren": [
+      "Zerspanung",
+      "Spritzguss"
+    ],
+    "feature": [
+      "Gehaeuse",
+      "Zahnrad",
+      "Halterung",
+      "Gleitplatte"
+    ],
+    "groesse": [
+      "Platte",
+      "Stab"
+    ],
+    "festigkeitsklasse": [
+      "trocken"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ensingerplastics.com/en/shapes/tecamid-6-gf30-black",
+      "stelle": "Technische Daten TECAMID 6 GF30 black",
+      "zitat": "Modulus of elasticity (tensile test)",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://www.roechling.com/fileadmin/assets/69/10/Sustamid%C2%AE%206%20GF%2030%20black%20%E2%80%93%20Technical%20Data%20Sheet%20(EN)%20[591069].pdf",
+      "stelle": "Seite 1, Technical Data Sheet Sustamid 6 GF 30 black",
+      "zitat": "Yield stress DIN EN ISO 527 MPa",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "30 % Glasfasern steigern Zugfestigkeit, Steifigkeit und Kriechfestigkeit erheblich bei gleichzeitiger Halbierung des Wärmeausdehnungskoeffizienten gegenüber unverstärktem PA6.",
+  "ausnahmen": "Geringere Bruchdehnung und höhere Abrasivität gegenüber metallischen Gegenlaufpartnern. Feuchtigkeitskonditionierung führt wie bei allen Polyamiden zu Modulabfall.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

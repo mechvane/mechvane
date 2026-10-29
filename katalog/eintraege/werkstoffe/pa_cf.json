@@ -1,0 +1,141 @@
+{
+  "id": "pa_cf",
+  "aussage": "Carbonfaserverstaerktes Polyamid (PA-CF / PA6-CF / PA11-CF) fuer den FDM-3D-Druck nach ISO 527 fuer steife hochfeste Funktionsteile.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.09,
+        1.11
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (XY-Druckrichtung)",
+      "bereich": [
+        2500,
+        4430
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Elastizitaetsmodul (Z-Druckrichtung)",
+      "bereich": [
+        2170,
+        3300
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.35,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (XY-Druckrichtung)",
+      "bereich": [
+        42,
+        102
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm (Z-Druckrichtung)",
+      "bereich": [
+        48,
+        49
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (XY-Druckrichtung)",
+      "bereich": [
+        3.3,
+        5.8
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Bruchdehnung (Z-Druckrichtung)",
+      "bereich": [
+        2.6,
+        3.7
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "wert": 77,
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (0.45 MPa)",
+      "bereich": [
+        186,
+        192
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 120,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.35,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 30,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PA-CF",
+      "PA6-CF",
+      "PA11-CF",
+      "Bambu PA6-CF",
+      "Prusament PA11 CF"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF-Druck"
+    ],
+    "feature": [
+      "Vorrichtung",
+      "Roboterarm",
+      "Klammer",
+      "Halterung",
+      "Funktionsbauteil"
+    ],
+    "groesse": [
+      "beliebig"
+    ],
+    "festigkeitsklasse": [
+      "CF-verstaerkt"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wiki.bambulab.com/filament-acc/petcf-ppacf/c750bddfb8e44af6ae9f7dd9625fa458.pdf",
+      "stelle": "Seite 1-2, Physical and Mechanical Properties",
+      "zitat": "Young's Modulus (X-Y) ISO 527, GB/T 1040",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://prusament.com/wp-content/uploads/2022/08/TDS_PA11CFB.pdf",
+      "stelle": "Seite 1-2, Typical material properties & Mechanical properties",
+      "zitat": "Mechanical properties of 3D printed testing specimens",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Carbon-Kurzfasern erhöhen Zugfestigkeit und Biegemodul (bis über 4400 MPa) dramatisch, verringern das Druck-Warping und heben die Wärmeformbeständigkeit auf über 180 °C.",
+  "ausnahmen": "Erfordert gehärtete Düsen (Stahl, NozzleX oder Rubin) wegen stark abrasiver Kohlenstofffasern. Filament muss vor dem Drucken getrocknet werden (Hygroskopie).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

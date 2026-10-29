@@ -1,0 +1,142 @@
+{
+  "id": "asa",
+  "aussage": "Acrylnitril-Styrol-Acrylat (ASA) fuer den FDM-3D-Druck nach ISO 527 fuer UV- und witterungsbestaendige Aussengehaeuse.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.07,
+        1.13
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (XY-Druckrichtung)",
+      "bereich": [
+        1600,
+        2379
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Elastizitaetsmodul (Z-Druckrichtung)",
+      "bereich": [
+        1700,
+        1965
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.35,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (XY-Druckrichtung)",
+      "bereich": [
+        42,
+        44
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm (Z-Druckrichtung)",
+      "bereich": [
+        32,
+        45
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (XY-Druckrichtung)",
+      "bereich": [
+        3.4,
+        6.7
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Bruchdehnung (Z-Druckrichtung)",
+      "bereich": [
+        1.65,
+        3.8
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "bereich": [
+        78,
+        82
+      ],
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (0.45 MPa)",
+      "bereich": [
+        86,
+        103
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 85,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.17,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 24,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "ASA",
+      "Acrylnitril-Styrol-Acrylat",
+      "Polymaker ASA",
+      "Prusament ASA"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF-Druck"
+    ],
+    "feature": [
+      "Aussengehaeuse",
+      "Halterung",
+      "Abdeckung",
+      "Lueftungsgitter"
+    ],
+    "groesse": [
+      "beliebig"
+    ],
+    "festigkeitsklasse": [
+      "FDM-gedruckt"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/abs-asa/polymaker-tm-asa",
+      "stelle": "Abschnitte Physical, Thermal and Mechanical Properties",
+      "zitat": "Young’s modulus (X-Y)",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://prusament.com/wp-content/uploads/2022/10/ASA_Prusament_TDS_2022_16_EN.pdf",
+      "stelle": "Seite 1-2, Mechanical properties of 3D printed testing specimens",
+      "zitat": "Mechanical properties of 3D printed testing specimens",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Acrylatkautschuk anstelle von Polybutadien verleiht ASA exzellente Beständigkeit gegen UV-Strahlung, Vergilbung und Versprödung bei Außenbewitterung.",
+  "ausnahmen": "Erfordert geschlossenen Bauraum und beheiztes Druckbett (ca. 100 °C) zur Vermeidung von Bauteilverzug (Warping) bei großvolumigen Teilen.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

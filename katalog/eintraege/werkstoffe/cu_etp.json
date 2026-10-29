@@ -1,0 +1,127 @@
+{
+  "id": "cu_etp",
+  "aussage": "Elektrolytisch zähgepoltes Reinkupfer Cu-ETP (Werkstoffnummer CW004A / 2.0065) nach DIN EN 13601 mit hoher elektrischer und thermischer Leitfähigkeit.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 8.93,
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "bereich": [
+        110,
+        127
+      ],
+      "einheit": "GPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.34,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2",
+      "bereich": [
+        120,
+        200
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        200,
+        300
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung A",
+      "bereich": [
+        12,
+        35
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte",
+      "bereich": [
+        35,
+        95
+      ],
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit bei 20 °C",
+      "bereich": [
+        385,
+        394
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 17.7,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 150,
+      "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 160,
+      "einheit": "MPa"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Cu-ETP",
+      "CW004A",
+      "2.0065",
+      "E-Cu",
+      "Kupfer"
+    ],
+    "verfahren": [
+      "Zerspanung",
+      "Biegen",
+      "Stanzen",
+      "Loeten"
+    ],
+    "feature": [
+      "Schiene",
+      "Kuehlkoerper",
+      "Blech",
+      "Stange"
+    ],
+    "groesse": [
+      "d <= 160 mm"
+    ],
+    "festigkeitsklasse": [
+      "R200",
+      "R250"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.wieland.com/cn/content/download/18989/file/K18-K32_EN.pdf",
+      "stelle": "Seite 1-2, Physical and Mechanical properties",
+      "zitat": "K18/K32 is a copper with a low oxygen content. It exhibits good",
+      "abgerufen": "2026-10-30"
+    },
+    {
+      "url": "https://ucpcdn.thyssenkrupp.com/_binary/UCPthyssenkruppBAMMaterialsSchulte/c7d04687-2eee-4b99-b612-bbf2cff12534/Werkstoffdatenblatt-CW004A.pdf",
+      "stelle": "Seite 1-3, Physikalische und mechanische Eigenschaften",
+      "zitat": "Anhaltsangaben für einige physikalische Eigenschaften",
+      "abgerufen": "2026-10-30"
+    }
+  ],
+  "begruendung": "Standard-Kupferwerkstoff für Elektrotechnik und Wärmetauscher mit garantierter elektrischer Leitfähigkeit von min. 57 MS/m (100 % IACS). Hervorragende Kaltumformbarkeit.",
+  "ausnahmen": "Nicht für Schweiß- oder Hartlötungen in reduzierenden (wasserstoffhaltigen) Atmosphären bei Temperaturen über 300 °C geeignet (Gefahr der Wasserstoffversprödung).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}
