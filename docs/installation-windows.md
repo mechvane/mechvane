@@ -4,11 +4,15 @@
 
 ```powershell
 python -m venv $HOME\mechvane-venv
-$HOME\mechvane-venv\Scripts\pip install mechvane
-$HOME\mechvane-venv\Scripts\mechvane setup       # SolidCraft-CLI und Web-App, ca. 90 MB, einmalig
-$HOME\mechvane-venv\Scripts\mechvane ui --demo   # Beispielmodelle im eigenen App-Fenster
-$HOME\mechvane-venv\Scripts\mechvane shortcut    # optional: Startmenü-Eintrag „Mechvane“ für ~\Mechvane
+& $HOME\mechvane-venv\Scripts\pip install mechvane
+& $HOME\mechvane-venv\Scripts\mechvane setup       # SolidCraft-CLI und Web-App, ca. 90 MB, einmalig
+& $HOME\mechvane-venv\Scripts\mechvane ui --demo   # Beispielmodelle im eigenen App-Fenster
+& $HOME\mechvane-venv\Scripts\mechvane shortcut    # optional: Startmenü-Eintrag „Mechvane“ für ~\Mechvane
 ```
+
+PowerShell braucht das `&` vor einem Befehl, der mit einer Variablen wie `$HOME` beginnt, sonst
+meldet es „Unerwartetes Token“. In `cmd.exe` stattdessen `%USERPROFILE%\mechvane-venv\Scripts\…`
+ohne `&`.
 
 `mechvane ui` öffnet ein eigenes App-Fenster mit Chrome oder Edge (Edge ist unter Windows immer
 da); wer das Fenster schließt, beendet Mechvane. Der Startmenü-Eintrag startet ohne Konsolenfenster
