@@ -107,7 +107,7 @@ Ergebnis: Alle 27 Prüfungen (Flansch, Gehäuse, Blechwinkel, Scharnier) müssen
 ```cmd
 python tests\mechvane\check.py
 ```
-*Hinweis:* Bis einschließlich Test 41 (Skizzenregel, Modellbrowser, Arbeitsebenen, semantische Abfragen `find`, Konstruktionsregeln `check_design`, Baugruppengelenke über Dateigrenzen und #3330-Reparatur) laufen alle Tests grün. Bei `standard_parts.create` mit kosmetischem Gewinde (`solid.thread`) stürzt SolidCraft 0.17.0 unter Windows aktuell in der Engine mit einer Access Violation (`0xC0000005`) beim Container-Save ab (bekannter Upstream-Bug, unter Linux unauffällig).
+*Hinweis:* Bis einschließlich Test 41 (Skizzenregel, Modellbrowser, Arbeitsebenen, semantische Abfragen `find`, Konstruktionsregeln `check_design`, Baugruppengelenke über Dateigrenzen und #3330-Reparatur) laufen alle Tests grün. Auf dem Surface stürzt SolidCraft (0.17.0 bis 0.25.1) beim Speichern mit einer Access Violation (`0xC0000005`) ab, sobald das Teil einen extrudierten Kreis enthält, also auch bei allen Normteilen und `mechvane ui --demo`. Das Gewinde ist nicht die Ursache (Eingrenzung in `docs/research/2026-10-29-windows-zylinder-absturz.md`). Unter Linux und auf der Windows-VM unauffällig.
 
 ---
 

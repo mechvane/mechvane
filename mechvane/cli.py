@@ -8,6 +8,7 @@
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import webbrowser
@@ -34,18 +35,23 @@ def cmd_setup(args) -> int:
 def demo_folder() -> Path:
     """Folder with the example models, built on first use."""
     from .documents import Workspace
-    from .examples import DEMOS, build_all
+    from .examples import build_all
 
     folder = install.CACHE / "demo"
-    if all((folder / f"{name}.solidcraft").is_file() for name, _, _ in DEMOS):
+    done = folder / ".complete"  # written last, lists every file the build made
+    if done.is_file() and all((folder / n).is_file() for n in done.read_text(encoding="utf-8").split()):
         return folder
-    folder.mkdir(parents=True, exist_ok=True)
+    # A build that broke off (a crash, Ctrl+C) leaves some files behind: start again from an empty
+    # folder. Built in place, not moved there afterwards: assemblies keep their parts' paths.
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True)
     print(f"Building the example models in {folder} ...", flush=True)
     ws = Workspace(folder)
     try:
         build_all(ws)
     finally:
         ws.close_all()
+    done.write_text("\n".join(sorted(p.name for p in folder.glob("*.solidcraft"))), encoding="utf-8")
     return folder
 
 

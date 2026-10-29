@@ -746,9 +746,50 @@ async function initStatic() {
   await open(true);
 }
 
+// A project folder (`mechvane ui <folder>`, `--demo`): no document is open yet. List the folder's
+// documents in the selector and open the one asked for (?doc=), else the first assembly, else the first.
+async function initFolder() {
+  const project = await fetchJson("api/project");
+  if (project.mode !== "folder") return;
+  const docs = project.documents || [];
+  if (!docs.length) {
+    statusEl.textContent = "No .solidcraft files in this folder: create a part in Model by hand";
+    return false;
+  }
+  const select = document.getElementById("demo-select");
+  document.querySelector('label[for="demo-select"]').textContent = "Document";
+  for (const a of document.querySelectorAll("#demo-bar a")) a.hidden = true;  // "Install to open your own files": live demo only
+  for (const d of docs) {
+    const opt = document.createElement("option");
+    opt.value = d.name;
+    opt.textContent = d.name.replace(/\.solidcraft$/, "") + (d.kind === "assembly" ? " (assembly)" : "");
+    select.appendChild(opt);
+  }
+  const wanted = new URLSearchParams(location.search).get("doc");
+  const pick = [wanted, project.current, (docs.find((d) => d.kind === "assembly") || {}).name, docs[0].name]
+    .find((n) => n && docs.some((d) => d.name === n));
+  select.value = pick;
+  const open = async (fit) => {
+    const res = await fetch("api/open/" + encodeURIComponent(select.value), { method: "POST" });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    document.getElementById("mode-model").href = `model?doc=${encodeURIComponent(select.value)}`;
+    currentVersion = null;
+    await loadAll(fit);
+  };
+  select.addEventListener("change", () => {
+    history.replaceState(null, "", `?doc=${encodeURIComponent(select.value)}`);
+    open(true).catch((err) => { statusEl.textContent = `Error: ${err.message}`; });
+  });
+  document.getElementById("demo-bar").hidden = false;
+  await open(true);
+  return true;
+}
+
 if (STATIC) {
   initStatic().catch((err) => { statusEl.textContent = `Error: ${err.message}`; });
 } else {
-  loadAll(true);
-  setInterval(pollVersion, 2000);
+  initFolder()
+    .then((opened) => { if (opened === undefined) return loadAll(true); })
+    .catch((err) => { statusEl.textContent = `Error: ${err.message}`; })
+    .finally(() => setInterval(pollVersion, 2000));
 }

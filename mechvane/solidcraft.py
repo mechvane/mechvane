@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -13,6 +14,17 @@ from . import install
 
 class SolidCraftError(RuntimeError):
     """A SolidCraft tool or command reported an error."""
+
+
+def session_env(platform=sys.platform, environ=None) -> dict:
+    """Environment for `solidcraft-cli mcp`. On Windows wgpu uses DirectX 12 unless WGPU_BACKEND is set:
+    saving renders a preview through wgpu, and with Intel's Vulkan driver (igvk64.dll) that crashes the
+    CLI with 0xC0000005 on any part with a curved face (docs/research/2026-10-29-windows-zylinder-absturz.md,
+    SolidCraft #5589)."""
+    env = dict(os.environ if environ is None else environ)
+    if platform == "win32":
+        env.setdefault("WGPU_BACKEND", "dx12")
+    return env
 
 
 class Session:
@@ -27,7 +39,7 @@ class Session:
         for p in allow_paths:
             args += ["--allow-path", str(p)]
         self._p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                   stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                                   stderr=subprocess.DEVNULL, text=True, bufsize=1, env=session_env(),
                                    encoding="utf-8", errors="replace")  # not the Windows ANSI code page
         self._n = 0
         # A reader thread instead of select() on the pipe, which Windows does not support.

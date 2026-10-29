@@ -5,6 +5,23 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0a5] - 2026-10-29
+
+### Fixed
+
+- **Windows with Intel graphics:** saving any part with a curved face (a hole, a cylinder, every
+  standard part) crashed SolidCraft with `0xC0000005`, so `mechvane ui --demo` did not start. Saving
+  renders through wgpu, and Intel's Vulkan driver crashes there. Mechvane now starts SolidCraft with
+  DirectX 12 on Windows; set `WGPU_BACKEND` yourself to choose another backend
+  ([SolidCraft #5589](https://github.com/tangency-labs/solidcraft/issues/5589)).
+- Windows: the web UI put its scratch folder under `/tmp`, which doesn't exist there, so `mechvane ui`
+  failed to start. It now uses the system's temp folder.
+- `mechvane ui --demo` after a first start that broke off (for example the crash above): the
+  example models are built again from scratch instead of failing on the files left behind.
+- `mechvane ui` on a folder (and `--demo`): the Check page stayed empty because no document was open.
+  It now lists the folder's documents and opens the one in `?doc=`, else the first assembly.
+- Windows installation guide: PowerShell needs `&` before commands that start with `$HOME`.
+
 ## [0.1.0a4] - 2026-10-28
 
 You and your agent on the same model: the web UI now has a chat with your own AI agent, and Mechvane
@@ -91,6 +108,7 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a5]: https://github.com/mechvane/mechvane/compare/v0.1.0a4...v0.1.0a5
 [0.1.0a4]: https://github.com/mechvane/mechvane/compare/v0.1.0a3...v0.1.0a4
 [0.1.0a3]: https://github.com/mechvane/mechvane/compare/v0.1.0a2...v0.1.0a3
 [0.1.0a2]: https://github.com/mechvane/mechvane/releases/tag/v0.1.0a2

@@ -4813,6 +4813,56 @@ def speech_checks(tmp):
         srv.server_close()
 
 
+def session_env_checks():
+    """Windows: SolidCraft sessions render with DirectX 12 unless WGPU_BACKEND is set (Intel Vulkan crash)."""
+    from mechvane.solidcraft import session_env
+    ok("session env: DirectX 12 on Windows, nothing changed elsewhere, a set WGPU_BACKEND wins",
+       session_env("win32", {})["WGPU_BACKEND"] == "dx12"
+       and "WGPU_BACKEND" not in session_env("linux", {})
+       and session_env("win32", {"WGPU_BACKEND": "vulkan"})["WGPU_BACKEND"] == "vulkan")
+
+
+def demo_folder_checks(tmp):
+    """`mechvane ui --demo` after a first build that broke off, and temp files in the system temp folder."""
+    import tempfile as _tempfile
+    from mechvane import cli, install
+    from mechvane.examples import DEMOS
+    from mechvane.ui import mesh, server as ui_server
+
+    old = install.CACHE
+    install.CACHE = Path(tmp) / "democache"
+    try:
+        stale = install.CACHE / "demo"
+        stale.mkdir(parents=True)
+        (stale / "top_plate.solidcraft").write_text("left over from a crash")
+        folder = cli.demo_folder()
+        names = sorted(p.name for p in folder.glob("*.solidcraft"))
+        w = Workspace(folder)
+        try:
+            asm = w.open("bolted_plates.solidcraft")
+            bad = [c for c in links.check(w, asm) if c.get("status") != "ok"]
+        finally:
+            w.close_all()
+        (folder / "top_plate.solidcraft").unlink()
+        rebuilt = cli.demo_folder()
+        ok("demo: a part file missing from a finished demo is built again",
+           (rebuilt / "top_plate.solidcraft").is_file() and (rebuilt / ".complete").is_file())
+        ok("demo: a broken first build is replaced, the assembly finds its parts",
+           all(f"{n}.solidcraft" in names for n, _, _ in DEMOS)
+           and not bad, f"{names} {bad}")
+    finally:
+        install.CACHE = old
+
+    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
+    try:
+        temp = Path(_tempfile.gettempdir()).resolve()
+        ok("ui: scratch folder and mesh export in the system temp folder",
+           temp in srv.tmp_dir.resolve().parents and mesh._allowed_export_dir(srv.doc, tmp_dir=None) is not None,
+           str(srv.tmp_dir))
+    finally:
+        srv.server_close()
+
+
 def argon_review_finding_6_checks(ws):
     """Argon Finding 6: pattern update follows rotated anchor component."""
     # 1. Circular pattern (3 screws) on Dom + Lid, Dom subsequently rotated 90 deg around Y
@@ -5090,6 +5140,8 @@ def main():
             argon_review_findings_9_11_checks(ws)
             install_checks(tmp)
             appwindow_checks(tmp)
+            session_env_checks()
+            demo_folder_checks(tmp)
             feature_request_checks(tmp, ws)
             agent_turns_checks(tmp)
             selection_checks(tmp)

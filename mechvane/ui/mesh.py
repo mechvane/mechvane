@@ -54,14 +54,15 @@ def _allowed_export_dir(doc_or_session, tmp_dir=None) -> Path:
     session = getattr(doc_or_session, "session", doc_or_session)
     args = getattr(getattr(session, "_p", None), "args", None) or []
     allowed = [Path(args[i + 1]) for i, a in enumerate(args[:-1]) if a == "--allow-path"]
+    temp = Path(tempfile.gettempdir()).resolve()
     for p in allowed:
-        if str(p).startswith("/tmp"):
+        if p.resolve() == temp or temp in p.resolve().parents:
             return p
     if hasattr(doc_or_session, "path") and doc_or_session.path:
         return Path(doc_or_session.path).parent
     if allowed:
         return allowed[0]
-    return Path("/tmp")
+    return temp
 
 
 def _body_faces(session, body_name: str) -> list[dict]:

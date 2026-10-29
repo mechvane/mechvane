@@ -305,6 +305,7 @@ async function main() {
 
   const meta = await (await fetch(dataUrl("files"))).json();
   document.getElementById("doc-name").textContent = meta.document;
+  if (!STATIC) document.querySelector(".mode-switch a").href = "./?doc=" + encodeURIComponent(meta.document);
   if (meta.files.length > 1 && !STATIC) {
     document.getElementById("links-head").hidden = false;
     document.getElementById("links").hidden = false;

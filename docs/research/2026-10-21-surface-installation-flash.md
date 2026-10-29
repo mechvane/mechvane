@@ -5,6 +5,10 @@
 **Zielumgebung:** Microsoft Surface Laptop, Windows 11 x64, Python 3.14.7, SSH-Zugang `surface`  
 **Referenzumgebung:** Steuer-Container (Linux x86_64 Debian, Python 3.13, SolidCraft v0.16.2 und Gegenprobe v0.17.0)
 
+> **Korrektur (2026-10-29):** Der `0xC0000005`-Absturz hängt nicht an `solid.thread`, schon ein
+> extrudierter Kreis reicht (auch unter SolidCraft 0.25.1). Siehe
+> `2026-10-29-windows-zylinder-absturz.md`.
+
 ---
 
 ## 1. Zusammenfassung
