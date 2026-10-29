@@ -369,6 +369,18 @@ def screenshot(document: str, view: str = "iso", path: str | None = None):
 
 
 @mcp.tool()
+def export_gltf(document: str, path: str) -> dict:
+    """Write a part or assembly as glTF 2.0 with its appearance (colour, metallic, roughness, IOR per body),
+    for Blender, three.js and other viewers (ADR 0004). `path` is relative to the workspace or absolute."""
+    from .gltf_export import export_gltf as _export
+    doc = ws.get(document)
+    target = Path(path)
+    if not target.is_absolute():
+        target = ws.root / target
+    return _export(doc, target)
+
+
+@mcp.tool()
 def check_design(document: str, profile: str = "fdm_0.4", build_direction: str = "+Z",
                  material: str | None = None) -> dict:
     """Check a part against design rules (wall thickness, hole edge distance, thread depth, printability).

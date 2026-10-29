@@ -16,6 +16,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Example: the Mechvane logo as a real assembly** (`docs/examples/logo_showcase/`): welded steel M on a
   back plate, the V in brass and copper on spacers, fastened with countersunk screws. Comes with Blender
   scenes (angled and top view) and the same model as glTF with its materials.
+- `export_gltf(document, path)`: writes a part or assembly as glTF 2.0 for Blender, three.js and other
+  viewers, one mesh per body with sharp edges and the body's look (colour, metallic, roughness, IOR) taken
+  from its SolidCraft appearance or material.
 - Tools to take a model to Blender: `tools/logo_to_gltf.py` writes glTF 2.0 with clearcoat and anisotropy
   from a set of OpenPBR parameters, `tools/render_logo_blender.py` renders it with Cycles.
 

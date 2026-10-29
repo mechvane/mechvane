@@ -56,8 +56,14 @@ Dritter Lauf: `brushed_finish` in `tools/render_logo_blender.py` setzt nach dem 
 Schleifspuren für alle Werkstoffe mit Anisotropie. Danach keine Abweichung mehr im Messing; im ganzen Bild
 mittel 0,25, höchstens 50 von 255, nur noch an den Kanten (Normalen je Fläche statt Winkelglättung).
 
-Folgerung: Für diesen Parametersatz trägt glTF nach Blender, mit einer Lücke: die Richtung gebürsteter
-Oberflächen. Dafür reicht ein kleines Nachbearbeitungsskript nach dem Import (Tangentenknoten setzen), ein
+**three.js** (r160, `GLTFLoader`, Headless-Chromium, Umgebung `RoomEnvironment`): Alle Werkstoffe kommen
+mit Anisotropie (0,9 / 0,6) und Klarlack (0,25 / 0,35) an ([Bild](../media/adr0004-threejs.png)). Ohne
+`TANGENT` ändert sich fast nichts, weil three.js die Richtung dann aus den UVs ableitet, die hier gleich
+laufen; um 90° gedreht ändert sich das Messing deutlich (mittel 19 von 255). three.js übernimmt die
+Schliffrichtung also aus der glTF-Datei.
+
+Folgerung: Für diesen Parametersatz trägt glTF nach Blender und three.js, mit einer Lücke nur in Blender:
+die Richtung gebürsteter Oberflächen. Dafür reicht ein kleines Nachbearbeitungsskript nach dem Import (Tangentenknoten setzen), ein
 eigener Blender-Weg für alle Werkstoffe ist nicht nötig.
 
 ## Entscheidung (Vorschlag, nach der Probe)
@@ -84,5 +90,7 @@ eigener Blender-Weg für alle Werkstoffe ist nicht nötig.
 
 ## Offen
 
-- Prüfen, ob three.js (`GLTFLoader`) die Anisotropie-Richtung aus `TANGENT` übernimmt.
-- `brushed_finish` aus dem Logo-Skript in ein allgemeines Mechvane-Werkzeug für den Blender-Export überführen.
+- Erster allgemeiner Export: `mechvane/gltf_export.py` / MCP `export_gltf` (Aussehen aus SolidCraft: Farbe,
+  metallic, roughness, IOR). Noch ohne Klarlack, Anisotropie und Oberflächen; die kommen mit dem
+  Darstellungseditor (OpenPBR-Satz je Werkstoff/Oberfläche in Mechvanes Metadaten).
+- `brushed_finish` als Blender-Nachbearbeitung zu `export_gltf` mitliefern.

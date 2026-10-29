@@ -5014,6 +5014,28 @@ def bolted_gap_chamfer_check(tmp):
         w.close_all()
 
 
+def gltf_export_check(tmp):
+    """export_gltf: one mesh per body in metres, Y up, materials from the SolidCraft look (ADR 0004)."""
+    from mechvane import gltf_export
+    folder = Path(tmp) / "gltf"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        d = w.new(PART, "box")
+        d.session.batch([{"command": "solid.box", "params": {"length": 20, "width": 10, "height": 5, "corner": [0, 0, 0], "name": "Box"}}])
+        d.session.cmd("material.assign", {"bodies": ["Body1"], "material": "Brass"})
+        r = gltf_export.export_gltf(d, folder / "box.gltf")
+        data = json.loads((folder / "box.gltf").read_text())
+        acc = data["accessors"][data["meshes"][0]["primitives"][0]["attributes"]["POSITION"]]
+        mat = data["materials"][0]["pbrMetallicRoughness"]
+        ok("gltf: body in metres with Y up, brass as metal with its colour, normals per face",
+           r["bodies"] == 1 and [round(x, 4) for x in acc["max"]] == [0.02, 0.005, 0.0] and acc["min"][2] == -0.01
+           and mat["metallicFactor"] == 1.0 and mat["baseColorFactor"][0] > mat["baseColorFactor"][2]
+           and acc["count"] == 24, f"{r} {acc} {mat}")
+    finally:
+        w.close_all()
+
+
 def session_env_checks():
     """Windows: SolidCraft sessions render with DirectX 12 unless WGPU_BACKEND is set (Intel Vulkan crash)."""
     from mechvane.solidcraft import session_env
@@ -5508,6 +5530,7 @@ def main():
             viewtools_checks(tmp)
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)
+            gltf_export_check(tmp)
             scratch_dir_checks()
         finally:
             ws.close_all()
