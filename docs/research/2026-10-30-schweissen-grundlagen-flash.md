@@ -5,7 +5,7 @@
 > **Prüfnotiz (Claude, 2026-10-29):** Rohfassung von Gemini Flash (Issue #19). `tools/check_sources.py`: 26 von 26
 > Quellen, 26 Zitate, 66 von 66 Zahlen bestätigt. Die a-Maß-Faustregeln (a ≤ 0,7 · t_min, a ≥ √t_max − 0,5 mm,
 > a ≥ 3 mm) und die Mindestnahtlänge stammen teils von einer Rechner-Website (nurb44); vor einer Prüfregel gegen eine
-> normnahe zweite Quelle (EN 1993-1-8 aus Sekundärliteratur, DVS) prüfen. Datenmodell (Vorbereitung, Nähte,
+> normnahe zweite Quelle prüfen – **erledigt** in `2026-10-30-a-mass-gegenpruefung-flash.md` (#22, alle vier bestätigt). Datenmodell (Vorbereitung, Nähte,
 > Nachbearbeitung; Volumen- oder kosmetische Naht) ist ein Vorschlag, noch keine Entscheidung.
 
 Datum: 2026-10-30  
