@@ -71,7 +71,7 @@ export function faceInfo(body, fid) {
   return { area, axis, center, radius };
 }
 
-export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl }) {
+export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, selectable = false }) {
   const measureGroup = new THREE.Group();
   scene.add(measureGroup);
 
@@ -90,6 +90,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   bar.innerHTML = `
     <button type="button" data-tool="measure" title="Click two points or faces">Measure</button>
     <button type="button" data-tool="section" title="Cut the model with a plane">Section</button>
+    <button type="button" data-tool="select" title="Click faces to point the agent at them" hidden>Select</button>
     <span class="section-controls" hidden>
       <select aria-label="Section plane"><option value="x">YZ (X)</option><option value="y">XZ (Y)</option><option value="z" selected>XY (Z)</option></select>
       <input type="range" min="0" max="1000" value="500" aria-label="Section position">
@@ -104,10 +105,40 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   const slider = sectionControls.querySelector("input");
   let flipped = false;
 
+  // Faces picked for the agent (chat): {type, body, index, point, name} as the SolidCraft app reports them
+  const selectGroup = new THREE.Group();
+  scene.add(selectGroup);
+  let selection = [];
+  if (selectable) bar.querySelector('[data-tool="select"]').hidden = false;
+
+  function showSelection() {
+    while (selectGroup.children.length) {
+      const c = selectGroup.children.pop();
+      c.geometry?.dispose();
+      c.material?.dispose();
+    }
+    for (const it of selection) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(markerSize * 1.2, 16, 12),
+        new THREE.MeshBasicMaterial({ color: 0x58a6ff, depthTest: false }));
+      m.position.set(...it.point);
+      m.renderOrder = 11;
+      selectGroup.add(m);
+    }
+    if (mode === "select") {
+      readout.innerHTML = selection.length
+        ? `<strong>${selection.length} selected</strong><br>${selection.map((s) => s.name || `face ${s.index}`).join("<br>")}`
+          + "<br>Now tell the agent what to do"
+        : "Click faces to select them for the agent";
+      readout.hidden = false;
+    }
+    renderScene();
+  }
+
   function setMode(next) {
     mode = mode === next ? null : next;
     bar.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("active", b.dataset.tool === mode));
     if (mode !== "measure") clearMeasure();
+    if (mode === "select") showSelection();
     sectionControls.hidden = mode !== "section";
     applySection();
   }
@@ -210,6 +241,17 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     if (!hit) return;
     const body = meshData.bodies[hit.object.userData.bodyIndex];
     const fid = (body.face_ids || [])[hit.faceIndex] ?? 0;
+    if (mode === "select") {
+      const at = selection.findIndex((s) => s.body === body.name && s.index === fid);
+      if (at >= 0) selection.splice(at, 1);
+      else if (selection.length < 16) {
+        const name = (body.faces || []).find((f) => f.index === fid)?.name;
+        selection.push({ type: "face", body: body.name, index: fid, name,
+                         point: [hit.point.x, hit.point.y, hit.point.z].map((v) => +v.toFixed(4)) });
+      }
+      showSelection();
+      return;
+    }
     const info = faceInfo(body, fid);
     if (picks.length === 2) clearMeasure();
     picks.push({ point: hit.point.clone(), ...info });
@@ -228,7 +270,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let down = null;
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if (mode !== "measure" || !down || e.button !== 0) return;
+    if ((mode !== "measure" && mode !== "select") || !down || e.button !== 0) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5) pick(e);
   });
   window.addEventListener("keydown", (e) => {
@@ -244,9 +286,18 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       addCaps();
       clearMeasure();
       applySection();
+      selection = [];  // the faces may have changed
+      showSelection();
     },
     clear() {
       if (mode) setMode(mode);
+    },
+    getSelection() {
+      return selection.map(({ name, ...item }) => item);
+    },
+    clearSelection() {
+      selection = [];
+      showSelection();
     },
   };
 }

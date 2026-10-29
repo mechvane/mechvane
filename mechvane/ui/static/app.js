@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { initViewTools } from "./viewtools.js";
+import { initAgentChat } from "./chat.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -53,6 +54,7 @@ let cameraFitted = false;
 let modelRadius = 50;
 const viewTools = initViewTools({
   scene, camera, renderer, modelGroup, renderScene,
+  selectable: document.documentElement.dataset.static !== "1",
   containerEl: viewportEl.parentElement,
 });
 
@@ -958,4 +960,14 @@ if (STATIC) {
     })
     .catch((err) => { statusEl.textContent = `Error: ${err.message}`; })
     .finally(() => { if (poll) setInterval(pollVersion, 2000); });
+}
+
+// The agent chat below the findings (not in the static live demo, there is no agent there)
+if (!STATIC) {
+  initAgentChat({
+    root: document.getElementById("agent-chat"),
+    getSelection: () => viewTools.getSelection(),
+    clearSelection: () => viewTools.clearSelection(),
+    onChanged: () => loadAll(false),
+  });
 }

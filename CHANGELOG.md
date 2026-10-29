@@ -5,6 +5,14 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Chat with your agent on the Check page**, below the findings: pick faces with the new **Select** tool in the
+  3D view and say (hold the microphone) or type what to do; the same turns, Undo and Redo as in "Model by
+  hand". Not in the live demo.
+
 ## [0.1.0a8] - 2026-10-29
 
 Built and tested with SolidCraft 0.25.1.

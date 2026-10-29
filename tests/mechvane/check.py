@@ -4944,6 +4944,12 @@ def params_checks(tmp):
            f"{ {k: chosen.get(k) for k in ('profile', 'material', 'materials')} } {refused}")
         with urllib.request.urlopen(base.replace("/api/params", "/viewtools.js")) as resp:
             js, ctype = resp.read().decode(), resp.headers.get("Content-Type", "")
+        with urllib.request.urlopen(base.replace("/api/params", "/chat.js")) as resp:
+            chat_js = resp.read().decode()
+        index_html = (ui_server.STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        ok("ui: Check page has the agent chat (chat.js) and a Select tool feeding it",
+           "export function initAgentChat" in chat_js and 'id="agent-chat"' in index_html
+           and "getSelection" in (ui_server.STATIC_DIR / "viewtools.js").read_text(encoding="utf-8"))
         ok("ui: measure and section tools served and loaded by the Check page",
            "javascript" in ctype and "export function initViewTools" in js
            and 'from "./viewtools.js"' in (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8"), ctype)

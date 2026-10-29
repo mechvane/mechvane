@@ -433,6 +433,33 @@ html, body {
   .viewport-hint { display: none; }
 }
 
+/* Agent chat on the Check page, below the findings (same look as in "Model by hand") */
+.chat-panel { display: flex; flex-direction: column; border-top: 1px solid var(--border); max-height: 55%; min-height: 220px; }
+.chat-panel[hidden] { display: none; }
+.chat-actions { display: inline-flex; gap: 2px; }
+.chat-panel .chat-log { flex: 1; min-height: 80px; overflow: auto; list-style: none; margin: 0; padding: 8px 12px; }
+.chat-log li { margin: 0 0 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.chat-log .you { background: var(--hover-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.chat-log .you .sel { display: block; font-size: 11px; color: var(--text-muted); }
+.chat-log .tool { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--text-muted); }
+.chat-log .tool::before { content: "●"; margin-right: 6px; color: #9ca3af; }
+.chat-log .tool.ok::before { color: #22c55e; }
+.chat-log .tool.failed::before { color: #ef4444; }
+.chat-log .tool.declined::before { color: #f59e0b; }
+.chat-log .note { font-size: 12px; color: var(--text-muted); }
+.chat-log .err { color: var(--fail-fg); }
+.chat-log .working { font-size: 12px; color: #d97757; }
+.chat-composer { display: flex; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid var(--border); }
+.chat-input { flex: 1; min-width: 0; resize: vertical; font: inherit; font-size: 13px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+.send-btn { align-self: flex-end; width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; font-size: 15px;
+  background: #d97757; color: #fff; }
+.send-btn.stop { background: var(--fail-border); }
+.mic-btn { align-self: flex-end; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); cursor: pointer;
+  background: var(--panel-bg); font-size: 14px; }
+.mic-btn[hidden] { display: none; }
+.mic-btn.listening { background: var(--fail-bg); border-color: var(--fail-border); }
+
 /* Measure and section tools over the 3D view */
 .view-tools { position: absolute; top: 12px; right: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; max-width: calc(100% - 24px); }
 .view-tools button, .view-tools select { font: inherit; font-size: 12px; color: var(--text); background: var(--panel-bg);

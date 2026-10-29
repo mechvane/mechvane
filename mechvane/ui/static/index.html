@@ -74,6 +74,21 @@
       <div id="findings-content" class="panel-body">
         <div class="empty-state">Loading findings…</div>
       </div>
+      <section id="agent-chat" class="chat-panel" hidden aria-label="Agent">
+        <div class="panel-header">
+          <h2>Agent</h2>
+          <span class="chat-actions">
+            <button type="button" class="btn-text chat-undo" hidden title="Undo the agent's last turn"></button>
+            <button type="button" class="btn-text chat-redo" hidden title="Put the undone turn back">↷ Redo</button>
+          </span>
+        </div>
+        <ul class="chat-log" aria-live="polite"></ul>
+        <div class="chat-composer">
+          <textarea class="chat-input" rows="2" placeholder="Select faces (Select tool), then say what to do, e.g. &quot;a 1 × 45° chamfer here&quot;"></textarea>
+          <button type="button" class="mic-btn" hidden title="Hold to speak" aria-label="Hold to speak">🎤</button>
+          <button type="button" class="send-btn" title="Send" aria-label="Send">↑</button>
+        </div>
+      </section>
     </aside>
   </div>
 
