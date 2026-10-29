@@ -35,6 +35,11 @@ API-Endpunkte für Teil und Baugruppe liefern 200; `mechvane mcp` beantwortet
 SolidCraft-Sitzung einen leeren Ordner `%TEMP%\solidcraft-mcp-*` zurück (Fehler in
 SolidCraft 0.21.0, [Issue #7836](https://github.com/tangency-labs/solidcraft/issues/7836); ab 0.1.0a3 räumt Mechvane selbst auf).
 
+**Intel-Grafik (seit 0.1.0a5):** Mechvane startet SolidCraft unter Windows mit DirectX 12
+(`WGPU_BACKEND=dx12`), weil Intels Vulkan-Treiber beim Speichern runder Teile abstürzt
+(`0xC0000005`, [SolidCraft #5589](https://github.com/tangency-labs/solidcraft/issues/5589)). Wer ein
+anderes Backend will, setzt `WGPU_BACKEND` selbst; Mechvane überschreibt es nicht.
+
 Der Rest dieser Anleitung beschreibt den älteren Weg von Hand (Repository-Kopie,
 SolidCraft 0.17.0), nur noch für Entwicklung am Repository nötig.
 

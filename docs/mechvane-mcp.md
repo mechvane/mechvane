@@ -358,6 +358,21 @@ nach Vorbild des Autodesk Inventor „Edit in Place“:
      (z. B. Status `moved` nach [#3330](https://github.com/tangency-labs/solidcraft/issues/3330))
      sofort transparent als Warnungen sichtbar sind.
 
+### Bauteilpfade in den Metadaten (seit 2026-10-29)
+
+Gelenke, Unterbaugruppen und Verschraubungen merken sich im Metadaten-Eintrag der Baugruppe die
+Bauteildatei (`file`). Diese Pfade stehen relativ zum Ordner der Baugruppe in der Datei
+(`files_relative`/`files_on_disk` in `mechvane/__init__.py`, eingehängt in `Document.metadata()` und
+`set_metadata()`); im Programm sind sie absolut. Ein Projektordner lässt sich so verschieben oder auf
+einen anderen Rechner kopieren. Ältere Baugruppen mit absoluten Pfaden finden ein Teil, das dort nicht
+mehr liegt, über seinen Dateinamen im Ordner der Baugruppe. Wer Metadaten direkt aus einer Sitzung liest
+(`tree.assembly_tree`, Unterbaugruppen in `links.py`), gibt den Ordner mit (`base`).
+
+**Geteilte Flächen:** Seit SolidCraft 0.25 heißen die Stücke einer mit `solid.split_face` geteilten
+Fläche `F2:top#[Kanten]`. `links._base` behandelt das wie die Endung `#2`; liegt eine Verschraubung auf
+einer geteilten Fläche, nimmt `bolted._resolve_anchor` das Stück, das dem gespeicherten Ankerpunkt am
+nächsten liegt.
+
 ## Web-UI (Stufe 1)
 
 Das Paket `mechvane/ui/` stellt eine rein lesende Web-Oberfläche für Bauteil- und Baugruppendateien bereit:
@@ -380,7 +395,7 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 | Endpunkt | Inhalt |
 |---|---|
-| `GET /api/about` | `{"mechvane", "solidcraft"}`: Paketversion von Mechvane und Version des eingebundenen SolidCraft-Releases |
+| `GET /api/about` | `{"mechvane", "solidcraft", "root"}`: Paketversion von Mechvane, Version des eingebundenen SolidCraft-Releases und die Datei bzw. der Ordner, den dieser Server zeigt (für die einzelne Instanz, siehe unten) |
 | `GET /api/version` | `{"version", "mtime", "name", "kind", "path"}` anhand der Datei-`mtime` |
 | `GET /api/mesh` | `{"bodies": [{"name", "positions": [x,y,z,…], "indices": […], "face_ids": […], "faces": [{"index", "name"}]}]}` aus `export(format="3mf-tagged")` und `model.faces` |
 | `GET /api/tree` | Modellbaum aus `tree.part_tree` bzw. `tree.assembly_tree` (bei Baugruppen angereichert mit Gelenkstatus aus `links.check`) |
@@ -428,6 +443,22 @@ bestehenden Dateien, 400 bei unzulässigen Namen). In `model.html` zeigt eine Le
 die Dokumente samt Bauteil-/Baugruppen-Kennzeichnung und Umschaltung sowie einen Schalter für neue Bauteile; beim
 Laden ohne `?doc=` wird automatisch die erste Datei geöffnet. Im Einzeldatei-Modus bleibt das bisherige
 Verhalten unverändert.
+
+**Prüfansicht im Ordnermodus (seit 2026-10-29):** `index.html` füllt die Auswahl „Document“ aus
+`/api/project` und öffnet `?doc=`, sonst die erste Baugruppe, sonst das erste Dokument; der Link nach
+„Model by hand“ und zurück nimmt das Dokument mit. Ein leerer Ordner (erster Start über den
+Startmenü-Eintrag) zeigt einen Hinweis statt „Connection lost“ und lädt neu, sobald `/api/project` ein
+Dokument meldet. Ein Teil ohne Körper bekommt von `/api/mesh` ein leeres Netz (`{"bodies": []}`).
+
+**Eine Instanz je Ordner (seit 2026-10-29):** Ist der Port belegt, fragt `run_server` dort `/api/about`
+ab. Zeigt der laufende Server dieselbe Datei bzw. denselben Ordner (`root`), öffnet Mechvane nur ein
+Fenster dorthin und beendet sich; sonst nimmt es einen freien Port. Der Server läuft, bis das letzte
+App-Fenster geschlossen ist.
+
+**Beispielmodelle (`mechvane ui --demo`):** `cli.demo_folder()` baut sie in
+`<cache>/demo/` und schreibt zuletzt `.complete` mit der Liste aller gebauten Dateien. Fehlt die Datei
+oder eine der Dateien darin (Abbruch beim ersten Aufbau), wird der Ordner gelöscht und neu gebaut, an
+Ort und Stelle.
 
 ![Modus „Modellieren“ mit Projektordner und ausgewähltem Befund](media/model-folder.png)
 
