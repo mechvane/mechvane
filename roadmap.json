@@ -114,15 +114,15 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Chat with your agent",
-          "text": "Your agent works in the same window, with stop, undo and redo for each turn.",
+          "text": "Your agent works in the same window, on the Check page and in Model by hand, with stop, undo and redo for each turn.",
           "milestone": "v0.1"
         },
         {
           "status": "progress",
           "title": "Point and speak",
-          "text": "Click a face and say what should happen there, e.g. \"chamfer 1 × 45°\".",
+          "text": "Select a face and say what should happen there, e.g. \"chamfer 1 × 45°\". Speech input works; testing on devices.",
           "milestone": "v0.1"
         },
         {
