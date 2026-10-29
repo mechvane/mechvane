@@ -5,13 +5,17 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0a9] - 2026-10-29
+
+Built and tested with SolidCraft 0.25.1.
 
 ### Added
 
 - **Chat with your agent on the Check page**, below the findings: pick faces with the new **Select** tool in the
   3D view and say (hold the microphone) or type what to do; the same turns, Undo and Redo as in "Model by
   hand". Not in the live demo.
+- `AGENTS.md` for coding agents that contribute to Mechvane; the MCP server's instructions now mention
+  `bolted_connection`, `check_design` with a material and `export_gltf`.
 
 ## [0.1.0a8] - 2026-10-29
 
@@ -196,6 +200,7 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a9]: https://github.com/mechvane/mechvane/compare/v0.1.0a8...v0.1.0a9
 [0.1.0a8]: https://github.com/mechvane/mechvane/compare/v0.1.0a7...v0.1.0a8
 [0.1.0a7]: https://github.com/mechvane/mechvane/compare/v0.1.0a6...v0.1.0a7
 [0.1.0a6]: https://github.com/mechvane/mechvane/compare/v0.1.0a5...v0.1.0a6
