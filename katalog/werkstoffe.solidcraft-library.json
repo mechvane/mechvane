@@ -750,8 +750,173 @@
       }
     },
     {
-      "id": "mechvane.werkstoffe/material-6bea0309c3d1c86b",
-      "revision": "6bea0309c3d1c86be72b217214bab5a28b85dc91821aab91772b78e838c1f4e4",
+      "id": "mechvane.werkstoffe/material-48d2c9bccd58b0e3",
+      "revision": "48d2c9bccd58b0e3281bb8ce9df29d978af8e96a3bd8252b3503e4e5b35820d2",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "S235JR",
+          "density_g_cm3": 7.85,
+          "appearance": {
+            "name": "S235JR",
+            "color": [
+              138,
+              144,
+              151
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.45,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "S235JR",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 1-2, Reference data on physical properties & Mechanical properties",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://ucpcdn.thyssenkrupp.com/_legacy/UCPthyssenkruppBAMXFrance/assets.files/product_pdf/carbon_flat_steel_/plates_and_slabs_carbon_steel/s235jr_1_0038_11_2016_engl.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 2, Tabelle Mechanische Eigenschaften",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.thyssenkrupp-steel.com/media/content_1/publikationen/precision_steel/produktinformationen_1/baustahl/thyssenkrupp_s235jr_produktinformation_precision_steel_de.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 1, Titelzeile",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 7850.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 210000000000.0,
+                    "poisson_ratio": 0.3
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 360000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 235000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 288000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    54.0,
+                    54.0,
+                    54.0
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.0000111,
+                    0.0000111,
+                    0.0000111
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "S235JR, 1.0038"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mechvane.werkstoffe/material-4c6c314b43104653",
+      "revision": "4c6c314b43104653fdbabf9547a9eb1984c5c488abfe96afa008d7297869f65b",
       "provenance": {
         "license": "MIT OR Apache-2.0",
         "author": "Mechvane contributors",
@@ -797,7 +962,7 @@
               },
               {
                 "id": "s3",
-                "title": "Seite 1, Tabelle Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl",
+                "title": "Seite 1, Titelzeile",
                 "kind": "public_reference",
                 "license": null,
                 "reference": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf"
@@ -863,7 +1028,7 @@
               {
                 "data": {
                   "kind": "shear_strength",
-                  "pa": 360000000.0
+                  "pa": 376000000.0
                 },
                 "source_id": "s1",
                 "conditions": {
@@ -1366,6 +1531,171 @@
       }
     },
     {
+      "id": "mechvane.werkstoffe/material-838994438d4a2270",
+      "revision": "838994438d4a22707fad3050ccb6cefb1886a8d0155759667780c73d469f8252",
+      "provenance": {
+        "license": "MIT OR Apache-2.0",
+        "author": "Mechvane contributors",
+        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
+      },
+      "definition": {
+        "kind": "material",
+        "value": {
+          "name": "42CrMo4 +QT",
+          "density_g_cm3": 7.85,
+          "appearance": {
+            "name": "42CrMo4 +QT",
+            "color": [
+              122,
+              128,
+              135
+            ],
+            "opacity": 1.0,
+            "pbr": {
+              "metallic": 1.0,
+              "roughness": 0.4,
+              "dielectric_ior": 1.5
+            }
+          },
+          "physical_card": {
+            "schema_version": 1,
+            "designation": "42CrMo4 +QT",
+            "family": "metal",
+            "sources": [
+              {
+                "id": "s1",
+                "title": "Seite 2, Mechanische Eigenschaften im vergüteten Zustand (QT)",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://d2zo35mdb530wx.cloudfront.net/_binary/UCPthyssenkruppBAMXSchweiz/de/downloads/werkstoffdatenblaetter-baustahl/edelbau_7225.pdf"
+              },
+              {
+                "id": "s2",
+                "title": "Seite 1, Mechanical properties Quenched and tempered +QT",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://en.saarstahl.com/app/uploads/2024/03/20160323013851-42CrMo4-42CrMoS4.pdf"
+              },
+              {
+                "id": "s3",
+                "title": "Seite 1, Titelzeile",
+                "kind": "public_reference",
+                "license": null,
+                "reference": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Verg%C3%BCtungsstahl-Scherfestigkeitsverh%C3%A4ltnis0.65.pdf"
+              }
+            ],
+            "properties": [
+              {
+                "data": {
+                  "kind": "density",
+                  "kg_m3": 7850.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225"
+                }
+              },
+              {
+                "data": {
+                  "kind": "elasticity",
+                  "model": {
+                    "symmetry": "isotropic",
+                    "young_modulus_pa": 210000000000.0,
+                    "poisson_ratio": 0.3
+                  }
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225"
+                }
+              },
+              {
+                "data": {
+                  "kind": "tensile_strength",
+                  "pa": 1100000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "yield_strength",
+                  "pa": 900000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "shear_strength",
+                  "pa": 715000000.0
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225, minimum"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_conductivity",
+                  "w_m_k": [
+                    42.0,
+                    42.0,
+                    42.0
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225"
+                }
+              },
+              {
+                "data": {
+                  "kind": "thermal_expansion",
+                  "per_k": [
+                    0.0000112,
+                    0.0000112,
+                    0.0000112
+                  ],
+                  "axes": "material123"
+                },
+                "source_id": "s1",
+                "conditions": {
+                  "temperature_k": 293.15,
+                  "moisture_dry_basis_kg_kg": null,
+                  "strain_rate_per_s": null,
+                  "state": "42CrMo4, 1.7225"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": "mechvane.werkstoffe/material-8a7e450e8ea30ef0",
       "revision": "8a7e450e8ea30ef0a06b921f09ca5750353717a4c57984a2249bb3bba4d4c72c",
       "provenance": {
@@ -1657,336 +1987,6 @@
                   "moisture_dry_basis_kg_kg": null,
                   "strain_rate_per_s": null,
                   "state": "PETG, PolyLite PETG"
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": "mechvane.werkstoffe/material-a95b50708d08b335",
-      "revision": "a95b50708d08b335e06576cf516118e45f11a13bff10a75a63da88bea93ef613",
-      "provenance": {
-        "license": "MIT OR Apache-2.0",
-        "author": "Mechvane contributors",
-        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
-      },
-      "definition": {
-        "kind": "material",
-        "value": {
-          "name": "42CrMo4 +QT",
-          "density_g_cm3": 7.85,
-          "appearance": {
-            "name": "42CrMo4 +QT",
-            "color": [
-              122,
-              128,
-              135
-            ],
-            "opacity": 1.0,
-            "pbr": {
-              "metallic": 1.0,
-              "roughness": 0.4,
-              "dielectric_ior": 1.5
-            }
-          },
-          "physical_card": {
-            "schema_version": 1,
-            "designation": "42CrMo4 +QT",
-            "family": "metal",
-            "sources": [
-              {
-                "id": "s1",
-                "title": "Seite 2, Mechanische Eigenschaften im vergüteten Zustand (QT)",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://d2zo35mdb530wx.cloudfront.net/_binary/UCPthyssenkruppBAMXSchweiz/de/downloads/werkstoffdatenblaetter-baustahl/edelbau_7225.pdf"
-              },
-              {
-                "id": "s2",
-                "title": "Seite 1, Mechanical properties Quenched and tempered +QT",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://en.saarstahl.com/app/uploads/2024/03/20160323013851-42CrMo4-42CrMoS4.pdf"
-              },
-              {
-                "id": "s3",
-                "title": "Seite 1, Tabelle Mindesteinschraubtiefen für Vergütungsstahl, Zeile 488 (42CrMo4)",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Verg%C3%BCtungsstahl-Scherfestigkeitsverh%C3%A4ltnis0.65.pdf"
-              }
-            ],
-            "properties": [
-              {
-                "data": {
-                  "kind": "density",
-                  "kg_m3": 7850.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225"
-                }
-              },
-              {
-                "data": {
-                  "kind": "elasticity",
-                  "model": {
-                    "symmetry": "isotropic",
-                    "young_modulus_pa": 210000000000.0,
-                    "poisson_ratio": 0.3
-                  }
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225"
-                }
-              },
-              {
-                "data": {
-                  "kind": "tensile_strength",
-                  "pa": 1100000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "yield_strength",
-                  "pa": 900000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "shear_strength",
-                  "pa": 488000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "thermal_conductivity",
-                  "w_m_k": [
-                    42.0,
-                    42.0,
-                    42.0
-                  ],
-                  "axes": "material123"
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225"
-                }
-              },
-              {
-                "data": {
-                  "kind": "thermal_expansion",
-                  "per_k": [
-                    0.0000112,
-                    0.0000112,
-                    0.0000112
-                  ],
-                  "axes": "material123"
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "42CrMo4, 1.7225"
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": "mechvane.werkstoffe/material-c2e9d042f0bfe2a2",
-      "revision": "c2e9d042f0bfe2a2a82605e45153309733be9a5295d0ba8e7c833184472af345",
-      "provenance": {
-        "license": "MIT OR Apache-2.0",
-        "author": "Mechvane contributors",
-        "source_url": "https://github.com/mechvane/mechvane/tree/main/katalog/eintraege/werkstoffe"
-      },
-      "definition": {
-        "kind": "material",
-        "value": {
-          "name": "S235JR",
-          "density_g_cm3": 7.85,
-          "appearance": {
-            "name": "S235JR",
-            "color": [
-              138,
-              144,
-              151
-            ],
-            "opacity": 1.0,
-            "pbr": {
-              "metallic": 1.0,
-              "roughness": 0.45,
-              "dielectric_ior": 1.5
-            }
-          },
-          "physical_card": {
-            "schema_version": 1,
-            "designation": "S235JR",
-            "family": "metal",
-            "sources": [
-              {
-                "id": "s1",
-                "title": "Seite 1-2, Reference data on physical properties & Mechanical properties",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://ucpcdn.thyssenkrupp.com/_legacy/UCPthyssenkruppBAMXFrance/assets.files/product_pdf/carbon_flat_steel_/plates_and_slabs_carbon_steel/s235jr_1_0038_11_2016_engl.pdf"
-              },
-              {
-                "id": "s2",
-                "title": "Seite 2, Tabelle Mechanische Eigenschaften",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://www.thyssenkrupp-steel.com/media/content_1/publikationen/precision_steel/produktinformationen_1/baustahl/thyssenkrupp_s235jr_produktinformation_precision_steel_de.pdf"
-              },
-              {
-                "id": "s3",
-                "title": "Seite 1, Tabelle Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl",
-                "kind": "public_reference",
-                "license": null,
-                "reference": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf"
-              }
-            ],
-            "properties": [
-              {
-                "data": {
-                  "kind": "density",
-                  "kg_m3": 7850.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038"
-                }
-              },
-              {
-                "data": {
-                  "kind": "elasticity",
-                  "model": {
-                    "symmetry": "isotropic",
-                    "young_modulus_pa": 210000000000.0,
-                    "poisson_ratio": 0.3
-                  }
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038"
-                }
-              },
-              {
-                "data": {
-                  "kind": "tensile_strength",
-                  "pa": 360000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "yield_strength",
-                  "pa": 235000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "shear_strength",
-                  "pa": 264000000.0
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038, minimum"
-                }
-              },
-              {
-                "data": {
-                  "kind": "thermal_conductivity",
-                  "w_m_k": [
-                    54.0,
-                    54.0,
-                    54.0
-                  ],
-                  "axes": "material123"
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038"
-                }
-              },
-              {
-                "data": {
-                  "kind": "thermal_expansion",
-                  "per_k": [
-                    0.0000111,
-                    0.0000111,
-                    0.0000111
-                  ],
-                  "axes": "material123"
-                },
-                "source_id": "s1",
-                "conditions": {
-                  "temperature_k": 293.15,
-                  "moisture_dry_basis_kg_kg": null,
-                  "strain_rate_per_s": null,
-                  "state": "S235JR, 1.0038"
                 }
               }
             ]

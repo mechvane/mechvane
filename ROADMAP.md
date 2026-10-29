@@ -207,6 +207,10 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       ein Test, ob die SolidCraft-Web-App darin läuft. Entscheidung zusammen mit dem Prüfpunkt
       Sprache (spätestens Januar 2027).
 
+- [ ] **Website mechvane.dev** (Nutzerwunsch 2026-10-29): Startseite mit Leitsatz, Rendering, was heute
+      geht, Einstieg und Roadmap-Teaser; Live-Demo zieht nach `/demo/`. Entwurf durch Gemini 4 Argon in der
+      Gemini-App nach `docs/website/ARGON-PROMPT.md` (Fakten: `docs/website/FAKTEN.md`), Einbau und Prüfung
+      durch Claude (`website/`, `tools/build_demo_site.py`), Veröffentlichung nach Nutzer-OK.
 - [ ] **Private Online-Version unter `app.mechvane.dev`** (Nutzerwunsch 2026-10-28, aus der
       Homeserver-Session): die eigene Web-UI aus jedem Browser erreichen, auch ohne Tailscale; nur
       für den Nutzer, kein öffentlicher Dienst. Einordnen **nach Web-UI Stufe 2** (vorher zeigt die

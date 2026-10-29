@@ -1,12 +1,14 @@
 """Export a part or assembly as glTF 2.0 with its appearance (ADR 0004).
 
 Meshes come from the web UI's export (one per body, world coordinates, B-rep face per triangle); the look
-of each body from SolidCraft: an appearance assigned to the body, else the default look of its material.
+of each body from SolidCraft: an appearance assigned to the body, else the default look of its material;
+faces with an appearance of their own (assigned by a point) get it too.
 Colour and PBR (metallic, roughness, IOR) map to pbrMetallicRoughness and KHR_materials_ior. Normals are
 written per B-rep face, so edges between faces stay sharp. Units: metres, Y up, as glTF wants.
 """
 import base64
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -44,6 +46,41 @@ def _look(material: str | None, appearance: dict | None) -> dict:
     return m
 
 
+def _face_at(body, point, tol=1e-2):
+    """B-rep face id of the triangle of body that contains point (mm), or None."""
+    pos, idx, fids = body["positions"], body["indices"], body.get("face_ids") or []
+    for t in range(len(idx) // 3):
+        a, b, c = (pos[idx[t * 3 + k] * 3:idx[t * 3 + k] * 3 + 3] for k in range(3))
+        u = [b[i] - a[i] for i in range(3)]
+        v = [c[i] - a[i] for i in range(3)]
+        w = [point[i] - a[i] for i in range(3)]
+        n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+        nn = sum(x * x for x in n)
+        if nn < 1e-18 or abs(sum(w[i] * n[i] for i in range(3))) / nn ** 0.5 > tol:
+            continue
+        # barycentric coordinates of the point in the triangle
+        uu, uv, vv = (sum(x * y for x, y in zip(p, q)) for p, q in ((u, u), (u, v), (v, v)))
+        wu, wv = sum(x * y for x, y in zip(w, u)), sum(x * y for x, y in zip(w, v))
+        den = uv * uv - uu * vv
+        s_ = (uv * wv - vv * wu) / den
+        t_ = (uv * wu - uu * wv) / den
+        if s_ >= -1e-6 and t_ >= -1e-6 and s_ + t_ <= 1 + 1e-6:
+            return fids[t] if t < len(fids) else 0
+    return None
+
+
+def _face_looks(session, bodies) -> dict:
+    """{(body, face id): glTF material} from appearances assigned to faces by a point."""
+    by_name = {b["name"]: b for b in bodies}
+    out = {}
+    for f in (session.cmd("appearance.list", {}) or {}).get("faces", []) or []:
+        body = by_name.get(f.get("body"))
+        fid = _face_at(body, f.get("point") or []) if body else None
+        if fid is not None:
+            out[(body["name"], fid)] = _look(None, f.get("appearance"))
+    return out
+
+
 def _body_looks(session, names) -> dict:
     """{body: glTF material} from the body appearances and materials of the open design."""
     assigned = (session.cmd("appearance.list", {}) or {}).get("bodies", {}) or {}
@@ -65,7 +102,7 @@ def _body_looks(session, names) -> dict:
 
 
 def _faces_split(body):
-    """One vertex per (vertex, B-rep face), normals averaged within each face."""
+    """One vertex per (vertex, B-rep face), normals averaged within each face; triangles carry their face."""
     pos, idx, fids = body["positions"], body["indices"], body.get("face_ids") or []
     key, out_pos, out_nrm, tris = {}, [], [], []
     for t in range(len(idx) // 3):
@@ -83,15 +120,60 @@ def _faces_split(body):
                 out_nrm.append([0.0, 0.0, 0.0])
             out_nrm[j] = [out_nrm[j][k] + n[k] for k in range(3)]
             tri.append(j)
-        tris.append(tri)
+        tris.append((tri, f))
     unit = lambda v: [x / ((sum(y * y for y in v) ** 0.5) or 1.0) for x in v]  # noqa: E731
     return out_pos, [unit(n) for n in out_nrm], tris
 
 
-def export_gltf(doc, path) -> dict:
-    """Write doc (part or assembly) as glTF 2.0 with one mesh and one material per body."""
+def _part_looks(session) -> tuple[dict, list]:
+    """Looks of a part's own bodies and its face appearances (part coordinates)."""
+    names = [b["name"] for b in session.cmd("document.inspect", {"measure": False}).get("bodies", [])]
+    faces = (session.cmd("appearance.list", {}) or {}).get("faces", []) or []
+    return _body_looks(session, names), faces
+
+
+def _assembly_looks(ws, doc, bodies) -> tuple[dict, dict]:
+    """Looks for an assembly's bodies from the part files they come from: SolidCraft keeps appearances and
+    materials in the parts, the assembly session does not see them."""
+    from . import geometry as g, links, query
+    lmap = links._links(doc.session)
+    by_name = {b["name"]: b for b in bodies}
+    looks, face_looks, cache = {}, {}, {}
+    for t in query._collect_bodies(doc, None):
+        link = lmap.get(t.get("component"))
+        body = by_name.get(t["world_name"])
+        if not link or body is None:
+            continue
+        if link["file"] not in cache:
+            reader = ws.reader(link["file"])
+            try:
+                cache[link["file"]] = _part_looks(reader)
+            finally:
+                reader.close()
+        part_looks, part_faces = cache[link["file"]]
+        base = re.sub(r" \(\d+\)$", "", t["base_name"])
+        looks[t["world_name"]] = part_looks.get(base) or _look(None, None)
+        for f in part_faces:
+            if re.sub(r" \(\d+\)$", "", f.get("body", "")) != base:
+                continue
+            point = g.apply_point(t["transform"], f["point"]) if t.get("transform") else f["point"]
+            fid = _face_at(body, point)
+            if fid is not None:
+                face_looks[(t["world_name"], fid)] = _look(None, f.get("appearance"))
+    return looks, face_looks
+
+
+def export_gltf(doc, path, ws=None) -> dict:
+    """Write doc (part or assembly) as glTF 2.0 with one mesh and one material per body. For an assembly
+    pass its workspace ws, so the looks come from the part files."""
     bodies = [b for b in collect_mesh(doc).get("bodies", []) if b.get("positions")]
-    looks = _body_looks(doc.session, [b["name"] for b in bodies])
+    if ws is not None and getattr(doc, "kind", None) == "assembly":
+        looks, face_looks = _assembly_looks(ws, doc, bodies)
+        for b in bodies:
+            looks.setdefault(b["name"], _look(None, None))
+    else:
+        looks = _body_looks(doc.session, [b["name"] for b in bodies])
+        face_looks = _face_looks(doc.session, bodies)
     gltf = {"asset": {"version": "2.0", "generator": "Mechvane"}, "scene": 0, "scenes": [{"nodes": []}],
             "nodes": [], "meshes": [], "materials": [], "accessors": [], "bufferViews": []}
     blob = bytearray()
@@ -118,14 +200,17 @@ def export_gltf(doc, path) -> dict:
         to_gltf = lambda p: (p[0] / 1000, p[2] / 1000, -p[1] / 1000)  # noqa: E731  mm, Z up -> m, Y up
         attrs = {"POSITION": accessor([to_gltf(p) for p in pos], "3f", "VEC3", 34962, minmax=True),
                  "NORMAL": accessor([(n[0], n[2], -n[1]) for n in nrm], "3f", "VEC3", 34962)}
-        look = looks[b["name"]]
-        key = json.dumps(look, sort_keys=True)
-        if key not in mat_index:
-            gltf["materials"].append(look)
-            mat_index[key] = len(gltf["materials"]) - 1
-        indices = accessor(tris, "3I", "SCALAR", 34963, component=5125)
-        gltf["meshes"].append({"name": b["name"], "primitives": [{"attributes": attrs, "indices": indices,
-                                                                  "material": mat_index[key]}]})
+        groups = {}
+        for tri, f in tris:
+            look = face_looks.get((b["name"], f), looks[b["name"]])
+            key = json.dumps(look, sort_keys=True)
+            if key not in mat_index:
+                gltf["materials"].append(look)
+                mat_index[key] = len(gltf["materials"]) - 1
+            groups.setdefault(mat_index[key], []).append(tri)
+        prims = [{"attributes": attrs, "indices": accessor(ts, "3I", "SCALAR", 34963, component=5125), "material": m}
+                 for m, ts in groups.items()]
+        gltf["meshes"].append({"name": b["name"], "primitives": prims})
         gltf["nodes"].append({"name": b["name"], "mesh": len(gltf["meshes"]) - 1})
         gltf["scenes"][0]["nodes"].append(len(gltf["nodes"]) - 1)
     if any("extensions" in m for m in gltf["materials"]):

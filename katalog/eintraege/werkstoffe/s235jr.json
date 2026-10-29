@@ -52,7 +52,7 @@
     },
     {
       "name": "Scherfestigkeit τ_B",
-      "wert": 264,
+      "wert": 288,
       "einheit": "MPa"
     }
   ],
@@ -97,7 +97,7 @@
     },
     {
       "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf",
-      "stelle": "Seite 1, Tabelle Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl",
+      "stelle": "Seite 1, Titelzeile",
       "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl (Scherfestigkeitsverhältnis τB / Rm = 0.8)",
       "abgerufen": "2026-10-29"
     }

@@ -377,7 +377,7 @@ def export_gltf(document: str, path: str) -> dict:
     target = Path(path)
     if not target.is_absolute():
         target = ws.root / target
-    return _export(doc, target)
+    return _export(doc, target, ws=ws)
 
 
 @mcp.tool()

@@ -18,7 +18,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   scenes (angled and top view) and the same model as glTF with its materials.
 - `export_gltf(document, path)`: writes a part or assembly as glTF 2.0 for Blender, three.js and other
   viewers, one mesh per body with sharp edges and the body's look (colour, metallic, roughness, IOR) taken
-  from its SolidCraft appearance or material.
+  from its SolidCraft appearance or material; faces with their own appearance keep it, and assemblies take
+  the looks from their part files.
 - Tools to take a model to Blender: `tools/logo_to_gltf.py` writes glTF 2.0 with clearcoat and anisotropy
   from a set of OpenPBR parameters, `tools/render_logo_blender.py` renders it with Cycles.
 

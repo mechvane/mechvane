@@ -15,7 +15,11 @@ Weg nach Blender ([ADR 0004](../../adr/0004-darstellungsformat.md)).
     Rundungen und Fasen; zwei M3-Gewindesacklöcher
   - `logo_v.solidcraft` – V in zwei Hälften (2,5 mm), je eine Senkbohrung
   - `spacer.solidcraft` – Distanzscheibe Ø 8 × 2, vorgebohrt
-  - `ISO_10642_M3x6.solidcraft` – Senkschraube, von Mechvane erzeugt
+  - `ISO_10642_M3x6.solidcraft` – Senkschraube, von Mechvane erzeugt, brüniert
+  - Werkstoffe aus dem Katalog (S235JR, CuZn39Pb3, 1.4301, Kupfer) und Aussehen in SolidCraft zugewiesen
+    (Platte navy, M hellgrau, Nähte metallisch, Messing, Kupfer, Edelstahl)
+  - `logo_showcase.gltf` – mit `export_gltf` aus der Baugruppe, Aussehen aus den SolidCraft-Teilen
+  - `werkstoffe.solidcraft-library.json` – die Werkstoffbibliothek, aus der die Teile ihre Werkstoffe haben
 - `blender/` – Szene für Blender 5.x (Cycles):
   - `logo_showcase.blend` (schräg) und `logo_showcase_top.blend` (Draufsicht, 120 mm) – Modell, Werkstoffe (Pulverbeschichtung navy/hellgrau, Messing gebürstet,
     Kupfer poliert, Edelstahl, brünierte Schrauben), Licht, Kamera

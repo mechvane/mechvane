@@ -5028,6 +5028,11 @@ def gltf_export_check(tmp):
         data = json.loads((folder / "box.gltf").read_text())
         acc = data["accessors"][data["meshes"][0]["primitives"][0]["attributes"]["POSITION"]]
         mat = data["materials"][0]["pbrMetallicRoughness"]
+        d.session.cmd("appearance.assign", {"faces": [[10, 5, 5]], "body": "Body1", "color": "#c9d4e0"})
+        r2 = gltf_export.export_gltf(d, folder / "box2.gltf")
+        ok("gltf: a face with its own appearance becomes its own primitive and material",
+           len(r2["materials"]) == 2 and len(json.loads((folder / "box2.gltf").read_text())["meshes"][0]["primitives"]) == 2,
+           str(r2))
         ok("gltf: body in metres with Y up, brass as metal with its colour, normals per face",
            r["bodies"] == 1 and [round(x, 4) for x in acc["max"]] == [0.02, 0.005, 0.0] and acc["min"][2] == -0.01
            and mat["metallicFactor"] == 1.0 and mat["baseColorFactor"][0] > mat["baseColorFactor"][2]
