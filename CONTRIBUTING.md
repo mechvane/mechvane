@@ -1,5 +1,7 @@
 # Contributing
 
+Coding agents: see [AGENTS.md](AGENTS.md).
+
 Mechvane is an early-stage project. Bug reports, practice tests on real parts and sourced
 standard values help most.
 

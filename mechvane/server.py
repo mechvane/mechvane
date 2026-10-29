@@ -23,7 +23,9 @@ mcp = FastMCP(
         "it. Put parts into an assembly with insert_part, join them with add_joint and change them with "
         "edit_joint or delete_joint (not raw joint.create or joint.edit, so Mechvane can check the joint "
         "later), and after changing a part file call update_links: it reports joints that moved to another "
-        "face. Save with save_document."
+        "face. Save with save_document. For holes and screws use bolted_connection; check a part with "
+        "check_design (pass material, or assign one in SolidCraft; values carry their sources); export with "
+        "export_gltf for Blender or the web. Lengths in mm."
     ),
 )
 
