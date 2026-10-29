@@ -71,6 +71,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 150,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 390,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -115,6 +120,12 @@
       "url": "https://www.gemmel-metalle.de/downloads/Legierungsbeschreibung_CuZn39Pb3.pdf",
       "stelle": "Seite 1, Legierungsbeschreibung CuZn39Pb3",
       "zitat": "Zugfestigkeit Rm N/mm² 540, E-Modul N/mm² 96, Härte HB 140, Dichte in g/cm³ 8,46, Wärmeleitfähigkeit W/mk 113, Wärmeausdehnungskoeffizient in 10ˉ6/K 21,4",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/downloads/Legierungsbeschreibung_CuZn39Pb3.pdf",
+      "stelle": "Seite 1, Tabelle Festigkeitseigenschaften für Zustand hart",
+      "zitat": "Scherfestigkeit in N/mm² 390",
       "abgerufen": "2026-10-29"
     }
   ],

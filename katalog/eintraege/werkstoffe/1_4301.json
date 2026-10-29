@@ -54,6 +54,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 300,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 400,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -97,6 +102,12 @@
       "url": "https://ucpcdn.thyssenkrupp.com/_legacy/UCPthyssenkruppBAMXAustria/assets.files/download/rsh_datenblatt_4301.pdf",
       "stelle": "Seite 1-3, Werkstoffdatenblatt 1.4301",
       "zitat": "Dichte kg/dm³ 7,9, Elastizitätsmodul 20 °C 200 kN/mm2, Wärmeleitfähigkeit W/m K 15, Rp0,2 190 N/mm², Rm 500–700 N/mm²",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "Seite 154, Tabelle Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten",
+      "zitat": "Anhaltswerte für Scherfestigkeitsverhältnisse verschiedener Werkstoffsorten: Austenit (lösungsgeglüht) 0,8",
       "abgerufen": "2026-10-29"
     }
   ],

@@ -71,6 +71,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 350,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 290,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -112,6 +117,12 @@
       "url": "http://stahl-seltmann.de/page/datasheet/6025.pdf",
       "stelle": "Seite 1, Datenblatt EN-GJL-250",
       "zitat": "EN-GJL-250: Zugfestigkeit Rm N/mm² 250 – 350, Brinellhärte HB30 180 – 250, E-Modul kN/mm² 103 – 118",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-GJL-Scherfestigkeitsverh%C3%A4ltnis1.15.pdf",
+      "stelle": "Seite 1, Titelzeile",
+      "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Gusseisen mit Lamellegraphit (GJL) (Scherfestigkeitsverhältnis τB / Rm = 1.15)",
       "abgerufen": "2026-10-29"
     }
   ],

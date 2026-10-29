@@ -57,6 +57,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 300,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 455,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -97,6 +102,12 @@
       "url": "https://d2zo35mdb530wx.cloudfront.net/_binary/UCPthyssenkruppBAMaterialsSchulte/1dca4358-d012-4e0f-9af9-76a2770c3e48/C45-C-1.0503.pdf",
       "stelle": "Seite 3, Physikalische Eigenschaften",
       "zitat": "Dichte bei 20°C Kg/dm³ 7,85, Elastizitätsmodul kN/mm² bei 20 °C 210, Wärmeleitfähigkeit bei 20 °C W/m K 54, Mittlerer linearer Wärmeausdehnungskoeffizient 10-6 K-1 zwischen 20 °C und 100 °C 12",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Verg%C3%BCtungsstahl-Scherfestigkeitsverh%C3%A4ltnis0.65.pdf",
+      "stelle": "Seite 1, Titelzeile",
+      "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Vergütungsstahl (Scherfestigkeitsverhältnis τB / Rm = 0.65)",
       "abgerufen": "2026-10-29"
     }
   ],

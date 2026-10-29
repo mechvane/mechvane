@@ -77,6 +77,11 @@
       "name": "Kurzzeitgebrauchstemperatur max.",
       "wert": 160,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 50,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -117,6 +122,12 @@
       "url": "https://www.roechling.com/fileadmin/assets/Technical%20Data%20Sheet%20Sustamid%C2%AE%206%20natural%20591024%20EN.pdf",
       "stelle": "Seite 1, Technical Data Sheet Sustamid 6 natural",
       "zitat": "Density DIN EN ISO 1183-1 1,14 g / cm3, Yield stress DIN EN ISO 527 80 MPa, Elongation at break DIN EN ISO 527 50 %, Tensile modulus of elasticity DIN EN ISO 527 3200 MPa, Shore hardness DIN EN ISO 868 scale D 82, Thermal conductivity DIN 52612-1 0,23 W / (m * K), Coefficient of linear thermal expansion DIN 53752 90 10-6 K-1, Service temperature, long term -40 … 85 °C, Service temperature, short term (max.) 160 °C, Heat deflection temperature DIN EN ISO 75, Verf. A, HDT 75 °C",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.in-form-vollendet.de/wp-content/uploads/2021/10/datenblatt-PA6-G.pdf",
+      "stelle": "Seite 1, Tabelle Mechanische Eigenschaften",
+      "zitat": "Scherfestigkeit ASTM D732 MPa 76",
       "abgerufen": "2026-10-29"
     }
   ],

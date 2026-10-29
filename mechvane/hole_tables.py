@@ -253,6 +253,20 @@ _MATERIAL_ALIASES = {
     "messing": "brass",
     "plastic": "plastic",
     "kunststoff": "plastic",
+    # Materials of the catalog library (tools/katalog_to_solidcraft.py) by their SolidCraft name.
+    # Aluminium only counts as alu_wrought where Rm reaches the Bossard row (Rm > 330 MPa): 7075 T6;
+    # 6060/6082 T6 and 5083 H111 stay below it and take the soft-aluminium value. Stainless steels have
+    # no checked row and are left out.
+    "s235jr": "steel",
+    "s355j2": "steel",
+    "c45_+qt": "steel",
+    "42crmo4_+qt": "steel",
+    "en_gjl_250": "cast_iron",
+    "en_aw_6060_t6": "alu",
+    "en_aw_6082_t6": "alu",
+    "en_aw_5083_h111": "alu",
+    "en_aw_7075_t6": "alu_wrought",
+    "cuzn39pb3_(cw614n)": "brass",
 }
 
 

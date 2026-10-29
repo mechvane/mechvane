@@ -235,6 +235,7 @@ def _parse_placement(ws_or_doc, doc_or_placement, placement: dict | None = None)
             faces = links._part_faces(reader)
             binfo = reader.cmd("document.inspect", {"measure": True}).get("bodies", [])
             edges_by_body = {}
+            bbox_by_body = {b["name"]: b.get("bbox") for b in binfo}
             for b in binfo:
                 edges_by_body[b["name"]] = reader.cmd("model.edges", {"body": b["name"]}).get("edges", [])
         finally:
@@ -284,7 +285,7 @@ def _parse_placement(ws_or_doc, doc_or_placement, placement: dict | None = None)
 
         # Ensure orig_w is at the entrance of selected_cyl along axis_w
         b_name = selected_cyl.get("body")
-        cyl_edges = [e for e in edges_by_body.get(b_name, []) if selected_cyl["name"] in e["name"].split("|")]
+        cyl_edges = [e for e in edges_by_body.get(b_name, []) if g.edge_touches(e["name"], selected_cyl["name"])]
         if cyl_edges:
             cyl_pts = [e["start"] for e in cyl_edges] + [e["end"] for e in cyl_edges]
             cyl_pts_w = [g.apply_point(occ["transform"], pt) for pt in cyl_pts]
@@ -410,6 +411,7 @@ def _find_penetrations(ws, doc, p0: list[float], dir_w: list[float]) -> list[dic
             cyl_faces = {f["name"]: f for f in faces if f.get("cylinder")}
             binfo = reader.cmd("document.inspect", {"measure": True}).get("bodies", [])
             edges_by_body = {}
+            bbox_by_body = {b["name"]: b.get("bbox") for b in binfo}
             for b in binfo:
                 edges_by_body[b["name"]] = reader.cmd("model.edges", {"body": b["name"]}).get("edges", [])
         finally:
@@ -436,8 +438,13 @@ def _find_penetrations(ws, doc, p0: list[float], dir_w: list[float]) -> list[dic
             x_loc = g.apply_point(t_inv, x_w)
 
             b_name = f.get("body")
+            # A hit on the extended plane of a face whose edges were not found (e.g. a chamfer) would pass
+            # _point_in_face; outside its body's box it cannot be on the face
+            box = bbox_by_body.get(b_name)
+            if box and any(not (box["min"][i] - 1e-3 <= x_loc[i] <= box["max"][i] + 1e-3) for i in range(3)):
+                continue
             body_edges = edges_by_body.get(b_name, [])
-            f_edges = [e for e in body_edges if f["name"] in e["name"].split("|")]
+            f_edges = [e for e in body_edges if g.edge_touches(e["name"], f["name"])]
             if not _point_in_face(x_loc, f, f_edges, cyl_faces):
                 continue
             hits.append((s_val, denom, f["name"], x_w, x_loc))
@@ -596,7 +603,7 @@ def _determine_anchor(ws, doc, ray_pos: list[float], ray_dir: list[float], penet
 
     b_name = f.get("body") if f else None
     body_edges = edges_by_body.get(b_name, [])
-    f_edges = [e for e in body_edges if entry_face_name and (entry_face_name in e["name"].split("|") or links._base(entry_face_name) in [links._base(x) for x in e["name"].split("|")])]
+    f_edges = [e for e in body_edges if entry_face_name and (g.edge_touches(e["name"], entry_face_name) or links._base(entry_face_name) in [links._base(x) for x in e["name"].split("|")])]
     n = g.unit(f.get("plane_normal", [0, 0, 1])) if f else [0, 0, 1]
     abs_n = [abs(x) for x in n]
     w_axis = abs_n.index(max(abs_n))
@@ -708,7 +715,7 @@ def _resolve_anchor(ws, doc, anchor: dict) -> tuple[str, list[float] | None, lis
         if "axes" in anchor and "ref_u" in anchor and "ref_v" in anchor:
             u_axis, v_axis, w_axis = anchor["axes"]
             b_edges = edges_by_body.get(f.get("body"), [])
-            f_edges = [e for e in b_edges if f["name"] in e["name"].split("|") or links._base(f["name"]) in [links._base(x) for x in e["name"].split("|")]]
+            f_edges = [e for e in b_edges if g.edge_touches(e["name"], f["name"]) or links._base(f["name"]) in [links._base(x) for x in e["name"].split("|")]]
             if f_edges:
                 pts = [e["start"] for e in f_edges] + [e["end"] for e in f_edges]
                 u_min = min(pt[u_axis] for pt in pts)

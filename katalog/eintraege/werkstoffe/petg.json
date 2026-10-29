@@ -88,6 +88,11 @@
         0.24
       ],
       "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 25,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -127,6 +132,12 @@
       "url": "https://prusament.com/wp-content/uploads/2022/03/8_PETG_RECYCLED_Prusament_TDS_2022.pdf",
       "stelle": "Seite 1-2, Technical Data Sheet Prusament PETG",
       "zitat": "Density [g/cm3] 1.27, Hardness – Shore D 74, Heat Deflection Temperature (0.45 MPa) [°C] 68, Tensile Yield Strength Horizontal 43 ± 1.8 MPa Vertical xz 48 ± 2.5 MPa, Tensile Modulus Horizontal 1.5 ± 0.1 GPa Vertical xz 1.6 ± 0.1 GPa, Elongation at Yield Point Horizontal 4.5 ± 0.2 % Vertical xz 4.5 ± 0.5 %",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube/schraubenverbindung.php",
+      "stelle": "Abschnitt Scherfestigkeit",
+      "zitat": "Nach der Gestaltänderungs-Hypothese von Mises lässt sich die Scherfestigkeit für duktile Werkstoffe wie folgt berechnen.",
       "abgerufen": "2026-10-29"
     }
   ],

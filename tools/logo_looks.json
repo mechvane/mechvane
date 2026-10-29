@@ -1,0 +1,82 @@
+{
+ "_comment": "Appearance of the logo showcase as OpenPBR parameters (linear RGB). Plate: coat_dark below z 6.3 mm, coat_light above, weld on the slanted faces at the foot of the M.",
+ "looks": {
+  "coat_dark": {
+   "base_color": [
+    0.018,
+    0.04,
+    0.075
+   ],
+   "base_metalness": 0.0,
+   "specular_roughness": 0.6,
+   "coat_weight": 0.25,
+   "coat_roughness": 0.12
+  },
+  "coat_light": {
+   "base_color": [
+    0.58,
+    0.62,
+    0.66
+   ],
+   "base_metalness": 0.0,
+   "specular_roughness": 0.38,
+   "coat_weight": 0.35,
+   "coat_roughness": 0.25
+  },
+  "weld": {
+   "base_color": [
+    0.3,
+    0.28,
+    0.27
+   ],
+   "base_metalness": 1.0,
+   "specular_roughness": 0.55
+  },
+  "brass_brushed": {
+   "base_color": [
+    1.0,
+    0.62,
+    0.22
+   ],
+   "base_metalness": 1.0,
+   "specular_roughness": 0.32,
+   "specular_anisotropy": 0.9
+  },
+  "copper_polished": {
+   "base_color": [
+    0.93,
+    0.38,
+    0.16
+   ],
+   "base_metalness": 1.0,
+   "specular_roughness": 0.08
+  },
+  "black_oxide": {
+   "base_color": [
+    0.03,
+    0.03,
+    0.035
+   ],
+   "base_metalness": 1.0,
+   "specular_roughness": 0.3
+  },
+  "steel_brushed": {
+   "base_color": [
+    0.78,
+    0.78,
+    0.8
+   ],
+   "base_metalness": 1.0,
+   "specular_roughness": 0.3,
+   "specular_anisotropy": 0.6
+  }
+ },
+ "bodies": {
+  "Spacer": "steel_brushed",
+  "Spacer (2)": "steel_brushed",
+  "Screw": "black_oxide",
+  "Screw (2)": "black_oxide",
+  "VLeft": "brass_brushed",
+  "VRight": "copper_polished"
+ }
+}

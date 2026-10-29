@@ -55,6 +55,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 300,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 360,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -96,6 +101,12 @@
       "url": "https://www.cnc.at/files/stahl_1.0570_s355j2_n.pdf",
       "stelle": "Seite 1, Physikalische und mechanische Eigenschaften",
       "zitat": "Dichte kg/dm3 7,85, Elastizitätsmodul kN/mm2 210, Zugfestigkeit Rm MPa 450-680, Streckgrenze Rp0,2 N/mm² 185-355",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf",
+      "stelle": "Seite 1, Tabelle Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl",
+      "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl (Scherfestigkeitsverhältnis τB / Rm = 0.8)",
       "abgerufen": "2026-10-29"
     }
   ],

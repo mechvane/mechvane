@@ -49,6 +49,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 300,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 264,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -88,6 +93,12 @@
       "url": "https://www.thyssenkrupp-steel.com/media/content_1/publikationen/precision_steel/produktinformationen_1/baustahl/thyssenkrupp_s235jr_produktinformation_precision_steel_de.pdf",
       "stelle": "Seite 2, Tabelle Mechanische Eigenschaften",
       "zitat": "Streckgrenze ReH [MPa] min. 235, Zugfestigkeit Rm [MPa] 360 - 510, Bruchdehnung A5 [%] min . 26",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Baustahl-Scherfestigkeitsverh%C3%A4ltnis0.8.pdf",
+      "stelle": "Seite 1, Tabelle Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl",
+      "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Baustahl (Scherfestigkeitsverhältnis τB / Rm = 0.8)",
       "abgerufen": "2026-10-29"
     }
   ],

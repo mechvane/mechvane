@@ -59,6 +59,11 @@
       "name": "Max. Dauergebrauchstemperatur",
       "wert": 90,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 324,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -99,6 +104,12 @@
       "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-7075.pdf",
       "stelle": "Seite 1, Datenblatt EN AW-7075",
       "zitat": "Zugfestigkeit Rm N/mm² 460-540, Bruchdehnung A5 % 3-6, Brinellhärte HB 135-161, Dichte kg/dm³ 2,81, Wärmeleitfähigkeit W/mK 115-140, Wärmedehnzahl 20-100 °C 23,6",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.ing-hanke.de/wp-content/uploads/2019/10/Mindesteinschraubtiefe-hochfester-Schrauben-mit-metrischem-Regelgewinde-nach-VDI-2230-Blatt-1-Alu-Knetlegierungen-Scherfestigkeitsverh%C3%A4ltnis0.6.pdf",
+      "stelle": "Seite 1, Titelzeile",
+      "zitat": "Mindesteinschraubtiefen nach VDI 2230-1:2015 für Innengewinde in Aluminium-Knetlegierungen (Scherfestigkeitsverhältnis τB / Rm = 0.6)",
       "abgerufen": "2026-10-29"
     }
   ],

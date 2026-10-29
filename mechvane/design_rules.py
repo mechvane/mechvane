@@ -269,7 +269,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
         c, r, d, axis = h["center"], h["radius"], h["diameter"], h["axis"]
 
         # Axial range of the hole along its cylinder axis
-        hole_edges = [e for e in edges if any(fn in e.get("name", "").split("|") for fn in h["faces"])]
+        hole_edges = [e for e in edges if any(g.edge_touches(e.get("name", ""), fn) for fn in h["faces"])]
         if hole_edges:
             hole_pts = [e["start"] for e in hole_edges] + [e["end"] for e in hole_edges]
             t_h_min = min(g.dot(pt, axis) for pt in hole_pts)
@@ -291,7 +291,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if signed_dist < -1e-4:
                 continue
 
-            f_edges = [e for e in edges if sf["name"] in e.get("name", "").split("|")]
+            f_edges = [e for e in edges if g.edge_touches(e.get("name", ""), sf["name"])]
             if f_edges:
                 sf_pts = [e["start"] for e in f_edges] + [e["end"] for e in f_edges]
                 t_sf_min = min(g.dot(pt, axis) for pt in sf_pts)
@@ -320,7 +320,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if d_axes < 0.05:
                 # Coaxial cylinder (Dom): handled in wall thickness check below
                 continue
-            ec_edges = [e for e in edges if any(fn in e.get("name", "").split("|") for fn in ec["faces"])]
+            ec_edges = [e for e in edges if any(g.edge_touches(e.get("name", ""), fn) for fn in ec["faces"])]
             if ec_edges:
                 ec_pts = [e["start"] for e in ec_edges] + [e["end"] for e in ec_edges]
                 t_ec_min = min(g.dot(pt, axis) for pt in ec_pts)
@@ -382,7 +382,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if not g.parallel(axis, ec["axis"], tol=1e-3):
                 continue
             d_axes = g.dist_to_line(c, ec["origin"], ec["axis"])
-            ec_edges = [e for e in edges if any(fn in e.get("name", "").split("|") for fn in ec["faces"])]
+            ec_edges = [e for e in edges if any(g.edge_touches(e.get("name", ""), fn) for fn in ec["faces"])]
             if ec_edges:
                 ec_pts = [e["start"] for e in ec_edges] + [e["end"] for e in ec_edges]
                 t_ec_min = min(g.dot(pt, axis) for pt in ec_pts)

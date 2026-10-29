@@ -343,7 +343,8 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       „belegt“ erst mit zwei Quellen). Runde 1 (16 Werkstoffe: Baustahl, Vergütungsstahl, Edelstahl,
       Aluminium, Grauguss, Messing, POM, PA6, PLA, PETG) *gemergt 2026-10-29*
       ([Bericht](docs/research/2026-10-29-werkstoffe-flash.md), `katalog/eintraege/werkstoffe/`). Danach:
-      τ_B je Werkstoff ergänzen, Kennwertkarte für SolidCraft erzeugen,
+      τ_B je Werkstoff *ergänzt 2026-10-29* (#16, meist Richtwerte; drei Werte ungeklärt), *Bibliothek für SolidCraft seit 2026-10-29*
+      (`tools/katalog_to_solidcraft.py` → `katalog/werkstoffe.solidcraft-library.json`),
       Werkstoff je Bauteil (SolidCraft-`material` bzw. Mechvane-Metadaten), Masse/Gewicht aus der
       Dichte, und alle Prüfregeln werkstoffabhängig (seit 2026-10-29 die Einschraubtiefe in
       `check_design(material=…)`; Randabstand und Wandstärke hängen bisher nur am Fertigungsprofil).
@@ -366,7 +367,9 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Principled BSDF als Ziel). Recherche (Issue #15, gemergt 2026-10-29):
       [Darstellungsformat](docs/research/2026-10-29-darstellungsformat-flash.md) empfiehlt glTF-PBR mit
       KHR-Erweiterungen und OpenPBR-Namen (MaterialX: kein direkter Import in Blender, three.js nur mit
-      WebGPU). Vor dem ADR gegen die aktuelle Blender-Version prüfen.
+      WebGPU). Gegen Blender 5.0–5.2 nachgeprüft: weiter kein MaterialX-Import.
+      [ADR 0004](docs/adr/0004-darstellungsformat.md) *angenommen 2026-10-29* (Probe: glTF trägt nach Blender,
+      Schliffrichtung per Skript).
 - [ ] Referenzteile-Korpus mit Sollwerten anlegen (`tests/reference/`).
       *Begonnen 2026-10-19:* 7 Teile mit `check.py` (seit 2026-10-23 Welle, Rohrhalter, Rippenplatte), weitere aus dem Alltag
       ergänzen (Druckteile, Vorrichtungen).
@@ -377,6 +380,10 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
 
 - [ ] **Gestell-Generator** für Aluprofile (Item/Bosch 20/30/40er Nut) und
       Stahlprofile, mit Längenliste.
+- [ ] **Schweißen** (Nutzerwunsch 2026-10-29): Schweißnähte als eigene Features (Kehlnaht, Stumpfnaht,
+      Nahtdicke a, Länge, umlaufend), Schweißbaugruppen, Nahtsymbole nach ISO 2553 in der Zeichnung,
+      eigenes Aussehen der Naht. Bisher im Testmodell nur als konkave Rundung am Fuß
+      (`tools/build_logo_showcase.py`).
 - [ ] **Blech-Ergänzungen** (falls upstream noch Lücken): Blechregeln-
       Bibliothek, Abwicklungs-DXF für Laser-Dienstleister.
 - [ ] **Konstruktionsassistenten**: Welle (Absätze, Nuten, Sicherungsringe),

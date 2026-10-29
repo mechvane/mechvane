@@ -5,6 +5,28 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Material library for SolidCraft** (`katalog/werkstoffe.solidcraft-library.json`): the 16 catalog
+  materials, each with density, a matching look and an engineering card (stiffness, strength, thermal
+  values) that names the source of every value. Assign e.g. "EN AW-6082 T6" instead of a generic
+  "Aluminum"; mass and the thread-depth check then use it. Rebuild with `tools/katalog_to_solidcraft.py`.
+- **Example: the Mechvane logo as a real assembly** (`docs/examples/logo_showcase/`): welded steel M on a
+  back plate, the V in brass and copper on spacers, fastened with countersunk screws. Comes with Blender
+  scenes (angled and top view) and the same model as glTF with its materials.
+- Tools to take a model to Blender: `tools/logo_to_gltf.py` writes glTF 2.0 with clearcoat and anisotropy
+  from a set of OpenPBR parameters, `tools/render_logo_blender.py` renders it with Cycles.
+
+### Fixed
+
+- `bolted_connection` drilled at a wrong height ("position … is not on a face") when there was a gap or a
+  spacer between the plates and the lower part had a chamfer: the extended plane of the chamfer counted as
+  a hit. The cause: a chamfer's face name contains "|", which also separates the two faces in an edge
+  name, so the chamfer's edges were not found. Bolted connections and design rules now match edges to such
+  faces correctly; hits also have to lie within their body.
+
 ## [0.1.0a7] - 2026-10-29
 
 Built and tested with SolidCraft 0.25.1.

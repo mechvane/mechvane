@@ -85,6 +85,11 @@
       "name": "Waermeleitfaehigkeit",
       "wert": 0.13,
       "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 25,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -124,6 +129,12 @@
       "url": "https://prusament.com/wp-content/uploads/2022/10/PLA_Prusament_TDS_2021_10_EN.pdf",
       "stelle": "Seite 1-2, Technical Data Sheet Prusament PLA",
       "zitat": "Density [g/cm3] 1.24, Hardness – Shore D 81, Heat Deflection Temperature (0.45 MPa) [°C] 55, Tensile Yield Strength Horizontal 51 ± 3 MPa Vertical xz 59 ± 2 MPa, Tensile Modulus Horizontal 2.3 ± 0.1 GPa Vertical xz 2.4 ± 0.1 GPa, Elongation at Yield Point Horizontal 2.9 ± 0.3 % Vertical xz 3.2 ± 1.0 %",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube/schraubenverbindung.php",
+      "stelle": "Abschnitt Scherfestigkeit",
+      "zitat": "Nach der Gestaltänderungs-Hypothese von Mises lässt sich die Scherfestigkeit für duktile Werkstoffe wie folgt berechnen.",
       "abgerufen": "2026-10-29"
     }
   ],

@@ -71,6 +71,11 @@
       "name": "Kurzzeitgebrauchstemperatur max.",
       "wert": 140,
       "einheit": "°C"
+    },
+    {
+      "name": "Scherfestigkeit τ_B",
+      "wert": 55,
+      "einheit": "MPa"
     }
   ],
   "geltungsbereich": {
@@ -112,6 +117,12 @@
       "url": "https://www.roechling.com/fileadmin/assets/Technical%20Data%20Sheet%20Sustarin%C2%AE%20C%20black%20591055%20EN.pdf",
       "stelle": "Seite 1, Technical Data Sheet Sustarin C black",
       "zitat": "Density DIN EN ISO 1183-1 1,41 g / cm3, Yield stress DIN EN ISO 527 67 MPa, Elongation at break DIN EN ISO 527 30 %, Tensile modulus of elasticity DIN EN ISO 527 2800 MPa, Shore hardness DIN EN ISO 868 scale D 81, Thermal conductivity DIN 52612-1 0,31 W / (m * K), Coefficient of linear thermal expansion DIN 53752 110 10-6 K-1, Service temperature, long term -50 … 100 °C, Service temperature, short term (max.) 140 °C, Heat deflection temperature DIN EN ISO 75, Verf. A, HDT 110 °C",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.in-form-vollendet.de/wp-content/uploads/2021/10/datenblatt-POM-C.pdf",
+      "stelle": "Seite 1, Tabelle Mechanische Eigenschaften",
+      "zitat": "Scherfestigkeit ASTM D732 MPa 55",
       "abgerufen": "2026-10-29"
     }
   ],

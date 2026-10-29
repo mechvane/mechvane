@@ -876,6 +876,20 @@ def design_rule_checks(ws):
     ok("design rules: without a material argument the body's SolidCraft material (Steel) applies",
        r_body["material"] == "steel" and r_body["material_source"] == "body"
        and r_body["rules"]["thread_depth"]["status"] == "ok", f"{r_body['material']} {r_body['material_source']}")
+    # 9c. A material from the catalog library (katalog/werkstoffe.solidcraft-library.json) drives the rule
+    lib_src = Path(__file__).resolve().parents[2] / "katalog" / "werkstoffe.solidcraft-library.json"
+    lib = json.loads(lib_src.read_text(encoding="utf-8"))
+    mats = [e for e in lib["entries"] if e["definition"]["kind"] == "material"]
+    lib_path = ws.root / "werkstoffe.solidcraft-library.json"
+    lib_path.write_bytes(lib_src.read_bytes())
+    ent = next(e for e in mats if e["definition"]["value"]["name"] == "EN AW-6082 T6")
+    doc_mat.session.cmd("library.apply", {"path": str(lib_path), "entry": ent["id"], "revision": ent["revision"],
+                                          "targets": {"bodies": [body]}})
+    r_lib = design_rules.check(doc_mat.session)
+    ok("catalog library: 16 materials with physical cards; EN AW-6082 T6 assigned from it counts as soft aluminium",
+       len(mats) == 16 and all(e["definition"]["value"].get("physical_card") for e in mats)
+       and r_lib["material"] == "alu" and r_lib["rules"]["thread_depth"]["status"] == "fail",
+       f"{len(mats)} {r_lib['material']} {r_lib['rules']['thread_depth']['status']}")
     ws.close("rule_material")
 
     # 10. Standoff with bore (ring extruded with join): bore Ø2.5 is hole, outer boss Ø8 is not
@@ -4967,6 +4981,39 @@ def roadmap_json_checks():
        str(bad))
 
 
+def bolted_gap_chamfer_check(tmp):
+    """bolted_connection with a gap between the plates and a chamfer on the lower part: the extended plane
+    of the chamfer must not count as a hit (it once drilled at z 19.7, above the part)."""
+    from mechvane import bolted
+    folder = Path(tmp) / "gap_chamfer"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        lower = w.new(PART, "lower")
+        lower.session.batch([
+            {"command": "solid.box", "params": {"length": 14, "width": 40, "height": 16, "corner": [21, 0, 0], "name": "Block"}},
+            {"command": "solid.chamfer", "params": {"edges": [[35, 20, 16]], "distance": 0.8, "name": "Edge"}},
+        ])
+        lower.save()
+        upper = w.new(PART, "upper")
+        upper.session.batch([{"command": "solid.box", "params": {"length": 30, "width": 40, "height": 2.5,
+                                                                 "corner": [15, 0, 0], "name": "Plate"}}])
+        upper.save()
+        asm = w.new(ASSEMBLY, "gap")
+        links.insert(w, asm, lower.path, name="Lower", grounded=True)
+        links.insert(w, asm, upper.path, name="Upper", translate=[0, 0, 18], grounded=True)
+        asm.save()
+        try:
+            r = bolted.bolted_connection(w, "gap", placement={"position": [31, 20, 20.5], "direction": [0, 0, -1]},
+                                         size="M3", connection_type="blind", head="countersunk")
+            got = [p.get("hole_feature") for p in r.get("parts", [])]
+        except Exception as e:  # noqa: BLE001
+            got = str(e)
+        ok("bolted: gap between plates and a chamfer below, holes go into both parts", got == ["Hole_M3_CS", "Hole_M3_Blind"], str(got))
+    finally:
+        w.close_all()
+
+
 def session_env_checks():
     """Windows: SolidCraft sessions render with DirectX 12 unless WGPU_BACKEND is set (Intel Vulkan crash)."""
     from mechvane.solidcraft import session_env
@@ -5149,6 +5196,16 @@ def quit_check(tmp):
     done.join(10)
     ok("ui: app window owns the server (about says so), Quit stops it",
        about.get("stops_with_window") is True and stopped.get("stopped") and not done.is_alive(), f"{about} {stopped}")
+
+
+def edge_touches_check():
+    """Edge names are "<face A>|<face B>", and a chamfer's face name holds a "|" itself."""
+    from mechvane import geometry as gm
+    ok("geometry: edge_touches handles face names with '|' (chamfers, fillets)",
+       gm.edge_touches("F1:-y|F2:blend:F1:+x|F1:+z", "F2:blend:F1:+x|F1:+z")
+       and gm.edge_touches("F2:blend:F1:+x|F1:+z|F1:+y", "F2:blend:F1:+x|F1:+z")
+       and gm.edge_touches("F1:+x|F1:-y", "F1:-y") and not gm.edge_touches("F1:+x|F1:-y", "F1:+z")
+       and not gm.edge_touches("F1:-y|F2:blend:F1:+x|F1:+z", "F1:+x"))
 
 
 def split_face_name_check():
@@ -5442,6 +5499,7 @@ def main():
             single_instance_check(tmp)
             quit_check(tmp)
             split_face_name_check()
+            edge_touches_check()
             feature_request_checks(tmp, ws)
             agent_turns_checks(tmp)
             selection_checks(tmp)
@@ -5449,6 +5507,7 @@ def main():
             params_checks(tmp)
             viewtools_checks(tmp)
             roadmap_json_checks()
+            bolted_gap_chamfer_check(tmp)
             scratch_dir_checks()
         finally:
             ws.close_all()

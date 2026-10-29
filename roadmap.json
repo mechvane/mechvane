@@ -172,7 +172,7 @@
         {
           "status": "progress",
           "title": "Material database",
-          "text": "16 materials so far (steels, aluminium alloys, cast iron, brass, POM, PA6, PLA, PETG), every value with its source; more to come."
+          "text": "16 materials so far (steels, aluminium alloys, cast iron, brass, POM, PA6, PLA, PETG), every value with its source, ready to assign in SolidCraft as a material library; more to come."
         },
         {
           "status": "planned",
@@ -214,6 +214,11 @@
           "status": "planned",
           "title": "Rule-based configuration",
           "text": "Parameter rules and configuration tables for families of parts."
+        },
+        {
+          "status": "planned",
+          "title": "Welding",
+          "text": "Weld seams as features (fillet and butt welds), weldments and ISO 2553 weld symbols in drawings."
         }
       ]
     },

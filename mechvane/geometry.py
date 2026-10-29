@@ -297,3 +297,11 @@ def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
                     is_hole[idx] = True
 
     return is_hole
+
+
+def edge_touches(edge_name: str, face_name: str) -> bool:
+    """Whether an edge named "<face A>|<face B>" borders face_name. Face names can themselves contain "|"
+    (a chamfer or fillet between two faces: "F2:blend:F1:+x|F1:+z"), so splitting the edge name at "|"
+    is not enough."""
+    return (edge_name == face_name or edge_name.startswith(face_name + "|") or edge_name.endswith("|" + face_name)
+            or face_name in edge_name.split("|"))
