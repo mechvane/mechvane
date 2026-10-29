@@ -90,25 +90,25 @@
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Parameters",
           "text": "Change parameters and dimensions in a form; several changes apply together or not at all.",
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Measure",
           "text": "Distances, gaps between faces, angles, hole diameters and axis distances by clicking in the 3D view.",
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Section view",
           "text": "Cut the model along X, Y or Z with a slider.",
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Profile and material for the checks",
           "text": "Choose how the part is made and what it is made of.",
           "milestone": "v0.1"
@@ -160,7 +160,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Thread depth by material",
           "text": "Checks use the material assigned to the part, e.g. 1.0 × d in steel, 2.0 × d in soft aluminium."
         },

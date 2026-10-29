@@ -5,7 +5,9 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0a7] - 2026-10-29
+
+Built and tested with SolidCraft 0.25.1.
 
 ### Added
 
@@ -27,6 +29,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   colour. Esc leaves either tool.
 - The header says whether Mechvane keeps running: "Closing this window quits Mechvane" in its own
   app window. In a browser tab, where closing does not stop it, a **Quit** button ends Mechvane.
+- Knowledge catalog: first 16 materials (structural and stainless steels, aluminium alloys, grey cast
+  iron, brass, POM, PA6, PLA, PETG) with density, stiffness, strength, hardness and thermal values,
+  every value with its source and quotation.
+- A public roadmap at a glance: https://mechvane.dev/roadmap/
 
 ## [0.1.0a6] - 2026-10-29
 
@@ -147,6 +153,7 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a7]: https://github.com/mechvane/mechvane/compare/v0.1.0a6...v0.1.0a7
 [0.1.0a6]: https://github.com/mechvane/mechvane/compare/v0.1.0a5...v0.1.0a6
 [0.1.0a5]: https://github.com/mechvane/mechvane/compare/v0.1.0a4...v0.1.0a5
 [0.1.0a4]: https://github.com/mechvane/mechvane/compare/v0.1.0a3...v0.1.0a4
