@@ -1,0 +1,108 @@
+{
+  "id": "c45_verguetet",
+  "aussage": "Unlegierter Vergütungsstahl C45 (Werkstoffnummer 1.0503) im vergüteten Zustand (+QT) nach DIN EN ISO 683-1 / EN 10083-2.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 210,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (d <= 16 mm)",
+      "wert": 490,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm (d <= 16 mm)",
+      "bereich": [
+        700,
+        850
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A5 min.",
+      "wert": 14,
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte",
+      "bereich": [
+        207,
+        255
+      ],
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 54,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 12.0,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 300,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "C45",
+      "1.0503",
+      "Verguetungsstahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Schleifen",
+      "Vergueten"
+    ],
+    "feature": [
+      "Welle",
+      "Achse",
+      "Bolzen",
+      "Zapfen",
+      "Zahnrad"
+    ],
+    "groesse": [
+      "d <= 16 mm"
+    ],
+    "festigkeitsklasse": [
+      "+QT"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://en.saarstahl.com/app/uploads/2024/03/20160401102929-0503_C45.pdf",
+      "stelle": "Seite 1, Mechanical properties Quenched and tempered +QT",
+      "zitat": "Quenched and tempered, +QT: 0,2% proof stress Rp0,2 [N/mm²] min. 490, Tensile strength Rm [N/mm²] 700 - 850, Fracture elongation A5 [%] min. 14, Reduction of area Z [%] min. 35",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://d2zo35mdb530wx.cloudfront.net/_binary/UCPthyssenkruppBAMaterialsSchulte/1dca4358-d012-4e0f-9af9-76a2770c3e48/C45-C-1.0503.pdf",
+      "stelle": "Seite 3, Physikalische Eigenschaften",
+      "zitat": "Dichte bei 20°C Kg/dm³ 7,85, Elastizitätsmodul kN/mm² bei 20 °C 210, Wärmeleitfähigkeit bei 20 °C W/m K 54, Mittlerer linearer Wärmeausdehnungskoeffizient 10-6 K-1 zwischen 20 °C und 100 °C 12",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Klassischer Maschinenbaustahl für dynamisch und statisch beanspruchte Maschinenelemente wie Wellen, Bolzen und Achsen mit ausgeglichenem Verhältnis von Festigkeit und Zähigkeit.",
+  "ausnahmen": "Nur bedingt schweißbar (Aufhärtungsgefahr durch C-Gehalt ~0,45 %, Vorwärmen zwingend erforderlich). Bei größeren Abmessungen (z. B. d > 16 mm bis 100 mm) sinkt Rp0,2 auf 430 bzw. 370 N/mm².",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

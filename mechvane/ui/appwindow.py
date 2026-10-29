@@ -57,8 +57,11 @@ def app_command(browser: str, url: str) -> list[str]:
             "--no-first-run", "--no-default-browser-check"]
 
 
-def open_window(url: str, on_close=None) -> bool:
-    """Open url in an app window; on_close() runs when the user closes it. False: opened a browser tab."""
+def open_window(url: str, on_close=None) -> str | bool:
+    """Open url in an app window; on_close() runs when the user closes it.
+
+    "window": a new app window, watched for on_close. "handoff": handed to an app window that was
+    already open, so on_close never runs. False: opened a browser tab."""
     browser = find_browser()
     if browser:
         try:
@@ -75,9 +78,9 @@ def open_window(url: str, on_close=None) -> bool:
             if rc is None:
                 if on_close:
                     threading.Thread(target=lambda: (proc.wait(), on_close()), daemon=True).start()
-                return True
+                return "window"
             if rc == 0 and time.monotonic() - started < HANDOFF_S:
-                return True  # handed to the app window that was already open; the server keeps running
+                return "handoff"  # the server keeps running
     webbrowser.open(url)
     return False
 

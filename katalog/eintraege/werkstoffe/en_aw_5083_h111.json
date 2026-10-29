@@ -1,0 +1,114 @@
+{
+  "id": "en_aw_5083_h111",
+  "aussage": "Naturharte Aluminium-Magnesium-Knetlegierung EN AW-5083 (AlMg4,5Mn0,7 / 3.3547) im Zustand H111 nach DIN EN 755-2 / DIN EN 485-2.",
+  "werte": [
+    {
+      "name": "Dichte bei 20 °C",
+      "wert": 2.66,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 71000,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Schubmodul",
+      "wert": 26800,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.33,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (t <= 20 mm)",
+      "wert": 110,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm (t <= 20 mm)",
+      "bereich": [
+        270,
+        350
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A min.",
+      "wert": 14,
+      "einheit": "%"
+    },
+    {
+      "name": "Brinellhaerte",
+      "wert": 70,
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        110,
+        140
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 24.2,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 65,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "EN AW-5083",
+      "AlMg4,5Mn0,7",
+      "3.3547",
+      "AlMg4.5Mn",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Schweissen",
+      "Fraesen",
+      "Biegen",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Schiffskonstruktion",
+      "Kryobehaelter",
+      "Werkzeugplatte",
+      "Schweissbaugruppe"
+    ],
+    "groesse": [
+      "t <= 20 mm"
+    ],
+    "festigkeitsklasse": [
+      "H111"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://datenblaetter.thyssenkrupp.ch/en_aw_5083_0717.pdf",
+      "stelle": "Seite 1-4, Werkstoffdatenblatt EN AW-5083",
+      "zitat": "Dichte bei 20 °C 2,66 kg/dm³, Elastizitätsmodul 71000 MPa, Schubmodul 26800 MPa, Wärmeleitfähigkeit 110–140 W/m•K, Mittlerer linearer Wärmeausdehnungskoeffizient 20–100 °C 24,2 10-6 K-1, O/H111 <= 20 mm: Rp0,2 >= 110 N/mm2, Rm 270–350 N/mm2, A >= 14 %, HBW 70",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-5083.pdf",
+      "stelle": "Seite 1, Datenblatt EN AW-5083",
+      "zitat": "Zugfestigkeit Rm N/mm² 275-315, Bruchdehnung A5 % 12 bis 20, Brinellhärte HB 70 bis 100, Dichte kg/dm³ 2,66, Wärmeleitfähigkeit W/cm °C ca. 1,1, Wärmedehnzahl 20-100 °C 23,7",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Naturharte Legierung mit herausragender Korrosions- und Meerwasserbeständigkeit sowie bester Schweißeignung und Tieftemperaturzähigkeit (Kryotechnik).",
+  "ausnahmen": "Nicht für Dauereinsatz über 65 °C geeignet, da bei Mg > 3 % interkristalline Korrosion durch Ausscheidung von beta-Phase (Al3Mg2) an den Korngrenzen auftritt.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

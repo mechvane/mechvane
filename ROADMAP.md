@@ -178,7 +178,9 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
    (2–3 Wochen). Entwurf: [ADR 0003](docs/adr/0003-point-and-speak.md) (angenommen 2026-10-28,
    Argon-Review eingearbeitet). Vor dem Umsetzen entwerfen: Anbindung an den Agenten und Spracherkennung
    (Browser-Spracheingabe oder Whisper), Deutsch und Fachbegriffe wie „Fase 1 × 45°“, „M6“
-3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen)
+3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen). *Parameterformular, Messen und
+   Schnitt auf der Prüfseite fertig 2026-10-29* (`/api/params`; Messen/Schnitt im Browser auf dem Netz,
+   `viewtools.js`). Bohrungen: Ø, Achse, Achsabstand. Offen: Messen an Kanten.
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
    Schritt (2–3 Wochen)
 
@@ -334,6 +336,37 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Normtexte nicht abschreiben, nur einzelne Maßwerte mit Quelle.
       Erweitert zum Wissenskatalog mit Best Practice und Graph:
       [Plan](docs/research/2026-10-20-wissenskatalog-plan.md).
+- [ ] **Werkstoffdatenbank** (Nutzerwunsch 2026-10-29): umfangreich, Kennwerte (Dichte, E-Modul,
+      Rm, Rp0,2, Bruchdehnung, Härte, Wärmeausdehnung, -leitfähigkeit, Gebrauchstemperatur) je
+      Werkstoff und Zustand als Katalogeinträge nach ADR 0002 (`katalog/eintraege/werkstoffe/`),
+      recherchiert von Gemini Flash wie die Regeln (Quelle, wörtliches Zitat, `check_sources.py`,
+      „belegt“ erst mit zwei Quellen). Runde 1 (16 Werkstoffe: Baustahl, Vergütungsstahl, Edelstahl,
+      Aluminium, Grauguss, Messing, POM, PA6, PLA, PETG) *gemergt 2026-10-29*
+      ([Bericht](docs/research/2026-10-29-werkstoffe-flash.md), `katalog/eintraege/werkstoffe/`). Danach:
+      τ_B je Werkstoff ergänzen, Kennwertkarte für SolidCraft erzeugen,
+      Werkstoff je Bauteil (SolidCraft-`material` bzw. Mechvane-Metadaten), Masse/Gewicht aus der
+      Dichte, und alle Prüfregeln werkstoffabhängig (seit 2026-10-29 die Einschraubtiefe in
+      `check_design(material=…)`; Randabstand und Wandstärke hängen bisher nur am Fertigungsprofil).
+      Zielformat: SolidCraft-Kennwertkarte (`physical_card`, Schema 1, SI mit Quelle je Wert) in
+      eigenen Werkstoffen bzw. Bibliotheken `solidcraft-library/2`; der Katalog bleibt die belegte Quelle.
+- [ ] **Regeln aus Werkstoffkennwerten herleiten** (Nutzerwunsch 2026-10-29): statt Tabellen je
+      Werkstoff („Stahl, M6: ≥ 6 mm“) Formeln aus Kennwerten (Rm/Rp0,2 der Schraube, Scherfestigkeit
+      des Bauteilwerkstoffs, Gewindegeometrie nach ISO 68-1), damit jeder Werkstoff der Datenbank
+      ohne eigene Tabellenzeile geprüft werden kann. Kandidaten: Einschraubtiefe (Abstreifen des
+      Innengewindes, z. B. NASA RP-1228, FED-STD-H28, Alexander/VDI 2230 aus Sekundärquellen),
+      Randabstand (Lochleibung), Flächenpressung unter dem Kopf. Tabellenwerte (Bossard) bleiben
+      als Gegenprobe. Recherche (Issue #14, gemergt 2026-10-29):
+      [Regeln aus Kennwerten](docs/research/2026-10-29-regeln-aus-kennwerten-flash.md); Kernformel
+      m_eff = A_s·R_m / (A_n'·τ_B), braucht in der Datenbank τ_B bzw. τ_B/R_m, Rp0,2 und p_G.
+- [ ] **Material- und Darstellungseditor** (Nutzerwunsch 2026-10-29): Werkstoff (Kennwerte aus der
+      Datenbank) und Aussehen (Farbe, Rauheit, Metall, Klarlack, Transparenz, Textur) je Bauteil
+      bzw. Fläche bearbeiten, mit Vorschau in der 3D-Ansicht. Ein Werkstoff, mehrere Oberflächen
+      (gebürstet, poliert, eloxiert). Aussehen in einem offenen Format, das sich 1:1 in Blender rendern
+      lässt (Kandidaten: MaterialX mit OpenPBR Surface, glTF-PBR mit KHR-Erweiterungen; Blenders
+      Principled BSDF als Ziel). Recherche (Issue #15, gemergt 2026-10-29):
+      [Darstellungsformat](docs/research/2026-10-29-darstellungsformat-flash.md) empfiehlt glTF-PBR mit
+      KHR-Erweiterungen und OpenPBR-Namen (MaterialX: kein direkter Import in Blender, three.js nur mit
+      WebGPU). Vor dem ADR gegen die aktuelle Blender-Version prüfen.
 - [ ] Referenzteile-Korpus mit Sollwerten anlegen (`tests/reference/`).
       *Begonnen 2026-10-19:* 7 Teile mit `check.py` (seit 2026-10-23 Welle, Rohrhalter, Rippenplatte), weitere aus dem Alltag
       ergänzen (Druckteile, Vorrichtungen).

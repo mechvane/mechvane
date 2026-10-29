@@ -1,0 +1,110 @@
+{
+  "id": "en_aw_6060_t6",
+  "aussage": "Aluminium-Knetlegierung EN AW-6060 (AlMgSi0,5 / 3.3206) im warmausgehärteten Zustand T6 nach DIN EN 755-2 für Strangpressprofile.",
+  "werte": [
+    {
+      "name": "Dichte bei 20 °C",
+      "wert": 2.7,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 69500,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Schubmodul",
+      "wert": 26100,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.33,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (t <= 20 mm)",
+      "wert": 160,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min.",
+      "wert": 215,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A min.",
+      "wert": 12,
+      "einheit": "%"
+    },
+    {
+      "name": "Brinellhaerte",
+      "wert": 75,
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        200,
+        220
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 23.4,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 100,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "EN AW-6060",
+      "AlMgSi0,5",
+      "3.3206",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Strangpressen",
+      "Zerspanung",
+      "Eloxieren",
+      "Biegen"
+    ],
+    "feature": [
+      "Profil",
+      "Rahmen",
+      "Rohr",
+      "Nutprofil"
+    ],
+    "groesse": [
+      "t <= 20 mm"
+    ],
+    "festigkeitsklasse": [
+      "T6"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://datenblaetter.thyssenkrupp.ch/en_aw_6060_0717.pdf",
+      "stelle": "Seite 1-4, Werkstoffdatenblatt EN AW-6060",
+      "zitat": "Dichte bei 20 °C 2,70 kg/dm³, Elastizitätsmodul 69500 MPa, Schubmodul 26100 MPa, Wärmeleitfähigkeit 200–220 W/m•K, Mittlerer linearer Wärmeausdehnungskoeffizient 20–100 °C 23,4 10-6 K-1, T6 <= 20 mm: Rp0,2 >= 160 N/mm2, Rm >= 215 N/mm2, A >= 12 %, HBW 75",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-6060.pdf",
+      "stelle": "Seite 1, Datenblatt EN AW-6060",
+      "zitat": "Zustand warmausgehärtet: Zugfestigkeit Rm N/mm² 215-260, Bruchdehnung A5 % 12 bis 26, Brinellhärte HB 70 bis 80, Dichte kg/dm³ 2,7, Wärmedehnzahl 20-100 °C 23,4",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Sehr gut strangpressbare, dekorativ eloxierbare Konstruktionslegierung mit mittlerer Festigkeit, hervorragender Korrosionsbeständigkeit und guter Schweißbarkeit.",
+  "ausnahmen": "Nicht für hochbelastete Strukturbauteile geeignet (dafür 6082 oder 7075 wählen). Bei Schweißverbindungen Festigkeitsabfall in der Wärmeeinflußzone auf Zustand 0/T4-Niveau.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

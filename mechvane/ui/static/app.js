@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { initViewTools } from "./viewtools.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -50,6 +51,10 @@ let currentFindings = [];
 let selectedFindingIndex = null;
 let cameraFitted = false;
 let modelRadius = 50;
+const viewTools = initViewTools({
+  scene, camera, renderer, modelGroup, renderScene,
+  containerEl: viewportEl.parentElement,
+});
 
 function applyThemeColors() {
   // Dark unless the page asks for the light theme (style.css)
@@ -183,6 +188,7 @@ function updateMeshView(meshData, fitCamera) {
       polygonOffsetUnits: 1,
     });
     const mesh = new THREE.Mesh(geom, mat);
+    mesh.userData.bodyIndex = i;
     modelGroup.add(mesh);
 
     if (edgeGeom.attributes.position.count > 0) {
@@ -215,7 +221,7 @@ function updateMeshView(meshData, fitCamera) {
     }
   }
 
-  renderScene();
+  viewTools.meshUpdated(meshData);
 }
 
 function severityColorHex(severity) {
@@ -683,14 +689,69 @@ async function fetchJson(url) {
 }
 
 function dataUrl(name) {
-  return STATIC ? `${demoBase}${name}.json` : `api/${name}`;
+  if (STATIC) return `${demoBase}${name}.json`;
+  return name === "findings" ? `api/findings?${ruleQuery()}` : `api/${name}`;
 }
+
+// Profile and material for the design rules, remembered per document in this browser
+const ruleSetupEl = document.getElementById("rule-setup");
+const ruleProfileEl = document.getElementById("rule-profile");
+const ruleMaterialEl = document.getElementById("rule-material");
+
+function ruleKey() {
+  return `mechvane.rules.${docNameEl.textContent}`;
+}
+
+function ruleChoice() {
+  try {
+    return JSON.parse(localStorage.getItem(ruleKey()) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function ruleQuery() {
+  const c = ruleChoice();
+  return new URLSearchParams({ profile: c.profile || "fdm_0.4", material: c.material || "" }).toString();
+}
+
+function fillRuleSetup(data) {
+  if (STATIC || !data.profiles) return;
+  const fill = (el, entries, value) => {
+    el.replaceChildren(...entries.map(([v, label]) => new Option(label, v, false, v === value)));
+  };
+  fill(ruleProfileEl, Object.entries(data.profiles), data.profile);
+  fill(ruleMaterialEl, [["", "Material: from part"], ...data.materials.map((m) => [m, m.replace(/_/g, " ")])],
+    data.material_source === "argument" ? data.material : "");
+  ruleSetupEl.hidden = false;
+}
+
+async function changeRules() {
+  try {
+    localStorage.setItem(ruleKey(), JSON.stringify({ profile: ruleProfileEl.value, material: ruleMaterialEl.value }));
+  } catch {
+    // private window: the choice holds until the page reloads
+  }
+  statusEl.textContent = "Checking…";
+  try {
+    const data = await fetchJson(`api/findings?${new URLSearchParams({ profile: ruleProfileEl.value, material: ruleMaterialEl.value })}`);
+    updateFindingsView(data, true);
+    fillRuleSetup(data);
+    statusEl.textContent = "Up to date";
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+  }
+}
+ruleProfileEl.addEventListener("change", changeRules);
+ruleMaterialEl.addEventListener("change", changeRules);
 
 async function loadAll(initial = false) {
   try {
     statusEl.textContent = "Loading…";
-    const [ver, mesh, tree, findings] = await Promise.all([
-      fetchJson(dataUrl("version")),
+    // the version first: its name keys the remembered profile and material for the findings
+    const ver = await fetchJson(dataUrl("version"));
+    docNameEl.textContent = ver.name || "Document";
+    const [mesh, tree, findings] = await Promise.all([
       fetchJson(dataUrl("mesh")),
       fetchJson(dataUrl("tree")),
       fetchJson(dataUrl("findings")),
@@ -704,10 +765,103 @@ async function loadAll(initial = false) {
     updateMeshView(mesh, initial);
     updateTreeView(tree);
     updateFindingsView(findings, !initial);
+    fillRuleSetup(findings);
+    if (!STATIC) await loadParams();
     statusEl.textContent = STATIC ? "Live demo, precomputed" : "Up to date";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
+}
+
+// Parameter form: user parameters first, feature dimensions folded away. Changes go to SolidCraft
+// together (all or nothing); the saved file then reloads the view through pollVersion.
+const paramsSection = document.getElementById("params-section");
+const paramsForm = document.getElementById("params-form");
+const paramsApply = document.getElementById("params-apply");
+const paramsError = document.getElementById("params-error");
+
+function paramRow(p) {
+  const row = document.createElement("label");
+  row.className = "param-row";
+  row.title = p.feature ? `${p.feature} · ${p.input || ""}` : (p.comment || "");
+  const name = document.createElement("span");
+  name.className = "param-name";
+  name.textContent = p.name;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.name = p.name;
+  input.value = p.expression;
+  input.dataset.original = p.expression;
+  input.spellcheck = false;
+  input.addEventListener("input", () => {
+    input.classList.toggle("param-changed", input.value !== input.dataset.original);
+    paramsApply.disabled = !paramsForm.querySelector(".param-changed");
+  });
+  const value = document.createElement("span");
+  value.className = "param-value";
+  value.textContent = p.error ? "error" : `${+Number(p.value).toFixed(4)} ${p.unit || ""}`;
+  if (p.error) value.title = p.error;
+  row.append(name, input, value);
+  return row;
+}
+
+function updateParamsView(data) {
+  const params = data.parameters || [];
+  paramsForm.replaceChildren();
+  paramsSection.hidden = params.length === 0;
+  const own = params.filter((p) => p.source === "user" || p.favorite);
+  const dims = params.filter((p) => !own.includes(p));
+  own.forEach((p) => paramsForm.appendChild(paramRow(p)));
+  if (dims.length) {
+    const more = document.createElement("details");
+    more.open = own.length === 0;
+    const sum = document.createElement("summary");
+    sum.textContent = `Feature dimensions (${dims.length})`;
+    more.appendChild(sum);
+    dims.forEach((p) => more.appendChild(paramRow(p)));
+    paramsForm.appendChild(more);
+  }
+  paramsApply.disabled = true;
+}
+
+async function loadParams() {
+  try {
+    updateParamsView(await fetchJson("api/params"));
+  } catch {
+    paramsSection.hidden = true;
+  }
+}
+
+async function applyParams(ev) {
+  if (ev) ev.preventDefault();
+  const changes = {};
+  paramsForm.querySelectorAll(".param-changed").forEach((i) => { changes[i.name] = i.value; });
+  if (!Object.keys(changes).length) return;
+  paramsApply.disabled = true;
+  paramsError.hidden = true;
+  statusEl.textContent = "Rebuilding…";
+  try {
+    const res = await fetch("api/params", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ changes }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    updateParamsView(data);
+    await pollVersion();
+  } catch (err) {
+    paramsError.textContent = err.message;
+    paramsError.hidden = false;
+    paramsApply.disabled = false;
+    statusEl.textContent = "Not changed";
+  }
+}
+
+if (!STATIC) {
+  paramsForm.addEventListener("submit", applyParams);
+  paramsForm.addEventListener("keydown", (e) => { if (e.key === "Enter") applyParams(e); });
+  paramsApply.addEventListener("click", applyParams);
 }
 
 async function pollVersion() {

@@ -1,0 +1,128 @@
+{
+  "id": "pa6_trocken",
+  "aussage": "Extrudiertes Polyamid 6 (PA6) im trockenen Zustand (spritzfrisch / trocken) für schlagzähe und verschleißfeste Konstruktionselemente.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 1.14,
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (Zug, trocken)",
+      "bereich": [
+        3200,
+        3300
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl (trocken)",
+      "wert": 0.39,
+      "einheit": ""
+    },
+    {
+      "name": "Streckspannung / Streckgrenze",
+      "bereich": [
+        78,
+        80
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung",
+      "bereich": [
+        50,
+        130
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "bereich": [
+        79,
+        82
+      ],
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        0.23,
+        0.37
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient",
+      "bereich": [
+        90,
+        120
+      ],
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (1.8 MPa)",
+      "wert": 75,
+      "einheit": "°C"
+    },
+    {
+      "name": "Dauergebrauchstemperatur",
+      "bereich": [
+        -40,
+        85
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Kurzzeitgebrauchstemperatur max.",
+      "wert": 160,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PA6",
+      "Polyamid 6",
+      "Nylon 6",
+      "Sustamid 6",
+      "TECAMID 6"
+    ],
+    "verfahren": [
+      "CNC-Fraesen",
+      "Drehen",
+      "Spritzguss"
+    ],
+    "feature": [
+      "Laufrolle",
+      "Zahnrad",
+      "Gleitplatte",
+      "Daempfungselement"
+    ],
+    "groesse": [
+      "alle"
+    ],
+    "festigkeitsklasse": [
+      "trocken"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ensingerplastics.com/en/shapes/pa6-tecamid-6-natural",
+      "stelle": "Technisches Datenblatt TECAMID 6 natural",
+      "zitat": "Density 1.14 g/cm3, Modulus of elasticity (tensile test) 3300 MPa, Tensile strength at yield 78 MPa, Elongation at break 130 %, Shore hardness 79 D, Thermal conductivity 0.37 W/(k*m), Service temperature 100 C, Service temperature short term 160 C, Thermal expansion (CLTE) 12 10-5*1/K",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.roechling.com/fileadmin/assets/Technical%20Data%20Sheet%20Sustamid%C2%AE%206%20natural%20591024%20EN.pdf",
+      "stelle": "Seite 1, Technical Data Sheet Sustamid 6 natural",
+      "zitat": "Density DIN EN ISO 1183-1 1,14 g / cm3, Yield stress DIN EN ISO 527 80 MPa, Elongation at break DIN EN ISO 527 50 %, Tensile modulus of elasticity DIN EN ISO 527 3200 MPa, Shore hardness DIN EN ISO 868 scale D 82, Thermal conductivity DIN 52612-1 0,23 W / (m * K), Coefficient of linear thermal expansion DIN 53752 90 10-6 K-1, Service temperature, long term -40 … 85 °C, Service temperature, short term (max.) 160 °C, Heat deflection temperature DIN EN ISO 75, Verf. A, HDT 75 °C",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Hohe Dämpfungsfähigkeit, herausragende Verschleißfestigkeit und hohe Zähigkeit auch bei tiefen Temperaturen. Ideal für hochbeanspruchte Gleit- und Rollenelemente.",
+  "ausnahmen": "Gilt nur im trockenen Zustand (spritzfrisch). Bei Feuchtigkeitsaufnahme aus der Umgebungsluft (bis zu 3 % im Normalklima, bis 9,5 % bei Wassersättigung) sinkt der E-Modul auf ca. 1000–1400 MPa, während Bruchdehnung und Schlagzähigkeit stark ansteigen. Dimensionsänderung durch Quellung bis zu 2–3 % beachten.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

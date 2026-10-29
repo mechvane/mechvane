@@ -1,0 +1,111 @@
+{
+  "id": "en_aw_6082_t6",
+  "aussage": "Aluminium-Strukturknetlegierung EN AW-6082 (AlSi1MgMn / 3.2315) im Zustand T6 nach DIN EN 755-2 / DIN EN 485-2.",
+  "werte": [
+    {
+      "name": "Dichte bei 20 °C",
+      "wert": 2.7,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 70000,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Schubmodul",
+      "wert": 26400,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.33,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (t <= 5 mm)",
+      "wert": 255,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min.",
+      "wert": 310,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A min.",
+      "wert": 10,
+      "einheit": "%"
+    },
+    {
+      "name": "Brinellhaerte",
+      "wert": 95,
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        170,
+        220
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 23.4,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 100,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "EN AW-6082",
+      "AlSi1MgMn",
+      "3.2315",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Fraesen",
+      "Drehen",
+      "Schweissen",
+      "Biegen"
+    ],
+    "feature": [
+      "Fraesteil",
+      "Strukturbauteil",
+      "Traeger",
+      "Platte"
+    ],
+    "groesse": [
+      "t <= 5 mm"
+    ],
+    "festigkeitsklasse": [
+      "T6",
+      "T651"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://datenblaetter.thyssenkrupp.ch/en_aw_6082_0518.pdf",
+      "stelle": "Seite 1-4, Werkstoffdatenblatt EN AW-6082",
+      "zitat": "Dichte bei 20 °C 2,70 kg/dm³, Elastizitätsmodul 70000 MPa, Schubmodul 26400 MPa, Wärmeleitfähigkeit 170–220 W/m•K, Mittlerer linearer Wärmeausdehnungskoeffizient 20–100 °C 23,4 10-6 K-1, T6: Rp0,2 >= 255 N/mm2, Rm >= 310 N/mm2, A >= 10 %, HBW 95",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-6082.pdf",
+      "stelle": "Seite 1, Datenblatt EN AW-6082",
+      "zitat": "Zustand warmausgehärtet: Zugfestigkeit Rm N/mm² 300-350, Bruchdehnung A5 % 8 bis 14, Brinellhärte HB 95 bis 105, Dichte kg/dm³ 2,7, Wärmedehnzahl 20-100 °C 23,4",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Höchstfeste aushärtbare Legierung der 6000er-Gruppe mit Mangan-Zusatz zur Steuerung der Kornstruktur. Standard für tragende Konstruktionen im Fahrzeug-, Schiffs- und Maschinenbau.",
+  "ausnahmen": "Dekorative Eloxierung ist wegen des Silizium- und Mangangehalts nur eingeschränkt möglich (graue Verfärbung). Rissgefahr bei scharfen Kantungen im Zustand T6.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -858,6 +858,26 @@ def design_rule_checks(ws):
        f"verdict={r_shallow['verdict']} rules={r_shallow['rules']['thread_depth']}")
     ws.close("rule_shallow_blind")
 
+    # 9b. Thread depth follows the part's material (same table as bolted_connection)
+    doc_mat = ws.new(PART, "rule_material")
+    doc_mat.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 20, "corner": [0, 0, 0], "name": "Box"}},
+        {"command": "solid.hole", "params": {"position": [20, 20, 20], "direction": [0, 0, -1], "diameter": 5.0,
+                                              "depth": 8.0, "thread": "M6x1", "name": "Tapped"}},
+    ])
+    by_mat = {m: design_rules.check(doc_mat.session, material=m)["rules"]["thread_depth"] for m in (None, "steel", "alu", "brass")}
+    ok("design rules: thread depth by material (8 mm M6: 1.5 d fails, steel 1.0 d ok, alu 2.0 d fails, brass marked unverified)",
+       by_mat[None]["status"] == "fail" and by_mat["steel"]["status"] == "ok" and by_mat["alu"]["status"] == "fail"
+       and "unverified" in by_mat["brass"]["findings"][0]["message"],
+       str({m: (r["status"], r["findings"][0]["message"]) for m, r in by_mat.items()}))
+    body = doc_mat.session.cmd("document.inspect", {"measure": False})["bodies"][0]["name"]
+    doc_mat.session.cmd("material.assign", {"bodies": [body], "material": "Steel"})
+    r_body = design_rules.check(doc_mat.session)
+    ok("design rules: without a material argument the body's SolidCraft material (Steel) applies",
+       r_body["material"] == "steel" and r_body["material_source"] == "body"
+       and r_body["rules"]["thread_depth"]["status"] == "ok", f"{r_body['material']} {r_body['material_source']}")
+    ws.close("rule_material")
+
     # 10. Standoff with bore (ring extruded with join): bore Ø2.5 is hole, outer boss Ø8 is not
     doc_standoff = ws.new(PART, "rule_standoff")
     doc_standoff.session.batch([
@@ -4400,7 +4420,7 @@ def appwindow_checks(tmp):
         opened = appwindow.open_window("http://127.0.0.1:1/", on_close=closed.set)
         args = (root / "args.txt").read_text() if (root / "args.txt").exists() else ""
         ok("appwindow: app window with its own profile, server stops when it closes",
-           opened and "--app=http://127.0.0.1:1/" in args and f"--user-data-dir={install.CACHE / 'app-profile'}" in args
+           opened == "window" and "--app=http://127.0.0.1:1/" in args and f"--user-data-dir={install.CACHE / 'app-profile'}" in args
            and closed.wait(5) and not tabs, f"{opened} {args!r} {tabs}")
 
         fake("handoff.sh", "exit 0")
@@ -4408,7 +4428,7 @@ def appwindow_checks(tmp):
         opened = appwindow.open_window("http://127.0.0.1:2/", on_close=closed.set)
         time.sleep(0.2)
         ok("appwindow: window handed to an open instance keeps the server running",
-           opened and not closed.is_set() and not tabs, f"{opened} {tabs}")
+           opened == "handoff" and not closed.is_set() and not tabs, f"{opened} {tabs}")
 
         fake("broken.sh", "exit 3")
         opened = appwindow.open_window("http://127.0.0.1:3/")
@@ -4813,6 +4833,140 @@ def speech_checks(tmp):
         srv.server_close()
 
 
+def params_checks(tmp):
+    """Parameter form: /api/params lists user parameters first, changes them together and saves the file."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "params"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        part = w.new(PART, "plate")
+        part.session.cmd("parameters.add", {"name": "width", "expression": "40 mm"})
+        part.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": "width/4", "name": "Plate"}}])
+        part.save()
+    finally:
+        w.close_all()
+    path = folder / "plate.solidcraft"
+    srv = ui_server.create_server(str(path), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/params"
+
+    def post(changes):
+        req = urllib.request.Request(base, method="POST", data=json.dumps({"changes": changes}).encode())
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    try:
+        with urllib.request.urlopen(base) as resp:
+            listed = json.loads(resp.read())["parameters"]
+        mtime = path.stat().st_mtime_ns
+        status, changed = post({"width": "60 mm"})
+        values = {p["name"]: p["value"] for p in changed.get("parameters", [])}
+        bad_status, bad = post({"width": "60 +"})
+        ok("ui: /api/params lists, changes together and saves; a bad expression changes nothing",
+           [p["name"] for p in listed][:1] == ["width"] and listed[1].get("feature") == "Plate"
+           and status == 200 and values.get("width") == 60 and 15 in values.values()
+           and path.stat().st_mtime_ns != mtime and bad_status == 400 and "error" in bad,
+           f"{listed} {status} {changed} {bad_status} {bad}")
+        with urllib.request.urlopen(base) as resp:
+            after = {p["name"]: p["value"] for p in json.loads(resp.read())["parameters"]}
+        ok("ui: after a refused change the parameters keep their last good values", after.get("width") == 60, str(after))
+        with urllib.request.urlopen(base.replace("/api/params", "/api/findings?profile=cnc_alu&material=alu_wrought")) as resp:
+            chosen = json.loads(resp.read())
+        try:
+            urllib.request.urlopen(base.replace("/api/params", "/api/findings?material=unobtainium"))
+            refused = None
+        except urllib.error.HTTPError as e:
+            refused = e.code
+        ok("ui: /api/findings takes profile and material, lists the choices, refuses an unknown material",
+           chosen.get("profile") == "cnc_alu" and chosen.get("material") == "alu_wrought"
+           and "fdm_0.4" in chosen.get("profiles", {}) and "steel" in chosen.get("materials", []) and refused == 400,
+           f"{ {k: chosen.get(k) for k in ('profile', 'material', 'materials')} } {refused}")
+        with urllib.request.urlopen(base.replace("/api/params", "/viewtools.js")) as resp:
+            js, ctype = resp.read().decode(), resp.headers.get("Content-Type", "")
+        ok("ui: measure and section tools served and loaded by the Check page",
+           "javascript" in ctype and "export function initViewTools" in js
+           and 'from "./viewtools.js"' in (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8"), ctype)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+VIEWTOOLS_TEST = r"""
+import { faceInfo } from "./viewtools.js";
+// a cylinder r 8 around (30, 20) along Z, split into two half faces like SolidCraft's seam, and a flat face
+const positions = [], indices = [], face_ids = [];
+const n = 48;
+for (let i = 0; i <= n; i++) {
+  const a = (2 * Math.PI * i) / n;
+  positions.push(30 + 8 * Math.cos(a), 20 + 8 * Math.sin(a), 0, 30 + 8 * Math.cos(a), 20 + 8 * Math.sin(a), 20);
+}
+for (let i = 0; i < n; i++) {
+  const k = 2 * i;
+  indices.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
+  face_ids.push(i < n / 2 ? 0 : 1, i < n / 2 ? 0 : 1);
+}
+const base = positions.length / 3;
+positions.push(0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0);
+indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+face_ids.push(2, 2);
+const body = { positions, indices, face_ids };
+const half = faceInfo(body, 0), other = faceInfo(body, 1), flat = faceInfo(body, 2);
+console.log(JSON.stringify({
+  r: half.radius, axisZ: Math.abs(half.axis.z), cx: half.center.x, cy: half.center.y, r2: other.radius,
+  flatNormalZ: flat.normal && Math.abs(flat.normal.z), flatArea: flat.area, flatRadius: flat.radius ?? null,
+}));
+"""
+
+
+def viewtools_checks(tmp):
+    """Measure tool in the browser: faceInfo finds planes and cylinders (also half ones) on the mesh (needs node)."""
+    import shutil
+    import subprocess
+    from mechvane.ui import server as ui_server
+    if not shutil.which("node"):
+        print("skip viewtools: node not installed")
+        return
+    d = Path(tmp) / "viewtools"
+    three = d / "node_modules" / "three"
+    three.mkdir(parents=True)
+    (three / "package.json").write_text('{"name": "three", "type": "module", "main": "three.module.js"}')
+    shutil.copyfile(ui_server.STATIC_DIR / "vendor/three/build/three.module.js", three / "three.module.js")
+    shutil.copyfile(ui_server.STATIC_DIR / "viewtools.js", d / "viewtools.js")
+    (d / "package.json").write_text('{"type": "module"}')
+    (d / "t.js").write_text(VIEWTOOLS_TEST)
+    run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
+    try:
+        r = json.loads(run.stdout)
+    except ValueError:
+        r = {}
+    ok("viewtools: cylinder Ø, axis and centre from a half face, plane normal and area",
+       abs(r.get("r", 0) - 8) < 1e-3 and abs(r.get("r2", 0) - 8) < 1e-3 and r.get("axisZ", 0) > 0.9999
+       and abs(r.get("cx", 0) - 30) < 1e-3 and abs(r.get("cy", 0) - 20) < 1e-3
+       and r.get("flatNormalZ") == 1 and abs(r.get("flatArea", 0) - 100) < 1e-9 and r.get("flatRadius") is None,
+       f"{r} {run.stderr[-300:]}")
+
+
+def roadmap_json_checks():
+    """roadmap.json (public roadmap page): valid statuses, every item with a title, every status named."""
+    data = json.loads((Path(__file__).resolve().parents[2] / "roadmap.json").read_text(encoding="utf-8"))
+    items = [i for s in data["sections"] for i in s["items"]]
+    bad = [i for i in items if i.get("status") not in data["statuses"] or not i.get("title")]
+    ok("roadmap.json: every item has a title and a known status",
+       items and not bad and data["milestone"]["name"] and set(data["statuses"]) == {"done", "next", "progress", "planned", "later"},
+       str(bad))
+
+
 def session_env_checks():
     """Windows: SolidCraft sessions render with DirectX 12 unless WGPU_BACKEND is set (Intel Vulkan crash)."""
     from mechvane.solidcraft import session_env
@@ -4965,6 +5119,36 @@ def single_instance_check(tmp):
     finally:
         first.shutdown()
         first.server_close()
+
+
+def quit_check(tmp):
+    """The UI says whether closing the window stops Mechvane; a browser tab gets Quit (/api/quit)."""
+    import urllib.request
+    from mechvane.ui import server as ui_server
+    folder = Path(tmp) / "quit"
+    folder.mkdir()
+    port_box = []
+    opener = lambda url, stop: port_box.append(url) or "window"  # noqa: E731
+    done = threading.Thread(target=ui_server.run_server, args=(str(folder),), kwargs={"port": 0, "opener": opener},
+                            daemon=True)
+    done.start()
+    for _ in range(100):
+        if port_box:
+            break
+        threading.Event().wait(0.1)
+    url = port_box[0] if port_box else "http://127.0.0.1:1/"
+    threading.Event().wait(0.3)
+    try:
+        with urllib.request.urlopen(url + "api/about", timeout=5) as r:
+            about = json.loads(r.read())
+        req = urllib.request.Request(url + "api/quit", data=b"{}", method="POST")
+        with urllib.request.urlopen(req, timeout=5) as r:
+            stopped = json.loads(r.read())
+    except OSError as e:
+        about, stopped = {"error": str(e)}, {}
+    done.join(10)
+    ok("ui: app window owns the server (about says so), Quit stops it",
+       about.get("stops_with_window") is True and stopped.get("stopped") and not done.is_alive(), f"{about} {stopped}")
 
 
 def split_face_name_check():
@@ -5256,11 +5440,15 @@ def main():
             moved_project_checks(tmp)
             empty_part_mesh_check(tmp)
             single_instance_check(tmp)
+            quit_check(tmp)
             split_face_name_check()
             feature_request_checks(tmp, ws)
             agent_turns_checks(tmp)
             selection_checks(tmp)
             speech_checks(tmp)
+            params_checks(tmp)
+            viewtools_checks(tmp)
+            roadmap_json_checks()
             scratch_dir_checks()
         finally:
             ws.close_all()

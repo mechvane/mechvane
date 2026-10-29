@@ -65,6 +65,10 @@ def main():
     (out / "demos" / "index.json").write_text(json.dumps({"demos": index}, indent=1), encoding="utf-8")
     (out / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": "live demo"}, indent=1), encoding="utf-8")
     (out / ".nojekyll").write_text("")
+    # Roadmap page: reads roadmap.json live from the public main branch, this copy is the fallback
+    (out / "roadmap").mkdir()
+    shutil.copyfile(REPO / "tools" / "roadmap_page.html", out / "roadmap" / "index.html")
+    shutil.copyfile(REPO / "roadmap.json", out / "roadmap" / "roadmap.json")
     print(f"wrote {out}")
 
 

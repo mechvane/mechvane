@@ -1,0 +1,114 @@
+{
+  "id": "42crmo4_verguetet",
+  "aussage": "Legierter Vergütungsstahl 42CrMo4 (Werkstoffnummer 1.7225) im vergüteten Zustand (+QT) nach DIN EN ISO 683-2 / EN 10083-3.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 210,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (d <= 16 mm)",
+      "wert": 900,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm (d <= 16 mm)",
+      "bereich": [
+        1100,
+        1300
+      ],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A5 min.",
+      "wert": 10,
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte",
+      "bereich": [
+        320,
+        380
+      ],
+      "einheit": "HBW"
+    },
+    {
+      "name": "Kerbschlagarbeit KV min.",
+      "wert": 30,
+      "einheit": "J"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 42.0,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 11.2,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 350,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "42CrMo4",
+      "1.7225",
+      "Verguetungsstahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Schleifen",
+      "Vergueten",
+      "Induktivhaerten"
+    ],
+    "feature": [
+      "Kurbelwelle",
+      "Achsschenkel",
+      "Getriebewelle",
+      "Hochfeste Schraube",
+      "Zahnrad"
+    ],
+    "groesse": [
+      "d <= 16 mm"
+    ],
+    "festigkeitsklasse": [
+      "+QT"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://d2zo35mdb530wx.cloudfront.net/_binary/UCPthyssenkruppBAMXSchweiz/de/downloads/werkstoffdatenblaetter-baustahl/edelbau_7225.pdf",
+      "stelle": "Seite 2, Mechanische Eigenschaften im vergüteten Zustand (QT)",
+      "zitat": "nach EN 10 083-3 <= 16 mm: Rp0,2 min. 900 N/mm2, Rm min. 1100–1300 N/mm2, A min. 10 %, Z min. 40 %, KV min. 30 J",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://en.saarstahl.com/app/uploads/2024/03/20160323013851-42CrMo4-42CrMoS4.pdf",
+      "stelle": "Seite 1, Mechanical properties Quenched and tempered +QT",
+      "zitat": "Quenched and tempered, +QT: Diameter d [mm] < 16: 0,2% proof stress Rp0,2 [N/mm²] min. 900, Tensile strength Rm [N/mm²] 1100 - 1300, Fracture elongation A5 [%] min. 10, Reduction of area Z [%] min. 40, Notch impact energy ISO-V [J] min. 30",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Hochfester und zäher Vergütungsstahl mit hoher Durchvergütbarkeit dank Chrom- und Molybdän-Zusatz. Standardwerkstoff für hochbeanspruchte Antriebselemente und Fahrwerksteile.",
+  "ausnahmen": "Schweißen nur unter strikten Vorsichtsmaßnahmen (Vorwärmen auf 250–350 °C, Spannungsarmglühen). Bei Querschnitten d > 16 mm Abnahme der Mindestfestigkeit (z. B. Rp0,2 = 750 N/mm² für 16 < d <= 40 mm).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

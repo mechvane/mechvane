@@ -1,0 +1,135 @@
+{
+  "id": "pla",
+  "aussage": "Polylactid (PLA) Filament für FDM/FFF-3D-Druck mit herstellerdokumentierten richtungsabhängigen Festigkeitswerten (XY- und Z-Richtung).",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.17,
+        1.24
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (XY-Druckrichtung)",
+      "bereich": [
+        2300,
+        3427
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Elastizitaetsmodul (Z-Druckrichtung)",
+      "bereich": [
+        2400,
+        3065
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.36,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (XY-Druckrichtung)",
+      "bereich": [
+        51.0,
+        52.3
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm (Z-Druckrichtung)",
+      "bereich": [
+        40.5,
+        59.0
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (XY-Druckrichtung)",
+      "bereich": [
+        2.9,
+        6.3
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Bruchdehnung (Z-Druckrichtung)",
+      "bereich": [
+        1.5,
+        3.2
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "wert": 81,
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (0.45 MPa)",
+      "bereich": [
+        55,
+        60
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 50,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 0.13,
+      "einheit": "W/(m*K)"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "Polylactid",
+      "PolyLite PLA",
+      "Prusament PLA"
+    ],
+    "verfahren": [
+      "3D-Druck",
+      "FDM",
+      "FFF"
+    ],
+    "feature": [
+      "Druckteil",
+      "Gehaeuse",
+      "Prototyp",
+      "Halterung"
+    ],
+    "groesse": [
+      "alle"
+    ],
+    "festigkeitsklasse": [
+      "100% Infill"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/pla/polylite-tm-pla",
+      "stelle": "Technisches Datenblatt PolyLite PLA",
+      "zitat": "Density ISO1183, GB/T1033 1.17 g/cm3 at 23°C, ISO 75 0.45MPa 60 °C, Young's modulus (X-Y) 3426.9 ± 64.8 MPa, Young's modulus (Z) 3064.9 ± 83.4 MPa, Tensile strength (X-Y) 52.3 ± 0.3 MPa, Tensile strength (Z) 40.5 ± 0.5 MPa, Elongation at break (X-Y) 6.3 ± 0.6 %, Elongation at break (Z) 1.8 ± 0.1 %",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://prusament.com/wp-content/uploads/2022/10/PLA_Prusament_TDS_2021_10_EN.pdf",
+      "stelle": "Seite 1-2, Technical Data Sheet Prusament PLA",
+      "zitat": "Density [g/cm3] 1.24, Hardness – Shore D 81, Heat Deflection Temperature (0.45 MPa) [°C] 55, Tensile Yield Strength Horizontal 51 ± 3 MPa Vertical xz 59 ± 2 MPa, Tensile Modulus Horizontal 2.3 ± 0.1 GPa Vertical xz 2.4 ± 0.1 GPa, Elongation at Yield Point Horizontal 2.9 ± 0.3 % Vertical xz 3.2 ± 1.0 %",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Am weitesten verbreitetes FDM-Druckmaterial mit hoher Steifigkeit, exzellenter Druckpräzision und minimalem Verzug (Warping). Ausgeprägte Schichtanisotropie: Zugfestigkeit und Dehnung quer zur Schicht (Z-Achse) sind durch die Zwischenschichthaftung limitiert.",
+  "ausnahmen": "Geringe Wärmeformbeständigkeit (HDT ~55–60 °C, Glasübergang Tg ~60 °C). Nicht für Bauteile im Außenbereich oder im Fahrzeuginnenraum unter Sonneneinstrahlung geeignet. Sprödes Bruchverhalten bei Stoßbeanspruchung.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

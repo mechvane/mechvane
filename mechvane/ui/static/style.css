@@ -417,7 +417,7 @@ html, body {
   padding: 1px 6px;
   border-radius: 3px;
 }
-.mode-switch { margin-left: 12px; font-size: 13px; } .mode-switch a { margin-left: 8px; }
+.mode-switch { margin-left: 12px; font-size: 13px; white-space: nowrap; } .mode-switch a { margin-left: 8px; }
 
 /* Phone width: one column, the 3D view first, then findings and model tree; the page scrolls. */
 @media (max-width: 760px) {
@@ -432,6 +432,41 @@ html, body {
   .panel-left { order: 1; }
   .viewport-hint { display: none; }
 }
+
+/* Measure and section tools over the 3D view */
+.view-tools { position: absolute; top: 12px; right: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; max-width: calc(100% - 24px); }
+.view-tools button, .view-tools select { font: inherit; font-size: 12px; color: var(--text); background: var(--panel-bg);
+  border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; cursor: pointer; }
+.view-tools button:hover { background: var(--hover-bg); }
+.view-tools button.active { border-color: var(--selected-border); background: var(--selected-bg); }
+.section-controls { display: inline-flex; gap: 6px; align-items: center; }
+.section-controls[hidden] { display: none; }
+.section-controls input { width: 140px; }
+.measure-readout { position: absolute; top: 48px; right: 12px; background: var(--panel-bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+
+/* Profile and material for the design rules, above the findings */
+.rule-setup { display: flex; gap: 6px; padding: 8px 12px 0; }
+.rule-setup select { flex: 1; min-width: 0; font: inherit; font-size: 12px; color: var(--text); background: var(--panel-bg);
+  border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; }
+
+/* Parameter form under the model tree */
+.params-section { border-top: 1px solid var(--border); display: flex; flex-direction: column; max-height: 45%; }
+.params-body { padding-top: 6px; }
+.param-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 6px; align-items: center; padding: 2px 0; }
+.param-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.param-row input { font: inherit; font-size: 12px; min-width: 0; padding: 2px 5px; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 4px; }
+.param-row input.param-changed { border-color: var(--selected-border); }
+.param-value { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.params-body summary { color: var(--text-muted); cursor: pointer; padding: 4px 0; font-size: 12px; }
+.params-error { color: var(--fail-fg); font-size: 12px; padding: 0 12px 8px; }
+
+/* Whether Mechvane stops with this window, Quit button for a browser tab */
+.topbar-right { flex-shrink: 0; margin-left: 16px; }
+.topbar-right > * { white-space: nowrap; }
+.run-state { display: inline-flex; align-items: center; gap: 4px; }
+.run-state .status-text { font-size: 12px; }
+.run-stopped { margin: 20vh auto; text-align: center; color: var(--text-muted); }
 
 /* Request a feature button and dialog */
 .btn-text {

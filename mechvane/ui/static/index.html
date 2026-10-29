@@ -45,6 +45,14 @@
       <div id="tree-content" class="panel-body">
         <div class="empty-state">Loading model tree…</div>
       </div>
+      <section id="params-section" class="params-section" hidden>
+        <div class="panel-header">
+          <h2>Parameters</h2>
+          <button id="params-apply" type="button" class="btn-text" disabled>Apply</button>
+        </div>
+        <form id="params-form" class="panel-body params-body"></form>
+        <div id="params-error" class="params-error" hidden></div>
+      </section>
     </aside>
 
     <main class="viewport-container" aria-label="3D-Ansicht">
@@ -57,6 +65,10 @@
       <div class="panel-header">
         <h2>Findings</h2>
         <span id="findings-count" class="count-pill">0</span>
+      </div>
+      <div id="rule-setup" class="rule-setup" hidden>
+        <select id="rule-profile" aria-label="Manufacturing profile"></select>
+        <select id="rule-material" aria-label="Material" title="Material: thread engagement depth follows it"></select>
       </div>
       <div id="findings-summary" class="findings-summary" hidden></div>
       <div id="findings-content" class="panel-body">

@@ -369,12 +369,16 @@ def screenshot(document: str, view: str = "iso", path: str | None = None):
 
 
 @mcp.tool()
-def check_design(document: str, profile: str = "fdm_0.4", build_direction: str = "+Z") -> dict:
+def check_design(document: str, profile: str = "fdm_0.4", build_direction: str = "+Z",
+                 material: str | None = None) -> dict:
     """Check a part against design rules (wall thickness, hole edge distance, thread depth, printability).
-    `build_direction` selects the print direction ('+Z', '-Z', '+X', '-X', '+Y', '-Y'; default '+Z')."""
+    `build_direction` selects the print direction ('+Z', '-Z', '+X', '-X', '+Y', '-Y'; default '+Z').
+    `material` (steel, cast_iron, alu, alu_wrought, alu_cast, brass, ...) sets the thread engagement depth
+    from the same table as bolted_connection; without it the material assigned to the bodies
+    (SolidCraft material.assign) applies, else the profile's 1.5 × d."""
     vec = design_rules.parse_build_direction(build_direction, allow_vector=False)
     doc = ws.get(document, PART)
-    return design_rules.check(doc.session, profile=profile, build_direction=vec)
+    return design_rules.check(doc.session, profile=profile, build_direction=vec, material=material)
 
 
 @mcp.tool()

@@ -1,0 +1,99 @@
+{
+  "id": "s235jr",
+  "aussage": "Unlegierter Baustahl S235JR (Werkstoffnummer 1.0038) nach DIN EN 10025-2 für allgemeine geschweißte und geschraubte Stahlbaukonstruktionen.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 210,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Mindeststreckgrenze ReH (t <= 16 mm)",
+      "wert": 235,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        360,
+        510
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung A5 min.",
+      "wert": 26,
+      "einheit": "%"
+    },
+    {
+      "name": "Waermeleitfaehigkeit bei 20 °C",
+      "wert": 54,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 11.1,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 300,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "S235JR",
+      "1.0038",
+      "Baustahl"
+    ],
+    "verfahren": [
+      "Schweissen",
+      "Schrauben",
+      "Zerspanung",
+      "Biegen"
+    ],
+    "feature": [
+      "Profil",
+      "Platte",
+      "Blech",
+      "Traeger"
+    ],
+    "groesse": [
+      "t <= 16 mm"
+    ],
+    "festigkeitsklasse": [
+      "JR"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://ucpcdn.thyssenkrupp.com/_legacy/UCPthyssenkruppBAMXFrance/assets.files/product_pdf/carbon_flat_steel_/plates_and_slabs_carbon_steel/s235jr_1_0038_11_2016_engl.pdf",
+      "stelle": "Seite 1-2, Reference data on physical properties & Mechanical properties",
+      "zitat": "Density at 20 °C 7.85 kg/dm3, Modulus of elasticity kN/mm2 at 20 °C 210, Thermal conductivity at 20 °C 54 W/m K, Mean linear thermal expansion coefficient [10-6 K-1] between 20 °C and 100 °C 11.1, Min. yield strength ReH for nominal thickness <= 16 mm 235 MPa, Tensile strength Rm 360 to 510 MPa, Min. percentage elongation A Lo = 5,65 So 26 %",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.thyssenkrupp-steel.com/media/content_1/publikationen/precision_steel/produktinformationen_1/baustahl/thyssenkrupp_s235jr_produktinformation_precision_steel_de.pdf",
+      "stelle": "Seite 2, Tabelle Mechanische Eigenschaften",
+      "zitat": "Streckgrenze ReH [MPa] min. 235, Zugfestigkeit Rm [MPa] 360 - 510, Bruchdehnung A5 [%] min . 26",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Standardbaustahl mit garantierter Kerbschlagarbeit von 27 J bei +20 °C (JR). Ausgezeichnete Schweißbarkeit ohne Vorwärmung im Dickenbereich bis 16 mm.",
+  "ausnahmen": "Bei Erzeugnisdicken > 16 mm sinkt die Mindeststreckgrenze (z. B. 225 MPa für 16 < t <= 40 mm). Nicht für Tieftemperaturanwendungen unter 0 °C geeignet (dafür J0/J2 wählen).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

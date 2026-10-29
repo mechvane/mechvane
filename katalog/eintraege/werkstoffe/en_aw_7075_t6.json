@@ -1,0 +1,110 @@
+{
+  "id": "en_aw_7075_t6",
+  "aussage": "Hochfeste Aluminium-Zink-Knetlegierung EN AW-7075 (AlZn5,5MgCu / 3.4365) im warmausgehärteten Zustand T6 / T651 nach DIN EN 755-2 / DIN EN 485-2.",
+  "werte": [
+    {
+      "name": "Dichte bei 20 °C",
+      "wert": 2.8,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 72000,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Schubmodul",
+      "wert": 27100,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.33,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2 min. (t <= 80 mm)",
+      "wert": 485,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min.",
+      "wert": 540,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Bruchdehnung A min.",
+      "wert": 7,
+      "einheit": "%"
+    },
+    {
+      "name": "Brinellhaerte",
+      "wert": 150,
+      "einheit": "HBW"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        130,
+        160
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "wert": 23.4,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 90,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "EN AW-7075",
+      "AlZn5,5MgCu",
+      "3.4365",
+      "Flugzeugaluminium"
+    ],
+    "verfahren": [
+      "CNC-Fraesen",
+      "Drehen",
+      "Bohren"
+    ],
+    "feature": [
+      "Hochlastbauteil",
+      "Flugzeugbauteil",
+      "Formwerkzeug",
+      "Traegerplatte"
+    ],
+    "groesse": [
+      "t <= 80 mm"
+    ],
+    "festigkeitsklasse": [
+      "T6",
+      "T651"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://datenblaetter.thyssenkrupp.ch/en_aw_7075_0717.pdf",
+      "stelle": "Seite 1-4, Werkstoffdatenblatt EN AW-7075",
+      "zitat": "Dichte bei 20 °C 2,80 kg/dm³, Elastizitätsmodul 72000 MPa, Schubmodul 27100 MPa, Wärmeleitfähigkeit 130–160 W/m•K, Mittlerer linearer Wärmeausdehnungskoeffizient 20–100 °C 23,4 10-6 K-1, T6 <= 80 mm: Rp0,2 >= 485 N/mm2, Rm >= 540 N/mm2, A >= 7 %, HBW 150",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/informationen/datenblatt-en-aw-7075.pdf",
+      "stelle": "Seite 1, Datenblatt EN AW-7075",
+      "zitat": "Zugfestigkeit Rm N/mm² 460-540, Bruchdehnung A5 % 3-6, Brinellhärte HB 135-161, Dichte kg/dm³ 2,81, Wärmeleitfähigkeit W/mK 115-140, Wärmedehnzahl 20-100 °C 23,6",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Höchstfeste Legierung mit festigkeitssteigerndem Zink- und Kupfergehalt für Luft- und Raumfahrt sowie hochbeanspruchte Frästeile im Werkzeug- und Vorrichtungsbau.",
+  "ausnahmen": "Nicht schweißbar im Schmelzschweißverfahren (Heißrissgefahr). Anfällig für Spannungsrisskorrosion im Zustand T6 bei Einwirkung von Feuchtigkeit und Zugspannungen (für korrosive Umgebungen Überalterungszustand T73 wählen). Geringe Bruchdehnung (3–7 %).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

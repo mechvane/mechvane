@@ -1,0 +1,126 @@
+{
+  "id": "cuzn39pb3",
+  "aussage": "Zerspanungsmessing CuZn39Pb3 (Werkstoffnummer CW614N / 2.0401 / MS58) nach DIN EN 12164 / DIN EN 12165.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 8.46,
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 96,
+      "einheit": "GPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.34,
+      "einheit": ""
+    },
+    {
+      "name": "Dehngrenze Rp0,2",
+      "bereich": [
+        220,
+        350
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        360,
+        500
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung A",
+      "bereich": [
+        10,
+        20
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Haerte",
+      "bereich": [
+        90,
+        140
+      ],
+      "einheit": "HB"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "wert": 113,
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient",
+      "wert": 21.4,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Schmelzbereich",
+      "bereich": [
+        880,
+        895
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 150,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "CuZn39Pb3",
+      "CW614N",
+      "2.0401",
+      "MS58",
+      "Messing"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fraesen",
+      "Bohren",
+      "Warmpressen"
+    ],
+    "feature": [
+      "Drehteil",
+      "Fitting",
+      "Ventilkoerper",
+      "Gewindebuchse",
+      "Gleitlager"
+    ],
+    "groesse": [
+      "alle"
+    ],
+    "festigkeitsklasse": [
+      "M",
+      "R360",
+      "R430"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.wieland.com/hu/content/download/9842/file/Z32-Z33_EX_EN.pdf",
+      "stelle": "Seite 1-2, Wieland-Z32 CuZn39Pb3 datasheet",
+      "zitat": "Thermal conductivity W/(m·K) 113, Density g/cm3 8.46, Moduls of elasticity GPa 96, Machinability 100 %, Melting range °C 880–895, Thermal expansion 10-6/K 21.4",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.gemmel-metalle.de/downloads/Legierungsbeschreibung_CuZn39Pb3.pdf",
+      "stelle": "Seite 1, Legierungsbeschreibung CuZn39Pb3",
+      "zitat": "Zugfestigkeit Rm N/mm² 540, E-Modul N/mm² 96, Härte HB 140, Dichte in g/cm³ 8,46, Wärmeleitfähigkeit W/mk 113, Wärmeausdehnungskoeffizient in 10ˉ6/K 21,4",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Der Referenzwerkstoff für die spanende Bearbeitung (Zerspanbarkeitsindex 100 %). Bleizusatz von ~3 % wirkt als Spanbrecher und inneres Schmiermittel.",
+  "ausnahmen": "Gefahr von Spannungsrisskorrosion bei Einwirkung von Ammoniak in Verbindung mit inneren Zugeigenspannungen (Spannungsarmglühen bei 250–300 °C erforderlich). REACH/RoHS-Restriktionen bezüglich Blei beachten.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

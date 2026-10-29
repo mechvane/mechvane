@@ -1,0 +1,107 @@
+{
+  "id": "s355j2",
+  "aussage": "Hochfester unlegierter Baustahl S355J2 (Werkstoffnummer 1.0577 / 1.0570) nach DIN EN 10025-2 mit garantierter Kerbschlagarbeit bei -20 °C.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "wert": 7.85,
+      "einheit": "kg/dm³"
+    },
+    {
+      "name": "Elastizitaetsmodul",
+      "wert": 210,
+      "einheit": "kN/mm²"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.3,
+      "einheit": ""
+    },
+    {
+      "name": "Mindeststreckgrenze ReH (t <= 16 mm)",
+      "wert": 355,
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm",
+      "bereich": [
+        470,
+        630
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung A5 min.",
+      "wert": 20,
+      "einheit": "%"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        35,
+        45
+      ],
+      "einheit": "W/(m*K)"
+    },
+    {
+      "name": "Waermeausdehnungskoeffizient (20-100 °C)",
+      "bereich": [
+        11.1,
+        13.9
+      ],
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 300,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "S355J2",
+      "1.0577",
+      "1.0570",
+      "Baustahl"
+    ],
+    "verfahren": [
+      "Schweissen",
+      "Zerspanung",
+      "Biegen",
+      "Schrauben"
+    ],
+    "feature": [
+      "Profil",
+      "Platte",
+      "Blech",
+      "Schweissteil"
+    ],
+    "groesse": [
+      "3 mm <= t <= 16 mm"
+    ],
+    "festigkeitsklasse": [
+      "J2",
+      "+N"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.thyssenkrupp-materials-processing-europe.com/de/c-stahl/warmband/s235jr-s355k2/s355j2",
+      "stelle": "Abschnitt Mechanische Eigenschaften",
+      "zitat": "Die Güte S355J2 hat eine Mindeststreckgrenze von 355 MPa. Obere Streck- grenze ReH MPa min. e <= 16 mm: 355, Zugfestigkeit Rm MPa 3 mm <= e <= 16 mm: 470–630, Bruchdehnung A5 %min. 3 mm <= e <= 16 mm: 20",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://www.cnc.at/files/stahl_1.0570_s355j2_n.pdf",
+      "stelle": "Seite 1, Physikalische und mechanische Eigenschaften",
+      "zitat": "Dichte kg/dm3 7,85, Elastizitätsmodul kN/mm2 210, Zugfestigkeit Rm MPa 450-680, Streckgrenze Rp0,2 N/mm² 185-355",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Konstruktionsstahl mit höherer Tragfähigkeit als S235 bei gleichzeitig guter Schweißeignung und Zähigkeit bei tiefen Temperaturen (-20 °C, 27 J).",
+  "ausnahmen": "Bei Dicken > 16 mm ist ReH stufenweise abzumindern (z. B. 345 MPa bis 40 mm). Bei größeren Wanddicken ist Vorwärmen beim Schweißen zu prüfen (CEV-Wert).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

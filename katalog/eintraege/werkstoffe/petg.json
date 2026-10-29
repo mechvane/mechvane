@@ -1,0 +1,138 @@
+{
+  "id": "petg",
+  "aussage": "Glykol-modifiziertes Polyethylenterephthalat (PETG) Filament für FDM/FFF-3D-Druck mit verbesserter Zähigkeit, Schichthaftung und Temperaturfestigkeit.",
+  "werte": [
+    {
+      "name": "Dichte",
+      "bereich": [
+        1.25,
+        1.27
+      ],
+      "einheit": "g/cm³"
+    },
+    {
+      "name": "Elastizitaetsmodul (XY-Druckrichtung)",
+      "bereich": [
+        1500,
+        2117
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Elastizitaetsmodul (Z-Druckrichtung)",
+      "bereich": [
+        1600,
+        1899
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Querkontraktionszahl",
+      "wert": 0.38,
+      "einheit": ""
+    },
+    {
+      "name": "Zugfestigkeit Rm (XY-Druckrichtung)",
+      "bereich": [
+        43.0,
+        50.8
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Zugfestigkeit Rm (Z-Druckrichtung)",
+      "bereich": [
+        42.8,
+        48.0
+      ],
+      "einheit": "MPa"
+    },
+    {
+      "name": "Bruchdehnung (XY-Druckrichtung)",
+      "bereich": [
+        4.5,
+        8.4
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Bruchdehnung (Z-Druckrichtung)",
+      "bereich": [
+        3.3,
+        4.5
+      ],
+      "einheit": "%"
+    },
+    {
+      "name": "Shore-Haerte D",
+      "wert": 74,
+      "einheit": "Shore D"
+    },
+    {
+      "name": "Waermeformbestaendigkeit HDT (0.45 MPa)",
+      "bereich": [
+        68,
+        78
+      ],
+      "einheit": "°C"
+    },
+    {
+      "name": "Max. Dauergebrauchstemperatur",
+      "wert": 65,
+      "einheit": "°C"
+    },
+    {
+      "name": "Waermeleitfaehigkeit",
+      "bereich": [
+        0.19,
+        0.24
+      ],
+      "einheit": "W/(m*K)"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PETG",
+      "PolyLite PETG",
+      "Prusament PETG"
+    ],
+    "verfahren": [
+      "3D-Druck",
+      "FDM",
+      "FFF"
+    ],
+    "feature": [
+      "Druckteil",
+      "Funktionsbauteil",
+      "Gehaeuse",
+      "Klemme",
+      "Halterung"
+    ],
+    "groesse": [
+      "alle"
+    ],
+    "festigkeitsklasse": [
+      "100% Infill"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/documents/technical-data-sheets/petg-pet/polylite-tm-petg",
+      "stelle": "Technisches Datenblatt PolyLite PETG",
+      "zitat": "Density ISO1183, GB/T1033 1.25 g/cm3 at 23°C, ISO 75 0.45MPa 78℃, Young's modulus (X-Y) 2116.8 ± 68.1 MPa, Young's modulus (Z) 1898.7 ± 98.5 MPa, Tensile strength (X-Y) 50.8 ± 0.9 MPa, Tensile strength (Z) 42.8 ± 2.8 MPa, Elongation at break (X-Y) 8.4 ± 1.7 %, Elongation at break (Z) 3.3 ± 0.2 %",
+      "abgerufen": "2026-10-29"
+    },
+    {
+      "url": "https://prusament.com/wp-content/uploads/2022/03/8_PETG_RECYCLED_Prusament_TDS_2022.pdf",
+      "stelle": "Seite 1-2, Technical Data Sheet Prusament PETG",
+      "zitat": "Density [g/cm3] 1.27, Hardness – Shore D 74, Heat Deflection Temperature (0.45 MPa) [°C] 68, Tensile Yield Strength Horizontal 43 ± 1.8 MPa Vertical xz 48 ± 2.5 MPa, Tensile Modulus Horizontal 1.5 ± 0.1 GPa Vertical xz 1.6 ± 0.1 GPa, Elongation at Yield Point Horizontal 4.5 ± 0.2 % Vertical xz 4.5 ± 0.5 %",
+      "abgerufen": "2026-10-29"
+    }
+  ],
+  "begruendung": "Sehr zäher, chemikalien- und feuchtigkeitsbeständiger FDM-Werkstoff mit überlegener Schichthaftung (geringere Z-Anisotropie als PLA) und höherer Wärmeformbeständigkeit bis ca. 70–75 °C.",
+  "ausnahmen": "Neigt bei zu hoher Drucktemperatur zu Fadenbildung (Stringing) und haftet extrem stark auf PEI-Druckbetten (Trennmittel empfohlen). Nicht UV-stabilisiert für langjährigen Außeneinsatz (dafür ASA wählen).",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

@@ -3,7 +3,7 @@ depth, and FDM printability. Operates via the SolidCraft session."""
 
 import math
 
-from . import geometry as g
+from . import geometry as g, hole_tables
 
 PROFILES = {
     "fdm_0.4": {
@@ -508,7 +508,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
                     "status": "fail",
                     "location": {"point": h["representative_point"], "face": h["faces"][0]},
                     "message": (f"Thread engagement depth {act_depth:.1f} mm < {req_depth:.1f} mm "
-                                f"({thread_factor:.1f} × d for {thread_spec})"),
+                                f"({thread_factor:.1f} × d for {thread_spec}{cfg.get('thread_depth_basis', '')})"),
                     "value": round(act_depth, 4),
                     "threshold": round(req_depth, 4),
                 })
@@ -517,7 +517,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
                     "status": "ok",
                     "location": {"point": h["representative_point"], "face": h["faces"][0]},
                     "message": (f"Thread engagement depth {act_depth:.1f} mm >= {req_depth:.1f} mm "
-                                f"({thread_factor:.1f} × d for {thread_spec})"),
+                                f"({thread_factor:.1f} × d for {thread_spec}{cfg.get('thread_depth_basis', '')})"),
                     "value": round(act_depth, 4),
                     "threshold": round(req_depth, 4),
                 })
@@ -584,11 +584,38 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
     return rules
 
 
+def body_material(session) -> str | None:
+    """The material assigned to the part's bodies in SolidCraft (material.assign), as a key of the
+    engagement table; None when unassigned (Default), mixed or not in the table."""
+    # only the measure tool reports the material; document.inspect leaves it out
+    bodies = session.tool("measure", {}).get("bodies", [])
+    names = {b.get("material") for b in bodies} - {None, "Default"}
+    if len(names) != 1:
+        return None
+    try:
+        return hole_tables.normalize_material(names.pop())
+    except ValueError:
+        return None
+
+
 def check(session_or_doc, profile: str | dict = "fdm_0.4",
-          build_direction: str | list[float] | None = None) -> dict:
-    """Check a part against design rules using the open SolidCraft session."""
+          build_direction: str | list[float] | None = None, material: str | None = None) -> dict:
+    """Check a part against design rules using the open SolidCraft session.
+
+    material: the part's material (steel, cast_iron, alu, alu_wrought, brass, ...): the thread depth
+    then follows the engagement table in hole_tables instead of the profile's flat factor. Without it
+    the material assigned to the bodies in SolidCraft applies, if the table knows it."""
     session = getattr(session_or_doc, "session", session_or_doc)
     cfg = _get_cfg(profile, build_direction=build_direction)
+    material_source = "argument" if material else None
+    if not material:
+        material = body_material(session)
+        material_source = "body" if material else None
+    if material:
+        mat = hole_tables.normalize_material(material)
+        entry = hole_tables.MATERIAL_ENGAGEMENT_DEPTHS[mat]
+        cfg["thread_depth_factor"] = entry["factor"]
+        cfg["thread_depth_basis"] = f" in {mat}" + ("" if entry.get("verified") else ", unverified value")
     profile_name = profile if isinstance(profile, str) else cfg.get("name", "custom")
 
     doc_info = session.cmd("document.inspect", {"measure": True})
@@ -646,6 +673,8 @@ def check(session_or_doc, profile: str | dict = "fdm_0.4",
         "status": verdict,
         "verdict": verdict,
         "profile": profile_name,
+        "material": material,
+        "material_source": material_source,
         "rules": all_rules,
         "checks": flat_checks,
         "summary": summary,

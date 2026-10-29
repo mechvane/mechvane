@@ -212,10 +212,52 @@ export function initRequestFeature() {
   });
 }
 
+// Whether closing this window stops Mechvane: an app window owns the server, a browser tab does not,
+// so a tab gets a Quit button instead. The server learns it owns the window a few seconds after start.
+async function showRunState(el) {
+  let about = {};
+  try {
+    const resp = await fetch("api/about", { cache: "no-store" });
+    if (resp.ok) about = await resp.json();
+  } catch {
+    return;
+  }
+  const quit = el.querySelector("button");
+  const note = el.querySelector("span");
+  note.textContent = about.stops_with_window ? "Closing this window quits Mechvane" : "Runs until you quit it";
+  quit.hidden = !!about.stops_with_window;
+  el.hidden = false;
+}
+
+export function initRunState() {
+  const right = document.querySelector(".topbar-right");
+  if (!right || document.documentElement.dataset.static === "1") return;
+  const el = document.createElement("span");
+  el.className = "run-state";
+  el.hidden = true;
+  el.innerHTML = '<span class="status-text"></span><button type="button" class="btn-text" hidden>Quit</button>';
+  el.querySelector("button").addEventListener("click", async () => {
+    try {
+      await fetch("api/quit", { method: "POST" });
+    } catch {
+      // the server may already be gone
+    }
+    document.body.innerHTML = '<p class="run-stopped">Mechvane has stopped. You can close this tab.</p>';
+  });
+  right.prepend(el);
+  showRunState(el);
+  setTimeout(() => showRunState(el), 5000);
+}
+
+function init() {
+  initRequestFeature();
+  initRunState();
+}
+
 if (typeof document !== "undefined") {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initRequestFeature);
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    initRequestFeature();
+    init();
   }
 }

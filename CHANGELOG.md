@@ -5,6 +5,29 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Parameters** on the Check page, under the model tree: change user parameters (and, folded away,
+  feature dimensions) by typing a new value or expression and pressing Enter. Several changes are
+  applied together; a bad expression changes nothing and says why. The file is saved and the view
+  reloads.
+- **Measure** in the 3D view of the Check page: click two points for the distance and ΔX/ΔY/ΔZ; on
+  two flat faces it also gives the gap between parallel faces or the angle between them, on two holes or
+  shafts the distance between their axes. One click shows the face's area, on a hole or shaft its
+  diameter and axis. Works in the live demo as well.
+- `check_design` takes a `material` (steel, cast_iron, alu, alu_wrought, brass, ...): the thread
+  engagement depth then follows the same table as `bolted_connection` (e.g. 1.0 × d in steel,
+  2.0 × d in soft aluminium) instead of a flat 1.5 × d. Values without a checked source say so.
+  Without it, the material assigned to the part's bodies in SolidCraft is used.
+- The Check page lets you choose the manufacturing profile and the material for the design rules
+  (remembered per document in this browser).
+- **Section** in the 3D view: cut the model along X, Y or Z with a slider, the cut surface shown in
+  colour. Esc leaves either tool.
+- The header says whether Mechvane keeps running: "Closing this window quits Mechvane" in its own
+  app window. In a browser tab, where closing does not stop it, a **Quit** button ends Mechvane.
+
 ## [0.1.0a6] - 2026-10-29
 
 ### Fixed

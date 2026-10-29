@@ -11,7 +11,7 @@ import threading
 from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
-from .. import design_rules, links, query, speech, tree
+from .. import design_rules, hole_tables, links, query, speech, tree
 from . import agent as agent_mod, selection, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
@@ -159,6 +159,24 @@ def _add_selections(doc, findings):
                 break
 
 
+PARAM_KEYS = ("name", "expression", "unit", "value", "source", "feature", "input", "comment", "favorite", "error")
+
+
+def collect_params(doc) -> dict:
+    """The document's parameters for the form: user parameters first, then feature dimensions."""
+    listed = doc.session.cmd("parameters.list", {})
+    params = [{k: p.get(k) for k in PARAM_KEYS if k in p} for p in listed.get("parameters", [])]
+    params.sort(key=lambda p: (p.get("source") != "user", not p.get("favorite")))
+    return {"parameters": params}
+
+
+def change_params(doc, changes: dict) -> dict:
+    """Set several parameters at once (all or nothing in SolidCraft) and save the document."""
+    result = doc.session.cmd("parameters.change", {"changes": changes})
+    doc.save()
+    return dict(collect_params(doc), changed=result.get("changed", {}))
+
+
 def model_names(doc) -> list[str]:
     """Names a user may say about the open document: features, bodies, parameters, occurrences."""
     s = doc.session
@@ -179,12 +197,12 @@ def _joint_summary(joint_checks) -> str:
     return f"Joint check: all {len({j['joint'] for j in joint_checks})} joints ok"
 
 
-def collect_findings(ws, doc, profile: str = "fdm_0.4") -> dict:
+def collect_findings(ws, doc, profile: str = "fdm_0.4", material: str | None = None) -> dict:
     """Collect design rule findings for a part, joint link findings for an assembly.
 
     Design rules are part rules (like check_design): on an assembly they would treat screws and
     plates as one printed body."""
-    dr = design_rules.check(doc.session, profile=profile) if doc.kind == PART else {}
+    dr = design_rules.check(doc.session, profile=profile, material=material) if doc.kind == PART else {}
     findings = []
 
     for c in dr.get("checks", []):
@@ -265,6 +283,11 @@ def collect_findings(ws, doc, profile: str = "fdm_0.4") -> dict:
         "status": verdict,
         "verdict": verdict,
         "profile": dr.get("profile", profile),
+        "material": dr.get("material", material),
+        "material_source": dr.get("material_source"),
+        # choices for the Check page's profile and material selectors
+        "profiles": {k: v["name"] for k, v in design_rules.PROFILES.items()},
+        "materials": list(hole_tables.MATERIAL_ENGAGEMENT_DEPTHS),
         "summary": dr.get("summary") or _joint_summary(joint_checks),
         "findings": findings,
         "checks": findings,
@@ -323,6 +346,8 @@ class UIServer(ThreadingHTTPServer):
             raise FileNotFoundError(f"path not found: {self.path}")
         self.tmp_dir = Path(tempfile.mkdtemp(prefix="ui1-"))  # the system temp folder (not /tmp on Windows)
         self._kind_cache = {}
+        # True once an app window owns this server: closing it stops Mechvane (the UI says so)
+        self.stops_with_window = False
 
         if self.path.is_dir():
             self.is_folder = True
@@ -589,6 +614,11 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path.startswith("/api/agent/"):
                 self._agent_post(srv, path)
                 return
+            if path == "/api/quit":
+                # Quit button in the UI: answer first, then stop serving (shutdown waits for the loop)
+                self._send_json(200, {"stopped": True})
+                threading.Thread(target=srv.shutdown, daemon=True).start()
+                return
             if path == "/api/speech":
                 try:
                     text = self._json_body().get("text")
@@ -616,8 +646,30 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     self._send_json(200, {"selection": selection.resolve(srv.ws, doc, items)})
                 return
-            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new")):
+            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params")):
                 self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})
+                return
+            if path == "/api/params":
+                try:
+                    changes = self._json_body().get("changes")
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                if not isinstance(changes, dict) or not changes or not all(
+                        isinstance(k, str) and isinstance(v, (str, int, float)) for k, v in changes.items()):
+                    self._send_json(400, {"error": "changes: {name: expression, ...} required"})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    try:
+                        result = change_params(doc, {k: str(v) for k, v in changes.items()})
+                    except Exception as e:  # a bad expression: SolidCraft changed nothing
+                        self._send_json(400, {"error": str(e)})
+                        return
+                self._send_json(200, result)
                 return
             if path.startswith("/api/open/"):
                 name = unquote(path[len("/api/open/"):])
@@ -703,6 +755,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/app.js":
                 self._send_static("app.js", "application/javascript; charset=utf-8")
                 return
+            if path == "/viewtools.js":
+                self._send_static("viewtools.js", "application/javascript; charset=utf-8")
+                return
             if path == "/request.js":
                 self._send_static("request.js", "application/javascript; charset=utf-8")
                 return
@@ -753,7 +808,17 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/about":
                 # root: which file or folder this server shows (only on 127.0.0.1), so a second
                 # `mechvane ui` for the same folder opens a window here instead of a second server
-                self._send_json(200, dict(collect_about(), root=str(srv.path)))
+                self._send_json(200, dict(collect_about(), root=str(srv.path), stops_with_window=srv.stops_with_window))
+                return
+
+            if path == "/api/params":
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    data = collect_params(doc)
+                self._send_json(200, data)
                 return
 
             if path == "/api/version":
@@ -792,7 +857,14 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                     if doc is None:
                         self._send_json(409, {"error": "no document open"})
                         return
-                    data = collect_findings(srv.ws, doc)
+                    q = parse_qs(url.query)
+                    profile = (q.get("profile") or ["fdm_0.4"])[0]
+                    material = (q.get("material") or [None])[0] or None
+                    try:
+                        data = collect_findings(srv.ws, doc, profile=profile, material=material)
+                    except ValueError as e:  # unknown profile or material
+                        self._send_json(400, {"error": str(e)})
+                        return
                 self._send_json(200, data)
                 return
 
@@ -841,7 +913,9 @@ def run_server(path, port: int = 8765, opener=None):
     url = f"http://127.0.0.1:{actual_port}/"
     print(f"Mechvane UI running at {url} ({target_name})", flush=True)
     if opener:
-        threading.Thread(target=opener, args=(url, srv.shutdown), daemon=True).start()
+        def open_ui():
+            srv.stops_with_window = opener(url, srv.shutdown) == "window"
+        threading.Thread(target=open_ui, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
