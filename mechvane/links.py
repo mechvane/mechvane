@@ -18,7 +18,7 @@ import re
 import warnings
 import zipfile
 
-from . import METADATA_KEY, read_metadata
+from . import METADATA_KEY, files_on_disk, read_metadata
 from . import geometry as g
 from .solidcraft import SolidCraftError
 
@@ -26,7 +26,9 @@ TOL = 1e-4  # mm, and radians for directions
 
 
 def _base(name):
-    return re.sub(r"#\d+$", "", name or "")
+    """A face name without its variant suffix: "#2" for a face cut in pieces, and since SolidCraft 0.25
+    "#[edges]" for a face split by solid.split_face."""
+    return re.sub(r"#(\d+|\[[^\]]*\])$", "", name or "")
 
 
 def _occurrences(s):
@@ -494,7 +496,7 @@ def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grou
         u_root = next(c for c in u_comps.values() if c["parent"] is None)
         u_links = {l["component"]: l for l in reader.cmd("component.links").get("links", [])}
         u_joints = reader.cmd("joint.list").get("joints", [])
-        u_meta = read_metadata(reader.cmd("document.metadata").get("metadata"))
+        u_meta = files_on_disk(read_metadata(reader.cmd("document.metadata").get("metadata")), p.parent)
         u_occs = _occurrences(reader)
     finally:
         reader.close()
@@ -621,7 +623,7 @@ def _sync_subassemblies(ws, doc):
             u_comps = {c["id"]: c for c in reader.cmd("component.list")["components"]}
             u_links = {l["component"]: l for l in reader.cmd("component.links").get("links", [])}
             u_joints = reader.cmd("joint.list").get("joints", [])
-            u_meta = read_metadata(reader.cmd("document.metadata").get("metadata"))
+            u_meta = files_on_disk(read_metadata(reader.cmd("document.metadata").get("metadata")), file.parent)
             u_occs = _occurrences(reader)
         finally:
             reader.close()

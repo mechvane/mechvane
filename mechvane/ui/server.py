@@ -68,7 +68,7 @@ def collect_tree(ws, doc) -> dict:
     if doc.kind == PART:
         return tree.part_tree(doc.session, groups=True)
 
-    t = tree.assembly_tree(doc.session, groups=True)
+    t = tree.assembly_tree(doc.session, groups=True, base=doc.path.parent)
     checks = links.check(ws, doc)
     by_joint = {}
     for c in checks:
@@ -751,7 +751,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/about":
-                self._send_json(200, collect_about())
+                # root: which file or folder this server shows (only on 127.0.0.1), so a second
+                # `mechvane ui` for the same folder opens a window here instead of a second server
+                self._send_json(200, dict(collect_about(), root=str(srv.path)))
                 return
 
             if path == "/api/version":
@@ -804,16 +806,35 @@ def create_server(path, port: int = 8765, host: str = "127.0.0.1") -> UIServer:
     return UIServer((host, port), UIRequestHandler, path)
 
 
+def _running_ui(port: int) -> str | None:
+    """The file or folder a Mechvane UI on 127.0.0.1:<port> shows, or None (none there, or another program)."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/about", timeout=2) as r:
+            return json.loads(r.read()).get("root")
+    except Exception:
+        return None
+
+
 def run_server(path, port: int = 8765, opener=None):
     """Run the UI server on 127.0.0.1:<port> until interrupted.
 
-    A busy port falls back to a free one. opener(url, stop) is called once the server listens;
-    stop() ends the server (used when the app window is closed)."""
+    A busy port falls back to a free one, unless a Mechvane UI for the same file or folder already
+    listens there: then only opener(url) runs (a second click on the start menu entry opens a window,
+    not a second server). opener(url, stop) is called once the server listens; stop() ends the server
+    (used when the app window is closed)."""
     try:
         srv = create_server(path, port=port, host="127.0.0.1")
     except OSError:
         if not port:
             raise
+        running = _running_ui(port)
+        if running and Path(running).resolve() == Path(path).resolve():
+            url = f"http://127.0.0.1:{port}/"
+            print(f"Mechvane UI already running at {url}", flush=True)
+            if opener:
+                opener(url, lambda: None)
+            return
         srv = create_server(path, port=0, host="127.0.0.1")
     actual_port = srv.server_address[1]
     target_name = srv.folder_path.name if srv.is_folder else srv.file_path.name

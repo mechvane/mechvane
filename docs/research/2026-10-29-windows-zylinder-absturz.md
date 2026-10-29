@@ -202,6 +202,21 @@ gespeichert.
 
 Damit läuft `mechvane ui --demo` unter Windows auf dem Surface ohne Umgehung.
 
+## Abnahme 0.1.0a5 aus PyPI (2026-10-29)
+
+Frisches venv (nicht das des Nutzers), `pip install mechvane==0.1.0a5`, ohne `PYTHONPATH` und
+ohne `WGPU_BACKEND`, alter Demo-Ordner beiseitegelegt:
+
+| Schritt | Ergebnis |
+|---|---|
+| `pip install mechvane==0.1.0a5` | ok (erster Versuch kurz nach dem Release: „No matching distribution“, mit `--no-cache-dir` ok) |
+| `mechvane setup` | ok, SolidCraft-CLI und Web-App 0.25.1 |
+| `mechvane ui --demo --no-browser`, Aufbau der Beispiele | ok, alle 8 Dateien, kein Absturz |
+| `POST /api/open/bolted_plates.solidcraft`, danach `version`, `tree`, `findings`, `mesh` | alle 200, Mesh 1,9 MB |
+| Wechsel auf `flange.solidcraft` | 200, Mesh 0,1 MB |
+
+App-Fenster und Ctrl+S wurden mit dem gleichen Code (70cc436) vorher vom Nutzer geprüft.
+
 ## Nächste Schritte
 
 - [x] Auf dem Surface: Fehler-Offset aus der Ereignisanzeige und `export` (STEP/3MF) testen.

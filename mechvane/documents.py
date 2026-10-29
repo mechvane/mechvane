@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from . import METADATA_KEY, read_metadata
+from . import METADATA_KEY, files_on_disk, files_relative, read_metadata
 from .solidcraft import Session, SolidCraftError
 
 PART, ASSEMBLY = "part", "assembly"
@@ -31,10 +31,12 @@ class Document:
 
     def metadata(self):
         meta = self.session.cmd("document.metadata").get("metadata") or {}
-        return read_metadata(meta)
+        return files_on_disk(read_metadata(meta), self.path.parent)
 
     def set_metadata(self, data):
-        self.session.cmd("document.metadata.set", {"key": METADATA_KEY, "value": data})
+        # part files relative to this document: the project folder can move
+        self.session.cmd("document.metadata.set", {"key": METADATA_KEY,
+                                                    "value": files_relative(data, self.path.parent)})
 
     def save(self):
         self.session.tool("save", {"path": str(self.path)})

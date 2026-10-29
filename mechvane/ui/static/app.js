@@ -753,7 +753,7 @@ async function initFolder() {
   if (project.mode !== "folder") return;
   const docs = project.documents || [];
   if (!docs.length) {
-    statusEl.textContent = "No .solidcraft files in this folder: create a part in Model by hand";
+    statusEl.textContent = "No .solidcraft files in this folder yet: open Model by hand and click New part";
     return false;
   }
   const select = document.getElementById("demo-select");
@@ -788,8 +788,20 @@ async function initFolder() {
 if (STATIC) {
   initStatic().catch((err) => { statusEl.textContent = `Error: ${err.message}`; });
 } else {
+  let poll = true;
   initFolder()
-    .then((opened) => { if (opened === undefined) return loadAll(true); })
+    .then((opened) => {
+      // Empty folder: no document to poll, keep the hint instead of "Connection lost", and
+      // reload once a document appears (made with "New part" in Model by hand)
+      if (opened === false) {
+        poll = false;
+        setInterval(async () => {
+          const p = await fetchJson("api/project").catch(() => null);
+          if (p && (p.documents || []).length) location.reload();
+        }, 3000);
+      }
+      if (opened === undefined) return loadAll(true);
+    })
     .catch((err) => { statusEl.textContent = `Error: ${err.message}`; })
-    .finally(() => setInterval(pollVersion, 2000));
+    .finally(() => { if (poll) setInterval(pollVersion, 2000); });
 }

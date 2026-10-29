@@ -187,7 +187,7 @@ def browser(document: str, groups: bool = False) -> dict:
     marker, or an assembly's parts with their joints under each part. groups=true adds the same
     items as folders (sketches, work features, relations), each with what it belongs to."""
     doc = ws.get(document)
-    t = tree.part_tree(doc.session, groups) if doc.kind == PART else tree.assembly_tree(doc.session, groups)
+    t = tree.part_tree(doc.session, groups) if doc.kind == PART else tree.assembly_tree(doc.session, groups, base=doc.path.parent)
     return {"text": tree.render(t), "tree": t}
 
 

@@ -4863,6 +4863,117 @@ def demo_folder_checks(tmp):
         srv.server_close()
 
 
+def moved_project_checks(tmp):
+    """A project folder moved (or copied to another computer): assemblies still find their parts."""
+    import shutil as _shutil
+    from mechvane import METADATA_KEY, examples
+
+    a = Path(tmp) / "moved" / "before"
+    a.mkdir(parents=True)
+    w = Workspace(a)
+    try:
+        examples.bolted_plates(w)
+        asm = w.open("bolted_plates.solidcraft")
+        stored = asm.session.cmd("document.metadata")["metadata"][METADATA_KEY]
+        files = []
+
+        def walk(v):
+            if isinstance(v, dict):
+                for k, x in v.items():
+                    files.append(x) if k == "file" else walk(x)
+            elif isinstance(v, list):
+                for x in v:
+                    walk(x)
+        walk(stored)
+        # an assembly from before this change, with absolute paths in its metadata
+        legacy = json.loads(json.dumps(stored).replace('"top_plate.solidcraft"', json.dumps(str(a / "top_plate.solidcraft"))))
+        old = w.new(ASSEMBLY, "legacy")
+        old.session.cmd("document.metadata.set", {"key": METADATA_KEY, "value": legacy})
+        old.save()
+    finally:
+        w.close_all()
+    ok("moved project: part files are stored relative to the assembly",
+       files and all(not Path(f).is_absolute() for f in files), str(files[:4]))
+
+    b = Path(tmp) / "moved" / "after"
+    _shutil.move(str(a), str(b))
+    w = Workspace(b)
+    try:
+        asm = w.open("bolted_plates.solidcraft")
+        bad = [c for c in links.check(w, asm) if c.get("status") != "ok"]
+        t = tree.assembly_tree(asm.session, base=asm.path.parent)
+        missing = []
+
+        def walk_tree(n):
+            if n.get("file_missing"):
+                missing.append(n["name"])
+            for ch in n.get("occurrences", []):
+                walk_tree(ch)
+        for n in t.get("occurrences", []):
+            walk_tree(n)
+        r = links.update_links(w, asm)
+        ok("moved project: joints, tree and update_links find every part after the move",
+           not bad and not missing and not r["warnings"], f"{bad[:2]} {missing} {r['warnings'][:2]}")
+        meta = w.open("legacy.solidcraft").metadata()
+        legacy_files = []
+
+        def walk2(v):
+            if isinstance(v, dict):
+                for k, x in v.items():
+                    legacy_files.append(x) if k == "file" else walk2(x)
+            elif isinstance(v, list):
+                for x in v:
+                    walk2(x)
+        walk2(meta)
+        ok("moved project: an older assembly with absolute paths finds its parts by name in its folder",
+           legacy_files and all(Path(f).is_file() for f in legacy_files), str(legacy_files[:3]))
+    finally:
+        w.close_all()
+
+
+def empty_part_mesh_check(tmp):
+    """A new part without bodies yet: the Check page gets an empty mesh, not an error."""
+    from mechvane.ui.mesh import collect_mesh
+    w = Workspace(Path(tmp) / "emptypart")
+    try:
+        doc = w.new(PART, "leer")
+        ok("ui: a part without bodies has an empty mesh", collect_mesh(doc) == {"bodies": []})
+    finally:
+        w.close_all()
+
+
+def single_instance_check(tmp):
+    """A second `mechvane ui` for the same folder opens a window on the running server instead of a new one."""
+    from mechvane.ui import server as ui_server
+    folder = Path(tmp) / "single"
+    folder.mkdir()
+    first = ui_server.create_server(str(folder), port=0)
+    threading.Thread(target=first.serve_forever, daemon=True).start()
+    port = first.server_address[1]
+    try:
+        opened = []
+        ui_server.run_server(str(folder), port=port, opener=lambda url, stop: opened.append(url))
+        other = Path(tmp) / "single-other"
+        other.mkdir()
+        done = threading.Thread(target=ui_server.run_server, args=(str(other),),
+                                kwargs={"port": port, "opener": lambda url, stop: (opened.append(url), stop())}, daemon=True)
+        done.start()
+        done.join(20)
+        ok("ui: same folder again reuses the running server, another folder gets its own",
+           opened[0] == f"http://127.0.0.1:{port}/" and len(opened) == 2 and not opened[1].endswith(f":{port}/")
+           and not done.is_alive(), str(opened))
+    finally:
+        first.shutdown()
+        first.server_close()
+
+
+def split_face_name_check():
+    """SolidCraft 0.25 names the pieces of a split face "F2:top#[edges]": the same face for Mechvane."""
+    ok("links: split-face and numbered variants share the base face name",
+       links._base("F2:top#[F2:side:l1,F3:cbore:side:0]") == "F2:top" and links._base("F2:side#2") == "F2:side"
+       and links._base("F2:top") == "F2:top")
+
+
 def argon_review_finding_6_checks(ws):
     """Argon Finding 6: pattern update follows rotated anchor component."""
     # 1. Circular pattern (3 screws) on Dom + Lid, Dom subsequently rotated 90 deg around Y
@@ -5142,6 +5253,10 @@ def main():
             appwindow_checks(tmp)
             session_env_checks()
             demo_folder_checks(tmp)
+            moved_project_checks(tmp)
+            empty_part_mesh_check(tmp)
+            single_instance_check(tmp)
+            split_face_name_check()
             feature_request_checks(tmp, ws)
             agent_turns_checks(tmp)
             selection_checks(tmp)

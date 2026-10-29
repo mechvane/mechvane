@@ -5,6 +5,22 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0a6] - 2026-10-29
+
+### Fixed
+
+- **Moving a project folder** (or copying it to another computer) no longer breaks assemblies:
+  joints, subassemblies and bolted connections stored the full path of each part file, so after a
+  move every joint reported `file_missing`. Part files are now stored relative to the assembly.
+  Assemblies saved by earlier versions find their parts by name in their own folder.
+- An empty project folder (the first start from the start menu entry) showed "Connection lost".
+  The Check page now says how to make the first part and opens it as soon as it exists.
+- The Check page showed an error for a new part that has no bodies yet; it now shows it empty.
+- Clicking the start menu entry again started another Mechvane each time. A second `mechvane ui` for
+  the same file or folder now opens a window on the one already running.
+- Bolted connections on a face split with `solid.split_face` no longer report their anchor as lost
+  (SolidCraft 0.25 names the pieces `F2:top#[…]`); the piece under the fastener is used.
+
 ## [0.1.0a5] - 2026-10-29
 
 ### Fixed
@@ -108,6 +124,7 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a6]: https://github.com/mechvane/mechvane/compare/v0.1.0a5...v0.1.0a6
 [0.1.0a5]: https://github.com/mechvane/mechvane/compare/v0.1.0a4...v0.1.0a5
 [0.1.0a4]: https://github.com/mechvane/mechvane/compare/v0.1.0a3...v0.1.0a4
 [0.1.0a3]: https://github.com/mechvane/mechvane/compare/v0.1.0a2...v0.1.0a3

@@ -77,6 +77,8 @@ def _body_faces(session, body_name: str) -> list[dict]:
 def collect_mesh(doc_or_session, tmp_dir=None) -> dict:
     """Export the open design as 3mf-tagged and attach B-rep face names per body."""
     session = getattr(doc_or_session, "session", doc_or_session)
+    if not session.cmd("document.inspect", {"measure": False}).get("bodies"):
+        return {"bodies": []}  # a new, still empty part: nothing to export yet
     export_dir = _allowed_export_dir(doc_or_session, tmp_dir=tmp_dir)
     export_dir.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix="ui1-", suffix=".3mf", dir=str(export_dir))

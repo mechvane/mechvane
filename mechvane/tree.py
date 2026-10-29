@@ -3,7 +3,7 @@ the end-of-part marker; an assembly's occurrences with their joints under each o
 
 from pathlib import Path
 
-from . import read_metadata
+from . import files_on_disk, read_metadata
 from .sketch_rule import consumers, is_work_feature, owners, timeline
 
 
@@ -57,13 +57,16 @@ def part_tree(s, groups=False):
     return out
 
 
-def assembly_tree(s, groups=False):
+def assembly_tree(s, groups=False, base=None):
+    """base: the assembly's folder, for part files stored relative to it."""
     comps = s.cmd("component.list")["components"]
     by_id = {c["id"]: c for c in comps}
     root = next(c for c in comps if c["parent"] is None)
     links = {link["component"]: link for link in s.cmd("component.links").get("links", [])}
     joints = s.cmd("joint.list").get("joints", [])
     meta = read_metadata(s.cmd("document.metadata").get("metadata"))
+    if base is not None:
+        meta = files_on_disk(meta, base)
     subs = {}
     for k, info in (meta.get("subassemblies") or {}).items():
         subs[info.get("component")] = info
@@ -87,7 +90,8 @@ def assembly_tree(s, groups=False):
                 n["file_missing"] = True
         elif sub and sub.get("file"):
             n["file"] = sub.get("path") or Path(sub["file"]).name
-            if not Path(sub["file"]).is_file():
+            # a relative path without `base` can't be checked here
+            if Path(sub["file"]).is_absolute() and not Path(sub["file"]).is_file():
                 n["file_missing"] = True
         mine = []
         for j in joints:

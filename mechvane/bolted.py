@@ -679,6 +679,9 @@ def _resolve_anchor(ws, doc, anchor: dict) -> tuple[str, list[float] | None, lis
     if not named:
         return "anchor_lost", None, None
     f = named[0]
+    if len(named) > 1 and anchor.get("local_pos"):
+        # the face was split (solid.split_face): the piece the fastener sits on
+        f = min(named, key=lambda fc: g.norm(g.sub(fc.get("centroid") or fc.get("point") or [0, 0, 0], anchor["local_pos"])))
 
     kind = anchor.get("kind")
     if kind == "cylinder":
