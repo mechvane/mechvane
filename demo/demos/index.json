@@ -1,0 +1,16 @@
+{
+ "demos": [
+  {
+   "name": "bolted_plates",
+   "title": "Bolted connection (assembly)"
+  },
+  {
+   "name": "bracket",
+   "title": "Bracket with a design check finding"
+  },
+  {
+   "name": "flange",
+   "title": "Parametric flange"
+  }
+ ]
+}

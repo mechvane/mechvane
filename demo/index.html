@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-static="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechvane Web-UI</title>
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/build/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand"><img class="brand-logo" src="logo.svg" alt="">Mechvane</span>
+      <span id="doc-name" class="doc-name">—</span>
+      <span id="doc-kind" class="badge badge-neutral" hidden></span>
+      <span id="doc-path" class="doc-path"></span>
+      <span class="mode-switch"><strong>Check</strong> <a id="mode-model" href="model">Model by hand</a></span>
+    </div>
+    <div id="demo-bar" class="demo-bar" hidden>
+      <label for="demo-select">Example</label>
+      <select id="demo-select"></select>
+      <a href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-request-feature" type="button" class="btn-text">Request a feature</button>
+      <span id="verdict-badge" class="badge" hidden></span>
+      <span id="status-indicator" class="status-text">Ready</span>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="panel panel-left" aria-label="Model tree">
+      <div class="panel-header">
+        <h2>Model tree</h2>
+      </div>
+      <div id="tree-content" class="panel-body">
+        <div class="empty-state">Loading model tree…</div>
+      </div>
+      <section id="params-section" class="params-section" hidden>
+        <div class="panel-header">
+          <h2>Parameters</h2>
+          <button id="params-apply" type="button" class="btn-text" disabled>Apply</button>
+        </div>
+        <form id="params-form" class="panel-body params-body"></form>
+        <div id="params-error" class="params-error" hidden></div>
+      </section>
+    </aside>
+
+    <main class="viewport-container" aria-label="3D-Ansicht">
+      <div id="viewport" class="viewport"></div>
+      <div id="selection-banner" class="selection-banner" hidden></div>
+      <div class="viewport-hint">Z ↑ · Left: rotate · Right: pan · Wheel: zoom</div>
+    </main>
+
+    <aside class="panel panel-right" aria-label="Findings">
+      <div class="panel-header">
+        <h2>Findings</h2>
+        <span id="findings-count" class="count-pill">0</span>
+      </div>
+      <div id="rule-setup" class="rule-setup" hidden>
+        <select id="rule-profile" aria-label="Manufacturing profile"></select>
+        <select id="rule-material" aria-label="Material" title="Material: thread engagement depth follows it"></select>
+      </div>
+      <div id="findings-summary" class="findings-summary" hidden></div>
+      <div id="findings-content" class="panel-body">
+        <div class="empty-state">Loading findings…</div>
+      </div>
+      <section id="agent-chat" class="chat-panel" hidden aria-label="Agent">
+        <div class="panel-header">
+          <h2>Agent</h2>
+          <span class="chat-actions">
+            <button type="button" class="btn-text chat-undo" hidden title="Undo the agent's last turn"></button>
+            <button type="button" class="btn-text chat-redo" hidden title="Put the undone turn back">↷ Redo</button>
+          </span>
+        </div>
+        <ul class="chat-log" aria-live="polite"></ul>
+        <div class="chat-composer">
+          <textarea class="chat-input" rows="2" placeholder="Select faces (Select tool), then say what to do, e.g. &quot;a 1 × 45° chamfer here&quot;"></textarea>
+          <button type="button" class="mic-btn" hidden title="Hold to speak" aria-label="Hold to speak">🎤</button>
+          <button type="button" class="send-btn" title="Send" aria-label="Send">↑</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script type="module" src="request.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

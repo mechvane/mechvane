@@ -1,0 +1,289 @@
+{
+  "title": "Mechvane roadmap",
+  "tagline": "You and your agent on the same model.",
+  "milestone": {
+    "name": "v0.1",
+    "goal": "The foundations run, with a good web UI for working together with your agent: the agent builds, you see, point and check."
+  },
+  "statuses": {
+    "done": "Available",
+    "next": "Done, in the next release",
+    "progress": "In progress",
+    "planned": "Planned",
+    "later": "Later"
+  },
+  "sections": [
+    {
+      "title": "Foundation",
+      "intro": "Mechvane builds on SolidCraft, an open parametric CAD kernel and app where everything is a command. SolidCraft stays unchanged; Mechvane adds its own layer on top.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Built on SolidCraft",
+          "text": "Parametric modelling, sketches, features and assemblies from SolidCraft, used as a dependency without changes.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Parts and assemblies as separate files",
+          "text": "One file per part, assemblies link their parts like in classic mechanical CAD.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Joints that survive part changes",
+          "text": "update_links notices when a joint moved to another face after a part edit and puts it back.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "MCP server for your agent",
+          "text": "Parts, assemblies, joints, standard parts and design checks as tools for Claude and other agents.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Install in one step",
+          "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Own app window and start menu entry",
+          "text": "Opens like a desktop app, one instance per project folder.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Stable 0.1 release",
+          "text": "Tested in practice on Linux and Windows, rough edges fixed, a release you can rely on.",
+          "milestone": "v0.1"
+        }
+      ]
+    },
+    {
+      "title": "Web UI",
+      "intro": "Model by hand, let your agent take a step, check the result: all on the same model.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Check page",
+          "text": "3D view, model tree and design findings; reloads when the file changes.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Model by hand",
+          "text": "The SolidCraft web app embedded in Mechvane, saving back into your project.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Live demo in the browser",
+          "text": "Example models at mechvane.dev, nothing to install.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Request a feature from the app",
+          "text": "A short form that opens a prepared GitHub issue.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Parameters",
+          "text": "Change parameters and dimensions in a form; several changes apply together or not at all.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Measure",
+          "text": "Distances, gaps between faces, angles, hole diameters and axis distances by clicking in the 3D view.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Measure edges",
+          "text": "Click an edge for its length, a circle's diameter or an arc's radius; two edges give their angle, gap or whether they are coaxial.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Section view",
+          "text": "Cut the model along X, Y or Z with a slider.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Profile and material for the checks",
+          "text": "Choose how the part is made and what it is made of.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Chat with your agent",
+          "text": "Your agent works in the same window, on the Check page and in Model by hand, with stop, undo and redo for each turn.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "progress",
+          "title": "Point and speak",
+          "text": "Select a face and say what should happen there, e.g. \"chamfer 1 × 45°\". Speech input works; testing on devices.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Own interface, SolidCraft in the background",
+          "text": "One consistent UI for modelling, checking and talking to your agent."
+        },
+        {
+          "status": "planned",
+          "title": "Online version and Android app",
+          "text": "Look at and change your models on the go."
+        }
+      ]
+    },
+    {
+      "title": "Engineering knowledge",
+      "intro": "Rules and values with their sources, so the checks do not guess and your agent proposes what an experienced engineer would.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Design checks",
+          "text": "Wall thickness, hole edge distance, thread depth and printability, for 3D printing and CNC milling.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Standard parts",
+          "text": "Generated on demand: socket and countersunk screws, hex bolts, nuts, washers, ball bearings, heat-set inserts.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Bolted connection assistant",
+          "text": "Through holes, tapped blind holes and heat-set inserts with matching screw, washer and nut.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Thread depth by material",
+          "text": "Checks use the material assigned to the part, e.g. 1.0 × d in steel, 2.0 × d in soft aluminium."
+        },
+        {
+          "status": "progress",
+          "title": "Open knowledge catalog",
+          "text": "Every value with its source, quotation and status, checked automatically against the source."
+        },
+        {
+          "status": "progress",
+          "title": "Material database",
+          "text": "28 materials so far (steels, stainless steels, aluminium alloys and casting, cast iron, copper, brass, engineering plastics and 3D-printing materials), every value with its source, ready to assign in SolidCraft as a material library."
+        },
+        {
+          "status": "planned",
+          "title": "Rules from material properties",
+          "text": "Minimum thread depth, edge distance and contact pressure calculated from strength values instead of fixed tables."
+        },
+        {
+          "status": "planned",
+          "title": "Material and appearance editor",
+          "text": "Material and look per part, in an open format you can render 1:1 in Blender."
+        }
+      ]
+    },
+    {
+      "title": "Domain modules",
+      "intro": "Loaded only when a document needs them.",
+      "items": [
+        {
+          "status": "planned",
+          "title": "Frame generator",
+          "text": "Aluminium profile frames (20/30/40 slot) and steel sections with connectors."
+        },
+        {
+          "status": "planned",
+          "title": "Design accelerators",
+          "text": "Shafts, gears, springs and more as guided assistants."
+        },
+        {
+          "status": "planned",
+          "title": "Sheet metal additions",
+          "text": "Rules and helpers on top of SolidCraft's sheet metal."
+        },
+        {
+          "status": "planned",
+          "title": "Slicer module",
+          "text": "Slice and send parts to your 3D printer from Mechvane."
+        },
+        {
+          "status": "planned",
+          "title": "Rule-based configuration",
+          "text": "Parameter rules and configuration tables for families of parts."
+        },
+        {
+          "status": "planned",
+          "title": "Welding",
+          "text": "Weld seams as features (fillet and butt welds), weldments and ISO 2553 weld symbols in drawings."
+        }
+      ]
+    },
+    {
+      "title": "Manufacturing drawings",
+      "intro": "ISO drawings straight from the 3D model.",
+      "items": [
+        {
+          "status": "planned",
+          "title": "Views",
+          "text": "Base, projected, section and detail views with hidden lines."
+        },
+        {
+          "status": "planned",
+          "title": "Dimensions and tolerances",
+          "text": "Fits, thread representation, surface symbols, geometric tolerances to ISO."
+        },
+        {
+          "status": "planned",
+          "title": "Title block and parts list",
+          "text": "Title block, parts list and balloons."
+        },
+        {
+          "status": "planned",
+          "title": "Drawings by your agent",
+          "text": "Your agent derives a drawing ready for manufacturing and checks it for missing or duplicate dimensions."
+        },
+        {
+          "status": "planned",
+          "title": "PDF and DXF export",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "title": "Later",
+      "intro": "As plugins, when there is a need.",
+      "items": [
+        {
+          "status": "later",
+          "title": "FEM bridge",
+          "text": "Stress analysis via CalculiX."
+        },
+        {
+          "status": "later",
+          "title": "Motion simulation",
+          "text": ""
+        },
+        {
+          "status": "later",
+          "title": "Rendering via Blender",
+          "text": ""
+        },
+        {
+          "status": "later",
+          "title": "CAM bridge",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}
