@@ -8,7 +8,7 @@
 > **Ungeklärt:** Bei drei Werkstoffen passt τ_B nicht zum angegebenen Verhältnis τ_B/R_m:
 > S235JR 264 statt 0,80·360 = 288, S355J2 360 statt 0,80·470 = 376, 42CrMo4 488 statt 0,65·1100 = 715 MPa.
 > Alle drei liegen auf der sicheren Seite (größere Einschraubtiefe), vor einer Nutzung in Regeln aber
-> klären. Fast alle Werte sind Richtwerte über VDI-2230-Verhältnisse, nur EN-GJL-250 ist doppelt belegt.
+> klären (**geklärt** in `2026-10-29-scherfestigkeit-korrektur-flash.md`, #17). Fast alle Werte sind Richtwerte über VDI-2230-Verhältnisse, nur EN-GJL-250 ist doppelt belegt.
 
 > **Prüfnotiz (Gemini 3.8 Flash, 2026-10-29):** Recherchebericht zu Issue #16 als Fortführung und Klärung der offenen Fragen aus `docs/research/2026-10-29-regeln-aus-kennwerten-flash.md` (Issue #14) und Ergänzung der Werkstoffdatenbank (`katalog/eintraege/werkstoffe/`, Issue #13).
 > Alle Quellen sind über `tools/check_sources.py` nachweisbar, Zitate sind wörtlich belegt, Zahlenwerte im Quelltext nachgewiesen.

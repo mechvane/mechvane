@@ -4959,7 +4959,7 @@ def params_checks(tmp):
 
 
 VIEWTOOLS_TEST = r"""
-import { faceInfo } from "./viewtools.js";
+import { faceInfo, bodyEdges, edgeInfo } from "./viewtools.js";
 // a cylinder r 8 around (30, 20) along Z, split into two half faces like SolidCraft's seam, and a flat face
 const positions = [], indices = [], face_ids = [];
 const n = 48;
@@ -4982,6 +4982,27 @@ console.log(JSON.stringify({
   r: half.radius, axisZ: Math.abs(half.axis.z), cx: half.center.x, cy: half.center.y, r2: other.radius,
   flatNormalZ: flat.normal && Math.abs(flat.normal.z), flatArea: flat.area, flatRadius: flat.radius ?? null,
 }));
+// edges: a bottom disc (face 3) under the two half faces gives two half circles; the seam is a straight edge
+const disc = positions.length / 3;
+positions.push(30, 20, 0);
+for (let i = 0; i < n; i++) { indices.push(disc, 2 * i + 2, 2 * i); face_ids.push(3); }
+const edges = bodyEdges(body);
+const pickOf = (fa, fb) => edges.find((e) => e.faces[0] === fa && e.faces[1] === fb);
+const hole = edgeInfo(edges, pickOf(0, 3)), seam = edgeInfo(edges, pickOf(0, 1));
+// only the first half (its cylinder face and the disc under it): a half circle stays an arc
+const keep = [...Array(face_ids.length).keys()].filter((t) => face_ids[t] === 0 || (face_ids[t] === 3 && t - face_ids.indexOf(3) < n / 2));
+const halfBody = { positions, indices: keep.flatMap((t) => indices.slice(3 * t, 3 * t + 3)), face_ids: keep.map((t) => face_ids[t]) };
+const halfEdges = bodyEdges(halfBody);
+const arc = edgeInfo(halfEdges, halfEdges.find((e) => e.faces[0] === 0 && e.faces[1] === 3));
+// one cylinder face (seam vertices repeated, not shared) on the disc: one closed circle
+const one = { positions, indices, face_ids: face_ids.map((f) => (f === 1 ? 0 : f)) };
+const oneEdges = bodyEdges(one);
+const ring = edgeInfo(oneEdges, oneEdges.find((e) => e.faces[0] === 0 && e.faces[1] === 3));
+console.log(JSON.stringify({
+  arcKind: arc.kind, arcR: arc.radius, arcAngle: arc.angle, holeKind: hole.kind, holeR: hole.radius, seamKind: seam.kind, seamLength: seam.length,
+  seamDirZ: seam.dir && Math.abs(seam.dir.z), ringKind: ring.kind, ringR: ring.radius, ringCx: ring.center?.x,
+  ringAxisZ: ring.axis && Math.abs(ring.axis.z),
+}));
 """
 
 
@@ -5003,9 +5024,15 @@ def viewtools_checks(tmp):
     (d / "t.js").write_text(VIEWTOOLS_TEST)
     run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
     try:
-        r = json.loads(run.stdout)
+        r, e = (json.loads(line) for line in run.stdout.splitlines()[:2])
     except ValueError:
-        r = {}
+        r, e = {}, {}
+    ok("viewtools: edges, half circle as arc R 8 / 180°, two half faces as one circle, seam as straight edge 20 mm, "
+       "closed circle over a repeated seam",
+       e.get("holeKind") == "circle" and abs(e.get("holeR", 0) - 8) < 1e-3 and e.get("arcKind") == "arc" and abs(e.get("arcR", 0) - 8) < 1e-3 and abs(e.get("arcAngle", 0) - 180) < 0.5
+       and e.get("seamKind") == "line" and abs(e.get("seamLength", 0) - 20) < 1e-6 and e.get("seamDirZ") == 1
+       and e.get("ringKind") == "circle" and abs(e.get("ringR", 0) - 8) < 1e-3 and abs(e.get("ringCx", 0) - 30) < 1e-3
+       and e.get("ringAxisZ", 0) > 0.9999, f"{e} {run.stderr[-300:]}")
     ok("viewtools: cylinder Ø, axis and centre from a half face, plane normal and area",
        abs(r.get("r", 0) - 8) < 1e-3 and abs(r.get("r2", 0) - 8) < 1e-3 and r.get("axisZ", 0) > 0.9999
        and abs(r.get("cx", 0) - 30) < 1e-3 and abs(r.get("cy", 0) - 20) < 1e-3

@@ -103,6 +103,12 @@
         },
         {
           "status": "done",
+          "title": "Measure edges",
+          "text": "Click an edge for its length, a circle's diameter or an arc's radius; two edges give their angle, gap or whether they are coaxial.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
           "title": "Section view",
           "text": "Cut the model along X, Y or Z with a slider.",
           "milestone": "v0.1"

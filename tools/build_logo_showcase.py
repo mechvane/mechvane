@@ -93,6 +93,41 @@ def m_face_points():
     return sides, welds
 
 
+M_CORNERS = [[21, 22], [35, 22], [65, 22], [79, 22], [21, 78], [79, 78]]  # rounded r 2.5 (MCorners)
+M_CHAMFERS = [[21, 50, -1, 0], [79, 50, 1, 0], [28, 22, 0, -1], [72, 22, 0, -1]]  # edge middle, outward
+
+
+def m_round_points():
+    """A point in the middle of each corner rounding and of each top chamfer of the M."""
+    pts = []
+    for c in M_CORNERS:
+        i = M_OUTLINE.index(c)
+        prev, nxt = M_OUTLINE[i - 1], M_OUTLINE[(i + 1) % len(M_OUTLINE)]
+        bx = (prev[0] - c[0]) / abs(prev[0] - c[0] or 1) + (nxt[0] - c[0]) / abs(nxt[0] - c[0] or 1)
+        by = (prev[1] - c[1]) / abs(prev[1] - c[1] or 1) + (nxt[1] - c[1]) / abs(nxt[1] - c[1] or 1)
+        d = 2.5 * (2 ** 0.5 - 1) / 2 ** 0.5     # arc middle of an r 2.5 rounding, per axis
+        pts.append([c[0] + d * bx, c[1] + d * by, 11])
+        e = d + 0.4 / 2 ** 0.5                   # the chamfer carried round the rounding, 0.4 in and down
+        pts.append([c[0] + e * bx, c[1] + e * by, 15.6])
+    for x, y, nx, ny in M_CHAMFERS:
+        pts.append([x - 0.4 * nx, y - 0.4 * ny, 15.6])
+    return pts
+
+
+def m_weld_corner_points():
+    """A point on the weld fillet (r 2) where it runs round each corner rounding of the M, at its foot."""
+    pts = []
+    for c in M_CORNERS:
+        i = M_OUTLINE.index(c)
+        prev, nxt = M_OUTLINE[i - 1], M_OUTLINE[(i + 1) % len(M_OUTLINE)]
+        bx = (prev[0] - c[0]) / abs(prev[0] - c[0] or 1) + (nxt[0] - c[0]) / abs(nxt[0] - c[0] or 1)
+        by = (prev[1] - c[1]) / abs(prev[1] - c[1] or 1) + (nxt[1] - c[1]) / abs(nxt[1] - c[1] or 1)
+        w = 2.0 - 2.0 * 0.5 ** 0.5                 # the weld's middle at 45°, out from the rounding
+        e = 2.5 * (2 ** 0.5 - 1) / 2 ** 0.5 - w / 2 ** 0.5
+        pts.append([c[0] + e * bx, c[1] + e * by, 6 + w])
+    return pts
+
+
 def m_profile():
     """The M joined onto the plate, 10 mm high: rounded upright corners, chamfered outer top edges."""
     return [
@@ -128,9 +163,9 @@ try:
     library_material(m, "S235JR", ["Plate"])
     m.session.cmd("appearance.assign", dict(bodies=["Plate"], **look("coat_dark")))
     sides, welds = m_face_points()
-    m.session.cmd("appearance.assign", dict(faces=sides + [[28, 40, 16], [72, 40, 16], [50, 52, 16]], body="Plate",
+    m.session.cmd("appearance.assign", dict(faces=sides + m_round_points() + [[28, 40, 16], [72, 40, 16], [50, 52, 16]], body="Plate",
                                             **look("coat_light")))
-    m.session.cmd("appearance.assign", dict(faces=welds, body="Plate", **look("weld")))
+    m.session.cmd("appearance.assign", dict(faces=welds + m_weld_corner_points(), body="Plate", **look("weld")))
     m.save()
 
     # Spacer: Ø8 × 2 mm washer-like disc

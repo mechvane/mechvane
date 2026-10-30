@@ -107,8 +107,8 @@
         <div class="chat-head">
           <h2>Agent</h2>
           <div class="chat-head-actions">
-            <button id="chat-undo" type="button" hidden title="Undo the agent's last turn"></button>
-            <button id="chat-redo" type="button" hidden title="Put the undone turn back">↷ Redo</button>
+            <button id="chat-undo" class="chat-undo" type="button" hidden title="Undo the agent's last turn"></button>
+            <button id="chat-redo" class="chat-redo" type="button" hidden title="Put the undone turn back">↷ Redo</button>
           </div>
         </div>
         <ul id="chat-log" class="chat-log" aria-live="polite"></ul>
@@ -134,6 +134,7 @@
     </aside>
   </div>
 <script type="module">
+import { initAgentChat } from "./chat.js";
 // "Model" mode: the SolidCraft web app edits the document in the browser's private file storage
 // (OPFS, read by the app at start as /opfs/<name>). This page puts the server's files there before
 // the app loads, opens the document and sends every file the app saves back to the server.
@@ -143,7 +144,6 @@ const known = new Map();
 let app = null;  // window.solidcraft of the embedded app, once it has started
 let paused = false;  // no sending saved files to the server while the agent works on them
 let ctx = null;  // {meta, dir, frame}: the files the app edits, their OPFS folder and the app's iframe
-let spokenSelection = null;  // the selection when the microphone was pressed: what "here" meant
 // Static mode (live demo on GitHub Pages): the example's files and precomputed findings under
 // demos/<name>/, nothing is sent back.
 const STATIC = document.documentElement.dataset.static === "1";
@@ -389,10 +389,9 @@ async function reloadFromServer() {
   status("Ready");
 }
 
-// The agent chat (ADR 0003): one turn at a time on the files; the app is locked meanwhile.
+// The agent chat (ADR 0003, chat.js): one turn at a time on the files; the app is locked meanwhile.
 function initChat() {
   const $ = (id) => document.getElementById(id);
-  $("chat").hidden = false;
   // Chat fills the side panel; findings move into a collapsible part below it
   document.querySelector(".model-side").classList.add("has-chat");
   const details = document.createElement("details");
@@ -404,184 +403,32 @@ function initChat() {
   $("checks").replaceWith(details);
   for (const h of details.querySelectorAll("h2")) if (h.textContent === "Findings") h.remove();
 
-  const log = $("chat-log");
-  let next = 0, busy = false, agentText = null, working = null;
-  const add = (cls, text) => {
-    const li = document.createElement("li");
-    li.className = cls;
-    li.textContent = text;
-    (working ? working.before(li) : log.append(li));
-    log.scrollTop = log.scrollHeight;
-    return li;
-  };
-  const tools = new Map();
-  const show = (state) => {
-    busy = state.busy;
-    const btn = $("chat-send");
-    btn.classList.toggle("stop", busy);
-    btn.textContent = busy ? "■" : "↑";
-    btn.title = busy ? "Stop" : "Send";
-    $("chat-undo").hidden = busy || !state.undo;
-    $("chat-undo").textContent = state.undo ? "↶ Undo: " + state.undo : "";
-    if (busy && !working) { working = document.createElement("li"); working.className = "working"; working.textContent = "Working…"; log.append(working); }
-    if (!busy && working) { working.remove(); working = null; }
-    ctx.frame.style.pointerEvents = busy ? "none" : "";
-    ctx.frame.style.opacity = busy ? ".6" : "";
-  };
-  let polling = false;
-  async function poll(initial = false) {
-    if (polling) return;
-    polling = true;
-    try {
-      for (;;) {
-        const st = await (await fetch("api/agent/events?since=" + next)).json();
-        next = st.next;
-        let reload = false;
-        for (const e of st.events) {
-          if (e.type === "user") {
-            agentText = null;
-            const li = add("you", e.text);
-            if (e.selected) {
-              const sel = document.createElement("span");
-              sel.className = "sel";
-              sel.textContent = e.selection_names && e.selection_names.length
-                ? "Selected: " + e.selection_names.join(", ") : `${e.selected} selected in the model`;
-              li.append(sel);
-            }
-          } else if (e.type === "text") {
-            if (!agentText) agentText = add("agent", "");
-            agentText.textContent += e.text;
-          } else if (e.type === "tool" && e.tool) {
-            agentText = null;
-            tools.set(e.id, add("tool running", e.tool));
-          } else if (e.type === "tool" && tools.has(e.id)) {
-            const el = tools.get(e.id);
-            el.className = "tool " + (e.status === "failed" ? "failed" : "ok");
-            if (e.status === "failed" && e.error) el.title = e.error, el.textContent += ` – ${e.error.slice(0, 160)}`;
-          } else if (e.type === "declined") {
-            agentText = null;
-            add("tool declined", `${e.tool}: declined, ${e.reason}`);
-          } else if (e.type === "done") {
-            agentText = null;
-            reload = e.changed.length > 0 || e.removed.length > 0;
-            add("note", reload ? "✓ Changed " + [...e.changed, ...e.removed].join(", ") : "No files changed");
-          } else if (e.type === "status" && e.status === "stopped") {
-            add("note", "Stopped. The files are as before this message.");
-            reload = true;
-          } else if (e.type === "error") {
-            add("err", `Error: ${e.error}. The files are as before this message.`);
-            reload = true;
-          } else if (e.type === "undone" || e.type === "redone") {
-            add("note", e.type === "undone" ? "↶ Undone" : "↷ Redone");
-            reload = true;
-          }
-        }
-        show(st);
-        if (st.busy) $("chat-redo").hidden = true;
-        if (reload && !initial) await reloadFromServer();  // on page load the app already has these files
-        if (!st.busy) break;
-        await sleep(700);
-      }
-    } finally {
-      polling = false;
-      paused = false;
-    }
-  }
-  async function send() {
-    const text = $("chat-input").value.trim();
-    if (!text || busy) return;
-    paused = true;
-    try {
-      // The agent works on the server's files: save what is in the app first and wait until it is there
-      await app.execute("file.save", {});
-      await sleep(300);
-      await syncSaved();
-    } catch (e) {
-      paused = false;
-      status("Could not save before sending: " + e.message);
-      return;
-    }
+  initAgentChat({
+    root: $("chat"),
     // The selection in Mechvane's names (face name, feature, click point), for the agent
-    let sel = spokenSelection || await app.request("ui.selection", {}).then((r) => r.selection || []).catch(() => []);
-    spokenSelection = null;
-    if (sel.length) {
-      const rr = await fetch("api/resolve_selection", { method: "POST", body: JSON.stringify({ items: sel }) });
-      if (rr.ok) sel = (await rr.json()).selection;
-    }
-    $("chat-input").value = "";
-    const r = await fetch("api/agent/send", { method: "POST", body: JSON.stringify({ text, selection: sel }) });
-    const res = await r.json();
-    if (!r.ok) { add("err", res.error); paused = false; return; }
-    show({ busy: true, undo: null });
-    poll();
-  }
-  async function act(path, label) {
-    paused = true;
-    const r = await fetch("api/agent/" + path, { method: "POST", body: "{}" });
-    const res = await r.json();
-    if (!r.ok) {
-      paused = false;
-      if (r.status === 409 && path === "undo" && confirm(res.error + "\n\nUndo anyway?")) {
-        await fetch("api/agent/undo", { method: "POST", body: JSON.stringify({ force: true }) });
-      } else { add("err", label + ": " + res.error); return; }
-    }
-    if (path === "undo") $("chat-redo").hidden = false;
-    if (path === "redo") $("chat-redo").hidden = true;
-    await poll();
-  }
-  $("chat-send").addEventListener("click", () => (busy ? fetch("api/agent/stop", { method: "POST", body: "{}" }) : send()));
-  $("chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-  initSpeech($("chat-mic"), $("chat-input"), $("chat-hint"));
-  $("chat-undo").addEventListener("click", () => act("undo", "Undo"));
-  $("chat-redo").addEventListener("click", () => act("redo", "Redo"));
-  poll(true);
-}
-// Hold the microphone button and speak (ADR 0003, 4): the browser's speech recognition, then
-// Mechvane's clean-up (numbers, units, "Fase", names in the model) on the server.
-function initSpeech(btn, input, hint) {
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Rec) return;  // Firefox, WebKitGTK: type instead (Whisper on the server comes later)
-  btn.hidden = false;
-  const KEY = "mechvane.speech.ok";
-  const allowed = () => { try { return localStorage.getItem(KEY) === "1"; } catch { return false; } };
-  let rec = null, heard = "", before = "";
-  const start = (e) => {
-    e.preventDefault();
-    if (!allowed()) {
-      if (!confirm("Speech input uses your browser's online speech service (Google for Chrome, Microsoft for Edge): what you say is sent there to be written down. Turn it on?")) return;
-      try { localStorage.setItem(KEY, "1"); } catch {}
-    }
-    heard = "";
-    before = input.value;
-    // "da", "here": what was selected when the user started to speak, even if it changes before sending
-    app.request("ui.selection", {}).then((r) => { if ((r.selection || []).length) spokenSelection = r.selection; }).catch(() => {});
-    rec = new Rec();
-    rec.lang = "de-DE";
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onresult = (ev) => {
-      let final = "", interim = "";
-      for (const r of ev.results) (r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript));
-      heard = final || interim;
-      input.value = (before ? before + " " : "") + heard;
-    };
-    rec.onerror = (ev) => { hint.textContent = "Speech: " + ev.error; };
-    rec.onend = async () => {
-      btn.classList.remove("listening");
-      rec = null;
-      if (!heard.trim()) return;
-      const r = await fetch("api/speech", { method: "POST", body: JSON.stringify({ text: heard }) }).catch(() => null);
-      const clean = r && r.ok ? (await r.json()).text : heard;
-      input.value = (before ? before + " " : "") + clean;
-      input.focus();
-    };
-    btn.classList.add("listening");
-    rec.start();
-  };
-  const stop = () => { if (rec) rec.stop(); };
-  btn.addEventListener("pointerdown", start);
-  btn.addEventListener("pointerup", stop);
-  btn.addEventListener("pointerleave", stop);
+    getSelection: () => app.request("ui.selection", {}).then((r) => r.selection || []).catch(() => []),
+    async beforeSend() {
+      paused = true;
+      try {
+        // The agent works on the server's files: save what is in the app first and wait until it is there
+        await app.execute("file.save", {});
+        await sleep(300);
+        await syncSaved();
+        return true;
+      } catch (e) {
+        paused = false;
+        status("Could not save before sending: " + e.message);
+        return false;
+      }
+    },
+    beforeAction: () => { paused = true; },
+    onBusy(busy) {
+      ctx.frame.style.pointerEvents = busy ? "none" : "";
+      ctx.frame.style.opacity = busy ? ".6" : "";
+    },
+    onChanged: reloadFromServer,
+    onIdle: () => { paused = false; },
+  });
 }
 
 main().catch((e) => { status("Error: " + e.message); window.mechvaneError = e.message; });

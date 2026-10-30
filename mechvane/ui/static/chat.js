@@ -1,9 +1,15 @@
-// The agent chat on the Check page (ADR 0003): the same turns, undo and redo as in "Model by hand",
-// with the selection coming from the 3D view's Select tool instead of the SolidCraft app.
+// The agent chat (ADR 0003) on both pages: on the Check page the selection comes from the 3D view's
+// Select tool, in "Model by hand" from the SolidCraft app, which also has to save before each turn.
+//   getSelection()   the selected items (may return a promise)
+//   beforeSend()     before a turn goes out; return false to cancel it
+//   beforeAction()   before undo or redo
+//   onBusy(busy)     the agent started or stopped working
+//   onChanged()      the agent changed files (not called for the turns already there on page load)
+//   onIdle()         nothing is running any more, also after a refused send, undo or redo
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function initAgentChat({ root, getSelection, clearSelection, onChanged }) {
+export function initAgentChat({ root, getSelection, clearSelection, beforeSend, beforeAction, onBusy, onChanged, onIdle }) {
   const $ = (sel) => root.querySelector(sel);
   const log = $(".chat-log");
   const input = $(".chat-input");
@@ -36,9 +42,12 @@ export function initAgentChat({ root, getSelection, clearSelection, onChanged })
       log.append(working);
     }
     if (!busy && working) { working.remove(); working = null; }
+    if (onBusy) onBusy(busy);
   };
+  const idle = () => { if (onIdle) onIdle(); };
+  const selected = async () => (getSelection ? (await getSelection()) || [] : []);
 
-  async function poll() {
+  async function poll(initial = false) {
     if (polling) return;
     polling = true;
     try {
@@ -87,19 +96,21 @@ export function initAgentChat({ root, getSelection, clearSelection, onChanged })
         }
         show(st);
         if (st.busy) redoBtn.hidden = true;
-        if (changed && onChanged) await onChanged();
+        if (changed && onChanged && !initial) await onChanged();  // on page load the view has these files
         if (!st.busy) break;
         await sleep(700);
       }
     } finally {
       polling = false;
+      idle();
     }
   }
 
   async function send() {
     const text = input.value.trim();
     if (!text || busy) return;
-    let sel = spoken || (getSelection ? getSelection() : []);
+    if (beforeSend && (await beforeSend()) === false) return;
+    let sel = spoken || await selected();
     spoken = null;
     if (sel.length) {
       const rr = await fetch("api/resolve_selection", { method: "POST", body: JSON.stringify({ items: sel }) });
@@ -108,16 +119,18 @@ export function initAgentChat({ root, getSelection, clearSelection, onChanged })
     input.value = "";
     const r = await fetch("api/agent/send", { method: "POST", body: JSON.stringify({ text, selection: sel }) });
     const res = await r.json();
-    if (!r.ok) { add("err", res.error); return; }
+    if (!r.ok) { add("err", res.error); idle(); return; }
     if (clearSelection) clearSelection();
     show({ busy: true, undo: null });
     poll();
   }
 
   async function act(path, label) {
+    if (beforeAction) beforeAction();
     const r = await fetch("api/agent/" + path, { method: "POST", body: "{}" });
     const res = await r.json();
     if (!r.ok) {
+      idle();
       if (r.status === 409 && path === "undo" && confirm(res.error + "\n\nUndo anyway?")) {
         await fetch("api/agent/undo", { method: "POST", body: JSON.stringify({ force: true }) });
       } else { add("err", label + ": " + res.error); return; }
@@ -131,15 +144,16 @@ export function initAgentChat({ root, getSelection, clearSelection, onChanged })
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
   undoBtn.addEventListener("click", () => act("undo", "Undo"));
   redoBtn.addEventListener("click", () => act("redo", "Redo"));
-  initSpeech(root.querySelector(".mic-btn"), input, getSelection, (sel) => { spoken = sel; });
+  initSpeech(root.querySelector(".mic-btn"), input, root.querySelector(".composer-hint"), selected,
+    (sel) => { if (sel.length) spoken = sel; });
   root.hidden = false;
-  poll();
+  poll(true);
 }
 
 // Hold the microphone button and speak (ADR 0003, 4): the browser's speech recognition, then Mechvane's
 // clean-up on the server (numbers, units, "Fase", names in the model). The selection at the moment the
 // user starts to speak is the one meant by "here".
-function initSpeech(btn, input, getSelection, keepSelection) {
+function initSpeech(btn, input, hint, selected, keepSelection) {
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!btn || !Rec) return;  // Firefox, WebKitGTK: type instead
   btn.hidden = false;
@@ -154,7 +168,7 @@ function initSpeech(btn, input, getSelection, keepSelection) {
     }
     heard = "";
     before = input.value;
-    if (getSelection) keepSelection(getSelection());
+    selected().then(keepSelection).catch(() => {});
     rec = new Rec();
     rec.lang = "de-DE";
     rec.continuous = true;
@@ -165,6 +179,7 @@ function initSpeech(btn, input, getSelection, keepSelection) {
       heard = final || interim;
       input.value = (before ? before + " " : "") + heard;
     };
+    rec.onerror = (ev) => { if (hint) hint.textContent = "Speech: " + ev.error; };
     rec.onend = async () => {
       btn.classList.remove("listening");
       rec = null;

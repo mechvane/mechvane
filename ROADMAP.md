@@ -180,7 +180,8 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
    (Browser-Spracheingabe oder Whisper), Deutsch und Fachbegriffe wie „Fase 1 × 45°“, „M6“
 3. Parameter im Formular, Öffnen/Speichern, Messen, Schnitt (1–2 Wochen). *Parameterformular, Messen und
    Schnitt auf der Prüfseite fertig 2026-10-29* (`/api/params`; Messen/Schnitt im Browser auf dem Netz,
-   `viewtools.js`). Bohrungen: Ø, Achse, Achsabstand. Offen: Messen an Kanten.
+   `viewtools.js`). Bohrungen: Ø, Achse, Achsabstand. *Messen an Kanten fertig 2026-10-30* (Länge, Kreis-Ø,
+   Bogen R/Winkel, Bohrung aus zwei Halbflächen als ein Kreis; zwei Kanten: Winkel, Abstand, koaxial).
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
    Schritt (2–3 Wochen)
 
@@ -189,8 +190,9 @@ modelliert wird in der eingebetteten SolidCraft-App (1b, geht mit Mechvane-Datei
 2026-10-25). Nach den ersten Praxistests entscheiden, ob mehr nötig ist. Richtung für alle
 UI-Stufen: Bedienung möglichst nah an Inventor (Grundsatz 10).
 
-- [ ] Abgleichliste Inventor ↔ SolidCraft ↔ Mechvane (Register, Befehlsnamen, Tastenkürzel,
-      Browser, Dialoge), Recherche an Gemini, danach entscheiden, was über SolidCraft-
+- [x] Abgleichliste Inventor ↔ SolidCraft ↔ Mechvane (Register, Befehlsnamen, Tastenkürzel,
+      Browser, Dialoge), Recherche an Gemini (*fertig 2026-10-30*,
+      [Bericht](docs/research/2026-10-30-abgleich-inventor-solidcraft-flash.md)), danach entscheiden, was über SolidCraft-
       Einstellungen/Plugins geht und was eine eigene Oberfläche braucht.
 
 **Prüfpunkt Sprache (nach v0.1, spätestens Januar 2027, Nutzer-OK 2026-10-24):** Mechvane bleibt

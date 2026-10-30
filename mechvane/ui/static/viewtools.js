@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 const SECTION_COLOR = 0xd26a0c;
 const MARK_COLOR = 0xffad45;
+const EDGE_PICK_PX = 6;
 
 function fmt(v) {
   return (Math.abs(v) < 5e-4 ? 0 : v).toFixed(2);
@@ -71,6 +72,112 @@ export function faceInfo(body, fid) {
   return { area, axis, center, radius };
 }
 
+// B-rep edges of one body as mesh segments between two different faces: [{a, b, faces: [fa, fb]}].
+// Vertices are matched by position, since a mesh may repeat them along a seam.
+export function bodyEdges(body) {
+  const pos = body.positions;
+  const idx = body.indices;
+  const fids = body.face_ids || [];
+  const key = (v) => [0, 1, 2].map((k) => Math.round(pos[v * 3 + k] * 1e4)).join(",");
+  const seen = new Map();
+  for (let t = 0; t < idx.length / 3; t++) {
+    const fid = fids[t] ?? 0;
+    for (let k = 0; k < 3; k++) {
+      const va = idx[t * 3 + k], vb = idx[t * 3 + (k + 1) % 3];
+      const ka = key(va), kb = key(vb);
+      if (ka === kb) continue;
+      const s = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+      const e = seen.get(s);
+      if (!e) seen.set(s, { a: va, b: vb, ka, kb, faces: [fid] });
+      else if (!e.faces.includes(fid)) e.faces.push(fid);
+    }
+  }
+  return [...seen.values()].filter((e) => e.faces.length === 2).map((e) => ({
+    a: new THREE.Vector3().fromArray(pos, e.a * 3), b: new THREE.Vector3().fromArray(pos, e.b * 3),
+    ka: e.ka, kb: e.kb, faces: e.faces.sort((x, y) => x - y),
+  }));
+}
+
+// The edge through segment `seg` (from bodyEdges): the chain of segments between the same two faces.
+// A straight edge gives its length and direction, a circle or arc its centre, axis and radius.
+export function edgeInfo(edges, seg) {
+  const same = edges.filter((e) => e.faces[0] === seg.faces[0] && e.faces[1] === seg.faces[1]);
+  const at = new Map();
+  for (const e of same) for (const k of [e.ka, e.kb]) at.set(k, [...(at.get(k) || []), e]);
+  // grow the chain from the picked segment in both directions
+  const used = new Set([seg]);
+  const pts = [seg.a, seg.b];
+  const keys = [seg.ka, seg.kb];
+  for (const end of [1, 0]) {
+    for (;;) {
+      const k = end ? keys[keys.length - 1] : keys[0];
+      const next = (at.get(k) || []).find((e) => !used.has(e));
+      if (!next) break;
+      used.add(next);
+      const [nk, np] = next.ka === k ? [next.kb, next.b] : [next.ka, next.a];
+      if (end) { keys.push(nk); pts.push(np); } else { keys.unshift(nk); pts.unshift(np); }
+    }
+  }
+  const closed = keys.length > 3 && keys[0] === keys[keys.length - 1];
+  let length = 0;
+  for (let i = 1; i < pts.length; i++) length += pts[i].distanceTo(pts[i - 1]);
+  const info = { points: pts, length, closed, faces: seg.faces };
+  const first = pts[0], last = pts[pts.length - 1];
+  const chord = new THREE.Vector3().subVectors(last, first);
+  const tol = Math.max(1e-3, 1e-4 * length);
+  if (!closed && chord.length() > tol) {
+    const dir = chord.clone().normalize();
+    const off = (p) => new THREE.Vector3().subVectors(p, first).cross(dir).length();
+    if (pts.every((p) => off(p) < tol)) return { ...info, kind: "line", dir, start: first, end: last };
+  }
+  // circle through three points spread along the chain, then every point must lie on it
+  const n = pts.length - (closed ? 1 : 0);
+  if (n < 3) return { ...info, kind: "curve" };
+  const [p, q, r] = closed ? [pts[0], pts[Math.floor(n / 3)], pts[Math.floor((2 * n) / 3)]]
+    : [first, pts[Math.floor(n / 2)], last];
+  const u = new THREE.Vector3().subVectors(q, p), v = new THREE.Vector3().subVectors(r, p);
+  const axis = new THREE.Vector3().crossVectors(u, v);
+  const a2 = axis.lengthSq();
+  if (a2 < 1e-12) return { ...info, kind: "curve" };
+  // circumcentre: p + ((|u|² v − |v|² u) × (u × v)) / (2 |u × v|²)
+  const center = p.clone().add(new THREE.Vector3().subVectors(v.clone().multiplyScalar(u.lengthSq()),
+    u.clone().multiplyScalar(v.lengthSq())).cross(axis).divideScalar(2 * a2));
+  axis.normalize();
+  const radius = center.distanceTo(p);
+  const rtol = Math.max(0.01 * radius, 1e-3);
+  if (!pts.every((s) => Math.abs(s.distanceTo(center) - radius) < rtol
+      && Math.abs(new THREE.Vector3().subVectors(s, center).dot(axis)) < rtol)) return { ...info, kind: "curve" };
+  // SolidCraft splits a hole into two half faces: carry an arc on over segments that share one of its
+  // faces and stay on the circle, so a hole edge reads as a full circle
+  if (!closed) {
+    const onCircle = (s) => Math.abs(s.distanceTo(center) - radius) < rtol
+      && Math.abs(new THREE.Vector3().subVectors(s, center).dot(axis)) < rtol;
+    const more = edges.filter((e) => !used.has(e) && (e.faces.includes(seg.faces[0]) || e.faces.includes(seg.faces[1]))
+      && onCircle(e.a) && onCircle(e.b));
+    const near = new Map();
+    for (const e of more) for (const k of [e.ka, e.kb]) near.set(k, [...(near.get(k) || []), e]);
+    for (const end of [1, 0]) {
+      for (;;) {
+        const k = end ? keys[keys.length - 1] : keys[0];
+        if (keys.length > 3 && keys[0] === keys[keys.length - 1]) break;
+        const next = (near.get(k) || []).find((e) => !used.has(e));
+        if (!next) break;
+        used.add(next);
+        const [nk, np] = next.ka === k ? [next.kb, next.b] : [next.ka, next.a];
+        if (end) { keys.push(nk); pts.push(np); } else { keys.unshift(nk); pts.unshift(np); }
+      }
+    }
+    info.closed = keys.length > 3 && keys[0] === keys[keys.length - 1];
+  }
+  // the mesh cuts corners: take the arc length and angle from the true circle, not the chords
+  let angle = 0;
+  for (let i = 1; i < pts.length; i++) {
+    angle += new THREE.Vector3().subVectors(pts[i - 1], center).angleTo(new THREE.Vector3().subVectors(pts[i], center));
+  }
+  return { ...info, kind: info.closed ? "circle" : "arc", center, axis, radius, length: angle * radius,
+           angle: THREE.MathUtils.radToDeg(angle) };
+}
+
 export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, selectable = false }) {
   const measureGroup = new THREE.Group();
   scene.add(measureGroup);
@@ -88,7 +195,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   const bar = document.createElement("div");
   bar.className = "view-tools";
   bar.innerHTML = `
-    <button type="button" data-tool="measure" title="Click two points or faces">Measure</button>
+    <button type="button" data-tool="measure" title="Click two points, faces or edges">Measure</button>
     <button type="button" data-tool="section" title="Cut the model with a plane">Section</button>
     <button type="button" data-tool="select" title="Click faces to point the agent at them" hidden>Select</button>
     <span class="section-controls" hidden>
@@ -197,10 +304,56 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     measureGroup.add(m);
   }
 
+  function edgeLines(e) {
+    if (e.kind === "line") return [`Edge length ${fmt(e.length)} mm`, `Direction ${vec(e.dir)}`];
+    if (e.kind === "circle") return [`Circle Ø ${fmt(2 * e.radius)} mm`, `Centre ${fmt(e.center.x)}, ${fmt(e.center.y)}, ${fmt(e.center.z)}`,
+      `Axis ${vec(e.axis)}, circumference ${fmt(e.length)} mm`];
+    if (e.kind === "arc") return [`Arc R ${fmt(e.radius)} mm, ${fmt(e.angle)}°`, `Centre ${fmt(e.center.x)}, ${fmt(e.center.y)}, ${fmt(e.center.z)}`,
+      `Arc length ${fmt(e.length)} mm`];
+    return [`Edge length ${fmt(e.length)} mm`];
+  }
+
+  // Two picks where at least one is an edge: lines give angle or gap, circles their centres
+  function edgePairLines(a, b) {
+    const lines = [];
+    const at = (p) => (p.edge?.center ?? p.point);
+    const d = new THREE.Vector3().subVectors(at(b), at(a));
+    const centres = a.edge?.center || b.edge?.center;
+    lines.push(`Distance ${fmt(d.length())} mm${centres ? " (circle centres)" : ""}`);
+    lines.push(`ΔX ${fmt(d.x)}  ΔY ${fmt(d.y)}  ΔZ ${fmt(d.z)}`);
+    const da = a.edge?.kind === "line" ? a.edge.dir : null, db = b.edge?.kind === "line" ? b.edge.dir : null;
+    if (da && db) {
+      const cos = Math.min(1, Math.abs(da.dot(db)));
+      if (cos > 0.9999) {
+        const w = new THREE.Vector3().subVectors(b.edge.start, a.edge.start);
+        lines.push(`Parallel edges, ${fmt(w.addScaledVector(da, -w.dot(da)).length())} mm apart`);
+      } else lines.push(`Angle between edges ${fmt(THREE.MathUtils.radToDeg(Math.acos(cos)))}°`);
+    }
+    const [line, face] = da && b.normal && !b.edge ? [da, b] : db && a.normal && !a.edge ? [db, a] : [];
+    if (line) {
+      const s = Math.abs(line.dot(face.normal));
+      if (s < 1e-4) {
+        const edge = face === b ? a.edge : b.edge;
+        lines.push(`Edge parallel to face, ${fmt(Math.abs(new THREE.Vector3().subVectors(edge.start, face.point).dot(face.normal)))} mm apart`);
+      } else lines.push(`Angle edge to face ${fmt(THREE.MathUtils.radToDeg(Math.asin(Math.min(1, s))))}°`);
+    }
+    if (a.edge?.axis && b.edge?.axis && Math.abs(a.edge.axis.dot(b.edge.axis)) > 0.9999) {
+      const w = new THREE.Vector3().subVectors(b.edge.center, a.edge.center);
+      const apart = w.addScaledVector(a.edge.axis, -w.dot(a.edge.axis)).length();
+      if (apart < 1e-3) lines.push("Coaxial");
+      else lines.push(`Axes ${fmt(apart)} mm apart`);
+    }
+    return lines;
+  }
+
   function describe() {
     const [a, b] = picks;
     const lines = [];
-    if (!b) {
+    if (!b && a.edge) {
+      lines.push(...edgeLines(a.edge), "Click a second edge, face or point");
+    } else if (b && (a.edge || b.edge)) {
+      lines.push(...edgePairLines(a, b));
+    } else if (!b) {
       lines.push(`Point ${fmt(a.point.x)}, ${fmt(a.point.y)}, ${fmt(a.point.z)}`);
       if (a.radius) lines.push(`Cylinder Ø ${fmt(2 * a.radius)} mm, axis ${vec(a.axis)}`);
       lines.push(a.normal ? `Planar face, area ${fmt(a.area)} mm²` : `${a.radius ? "Area" : "Curved face, area"} ${fmt(a.area)} mm²`);
@@ -224,6 +377,28 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     }
     readout.innerHTML = lines.map((l, i) => (i === 0 ? `<strong>${l}</strong>` : l)).join("<br>");
     readout.hidden = false;
+  }
+
+  // An edge of the clicked face within a few pixels of the click, as edgeInfo, or null
+  let edgeCache = new Map();
+  function nearEdge(bi, body, fid, x, y, rect) {
+    if (!edgeCache.has(bi)) edgeCache.set(bi, bodyEdges(body));
+    const edges = edgeCache.get(bi);
+    const screen = (p) => {
+      const s = p.clone().project(camera);
+      return new THREE.Vector2((s.x + 1) / 2 * rect.width, (1 - s.y) / 2 * rect.height);
+    };
+    const c = new THREE.Vector2(x, y);
+    let best = null, bestD = EDGE_PICK_PX;
+    for (const e of edges) {
+      if (!e.faces.includes(fid)) continue;
+      const a = screen(e.a), b = screen(e.b);
+      const ab = new THREE.Vector2().subVectors(b, a);
+      const t = THREE.MathUtils.clamp(new THREE.Vector2().subVectors(c, a).dot(ab) / Math.max(ab.lengthSq(), 1e-9), 0, 1);
+      const d = a.clone().addScaledVector(ab, t).distanceTo(c);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best && edgeInfo(edges, best);
   }
 
   function pick(ev) {
@@ -252,12 +427,22 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       showSelection();
       return;
     }
-    const info = faceInfo(body, fid);
     if (picks.length === 2) clearMeasure();
-    picks.push({ point: hit.point.clone(), ...info });
-    marker(hit.point);
+    const edge = nearEdge(hit.object.userData.bodyIndex, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect);
+    if (edge) {
+      picks.push({ point: hit.point.clone(), edge });
+      const g = new THREE.BufferGeometry().setFromPoints(edge.points);
+      const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: MARK_COLOR, depthTest: false }));
+      line.renderOrder = 10;
+      measureGroup.add(line);
+      marker(edge.center ?? hit.point);
+    } else {
+      picks.push({ point: hit.point.clone(), ...faceInfo(body, fid) });
+      marker(hit.point);
+    }
     if (picks.length === 2) {
-      const g = new THREE.BufferGeometry().setFromPoints([picks[0].point, picks[1].point]);
+      const at = (p) => p.edge?.center ?? p.point;
+      const g = new THREE.BufferGeometry().setFromPoints([at(picks[0]), at(picks[1])]);
       const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: MARK_COLOR, depthTest: false }));
       line.renderOrder = 10;
       measureGroup.add(line);
@@ -281,6 +466,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     // Called after the view was rebuilt from new mesh data (each mesh carries userData.bodyIndex)
     meshUpdated(data) {
       meshData = data;
+      edgeCache = new Map();
       modelBox = new THREE.Box3().setFromObject(modelGroup);
       markerSize = Math.max(modelBox.getSize(new THREE.Vector3()).length() / 250, 0.05);
       addCaps();

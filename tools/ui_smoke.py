@@ -1,4 +1,5 @@
-"""Click through the Check page in a headless browser: measure two points, open a section, Esc.
+"""Click through the Check page in a headless browser: measure two points, open a section, Esc, then
+walk right from the centre until a click lands on an edge and the readout measures it.
 
     <python with playwright> tools/ui_smoke.py [url] [out_dir]   (default http://127.0.0.1:8799/, screenshots in .)
 
@@ -37,8 +38,23 @@ with sync_playwright() as pw:
     page.keyboard.press("Escape")
     page.wait_for_timeout(200)
     closed = page.locator(".measure-readout").is_hidden()
+    edge = ""
+    for dx in range(0, int(box["width"] / 2), 2):
+        page.click("text=Measure")
+        page.mouse.click(cx + dx, cy)
+        page.wait_for_timeout(60)
+        text = page.locator(".measure-readout").inner_text()
+        page.keyboard.press("Escape")
+        if any(w in text for w in ("Edge length", "Circle", "Arc")):
+            edge = text
+            page.click("text=Measure")
+            page.mouse.click(cx + dx, cy)
+            page.wait_for_timeout(200)
+            page.screenshot(path=os.path.join(out, "measure_edge.png"))
+            break
     browser.close()
 print("measure:", measured.replace("\n", " | "))
 print("section:", section)
 print("esc closes:", closed, "page errors:", errors)
-sys.exit(0 if "Distance" in measured and "Section" in section and closed and not errors else 1)
+print("edge:", edge.replace("\n", " | ") or "none found")
+sys.exit(0 if "Distance" in measured and "Section" in section and closed and edge and not errors else 1)

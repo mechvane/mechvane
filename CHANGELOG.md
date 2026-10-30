@@ -5,6 +5,23 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0a10] - 2026-10-30
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **Measure edges** in the 3D view of the Check page: click near an edge for its length and direction, a
+  circle's diameter, centre and axis, or an arc's radius and angle. A hole that SolidCraft splits into two
+  half faces reads as one full circle. Two edges give their angle or gap, two circles their centre distance
+  or "Coaxial", an edge and a face their angle or gap.
+
+### Changed
+
+- "Model by hand" now uses the same chat code as the Check page; nothing changes in how it works.
+- Logo example: the M's rounded corners and chamfers are light grey like its sides, the welds round its corners
+  bare metal.
+
 ## [0.1.0a9] - 2026-10-29
 
 Built and tested with SolidCraft 0.25.1.
