@@ -53,7 +53,7 @@ let selectedFindingIndex = null;
 let cameraFitted = false;
 let modelRadius = 50;
 const viewTools = initViewTools({
-  scene, camera, renderer, modelGroup, renderScene,
+  scene, camera, renderer, modelGroup, renderScene, controls,
   selectable: document.documentElement.dataset.static !== "1",
   containerEl: viewportEl.parentElement,
 });
@@ -681,8 +681,8 @@ function updateFindingsView(data, preserveSelection) {
 const STATIC = document.documentElement.dataset.static === "1";
 let demoBase = "";
 
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
+async function fetchJson(url, opts = {}) {
+  const res = await fetch(url, { cache: "no-store", ...opts });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || `HTTP ${res.status}`);
@@ -692,30 +692,13 @@ async function fetchJson(url) {
 
 function dataUrl(name) {
   if (STATIC) return `${demoBase}${name}.json`;
-  return name === "findings" ? `api/findings?${ruleQuery()}` : `api/${name}`;
+  return `api/${name}`;
 }
 
-// Profile and material for the design rules, remembered per document in this browser
+// Profile and material for the design rules, saved in the part file (POST /api/rules)
 const ruleSetupEl = document.getElementById("rule-setup");
 const ruleProfileEl = document.getElementById("rule-profile");
 const ruleMaterialEl = document.getElementById("rule-material");
-
-function ruleKey() {
-  return `mechvane.rules.${docNameEl.textContent}`;
-}
-
-function ruleChoice() {
-  try {
-    return JSON.parse(localStorage.getItem(ruleKey()) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function ruleQuery() {
-  const c = ruleChoice();
-  return new URLSearchParams({ profile: c.profile || "fdm_0.4", material: c.material || "" }).toString();
-}
 
 function fillRuleSetup(data) {
   if (STATIC || !data.profiles) return;
@@ -724,19 +707,18 @@ function fillRuleSetup(data) {
   };
   fill(ruleProfileEl, Object.entries(data.profiles), data.profile);
   fill(ruleMaterialEl, [["", "Material: from part"], ...data.materials.map((m) => [m, m.replace(/_/g, " ")])],
-    data.material_source === "argument" ? data.material : "");
+    data.material_source === "saved" ? data.material : "");
   ruleSetupEl.hidden = false;
 }
 
 async function changeRules() {
-  try {
-    localStorage.setItem(ruleKey(), JSON.stringify({ profile: ruleProfileEl.value, material: ruleMaterialEl.value }));
-  } catch {
-    // private window: the choice holds until the page reloads
-  }
   statusEl.textContent = "Checking…";
   try {
-    const data = await fetchJson(`api/findings?${new URLSearchParams({ profile: ruleProfileEl.value, material: ruleMaterialEl.value })}`);
+    const data = await fetchJson("api/rules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile: ruleProfileEl.value, material: ruleMaterialEl.value }),
+    });
     updateFindingsView(data, true);
     fillRuleSetup(data);
     statusEl.textContent = "Up to date";
@@ -750,7 +732,6 @@ ruleMaterialEl.addEventListener("change", changeRules);
 async function loadAll(initial = false) {
   try {
     statusEl.textContent = "Loading…";
-    // the version first: its name keys the remembered profile and material for the findings
     const ver = await fetchJson(dataUrl("version"));
     docNameEl.textContent = ver.name || "Document";
     const [mesh, tree, findings] = await Promise.all([
@@ -767,7 +748,9 @@ async function loadAll(initial = false) {
     updateMeshView(mesh, initial);
     updateTreeView(tree);
     updateFindingsView(findings, !initial);
-    fillRuleSetup(findings);
+    // rules are saved per part; an assembly has none to choose
+    if (ver.kind === "assembly") ruleSetupEl.hidden = true;
+    else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
     statusEl.textContent = STATIC ? "Live demo, precomputed" : "Up to date";
   } catch (err) {
@@ -910,6 +893,10 @@ async function initFolder() {
   const docs = project.documents || [];
   if (!docs.length) {
     statusEl.textContent = "No .solidcraft files in this folder yet: open Model by hand and click New part";
+    docNameEl.textContent = "No document";
+    for (const el of [treeContentEl, findingsContentEl]) {
+      el.innerHTML = '<div class="empty-state">Nothing open yet</div>';
+    }
     return false;
   }
   const select = document.getElementById("demo-select");

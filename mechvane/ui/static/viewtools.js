@@ -4,7 +4,9 @@ import * as THREE from "three";
 
 const SECTION_COLOR = 0xd26a0c;
 const MARK_COLOR = 0xffad45;
-const EDGE_PICK_PX = 6;
+// Pick radius around an edge, by input: a finger covers more than a stylus or mouse (Surface test 2026-10-31)
+const EDGE_PICK_PX = { mouse: 8, pen: 10, touch: 18 };
+const TAP_PX = { mouse: 5, pen: 6, touch: 12 };
 
 function fmt(v) {
   return (Math.abs(v) < 5e-4 ? 0 : v).toFixed(2);
@@ -178,7 +180,7 @@ export function edgeInfo(edges, seg) {
            angle: THREE.MathUtils.radToDeg(angle) };
 }
 
-export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, selectable = false }) {
+export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, controls = null, selectable = false }) {
   const measureGroup = new THREE.Group();
   scene.add(measureGroup);
 
@@ -247,6 +249,8 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     if (mode !== "measure") clearMeasure();
     if (mode === "select") showSelection();
     sectionControls.hidden = mode !== "section";
+    // one finger picks while measuring or selecting; two fingers still pan and zoom
+    if (controls) controls.touches.ONE = mode === "measure" || mode === "select" ? null : THREE.TOUCH.ROTATE;
     applySection();
   }
   bar.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.tool)));
@@ -318,8 +322,8 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     const lines = [];
     const at = (p) => (p.edge?.center ?? p.point);
     const d = new THREE.Vector3().subVectors(at(b), at(a));
-    const centres = a.edge?.center || b.edge?.center;
-    lines.push(`Distance ${fmt(d.length())} mm${centres ? " (circle centres)" : ""}`);
+    const centres = [a, b].filter((p) => p.edge?.center).length;
+    lines.push(`Distance ${fmt(d.length())} mm${["", " (from the circle centre)", " (circle centres)"][centres]}`);
     lines.push(`ΔX ${fmt(d.x)}  ΔY ${fmt(d.y)}  ΔZ ${fmt(d.z)}`);
     const da = a.edge?.kind === "line" ? a.edge.dir : null, db = b.edge?.kind === "line" ? b.edge.dir : null;
     if (da && db) {
@@ -336,6 +340,12 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
         const edge = face === b ? a.edge : b.edge;
         lines.push(`Edge parallel to face, ${fmt(Math.abs(new THREE.Vector3().subVectors(edge.start, face.point).dot(face.normal)))} mm apart`);
       } else lines.push(`Angle edge to face ${fmt(THREE.MathUtils.radToDeg(Math.asin(Math.min(1, s))))}°`);
+    }
+    // a circle centre against a straight edge: the gap to the edge line, wherever the edge was clicked
+    const [circ, lineEdge] = a.edge?.center && db ? [a.edge, b.edge] : b.edge?.center && da ? [b.edge, a.edge] : [];
+    if (circ) {
+      const w = new THREE.Vector3().subVectors(circ.center, lineEdge.start);
+      lines.push(`Centre to edge line ${fmt(w.addScaledVector(lineEdge.dir, -w.dot(lineEdge.dir)).length())} mm`);
     }
     if (a.edge?.axis && b.edge?.axis && Math.abs(a.edge.axis.dot(b.edge.axis)) > 0.9999) {
       const w = new THREE.Vector3().subVectors(b.edge.center, a.edge.center);
@@ -381,7 +391,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
 
   // An edge of the clicked face within a few pixels of the click, as edgeInfo, or null
   let edgeCache = new Map();
-  function nearEdge(bi, body, fid, x, y, rect) {
+  function nearEdge(bi, body, fid, x, y, rect, pointerType) {
     if (!edgeCache.has(bi)) edgeCache.set(bi, bodyEdges(body));
     const edges = edgeCache.get(bi);
     const screen = (p) => {
@@ -389,7 +399,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       return new THREE.Vector2((s.x + 1) / 2 * rect.width, (1 - s.y) / 2 * rect.height);
     };
     const c = new THREE.Vector2(x, y);
-    let best = null, bestD = EDGE_PICK_PX;
+    let best = null, bestD = EDGE_PICK_PX[pointerType] ?? EDGE_PICK_PX.mouse;
     for (const e of edges) {
       if (!e.faces.includes(fid)) continue;
       const a = screen(e.a), b = screen(e.b);
@@ -428,9 +438,15 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       return;
     }
     if (picks.length === 2) clearMeasure();
-    const edge = nearEdge(hit.object.userData.bodyIndex, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect);
+    const edge = nearEdge(hit.object.userData.bodyIndex, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect, ev.pointerType);
     if (edge) {
-      picks.push({ point: hit.point.clone(), edge });
+      // on a straight edge measure from the edge itself, not from the face point next to it
+      const point = hit.point.clone();
+      if (edge.kind === "line") {
+        const t = point.clone().sub(edge.start).dot(edge.dir);
+        point.copy(edge.start).addScaledVector(edge.dir, t);
+      }
+      picks.push({ point, edge });
       const g = new THREE.BufferGeometry().setFromPoints(edge.points);
       const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: MARK_COLOR, depthTest: false }));
       line.renderOrder = 10;
@@ -456,7 +472,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
     if ((mode !== "measure" && mode !== "select") || !down || e.button !== 0) return;
-    if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5) pick(e);
+    if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < (TAP_PX[e.pointerType] ?? TAP_PX.mouse)) pick(e);
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && mode) setMode(mode);

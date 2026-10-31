@@ -5,6 +5,31 @@ change between releases, and each release names the SolidCraft version it is bui
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [0.1.0a11] - 2026-10-31
+
+Built and tested with SolidCraft 0.25.1.
+
+### Changed
+
+- **Profile and material are saved with the part.** What you choose on the Check page is stored in the part
+  file, so another browser, your agent and `check_design` use the same choice. `check_design` takes
+  `remember=True` to save a profile and material too; a material given in the call still wins.
+- **Measuring on touch screens.** While measuring or selecting, one finger picks instead of turning the
+  view (two fingers still pan and zoom), and a finger or stylus may land a little further from an edge.
+
+### Fixed
+
+- A circle measured against a straight edge or a point now reads "from the circle centre", not "circle centres";
+  against a straight edge it also gives the gap from the centre to the edge line.
+- The profile and material choice is hidden while an assembly is open; before, it looked changeable but was not saved.
+- `check_design` no longer reports a counterbored through hole (as `bolted_connection` drills it) as a short
+  blind hole, and checks its edge distance by the bore, not the counterbore.
+- `check_design` on a part without bodies is a warning instead of OK, and so is the Check page badge.
+- Distances to a straight edge are measured from the clicked spot on the edge, not from the face next to it.
+- A folder without parts shows "Nothing open yet" instead of loading forever.
+
 ## [0.1.0a10] - 2026-10-30
 
 Built and tested with SolidCraft 0.25.1.
@@ -217,6 +242,8 @@ First alpha on PyPI, built on SolidCraft 0.21.0.
 - Web UI (`mechvane ui`): 3D view, model browser and findings with face highlighting, and "Model by
   hand" with the SolidCraft web app embedded; Mechvane checks every save again.
 
+[0.1.0a11]: https://github.com/mechvane/mechvane/compare/v0.1.0a10...v0.1.0a11
+[0.1.0a10]: https://github.com/mechvane/mechvane/compare/v0.1.0a9...v0.1.0a10
 [0.1.0a9]: https://github.com/mechvane/mechvane/compare/v0.1.0a8...v0.1.0a9
 [0.1.0a8]: https://github.com/mechvane/mechvane/compare/v0.1.0a7...v0.1.0a8
 [0.1.0a7]: https://github.com/mechvane/mechvane/compare/v0.1.0a6...v0.1.0a7

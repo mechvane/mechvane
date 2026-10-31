@@ -58,6 +58,11 @@
           "title": "Stable 0.1 release",
           "text": "Tested in practice on Linux and Windows, rough edges fixed, a release you can rely on.",
           "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Open files from other CAD systems",
+          "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first."
         }
       ]
     },
@@ -117,6 +122,12 @@
           "status": "done",
           "title": "Profile and material for the checks",
           "text": "Choose how the part is made and what it is made of.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Check settings saved with the part",
+          "text": "Profile and material travel with the part file, so every browser and your agent check the same way.",
           "milestone": "v0.1"
         },
         {

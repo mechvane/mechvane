@@ -169,7 +169,9 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
         if feat_info.get("type") == "HoleFeature":
             defn = feat_info.get("definition", {})
             if "depth" in defn and "to" not in defn:
-                end_caps = [f for f in faces if f["name"].startswith(f"F{feat_id}:") and not f.get("cylinder")] if feat_id is not None else []
+                # the floor of a counterbore or countersink is no hole bottom
+                end_caps = [f for f in faces if f["name"].startswith(f"F{feat_id}:") and not f.get("cylinder")
+                            and ":cbore:" not in f["name"] and ":csink:" not in f["name"]] if feat_id is not None else []
                 if end_caps:
                     is_blind = True
         elif feat_id is not None:
@@ -354,7 +356,9 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             min_dist, nearest_face = dist_bbox, "bbox"
 
         req_edge = edge_factor * d
-        if min_dist < req_edge - 1e-4:
+        if any(":cbore:" in fn for fn in h["faces"]):
+            pass  # a counterbore is the head recess of its bore: the bore's own edge distance and the wall count
+        elif min_dist < req_edge - 1e-4:
             rules["hole_edge_distance"]["status"] = "fail"
             rules["hole_edge_distance"]["findings"].append({
                 "status": "fail",
@@ -598,16 +602,50 @@ def body_material(session) -> str | None:
         return None
 
 
-def check(session_or_doc, profile: str | dict = "fdm_0.4",
+def saved_rules(doc) -> dict:
+    """Profile and material saved in the part file (save_rules), {} for none or a bare session."""
+    if not hasattr(doc, "metadata"):
+        return {}
+    return dict(doc.metadata().get("rules") or {})
+
+
+def save_rules(doc, profile: str | None = None, material: str | None = None) -> dict:
+    """Save the profile and material for the design rules in the part file's metadata and save the file.
+
+    An empty material clears it (the bodies' SolidCraft material applies again)."""
+    rules = saved_rules(doc)
+    if profile is not None:
+        _get_cfg(profile)  # unknown profile: ValueError, nothing saved
+        rules["profile"] = profile
+    if material is not None:
+        if material:
+            rules["material"] = hole_tables.normalize_material(material)
+        else:
+            rules.pop("material", None)
+    meta = doc.metadata()
+    meta["rules"] = rules
+    doc.set_metadata(meta)
+    doc.save()
+    return rules
+
+
+def check(session_or_doc, profile: str | dict | None = None,
           build_direction: str | list[float] | None = None, material: str | None = None) -> dict:
     """Check a part against design rules using the open SolidCraft session.
 
+    profile: without it the profile saved in the part file (save_rules) applies, else fdm_0.4.
     material: the part's material (steel, cast_iron, alu, alu_wrought, brass, ...): the thread depth
     then follows the engagement table in hole_tables instead of the profile's flat factor. Without it
-    the material assigned to the bodies in SolidCraft applies, if the table knows it."""
+    the material saved in the part file applies, then the material assigned to the bodies in
+    SolidCraft, if the table knows it."""
     session = getattr(session_or_doc, "session", session_or_doc)
+    saved = saved_rules(session_or_doc)
+    if profile is None:
+        profile = saved.get("profile") or "fdm_0.4"
     cfg = _get_cfg(profile, build_direction=build_direction)
     material_source = "argument" if material else None
+    if not material and saved.get("material"):
+        material, material_source = saved["material"], "saved"
     if not material:
         material = body_material(session)
         material_source = "body" if material else None
@@ -662,7 +700,11 @@ def check(session_or_doc, profile: str | dict = "fdm_0.4",
     failed_rules = [k for k, v in all_rules.items() if v["status"] == "fail"]
     warn_rules = [k for k, v in all_rules.items() if v["status"] == "warn"]
 
-    if verdict == "ok":
+    if not bodies:
+        # nothing to check is no pass
+        verdict = "warn"
+        summary = f"Design check ({profile_name}): WARN - the part has no solid bodies"
+    elif verdict == "ok":
         summary = f"Design check ({profile_name}): OK - all rules passed"
     elif verdict == "fail":
         summary = f"Design check ({profile_name}): FAIL - failed rules: {', '.join(failed_rules)}"

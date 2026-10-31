@@ -88,6 +88,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: 12px;
   font-size: 13px;
   color: var(--text-muted);
 }
@@ -95,6 +96,8 @@ html, body {
 .demo-bar[hidden] {
   display: none;
 }
+
+.badge[hidden] { display: none; }
 
 .demo-bar select {
   font: inherit;
@@ -425,7 +428,7 @@ html, body {
   .topbar { height: auto; min-height: 44px; flex-wrap: wrap; gap: 4px 10px; padding: 6px 12px; }
   .topbar-left, .topbar-right, .demo-bar { flex-wrap: wrap; }
   .doc-path { display: none; }
-  .mode-switch { margin-left: 0; }
+  .mode-switch, .demo-bar { margin-left: 0; }
   .workspace { grid-template-columns: 1fr; height: auto; }
   .viewport-container { order: -1; height: 60vh; }
   .panel-left, .panel-right { border: 0; border-top: 1px solid var(--border); }
@@ -468,6 +471,7 @@ html, body {
 .view-tools button.active { border-color: var(--selected-border); background: var(--selected-bg); }
 .section-controls { display: inline-flex; gap: 6px; align-items: center; }
 .section-controls[hidden] { display: none; }
+.rule-setup[hidden] { display: none; }
 .section-controls input { width: 140px; }
 .measure-readout { position: absolute; top: 48px; right: 12px; background: var(--panel-bg); border: 1px solid var(--border);
   border-radius: 6px; padding: 6px 10px; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }

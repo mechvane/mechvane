@@ -48,6 +48,12 @@ Freizeitprojekt mit KI-Unterstützung, keine Zusagen.
    (`.sat`), JT, Inventor (`.ipt`/`.iam`), SolidWorks, Fusion (`.f3d`),
    Creo, NX, CATIA. Native Formate meist nur über Fremdbibliotheken oder
    Lizenzen, Lizenzregel von SolidCraft beachten.
+   **Seit 2026-10-31 (Nutzer): Umstieg ohne Verlust.** Wer viele eigene Entwicklungen hat, steigt nur um,
+   wenn sie editierbar mitkommen. Ein Import nur als Geometrie gilt nicht als fertig. Pflicht sind
+   Feature-Verlauf, Skizzen mit Abhängigkeiten, Parameter mit Ausdrücken, Baugruppen-Abhängigkeiten und
+   Eigenschaften. Fehlt in SolidCraft ein Feature-Typ, baut Mechvane ihn (eigenes Feature oder Upstream-Beitrag).
+   Bis dahin bleibt das Feature als Platzhalter im Verlauf, mit allen Originaldaten und dem Ergebnis-Körper,
+   nichts wird verworfen. Der Import endet mit einem Bericht je Feature (übernommen, Platzhalter, Abweichung).
 8. **Renderanbindung an Blender** (Nutzerwunsch 2026-10-20): Bauteil oder
    Baugruppe mit Materialien und Kamera an Blender übergeben und
    fotorealistisch rendern (Cycles), ohne Export per Hand. SolidCraft hat
@@ -326,6 +332,9 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       unterstützt (`head="countersunk"`, quellengeprüft 2026-10-23).
       ISO-286-Passungen als `iso_fit` (Grenzabmaße, Spiel/Übermaß) seit 2026-10-23;
       offen: Passung als Attribut an Bohrung und Welle, Lagersitze in `standard_part`.
+      *Praxistest 6 (2026-10-31, [Bericht](docs/research/2026-10-31-praxistest-6.md)):* Bohrungen „durch alle“
+      statt fester Tiefe (wird bei dickerem Bauteil zum Sackloch); Kollisionsprüfung vor dem Bohren mit klarer
+      Meldung statt SolidCraft „lumps: shell boundaries intersect“.
 - [ ] **Eigener offener Regelkatalog** (Nutzerwunsch 2026-10-20: Werte
       selbst belegen, keine Normen kaufen). *Seit 2026-10-23:* Format nach
       [ADR 0002](docs/adr/0002-wissenskatalog-format.md) angenommen, `katalog/` mit
@@ -384,6 +393,29 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 
 Reihenfolge nach Nutzen für den eigenen Alltag:
 
+- [ ] **Native Dateien aller großen CAD-Systeme importieren, mit Feature-Verlauf** (Nutzerentscheidung 2026-10-31:
+      Langzeitziel, egal wie lange es dauert; ohne die Fremdprogramme, Formate per Reverse Engineering im Clean Room,
+      kein GPL-Code, jede Formataussage an Beispieldateien belegt). Ziel: Bauteile und Baugruppen mit Verlauf,
+      Skizzen, Parametern und Abhängigkeiten als SolidCraft-Befehle neu aufbauen, ohne Verlust (Grundsatz 7).
+      Nicht abbildbare Features werden Platzhalter mit Originaldaten, bis Mechvane sie kann. Prüfung je Datei:
+      Der in der Datei mitgespeicherte Körper ist das Soll für den neu aufgebauten Verlauf (Volumen, Hüllquader,
+      Flächenzahl). Kennzahl je Format: Anteil der Features, die in einem Korpus echter Teile ohne Platzhalter
+      ankommen. Je Format drei Stufen: (1) Container, Eigenschaften, B-Rep,
+      Parameter, Feature-Namen, (2) Features dekodieren, (3) Abbildung auf SolidCraft. Gemeinsame Bausteine:
+      OLE-Container-Leser, ACIS/ShapeManager- und Parasolid-B-Rep-Leser, Abbildungsschicht Feature → SolidCraft.
+      - **Grundlage cadmpeg** (Fund 2026-10-31): [cadmpeg](https://github.com/cadmpeg/cadmpeg), Apache-2.0, Clean Room,
+        liest Inventor, SolidWorks, CATIA V5 schon bis L3 (B-Rep), Fusion/FreeCAD L5, Inventor-Features teilweise
+        (Parameter, Skizzen, Extrusion, Bohrung, Rundung, Fase). SolidCraft nutzt cadmpeg nur für offene Formate.
+        Arbeitsteilung: Format-Dekodierung (Features, L4–L6) als Beiträge zu cadmpeg, Mechvane übersetzt die
+        cadmpeg-IR in SolidCraft-Befehle. Öffentliche Beiträge nur mit Nutzer-OK.
+      - **Inventor** `.ipt`/`.iam`: zuerst. #32 (Argon) misst cadmpeg an den eigenen Daten, Wege und Rechtslage #31. Testkorpus aus
+        eigenen Inventor-Daten (2015–2025), privat und nicht im Repo.
+      - **FreeCAD** `.FCStd` (offen, ZIP + XML, Verlauf lesbar): billiger Testfall für die Abbildungsschicht.
+      - **Solid Edge** `.par`/`.asm` und ältere **SolidWorks** `.sldprt`/`.sldasm` (OLE wie Inventor, Parasolid-B-Rep).
+      - **Fusion** `.f3d` (ZIP, ShapeManager-B-Rep wie Inventor).
+      - Neuere **SolidWorks**, **Siemens NX** `.prt` (Parasolid), **CATIA V5** `.CATPart`/`.CATProduct`,
+        **Creo/Pro/E** `.prt`/`.asm`.
+      - Dazu neutrale Formate mit PMI (STEP AP242, Parasolid `.x_t`, JT), falls SolidCraft sie nicht schon liest.
 - [ ] **Gestell-Generator** für Aluprofile (Item/Bosch 20/30/40er Nut) und
       Stahlprofile, mit Längenliste.
 - [ ] **Schweißen** (Nutzerwunsch 2026-10-29): Schweißnähte als eigene Features (Kehlnaht, Stumpfnaht,

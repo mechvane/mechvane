@@ -197,12 +197,12 @@ def _joint_summary(joint_checks) -> str:
     return f"Joint check: all {len({j['joint'] for j in joint_checks})} joints ok"
 
 
-def collect_findings(ws, doc, profile: str = "fdm_0.4", material: str | None = None) -> dict:
+def collect_findings(ws, doc, profile: str | None = None, material: str | None = None) -> dict:
     """Collect design rule findings for a part, joint link findings for an assembly.
 
     Design rules are part rules (like check_design): on an assembly they would treat screws and
     plates as one printed body."""
-    dr = design_rules.check(doc.session, profile=profile, material=material) if doc.kind == PART else {}
+    dr = design_rules.check(doc, profile=profile, material=material) if doc.kind == PART else {}
     findings = []
 
     for c in dr.get("checks", []):
@@ -275,8 +275,9 @@ def collect_findings(ws, doc, profile: str = "fdm_0.4", material: str | None = N
     order = {"fail": 0, "warn": 1, "ok": 2}
     findings.sort(key=lambda x: (order.get(x.get("severity", "ok"), 3), 1 if x.get("rule") == "printability" else 0))
 
-    has_fail = any(f["severity"] == "fail" for f in findings)
-    has_warn = any(f["severity"] == "warn" for f in findings)
+    # the design check can warn without a finding of its own (a part without bodies)
+    has_fail = any(f["severity"] == "fail" for f in findings) or dr.get("verdict") == "fail"
+    has_warn = any(f["severity"] == "warn" for f in findings) or dr.get("verdict") == "warn"
     verdict = "fail" if has_fail else ("warn" if has_warn else "ok")
 
     return {
@@ -646,7 +647,7 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     self._send_json(200, {"selection": selection.resolve(srv.ws, doc, items)})
                 return
-            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params")):
+            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params", "/api/rules")):
                 self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})
                 return
             if path == "/api/params":
@@ -670,6 +671,26 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(400, {"error": str(e)})
                         return
                 self._send_json(200, result)
+                return
+            if path == "/api/rules":
+                try:
+                    body = self._json_body()
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None or doc.kind != PART:
+                        self._send_json(409, {"error": "no part open"})
+                        return
+                    try:
+                        design_rules.save_rules(doc, profile=body.get("profile") or None,
+                                                material=body.get("material", None))
+                        data = collect_findings(srv.ws, doc)
+                    except ValueError as e:  # unknown profile or material: nothing saved
+                        self._send_json(400, {"error": str(e)})
+                        return
+                self._send_json(200, data)
                 return
             if path.startswith("/api/open/"):
                 name = unquote(path[len("/api/open/"):])
@@ -861,7 +882,8 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(409, {"error": "no document open"})
                         return
                     q = parse_qs(url.query)
-                    profile = (q.get("profile") or ["fdm_0.4"])[0]
+                    # without a choice in the request the part's saved profile and material apply
+                    profile = (q.get("profile") or [None])[0] or None
                     material = (q.get("material") or [None])[0] or None
                     try:
                         data = collect_findings(srv.ws, doc, profile=profile, material=material)

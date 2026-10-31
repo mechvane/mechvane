@@ -858,6 +858,36 @@ def design_rule_checks(ws):
        f"verdict={r_shallow['verdict']} rules={r_shallow['rules']['thread_depth']}")
     ws.close("rule_shallow_blind")
 
+    # 9-. An empty part is no pass (Praxistest 6)
+    doc_empty = ws.new(PART, "rule_empty")
+    r_empty = design_rules.check(doc_empty.session)
+    ok("design rules: a part without bodies is a warning, not OK",
+       r_empty["verdict"] == "warn" and "no solid bodies" in r_empty["summary"], r_empty["summary"])
+    # the Check page badge follows that warning, though it has no finding of its own (Surface test)
+    from mechvane.ui import server as ui_server
+    f_empty = ui_server.collect_findings(ws, doc_empty)
+    ok("design rules: Check page verdict of a part without bodies is warn", f_empty["verdict"] == "warn",
+       f_empty["verdict"])
+    ws.close("rule_empty")
+
+    # 9a. Counterbored through hole (as bolted_connection drills it): neither the counterbore floor makes
+    # the bore blind nor does the counterbore diameter set the edge distance (Praxistest 6)
+    doc_cb_edge = ws.new(PART, "rule_cbore_edge")
+    doc_cb_edge.session.batch([
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [50, 30]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 8, "name": "Plate"}},
+        {"command": "solid.hole", "params": {"position": [15, 18, 8], "direction": [0, 0, -1], "diameter": "5.5 mm",
+                                              "depth": "8", "type": "counterbore", "cb_diameter": "10", "cb_depth": "5.4",
+                                              "name": "Hole_M5_CB"}},
+    ])
+    r_cbe = design_rules.check(doc_cb_edge.session, profile="cnc_alu")
+    ok("design rules: counterbored through hole 12 mm from the edge is neither too close (1.5 × Ø10) nor a short blind hole",
+       r_cbe["rules"]["hole_edge_distance"]["status"] == "ok" and r_cbe["rules"]["thread_depth"]["status"] == "ok",
+       str([(c["rule"], c["message"]) for c in r_cbe["checks"] if c["status"] != "ok"]))
+    ws.close("rule_cbore_edge")
+
     # 9b. Thread depth follows the part's material (same table as bolted_connection)
     doc_mat = ws.new(PART, "rule_material")
     doc_mat.session.batch([
@@ -4942,6 +4972,30 @@ def params_checks(tmp):
            chosen.get("profile") == "cnc_alu" and chosen.get("material") == "alu_wrought"
            and "fdm_0.4" in chosen.get("profiles", {}) and "steel" in chosen.get("materials", []) and refused == 400,
            f"{ {k: chosen.get(k) for k in ('profile', 'material', 'materials')} } {refused}")
+        # profile and material chosen on the Check page are saved in the part file, not only in the browser
+        def post_rules(body):
+            req = urllib.request.Request(base.replace("/api/params", "/api/rules"), method="POST",
+                                         data=json.dumps(body).encode())
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    return resp.status, json.loads(resp.read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read())
+        r_status, r_saved = post_rules({"profile": "cnc_alu", "material": "alu_wrought"})
+        bad_rules, _ = post_rules({"material": "unobtainium"})
+        with urllib.request.urlopen(base.replace("/api/params", "/api/findings")) as resp:
+            plain = json.loads(resp.read())
+        w2 = Workspace(folder)
+        try:
+            reopened = design_rules.check(w2.open(path))
+        finally:
+            w2.close_all()
+        ok("ui: /api/rules saves profile and material in the part file; /api/findings and check_design use them",
+           r_status == 200 and r_saved.get("material_source") == "saved" and bad_rules == 400
+           and (plain.get("profile"), plain.get("material"), plain.get("material_source")) == ("cnc_alu", "alu_wrought", "saved")
+           and (reopened["profile"], reopened["material"], reopened["material_source"]) == ("cnc_alu", "alu_wrought", "saved"),
+           f"{r_status} {bad_rules} {[plain.get(k) for k in ('profile', 'material', 'material_source')]} "
+           f"{[reopened.get(k) for k in ('profile', 'material', 'material_source')]}")
         with urllib.request.urlopen(base.replace("/api/params", "/viewtools.js")) as resp:
             js, ctype = resp.read().decode(), resp.headers.get("Content-Type", "")
         with urllib.request.urlopen(base.replace("/api/params", "/chat.js")) as resp:

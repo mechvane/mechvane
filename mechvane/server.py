@@ -383,16 +383,21 @@ def export_gltf(document: str, path: str) -> dict:
 
 
 @mcp.tool()
-def check_design(document: str, profile: str = "fdm_0.4", build_direction: str = "+Z",
-                 material: str | None = None) -> dict:
+def check_design(document: str, profile: str | None = None, build_direction: str = "+Z",
+                 material: str | None = None, remember: bool = False) -> dict:
     """Check a part against design rules (wall thickness, hole edge distance, thread depth, printability).
+    `profile` defaults to the one saved in the part file, else fdm_0.4.
     `build_direction` selects the print direction ('+Z', '-Z', '+X', '-X', '+Y', '-Y'; default '+Z').
     `material` (steel, cast_iron, alu, alu_wrought, alu_cast, brass, ...) sets the thread engagement depth
-    from the same table as bolted_connection; without it the material assigned to the bodies
-    (SolidCraft material.assign) applies, else the profile's 1.5 × d."""
+    from the same table as bolted_connection; without it the material saved in the part file applies,
+    then the material assigned to the bodies (SolidCraft material.assign), else the profile's 1.5 × d.
+    `remember=True` saves the given profile and material in the part file (the review page shows and
+    uses them too)."""
     vec = design_rules.parse_build_direction(build_direction, allow_vector=False)
     doc = ws.get(document, PART)
-    return design_rules.check(doc.session, profile=profile, build_direction=vec, material=material)
+    if remember:
+        design_rules.save_rules(doc, profile=profile, material=material)
+    return design_rules.check(doc, profile=profile, build_direction=vec, material=material)
 
 
 @mcp.tool()
