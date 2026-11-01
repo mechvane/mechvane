@@ -202,6 +202,8 @@ export function initRequestFeature() {
   const btn = document.getElementById("btn-request-feature");
   if (!btn) return;
   btn.addEventListener("click", () => {
+    const fileMenu = document.getElementById("file-menu");
+    if (fileMenu) fileMenu.open = false;
     const dialog = ensureDialog();
     const titleInput = dialog.querySelector("#request-title");
     if (dialog._updateVersionsPreview) {
@@ -222,28 +224,78 @@ async function showRunState(el) {
   } catch {
     return;
   }
+  const coreVer = document.getElementById("core-version");
+  if (coreVer && about.solidcraft) coreVer.textContent = about.solidcraft;
+  if (!el) return;
   const quit = el.querySelector("button");
   const note = el.querySelector("span");
-  note.textContent = about.stops_with_window ? "Closing this window quits Mechvane" : "Runs until you quit it";
-  quit.hidden = !!about.stops_with_window;
+  if (note) {
+    note.textContent = about.stops_with_window ? "Closing this window quits Mechvane" : "Runs until you quit it";
+    note.hidden = false;
+  }
+  if (quit && el.classList.contains("run-state")) {
+    quit.hidden = !!about.stops_with_window;
+  }
   el.hidden = false;
 }
 
+async function stopServer() {
+  try {
+    await fetch("api/quit", { method: "POST" });
+  } catch {
+    // the server may already be gone
+  }
+  document.body.innerHTML = '<p class="run-stopped">Mechvane has stopped. You can close this tab.</p>';
+}
+
 export function initRunState() {
+  const isStatic = document.documentElement.dataset.static === "1";
+  const quitBtn = document.getElementById("btn-quit");
+  const quitDivider = document.getElementById("quit-divider");
+  const runNote = document.getElementById("run-state-note");
+
+  if (isStatic) {
+    if (quitBtn) quitBtn.hidden = true;
+    if (quitDivider) quitDivider.hidden = true;
+    if (runNote) runNote.hidden = true;
+    fetchAbout().then((about) => {
+      const coreVer = document.getElementById("core-version");
+      if (coreVer && about && about.solidcraft && about.solidcraft !== "live demo") {
+        coreVer.textContent = about.solidcraft;
+      }
+    });
+    return;
+  }
+
+  if (quitBtn) {
+    quitBtn.addEventListener("click", stopServer);
+    const updateMenuState = async () => {
+      let about = {};
+      try {
+        const resp = await fetch("api/about", { cache: "no-store" });
+        if (resp.ok) about = await resp.json();
+      } catch {
+        return;
+      }
+      const coreVer = document.getElementById("core-version");
+      if (coreVer && about.solidcraft) coreVer.textContent = about.solidcraft;
+      if (runNote) {
+        runNote.textContent = about.stops_with_window ? "Closing this window quits Mechvane" : "Runs until you quit it";
+        runNote.hidden = false;
+      }
+    };
+    updateMenuState();
+    setTimeout(updateMenuState, 5000);
+    return;
+  }
+
   const right = document.querySelector(".topbar-right");
-  if (!right || document.documentElement.dataset.static === "1") return;
+  if (!right) return;
   const el = document.createElement("span");
   el.className = "run-state";
   el.hidden = true;
   el.innerHTML = '<span class="status-text"></span><button type="button" class="btn-text" hidden>Quit</button>';
-  el.querySelector("button").addEventListener("click", async () => {
-    try {
-      await fetch("api/quit", { method: "POST" });
-    } catch {
-      // the server may already be gone
-    }
-    document.body.innerHTML = '<p class="run-stopped">Mechvane has stopped. You can close this tab.</p>';
-  });
+  el.querySelector("button").addEventListener("click", stopServer);
   right.prepend(el);
   showRunState(el);
   setTimeout(() => showRunState(el), 5000);

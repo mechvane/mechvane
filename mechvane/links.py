@@ -452,15 +452,20 @@ def _move_params(occ, translate=None, rotate=None):
     return params
 
 
-def insert(ws, doc, part_path, name=None, translate=None, rotate=None, grounded=False, parent=None):
+def insert(ws, doc, part_path, name=None, translate=None, rotate=None, grounded=None, parent=None):
     """Place a part or subassembly file in an assembly. A subassembly becomes a parent component
-    whose parts are linked underneath it and whose joints are recreated in the outer assembly."""
+    whose parts are linked underneath it and whose joints are recreated in the outer assembly.
+    If grounded is None, the part or subassembly is grounded if the assembly has no components yet,
+    otherwise left free."""
     s = doc.session
     p = ws._path(None, part_path)
     if not p.is_file():
         raise SolidCraftError(f"{p}: file not found")
     if p.resolve() == doc.path.resolve():
         raise SolidCraftError(f"{p}: a design can't be linked into itself")
+    if grounded is None:
+        comps = s.cmd("component.list").get("components", [])
+        grounded = not any(c.get("parent") is not None for c in comps)
     if not _is_assembly(ws, p):
         params = {"path": str(p)}
         if name:
@@ -488,8 +493,11 @@ def _insert_design(s, params):
     return r
 
 
-def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grounded=False, parent=None):
+def _insert_subassembly(ws, doc, p, name=None, translate=None, rotate=None, grounded=None, parent=None):
     s = doc.session
+    if grounded is None:
+        comps = s.cmd("component.list").get("components", [])
+        grounded = not any(c.get("parent") is not None for c in comps)
     reader = ws.reader(p)
     try:
         u_comps = {c["id"]: c for c in reader.cmd("component.list")["components"]}

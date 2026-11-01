@@ -142,8 +142,8 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
 
   sendBtn.addEventListener("click", () => (busy ? fetch("api/agent/stop", { method: "POST", body: "{}" }) : send()));
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-  undoBtn.addEventListener("click", () => act("undo", "Undo"));
-  redoBtn.addEventListener("click", () => act("redo", "Redo"));
+  undoBtn.addEventListener("click", (e) => { e.stopPropagation(); act("undo", "Undo"); });
+  redoBtn.addEventListener("click", (e) => { e.stopPropagation(); act("redo", "Redo"); });
   initSpeech(root.querySelector(".mic-btn"), input, root.querySelector(".composer-hint"), selected,
     (sel) => { if (sel.length) spoken = sel; });
   root.hidden = false;
@@ -154,9 +154,15 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
 // clean-up on the server (numbers, units, "Fase", names in the model). The selection at the moment the
 // user starts to speak is the one meant by "here".
 function initSpeech(btn, input, hint, selected, keepSelection) {
+  if (!btn) return;
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!btn || !Rec) return;  // Firefox, WebKitGTK: type instead
+  if (!Rec) {
+    btn.disabled = true;
+    btn.title = "Hold to speak (Chrome or Edge)";
+    return;
+  }
   btn.hidden = false;
+  btn.disabled = false;
   const KEY = "mechvane.speech.ok";
   const allowed = () => { try { return localStorage.getItem(KEY) === "1"; } catch { return false; } };
   let rec = null, heard = "", before = "";

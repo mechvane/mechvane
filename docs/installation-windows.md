@@ -35,6 +35,12 @@ API-Endpunkte für Teil und Baugruppe liefern 200; `mechvane mcp` beantwortet
 SolidCraft-Sitzung einen leeren Ordner `%TEMP%\solidcraft-mcp-*` zurück (Fehler in
 SolidCraft 0.21.0, [Issue #7836](https://github.com/tangency-labs/solidcraft/issues/7836); ab 0.1.0a3 räumt Mechvane selbst auf).
 
+**Grafik-Backend:** Ab dem Release nach 0.1.0a11 nimmt Mechvane DirectX 12 nur noch, wenn Windows
+ausschließlich Intel-Grafik meldet. Mit NVIDIA (getestet: RTX 2070 auf der Windows-11-VM, 2026-11-01) stürzt
+`solidcraft-cli` unter DirectX 12 beim Bau einer Zylinderschraube ISO 4762 ab (`mcp ended unexpectedly`,
+z. B. in `mechvane ui --demo`); mit Vulkan läuft alles. Bis zum nächsten Release hilft
+`setx WGPU_BACKEND vulkan` (auf win-cad so gesetzt). Rechner mit Intel und NVIDIA zugleich sind ungetestet.
+
 **Intel-Grafik (seit 0.1.0a5):** Mechvane startet SolidCraft unter Windows mit DirectX 12
 (`WGPU_BACKEND=dx12`), weil Intels Vulkan-Treiber beim Speichern runder Teile abstürzt
 (`0xC0000005`, [SolidCraft #5589](https://github.com/tangency-labs/solidcraft/issues/5589)). Wer ein

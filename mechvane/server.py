@@ -205,10 +205,12 @@ def delete_feature(document: str, feature: str, keep_sketch: bool = False) -> di
 
 @mcp.tool()
 def insert_part(assembly: str, part_path: str, name: str | None = None, translate: list[float] | None = None,
-                rotate: dict | list | None = None, grounded: bool = False) -> dict:
+                rotate: dict | list | None = None, grounded: bool | None = None) -> dict:
     """Place a part or subassembly file in an assembly. A part is linked directly; a subassembly
     is expanded into a parent component with its linked parts and joints underneath.
-    rotate can be {axis: [x,y,z], angle: deg, origin?: [x,y,z]}, [axis, angle], or a 4x4 matrix."""
+    rotate can be {axis: [x,y,z], angle: deg, origin?: [x,y,z]}, [axis, angle], or a 4x4 matrix.
+    If grounded is None, the part or subassembly parent is grounded if the assembly has no components yet,
+    otherwise not."""
     doc = ws.get(assembly, ASSEMBLY)
     return links.insert(ws, doc, part_path, name=name, translate=translate, rotate=rotate, grounded=grounded)
 

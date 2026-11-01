@@ -16,14 +16,38 @@ class SolidCraftError(RuntimeError):
     """A SolidCraft tool or command reported an error."""
 
 
-def session_env(platform=sys.platform, environ=None) -> dict:
-    """Environment for `solidcraft-cli mcp`. On Windows wgpu uses DirectX 12 unless WGPU_BACKEND is set:
-    saving renders a preview through wgpu, and with Intel's Vulkan driver (igvk64.dll) that crashes the
-    CLI with 0xC0000005 on any part with a curved face (docs/research/2026-10-29-windows-zylinder-absturz.md,
-    SolidCraft #5589)."""
+_adapters_cache = None
+
+
+def _windows_adapters() -> list[str]:
+    """Names of the graphics adapters Windows reports, once per process; empty if the query fails."""
+    global _adapters_cache
+    if _adapters_cache is None:
+        try:
+            out = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 "(Get-CimInstance Win32_VideoController).Name"],
+                capture_output=True, text=True, timeout=20,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+            _adapters_cache = [line.strip() for line in out.splitlines() if line.strip()]
+        except (OSError, subprocess.SubprocessError):
+            _adapters_cache = []
+    return _adapters_cache
+
+
+def session_env(platform=sys.platform, environ=None, adapters=None) -> dict:
+    """Environment for `solidcraft-cli mcp`. On Windows with only Intel graphics wgpu uses DirectX 12
+    unless WGPU_BACKEND is set: saving renders a preview through wgpu, and with Intel's Vulkan driver
+    (igvk64.dll) that crashes the CLI with 0xC0000005 on any part with a curved face
+    (docs/research/2026-10-29-windows-zylinder-absturz.md, SolidCraft #5589). With an NVIDIA or AMD card
+    the default (Vulkan) stays: there DirectX 12 crashes the CLI while building a socket head screw
+    (Windows 11 VM with an RTX 2070, 2026-11-01)."""
     env = dict(os.environ if environ is None else environ)
-    if platform == "win32":
-        env.setdefault("WGPU_BACKEND", "dx12")
+    if platform == "win32" and "WGPU_BACKEND" not in env:
+        names = [a.lower() for a in (_windows_adapters() if adapters is None else adapters)]
+        discrete = any(k in a for a in names for k in ("nvidia", "geforce", "quadro", "amd", "radeon"))
+        if not discrete and any("intel" in a for a in names):
+            env["WGPU_BACKEND"] = "dx12"
     return env
 
 

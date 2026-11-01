@@ -56,7 +56,7 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
 | `run(document, commands, verbose)` | SolidCraft-Befehle als Batch (alles oder nichts). In Bauteilen danach die Skizzenregel; schlägt die Skizzenregel fehl, wird der Befehlsbatch per Checkpoint automatisch zurückgerollt. Antwort ohne leere Felder und Zeiten, außer mit `verbose` |
 | `browser(document, groups)` | Modellbrowser nach Inventor-Art, als Text und JSON; `groups` zeigt dieselben Einträge zusätzlich in Ordnern (siehe unten) |
 | `delete_feature(document, feature, keep_sketch)` | Feature löschen, die eigene Skizze geht mit |
-| `insert_part(assembly, part_path, name, translate, rotate, grounded)` | Bauteil oder Unterbaugruppe verknüpft einfügen (optional Drehung vor dem Fixieren) |
+| `insert_part(assembly, part_path, name, translate, rotate, grounded)` | Bauteil oder Unterbaugruppe verknüpft einfügen (optional Drehung vor dem Fixieren; erstes Teil der Baugruppe wird automatisch fixiert (`grounded=True`), wenn `grounded` nicht angegeben ist; Folgekomponenten bleiben standardmäßig frei) |
 | `add_joint(assembly, params)` | Gelenk anlegen (Parameter wie `joint.create`, `name` Pflicht, Occurrence auch als `Sub:1/Part:1`) und die Bauteilflächen merken |
 | `edit_joint(assembly, joint, params)` | Gelenk ändern (wie `joint.edit`, z. B. `flip`, `offset`, `name` zur Umbenennung); Verankerung und Metadaten werden auch bei Umbenennung ohne verwaiste Einträge weitergeführt |
 | `delete_joint(assembly, joint)` | Gelenk löschen, Verankerung vergessen |
@@ -248,7 +248,8 @@ hierarchisch auf:
    vorhandener Bauteil-Links, dass eine Baugruppendatei vorliegt, legt in der
    Oberbaugruppe eine Eltern-Komponente an (`component.create`) und verknüpft
    jedes Bauteil der Unterbaugruppe einzeln darunter (`component.insert_design`
-   mit `parent`).
+   mit `parent`). Hat die Baugruppe noch keine Komponenten und `grounded=None`,
+   wird die Eltern-Komponente fixiert; die Teile darin behalten ihr bisheriges Verhalten.
 2. Lage (`occurrence.move` aus der zerlegten 4×4-Matrix) und Gelenke der
    Unterbaugruppe werden in der Oberbaugruppe nachgebildet und in `joints`
    verankert; unter `subassemblies` in den Metadaten der Oberbaugruppe steht,

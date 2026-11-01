@@ -180,12 +180,12 @@ export function edgeInfo(edges, seg) {
            angle: THREE.MathUtils.radToDeg(angle) };
 }
 
-export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, controls = null, selectable = false }) {
+export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, controls = null, selectable = false, toolsRoot = null }) {
   const measureGroup = new THREE.Group();
   scene.add(measureGroup);
 
   let meshData = null;
-  let mode = null; // "measure" | "section" | null
+  let mode = null; // "measure" | "section" | "select" | null
   let picks = [];
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   let sectionAxis = "z";
@@ -193,22 +193,27 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let modelBox = new THREE.Box3();
   let markerSize = 1;
 
-  // Toolbar and readout over the view
-  const bar = document.createElement("div");
-  bar.className = "view-tools";
-  bar.innerHTML = `
-    <button type="button" data-tool="measure" title="Click two points, faces or edges">Measure</button>
-    <button type="button" data-tool="section" title="Cut the model with a plane">Section</button>
-    <button type="button" data-tool="select" title="Click faces to point the agent at them" hidden>Select</button>
-    <span class="section-controls" hidden>
-      <select aria-label="Section plane"><option value="x">YZ (X)</option><option value="y">XZ (Y)</option><option value="z" selected>XY (Z)</option></select>
-      <input type="range" min="0" max="1000" value="500" aria-label="Section position">
-      <button type="button" data-flip title="Show the other side">⇅</button>
-    </span>`;
+  // Bind to ribbon Inspect buttons if present, otherwise create a fallback toolbar over the view
+  const root = toolsRoot || (typeof document !== "undefined" ? document : null);
+  let bar = root && root.querySelector("[data-tool]") ? root : null;
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "view-tools";
+    bar.innerHTML = `
+      <button type="button" data-tool="measure" title="Click two points, faces or edges">Measure</button>
+      <button type="button" data-tool="section" title="Cut the model with a plane">Section</button>
+      <button type="button" data-tool="select" title="Click faces to point the agent at them" hidden>Select</button>
+      <span class="section-controls" hidden>
+        <select aria-label="Section plane"><option value="x">YZ (X)</option><option value="y">XZ (Y)</option><option value="z" selected>XY (Z)</option></select>
+        <input type="range" min="0" max="1000" value="500" aria-label="Section position">
+        <button type="button" data-flip title="Show the other side">⇅</button>
+      </span>`;
+    containerEl.append(bar);
+  }
   const readout = document.createElement("div");
   readout.className = "measure-readout";
   readout.hidden = true;
-  containerEl.append(bar, readout);
+  containerEl.append(readout);
   const sectionControls = bar.querySelector(".section-controls");
   const axisSelect = sectionControls.querySelector("select");
   const slider = sectionControls.querySelector("input");
@@ -218,7 +223,16 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   const selectGroup = new THREE.Group();
   scene.add(selectGroup);
   let selection = [];
-  if (selectable) bar.querySelector('[data-tool="select"]').hidden = false;
+  const selectBtn = bar.querySelector('[data-tool="select"]');
+  if (selectBtn) {
+    if (selectable) {
+      selectBtn.hidden = false;
+      selectBtn.disabled = false;
+    } else {
+      selectBtn.disabled = true;
+      selectBtn.title = "Available when installed with an agent";
+    }
+  }
 
   function showSelection() {
     while (selectGroup.children.length) {
@@ -253,7 +267,9 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     if (controls) controls.touches.ONE = mode === "measure" || mode === "select" ? null : THREE.TOUCH.ROTATE;
     applySection();
   }
-  bar.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.tool)));
+  bar.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => {
+    if (!b.disabled) setMode(b.dataset.tool);
+  }));
   axisSelect.addEventListener("change", () => { sectionAxis = axisSelect.value; applySection(); });
   slider.addEventListener("input", () => { sectionPos = slider.value / 1000; applySection(); });
   sectionControls.querySelector("[data-flip]").addEventListener("click", () => { flipped = !flipped; applySection(); });
@@ -475,7 +491,21 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < (TAP_PX[e.pointerType] ?? TAP_PX.mouse)) pick(e);
   });
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && mode) setMode(mode);
+    if (e.key === "Escape") {
+      if (selection.length) {
+        selection = [];
+        showSelection();
+      }
+      if (mode) setMode(mode);
+      return;
+    }
+    if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const t = e.target;
+      if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
+      if (typeof document !== "undefined" && document.querySelector("dialog[open]")) return;
+      e.preventDefault();
+      setMode("measure");
+    }
   });
 
   return {
@@ -491,7 +521,17 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       selection = [];  // the faces may have changed
       showSelection();
     },
+    setMode(next) {
+      setMode(next);
+    },
+    getMode() {
+      return mode;
+    },
     clear() {
+      if (selection.length) {
+        selection = [];
+        showSelection();
+      }
       if (mode) setMode(mode);
     },
     getSelection() {

@@ -99,12 +99,13 @@ Ziel: begründete Entscheidung, worauf Mechvane aufbaut.
 - [x] Build-Umgebung klären: kein eigener Build nötig, fertige
       Release-Binaries (v0.16.2) laufen headless auf dem Steuer-Container,
       siehe [Phase-0-Bericht](docs/research/2026-10-phase0-solidcraft.md).
-- [ ] SolidCraft praktisch testen: Desktop/Web-App, `solidcraft-cli mcp` an
+- [x] SolidCraft praktisch testen: Desktop/Web-App, `solidcraft-cli mcp` an
       Claude Code anbinden, 3–5 eigene Referenzteile per Agent konstruieren.
       *Stand 2026-10-19:* MCP angebunden (`.mcp.json`), 4 Referenzteile
       (Flansch, Druckgehäuse, Blechwinkel, Scharnier) gebaut und vermessen.
       Eingebundene `mcp__solidcraft__*`-Tools nach Neustart geprüft
-      (Flansch, Abweichung 6,6e-6). Offen: GUI/Web-App.
+      (Flansch, Abweichung 6,6e-6). *Web-App seit 2026-10-25 in Mechvane eingebettet und täglich im Einsatz
+      (1b), damit erledigt (2026-10-31).*
 - [x] Prüfen: Wie gut ist der MCP-Server für Agenten (Fehlermeldungen,
       Topologie-Abfragen, Snapshots)? Ergebnis im
       [Phase-0-Bericht](docs/research/2026-10-phase0-solidcraft.md).
@@ -113,7 +114,7 @@ Ziel: begründete Entscheidung, worauf Mechvane aufbaut.
       (Referenzteile). Zeichnungen: M11 zurückgestellt, nur Ansichts-DXF.
       Plugins: nur Entwurf, kein Code, keine eigene Plugin-UI vorgesehen.
       Siehe [Bericht](docs/research/2026-10-19-solidcraft-baum-plugins-zeichnungen.md).
-- [ ] Prüfen: Lässt sich in SolidCraft ein Inventor-artiger Feature-Baum
+- [x] Prüfen: Lässt sich in SolidCraft ein Inventor-artiger Feature-Baum
       statt der Fusion-Timeline umsetzen (Grundsatz 5)? Was zeigt der
       vorhandene Browser, lässt sich die Timeline-Leiste ersetzen, geht das
       als Plugin/UI-Modul oder nur per Fork? Fließt direkt in ADR 0001 ein.
@@ -121,7 +122,9 @@ Ziel: begründete Entscheidung, worauf Mechvane aufbaut.
       zeigt den Verlauf senkrecht über dem Browser, mit Ordnern und
       Rollback-Balken, an dem neue Features eingefügt werden. Optisch kommt
       das nahe, es fehlen Skizzen unter ihrem Feature und ein gemeinsamer
-      Baum. Offen: in der laufenden App ansehen.
+      Baum. *Abgeschlossen 2026-10-31:* Mechvane zeigt den Baum selbst wie Inventor (Skizze unter ihrem
+      Feature, Prüfseite). Einen echten Baum in der SolidCraft-App nur über Oberflächen-Erweiterungen (#1221)
+      oder Upstream, gehört zu „Eigene Oberfläche“ (Phase 1, nach v0.1).
       *Nachtrag 2026-10-19:* Der Nutzer will den Baum auch im Datenmodell.
       Dann reicht UI nicht: SolidCraft hat **eine** Feature-Liste für das
       ganze Design (Komponenten nur als Feld `component`), Skizzen sind
@@ -140,6 +143,10 @@ Ziel: begründete Entscheidung, worauf Mechvane aufbaut.
       und schnell (Merge im Median 7 h), aber: kein GPL/LGPL/AGPL-Code, auch
       nicht lesen, keine Automatisierung kommerzieller CAD-Programme für
       Beiträge. [Bericht](docs/research/2026-10-19-solidcraft-baum-plugins-zeichnungen.md).
+      *Präzisiert 2026-10-31 (Nutzer):* (1) kein (L/A)GPL-Code **in** Mechvane (bleibt MIT/Apache),
+      (2) GPL-Programme als eigener Prozess sind erlaubt (CuraEngine, später CalculiX/Gmsh), Lizenz prüfen und
+      im Installer nennen, (3) „nicht lesen“ gilt nur für Arbeit, die an SolidCraft oder cadmpeg gehen soll.
+      Regeln in `AGENTS.md`.
 - [x] Gegenprobe: Chili3D (TypeScript + OCCT-Wasm), Dune 3D (C++, SolveSpace
       + OCCT), FreeCAD 1.x als Plattform kurz bewerten.
       [Gemini-Rohfassung mit Prüfnotiz](docs/research/2026-10-19-plattform-gegenprobe-gemini.md):
@@ -178,7 +185,8 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
    Modi „Modellieren“ und „Prüfen“, Speichern zurück an Mechvane (Nutzer-OK 2026-10-24, zuerst Test).
    *Test bestanden und umgesetzt 2026-10-25* (`/model`, Bauteile und Baugruppen mit verknüpften
    Teilen). Befund anklicken wählt die Fläche in der App aus (`select.set`, *fertig 2026-10-26*). Offen: Befunde
-   auch in der Demo nach dem Speichern (bräuchte die Prüfungen im Browser).
+   auch in der Demo nach dem Speichern (bräuchte die Prüfungen im Browser). **Vorgezogen 2026-10-31** (Nutzer:
+   wichtig für den ersten Eindruck): Pyodide-Prototyp #35, `design_rules` gegen `app.execute` der Web-App.
 2. UI Stufe 2: Fläche anklicken, Chatfenster mit dem Agenten **mit Spracheingabe** (Point and speak,
    Grundsatz 6: Auswahl plus gesprochener Auftrag gehen zusammen an den Agenten), Rückgängig
    (2–3 Wochen). Entwurf: [ADR 0003](docs/adr/0003-point-and-speak.md) (angenommen 2026-10-28,
@@ -191,10 +199,56 @@ zeigt, prüft). Danach nur noch Fachmodule. Schätzung bei 10–20 % Wochenbudge
 4. Praxistests mit dem Nutzer, Fehler beheben, Windows, Installation in einem
    Schritt (2–3 Wochen)
 
-Nicht in v0.1: ein eigener Skizzierer und eigene Feature-Dialoge (4–6 Monate). Von Hand
+Nicht in v0.1 (bis 2026-10-31, jetzt geändert, siehe „Eigene Oberfläche“ unten und ADR 0005): ein eigener
+Skizzierer und eigene Feature-Dialoge (4–6 Monate). Von Hand
 modelliert wird in der eingebetteten SolidCraft-App (1b, geht mit Mechvane-Dateien sauber,
 2026-10-25). Nach den ersten Praxistests entscheiden, ob mehr nötig ist. Richtung für alle
 UI-Stufen: Bedienung möglichst nah an Inventor (Grundsatz 10).
+
+**Fokus bis v0.1** (Nutzer 2026-10-31): Claude arbeitet an dieser Liste. Gemini bleibt gut ausgelastet, aber
+nach Phasen geordnet: Issues mit Label `v0.1` zuerst, danach Füllaufträge aus Phase 1 (#25, #27, #28), deren
+Branches erst gesichtet werden, wenn ihr Punkt dran ist. Phase 2 und später tragen `später` und ruhen (#29–#31).
+Neue Ideen kommen sofort an ihre Phase in die ROADMAP; umgesetzt werden sie, wenn die Phase dran ist, außer der
+Nutzer sagt ausdrücklich „jetzt“.
+Der native CAD-Import bleibt Langzeitziel: #32/#33 werden gesichtet, neue Aufträge erst nach v0.1.
+Bis v0.1 fehlt noch:
+- [ ] **Eigene Oberfläche** (Nutzer 2026-10-31: „eigene vollständige Oberfläche“, schnell etwas zeigen):
+      [ADR 0005](docs/adr/0005-eigene-oberflaeche.md) (angenommen 2026-10-31). Stufe 1 Arbeitsbereich wie Inventor,
+      Stufe 2 eigene Feature-Dialoge über `/api/feature`, Stufe 3 Skizzierer (so weit möglich, sonst
+      direkt nach v0.1). SolidCraft-App nur noch als Expertenmodus.
+      *Stufe 1 fertig (#36, gemergt 2026-11-01), offen: Stufe 2 und 3.*
+- [ ] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
+- [ ] **Point and speak fertig** (2): Spracheingabe auf echten Geräten (Handy, Surface) mit Fachbegriffen
+      testen, Fehler beheben.
+- [x] **Öffnen/Neu ohne Browser-Dialoge** (3): „New part“ mit eigenem Dialog statt `prompt()`/`alert()`
+      (Surface-Test 2026-10-31). *Erledigt 2026-11-01: `newpart.js`, Fehler im Dialog, Klicktest in
+      `ui_smoke.py`. Zwei `confirm()` im Agenten-Chat (Undo trotz Konflikt, Einwilligung Spracheingabe) bleiben
+      vorerst.*
+- [ ] **SolidCraft-Fehler für Agent und Nutzer übersetzen** (Nutzer 2026-10-31, aus einem Gespräch mit Gemini):
+      Jeder fehlgeschlagene Befehl (`run`, Mechvane-Werkzeuge, später `/api/feature`) wird abgefangen, das
+      Feature und die Stelle lokalisiert (Kante/Fläche mit Mechvane-Namen, Punkt, beteiligte Features) und
+      in einem Satz erklärt, was sich berührt oder schneidet, mit Vorschlag (z. B. „Fase 3 trifft Bohrung 1
+      bei z = −4,2; Fase ≤ 0,8 mm oder Bohrung versetzen“). Ausgangsfall: „lumps: shell boundaries intersect“
+      (Praxistest 6, #34). Häufige SolidCraft-Meldungen sammeln und je eine Übersetzung mit Test.
+- [ ] **Bauteilende für den Agenten** (Nutzer 2026-11-01, vorgezogen zur Fehlerübersetzung): MCP-Werkzeug,
+      das den Bauteilende-Marker vor eine Fehlerstelle setzt (SolidCraft `timeline.rollback`/`timeline.roll_to`),
+      dort isoliert messen und reparieren, dann schrittweise vorrücken. Regel im Skill `konstrukteur`.
+- [ ] **Zustandsbericht nach jedem Modellschritt** (Nutzer 2026-11-01, zweiter Gemini-Vorschlag): jede Änderung
+      über MCP (und später `/api/feature`) liefert ein knappes Delta: Hüllquader und Schwerpunkt vorher/nachher,
+      Volumen- und Massendifferenz, Anzahl Körper. Warnt bei Schnitt ohne Wirkung (Volumen unverändert), bei
+      großen Sprüngen und wenn ein Teil in mehrere Körper zerfällt. Wenige Zeilen, kein Bild.
+- [ ] **Sichtprüfung für den Agenten** (Nutzer 2026-11-01, Idee aus dem Gemini-Gespräch): MCP-Werkzeug
+      `verify_view` gibt ein Bild mit vier Feldern zurück (Iso, Vorne, Oben, Schnitt durch Mitte oder gewählte
+      Stelle), je mit Achsen, Maßstab und Hüllmaßen; zuletzt geändertes Feature farbig, bei Fehlern die Stelle
+      aus der Fehlerübersetzung markiert. Gezielt aufrufen (neues Feature an neuer Stelle, nach Fehlern, vor dem
+      Abschluss; Regel im Skill `konstrukteur`), nicht nach jedem Schritt (Kontext). Zahlen bleiben maßgeblich
+      (`measure`, `check_design`). Baut auf `screenshot` (headless) auf.
+- [ ] **Baugruppen wie Inventor**: erstes Teil festlegen (#26, erledigt 2026-11-01), `bolted_connection` durch alle und
+      Kollisionsprüfung (#34).
+- [ ] **Desktop-App Schritt 1**: Sichtprüfung des App-Fensters unter Windows und Linux.
+- [ ] **Praxistests** (4): mindestens zwei weitere Runden mit dem Nutzer, je eine echte Konstruktion von
+      Anfang bis Ende (Agent und Handbedienung), Befunde beheben.
+- [ ] **Stabile Version** 0.1.0 auf PyPI, wenn alles oben erledigt ist und Linux und Windows laufen.
 
 - [x] Abgleichliste Inventor ↔ SolidCraft ↔ Mechvane (Register, Befehlsnamen, Tastenkürzel,
       Browser, Dialoge), Recherche an Gemini (*fertig 2026-10-30*,
@@ -238,7 +292,9 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 - [ ] **Eigene Oberfläche, SolidCraft nur noch im Hintergrund** (Entscheidung Nutzer 2026-10-28): Am
       Ende sieht man nur die Mechvane-Oberfläche, SolidCraft rechnet und zeichnet darunter. In der App,
       der README und allen öffentlichen Texten bleibt SolidCraft ausdrücklich genannt. Weg in Stufen:
-      - Bis v0.1 wie jetzt: eigene Oberfläche für Prüfen und Chat, SolidCraft-Web-App zum Modellieren.
+      - *Geändert 2026-10-31 (Nutzer):* Arbeitsbereich und eigene Feature-Dialoge kommen in v0.1, der
+        Skizzierer so weit möglich ([ADR 0005](docs/adr/0005-eigene-oberflaeche.md)).
+      - Bisher: bis v0.1 eigene Oberfläche für Prüfen und Chat, SolidCraft-Web-App zum Modellieren.
       - Danach eigene Dialoge für die häufigsten Features über den Server (headless `solidcraft-cli`,
         wie Modus „Prüfen“ und Agent); das braucht kein Live-Ziehen.
       - Skizzierer und Live-Vorschau mit dem SolidCraft-Kern im Browser: Web-App eingebettet, ihre
@@ -365,6 +421,9 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       `check_design(material=…)`; Randabstand und Wandstärke hängen bisher nur am Fertigungsprofil).
       Zielformat: SolidCraft-Kennwertkarte (`physical_card`, Schema 1, SI mit Quelle je Wert) in
       eigenen Werkstoffen bzw. Bibliotheken `solidcraft-library/2`; der Katalog bleibt die belegte Quelle.
+- [ ] **Verfahrensregeln ausbauen** (Nutzer 2026-11-01, Gemini-Vorschlag): je Fertigungsprofil weitere Regeln
+      mit Quelle, z. B. FDM: liegende Bohrungen als Tropfenform, Kerndurchmesser für Einpressmuttern; CNC:
+      Mindest-Innenradien für Fräser, Bohrtiefe zu Durchmesser, Hinterschnitte und Werkzeugzugang.
 - [ ] **Regeln aus Werkstoffkennwerten herleiten** (Nutzerwunsch 2026-10-29): statt Tabellen je
       Werkstoff („Stahl, M6: ≥ 6 mm“) Formeln aus Kennwerten (Rm/Rp0,2 der Schraube, Scherfestigkeit
       des Bauteilwerkstoffs, Gewindegeometrie nach ISO 68-1), damit jeder Werkstoff der Datenbank
@@ -388,6 +447,22 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 - [ ] Referenzteile-Korpus mit Sollwerten anlegen (`tests/reference/`).
       *Begonnen 2026-10-19:* 7 Teile mit `check.py` (seit 2026-10-23 Welle, Rohrhalter, Rippenplatte), weitere aus dem Alltag
       ergänzen (Druckteile, Vorrichtungen).
+
+### Nach v0.1: Harness und Zusammenarbeit (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
+
+- [ ] **Nutzersperren**: Parameter, Maße, Features und Funktionsflächen „vom Nutzer festgelegt“ (Schloss im
+      Baum, Attribut in den Mechvane-Metadaten); der Agent bekommt bei Änderungen eine sprechende Ablehnung
+      mit Vorschlag. Keep-Out-Flächen: Überschneidung nach dem Befehl prüfen und zurücknehmen.
+- [ ] **Herkunft von Maßen**: Berechnete Maße (Regelkatalog ADR 0002, Formeln aus Werkstoffkennwerten,
+      `bolted_connection`) schreiben Herleitung und Quelle in den Kommentar des Parameters (SolidCraft-
+      Parameter haben ein Kommentarfeld); Tooltip in der eigenen Oberfläche.
+- [ ] **3D-Diff bei Agenten-Änderungen**: vorheriges Netz als Geistervolumen über dem neuen Stand,
+      Markierung im Baum (neu/geändert), einzelne Änderungen annehmen oder verwerfen. Abhängigkeiten aus
+      `timeline.dependents`.
+- [ ] **Versionen und Varianten** (Nutzer 2026-11-01): benannte Stände mit Vergleich (3D nebeneinander,
+      Feature-Diff aus `document.json`, Git darunter), danach Varianten-Zweige, besonders für den Agenten
+      („Variante A/B“, übernehmen oder verwerfen), zuletzt Zusammenführen auf Feature-Ebene mit
+      Konfliktanzeige (Vorbild Onshape).
 
 ## Phase 2: Fachmodule als Plugins (ca. 4–6 Monate)
 
@@ -459,6 +534,35 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       lesbares Skript plus natürlichsprachliche Regeln, die ein Agent in
       Code übersetzt und testet.
 
+### Ergänzungen Phase 2 (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
+
+- [ ] **FEM** (Plan Nutzer 2026-10-31, Phase 2, nach v0.1), zwei Stufen mit gemeinsamer Bedienung (Lasten und Lager
+      per Flächenauswahl in der eigenen Ansicht, Ergebnis eingefärbt, auch für den Agenten: „Hält der Winkel 200 N?“):
+      1. **Eigener linearer Schnellcheck:** ein Bauteil, ein Werkstoff, kleine Verformungen; Vergleichsspannung,
+         Verformung, Sicherheitsfaktor gegen Rp0,2 aus der Werkstoffdatenbank. Elemente mit scikit-fem, Lösen mit
+         SciPy (beide BSD), quadratische Tetraeder. Vernetzen nicht selbst: fTetWild (MPL-2.0) oder Netgen/Gmsh als
+         eigener Prozess. Ergebnis gegen ein Lehrbuchbeispiel und CalculiX prüfen.
+      2. **Erweiterte Analyse mit CalculiX** (GPL, eigener Prozess, Lizenzregel siehe Phase 0): Kontakt, Plastizität,
+         große Verformungen, Eigenfrequenzen, Temperatur.
+- [ ] **Benannte Anschlüsse (Ports)**: Features exportieren benannte Bezüge (`motor_mount_face`, `shaft_axis`),
+      im UI als Fangpunkte, für Agent und Gelenke als stabile Anker. Baut auf den Mechvane-Flächennamen auf,
+      Grundlage für die adaptive Projektion.
+- [ ] **Baugruppe auf Kollisionen und Freigang prüfen**: statisch (Durchdringungen, Schraube zu lang für das
+      Sackloch) und entlang der Gelenkbereiche (SolidCraft `joint.sweep`, Kontaktsätze), als MCP-Werkzeug und
+      Prüflauf im UI.
+- [ ] **Explosionsansicht und Stückliste**: Explosionsrichtungen aus Gelenkachsen und Verschraubungen,
+      interaktiv im UI; Stückliste als Export (später auch in der Zeichnung, Phase 3).
+- [ ] **Adaptive Projektion in Baugruppen**: `project_geometry` speichert im Zielteil die semantische Abfrage
+      der Quellfläche (`find`) statt Koordinaten, Aktualisieren der Baugruppe zieht nach. Hängt an
+      Flächennamen über Verknüpfungen (SolidCraft #3330).
+- [ ] **Passungsprüfung über Gelenke**: `check_joints` prüft bei Zylinder-/Drehgelenken Nennmaße und
+      `iso_fit`-Passungen von Bohrung und Welle gegeneinander und gegen die Gelenkart. Zahlt auf den
+      Benchmark „Lagerstelle“ ein.
+- [ ] **Slicer-Prüfung für den Agenten** (`check_slicing`): CuraEngine headless mit dem gewählten Profil,
+      Befunde für Stützstruktur, kritische Brücken, zu dünne Wände. Gehört zum Slicer-Modul.
+- [ ] **Agenten-Heilung beim CAD-Import**: Platzhalter-Features (Grundsatz 7) lässt ein Agent iterativ mit
+      SolidCraft-Befehlen nachbauen, bis Volumen, Schwerpunkt, Hüllquader und Flächenzahl zum Soll-Körper passen.
+
 ## Phase 3: Fertigungszeichnungen (ca. 6–9 Monate)
 
 Das aufwendigste Modul und Pflicht für Werkstatt-Teile.
@@ -478,11 +582,14 @@ ohne Bezug zum 3D-Modell. Die exakten Ansichten müssen von SolidCraft kommen
 - [ ] **Agent leitet Zeichnung ab**: fertigungsgerecht bemaßt, prüft auf
       Über- und Unterbemaßung
 - [ ] PDF/DXF-Export
+- [ ] **Semantische 3D→2D-Vererbung** ([Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md)): projizierte Kanten behalten ihr erzeugendes Feature und dessen
+      Daten (Gewinde, Tiefe, Passung, Schweißnaht), damit der Agent fertigungsgerecht bemaßt statt Geometrie
+      zu raten.
 
 ## Später / bewusst nicht geplant
 
-Später als Plugin, wenn Bedarf da ist: FEM-Brücke (CalculiX/PrePoMax),
-Bewegungssimulation, Rendering (über Blender), CAM-Brücke.
+Später als Plugin, wenn Bedarf da ist: Bewegungssimulation, Rendering (über Blender), CAM-Brücke.
+
 Nicht geplant: T-Splines, Rohrleitungen, Kabelbaum, BIM/Revit, Vault-artiges PDM
 (Git reicht), iParts (ersetzt durch Konfigurationstabellen).
 

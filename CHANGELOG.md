@@ -7,6 +7,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Mechvane workspace in the layout of Inventor (ADR 0005, stage 1).** The Check page is now the Mechvane
+  workspace: a ribbon with **File** menu (open/new from the folder, **Open in SolidCraft (expert mode)**,
+  **Request a feature**, **Quit**) and tabs **3D Model**, **Sketch**, **Inspect**, **Assemble** and **View**;
+  a **Model** browser on the left with **Origin**, **End of Part** and **Parameters** below it; a 3D view in
+  the centre with live coordinate axes and **Home view (F6)**; a right panel with **Properties**, collapsible
+  **Design check** and **Agent** chat (with the microphone button next to the input); resizable side panels;
+  and a bottom status bar with the SolidCraft core version and check verdict badge.
+- **The first part of an assembly is grounded, like in Inventor.** `insert_part` grounds the first part or
+  subassembly you place in an empty assembly, so the next joint moves the new part and not the base. Pass
+  `grounded` to decide yourself.
+- **File → New part… opens Mechvane's own dialog** instead of the browser's prompt. It suggests a free name,
+  shows the file it will create, and tells you right there when the name is already taken.
+
+### Fixed
+
+- Windows with an NVIDIA or AMD graphics card: SolidCraft no longer crashes while Mechvane builds a socket head
+  screw (for example in `mechvane ui --demo`). DirectX 12 is now only chosen on Intel-only graphics, where
+  Vulkan crashes; everywhere else SolidCraft's default stays. A `WGPU_BACKEND` you set still wins.
+
 ## [0.1.0a11] - 2026-10-31
 
 Built and tested with SolidCraft 0.25.1.

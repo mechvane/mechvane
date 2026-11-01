@@ -40,8 +40,13 @@ Headless UI checks: `tools/ui_smoke.py` (needs playwright).
 - **Values need a source.** Numbers in the catalog or in design rules come from a freely accessible source
   with a verbatim quote; `python3 tools/check_sources.py <note.md>` must find them. No values from paid
   standards documents, no copied standard texts.
-- **No GPL/LGPL/AGPL code**, not even as a reference to read, and no automating commercial CAD to produce
-  contributions (SolidCraft's governance).
+- **No GPL/LGPL/AGPL code in Mechvane.** Mechvane stays MIT OR Apache-2.0, so nothing copied, ported or
+  linked from (L/A)GPL sources goes into this repository.
+- **GPL programs may run as separate programs** (input file in, result file out, e.g. CuraEngine, later
+  CalculiX or Gmsh): check their licence first and say in the docs and installer what gets added.
+- **Clean room for upstream work:** for anything meant for SolidCraft or cadmpeg (kernel features, file
+  format analysis) do not read GPL/LGPL/AGPL source code, and do not automate commercial CAD to produce
+  contributions (SolidCraft's governance, cadmpeg's provenance statement).
 - In assemblies use Mechvane's tools (`insert_part`, `add_joint`, `edit_joint`, `update_links`,
   `bolted_connection`), not raw SolidCraft joint commands, so joints stay checkable.
 - A sketch used by one feature sits directly before it (`sketch_rule`).

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mechvane Web-UI</title>
+  <title>Mechvane</title>
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -17,30 +17,528 @@
   </script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <span class="brand"><img class="brand-logo" src="logo.svg" alt="">Mechvane</span>
-      <span id="doc-name" class="doc-name">—</span>
-      <span id="doc-kind" class="badge badge-neutral" hidden></span>
-      <span id="doc-path" class="doc-path"></span>
-      <span class="mode-switch"><strong>Check</strong> <a id="mode-model" href="model">Model by hand</a></span>
+  <header class="ribbon" aria-label="Ribbon">
+    <div class="ribbon-topbar">
+      <div class="ribbon-topbar-left">
+        <span class="brand"><img class="brand-logo" src="logo.svg" alt="">Mechvane</span>
+
+        <details id="file-menu" class="file-menu">
+          <summary class="file-menu-btn" aria-haspopup="menu">File <span class="caret" aria-hidden="true">▾</span></summary>
+          <div class="file-menu-dropdown" role="menu">
+            <button id="btn-new-part" type="button" class="menu-item" role="menuitem" hidden>
+              <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2h5l4 4v8H4z"/><path d="M9 2v4h4M8 7v5M5.5 9.5h5"/></svg>
+              New part…
+            </button>
+            <div id="demo-bar" class="demo-bar file-menu-section" hidden>
+              <label for="demo-select" class="menu-section-label">Example</label>
+              <select id="demo-select" class="file-select"></select>
+              <ul id="file-doc-list" class="file-doc-list"></ul>
+              <a class="menu-install-link" href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
+            </div>
+            <hr class="menu-divider">
+            <a id="mode-model" class="menu-item" role="menuitem" href="model">
+              <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3H3v10h10v-3M9 2h5v5M14 2L7.5 8.5"/></svg>
+              Open in SolidCraft (expert mode)
+            </a>
+            <button id="btn-request-feature" type="button" class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6"/></svg>
+              Request a feature
+            </button>
+            <hr id="quit-divider" class="menu-divider">
+            <div id="run-state-note" class="menu-note" hidden></div>
+            <button id="btn-quit" type="button" class="menu-item menu-item-quit" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2H3v12h3M10 5l3 3-3 3M6 8h7"/></svg>
+              Quit
+            </button>
+          </div>
+        </details>
+
+        <nav class="ribbon-tabs" role="tablist" aria-label="Workspace tabs">
+          <button type="button" class="ribbon-tab active" role="tab" aria-selected="true" data-tab="3d-model">3D Model</button>
+          <button type="button" class="ribbon-tab" role="tab" aria-selected="false" data-tab="sketch">Sketch</button>
+          <button type="button" class="ribbon-tab" role="tab" aria-selected="false" data-tab="inspect">Inspect</button>
+          <button type="button" class="ribbon-tab" role="tab" aria-selected="false" data-tab="assemble">Assemble</button>
+          <button type="button" class="ribbon-tab" role="tab" aria-selected="false" data-tab="view">View</button>
+        </nav>
+      </div>
     </div>
-    <div id="demo-bar" class="demo-bar" hidden>
-      <label for="demo-select">Example</label>
-      <select id="demo-select"></select>
-      <a href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
-    </div>
-    <div class="topbar-right">
-      <button id="btn-request-feature" type="button" class="btn-text">Request a feature</button>
-      <span id="verdict-badge" class="badge" hidden></span>
-      <span id="status-indicator" class="status-text">Ready</span>
+
+    <div class="ribbon-bar">
+      <!-- 3D Model tab -->
+      <div class="ribbon-panel active" role="tabpanel" data-tab-panel="3d-model">
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="5" width="14" height="14" rx="1.5" stroke-dasharray="3 2"/>
+                <path d="M7 15h6V9"/>
+                <path d="M15 3l6 6-7 7H8v-6l7-7z"/>
+              </svg>
+              <span>Create 2D Sketch</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Sketch</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 17l8 4 8-4"/>
+                <path d="M4 10l8 4 8-4-8-4-8 4z" fill="currentColor" fill-opacity="0.18"/>
+                <path d="M4 10v7M12 14v7M20 10v7"/>
+                <path d="M12 3v5M9.5 5.5L12 3l2.5 2.5"/>
+              </svg>
+              <span>Extrude</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <line x1="6" y1="3" x2="6" y2="21" stroke-dasharray="2.5 2"/>
+                <rect x="9" y="6" width="8" height="12" rx="1" fill="currentColor" fill-opacity="0.18"/>
+                <path d="M4 15c2 3 9 3 14 0"/>
+                <path d="M16 13l2.5 2-2.5 2"/>
+              </svg>
+              <span>Revolve</span>
+            </button>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12c2-6 6-6 12-8"/><circle cx="3" cy="12" r="2"/><circle cx="13" cy="4" r="2"/></svg>
+                <span>Sweep</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="3.5" rx="3.5" ry="1.5"/><path d="M3 12.5h10l-1.5-9h-7z"/></svg>
+                <span>Loft</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3v10h10"/><path d="M3 6l7 7"/></svg>
+                <span>Rib</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Create</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <ellipse cx="12" cy="6" rx="6" ry="2.5" fill="currentColor" fill-opacity="0.18"/>
+                <path d="M6 6v9l6 5 6-5V6"/>
+                <path d="M6 15h12" stroke-dasharray="2 2"/>
+              </svg>
+              <span>Hole</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20V12a8 8 0 0 1 8-8h8"/>
+                <path d="M4 12V4h8" stroke-dasharray="2 2" opacity="0.6"/>
+                <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                <path d="M12 12L6.5 6.5"/>
+              </svg>
+              <span>Fillet</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20v-8l8-8h8"/>
+                <path d="M4 12V4h8" stroke-dasharray="2 2" opacity="0.6"/>
+              </svg>
+              <span>Chamfer</span>
+            </button>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="1"/><rect x="5" y="5" width="6" height="6"/></svg>
+                <span>Shell</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="2" width="8" height="12"/><path d="M4 5l8 2M4 8l8 2M4 11l8 2"/></svg>
+                <span>Thread</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="12" height="8"/><line x1="8" y1="1" x2="8" y2="15" stroke-dasharray="2 1.5"/></svg>
+                <span>Split</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Modify</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><polygon points="4,3 14,3 12,13 2,13" fill="currentColor" fill-opacity="0.18"/></svg>
+                <span>Plane</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="14" x2="14" y2="2" stroke-dasharray="3 2"/></svg>
+                <span>Axis</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/><circle cx="8" cy="8" r="2"/></svg>
+                <span>Point</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Work Features</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
+                  <rect x="2" y="2" width="4.5" height="4.5"/><rect x="9.5" y="2" width="4.5" height="4.5"/>
+                  <rect x="2" y="9.5" width="4.5" height="4.5"/><rect x="9.5" y="9.5" width="4.5" height="4.5"/>
+                </svg>
+                <span>Rectangular Pattern</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
+                  <circle cx="8" cy="2.5" r="1.5"/><circle cx="12.8" cy="5.2" r="1.5"/><circle cx="12.8" cy="10.8" r="1.5"/>
+                  <circle cx="8" cy="13.5" r="1.5"/><circle cx="3.2" cy="10.8" r="1.5"/><circle cx="3.2" cy="5.2" r="1.5"/>
+                </svg>
+                <span>Circular Pattern</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
+                  <line x1="8" y1="1.5" x2="8" y2="14.5" stroke-dasharray="2 1.5"/>
+                  <polygon points="2,12 6,4 6,12"/><polygon points="14,12 10,4 10,12" opacity="0.6"/>
+                </svg>
+                <span>Mirror</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Pattern</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-ribbon-params" type="button" class="ribbon-btn ribbon-btn-large" title="Open parameters">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6c-2 0-3 1.2-3 3v9M4 11h5"/>
+                <path d="M14 10l6 8M20 10l-6 8"/>
+              </svg>
+              <span>Parameters</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Manage</div>
+        </div>
+      </div>
+
+      <!-- Sketch tab -->
+      <div class="ribbon-panel" role="tabpanel" data-tab-panel="sketch" hidden>
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>
+              </svg>
+              <span>Line</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+              </svg>
+              <span>Circle</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="4" cy="6" r="1.8"/><circle cx="20" cy="18" r="1.8"/>
+              </svg>
+              <span>Rectangle</span>
+            </button>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13A9 9 0 0 1 13 3"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="3" r="1.5"/></svg>
+                <span>Arc</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="5" width="12" height="6" rx="3"/></svg>
+                <span>Slot</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,2 13.5,5 13.5,11 8,14 2.5,11 2.5,5"/></svg>
+                <span>Polygon</span>
+              </button>
+            </div>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12C5 3 11 13 14 4"/></svg>
+                <span>Spline</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v8M4 8h8"/></svg>
+                <span>Point</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 12h10M5 4h6l2 4H3z"/></svg>
+                <span>Project Geometry</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Create</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12L10 4M10 4l4-4" stroke-dasharray="2 1.5"/><line x1="6" y1="2" x2="12" y2="14"/></svg>
+                <span>Trim</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="10" x2="9" y2="10"/><line x1="9" y1="10" x2="13" y2="10" stroke-dasharray="2 1.5"/><line x1="13" y1="3" x2="13" y2="14"/></svg>
+                <span>Extend</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13V6h10"/><path d="M6 13V9h7" opacity="0.65"/></svg>
+                <span>Offset</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Modify</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <line x1="4" y1="6" x2="4" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>
+                <line x1="4" y1="12" x2="20" y2="12"/>
+                <path d="M7 9l-3 3 3 3M17 9l3 3-3 3"/>
+              </svg>
+              <span>General Dimension</span>
+            </button>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+                <span>Horizontal</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="8" y1="2" x2="8" y2="14"/></svg>
+                <span>Vertical</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13V3M3 13h10"/><rect x="3" y="9" width="4" height="4"/></svg>
+                <span>Perpendicular</span>
+              </button>
+            </div>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="3" y1="12" x2="11" y2="4"/><line x1="5" y1="14" x2="13" y2="6"/></svg>
+                <span>Parallel</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="9" r="4"/><line x1="3" y1="13" x2="14" y2="2"/></svg>
+                <span>Tangent</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="10" x2="13" y2="10"/></svg>
+                <span>Equal</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Constrain</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Finish Sketch</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Exit</div>
+        </div>
+      </div>
+
+      <!-- Inspect tab -->
+      <div class="ribbon-panel" role="tabpanel" data-tab-panel="inspect" hidden>
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-measure" type="button" class="ribbon-btn ribbon-btn-large" data-tool="measure" title="Click two points, faces or edges (M)">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="8" width="18" height="8" rx="1"/>
+                <path d="M7 8v4M11 8v3M15 8v4M19 8v3"/>
+              </svg>
+              <span>Measure</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Measure</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-section" type="button" class="ribbon-btn ribbon-btn-large" data-tool="section" title="Cut the model with a plane">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="6" width="10" height="12" rx="1" fill="currentColor" fill-opacity="0.18"/>
+                <line x1="14" y1="3" x2="14" y2="21" stroke-dasharray="2.5 2"/>
+                <path d="M14 6h6v12h-6" opacity="0.4"/>
+              </svg>
+              <span>Section</span>
+            </button>
+            <span class="section-controls" hidden>
+              <select aria-label="Section plane">
+                <option value="x">YZ (X)</option>
+                <option value="y">XZ (Y)</option>
+                <option value="z" selected>XY (Z)</option>
+              </select>
+              <input type="range" min="0" max="1000" value="500" aria-label="Section position">
+              <button type="button" data-flip title="Show the other side">⇅</button>
+            </span>
+          </div>
+          <div class="ribbon-group-title">Section</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-select" type="button" class="ribbon-btn ribbon-btn-large" data-tool="select" title="Click faces to point the agent at them">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="12,4 20,8 12,12 4,8" fill="currentColor" fill-opacity="0.22"/>
+                <path d="M11 11l3 9 2-4 4-2-9-3z"/>
+              </svg>
+              <span>Select</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Agent Selection</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-design-check" type="button" class="ribbon-btn ribbon-btn-large" title="Open design check and manufacturing profile">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3l7 3v6c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-3z"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              <span>Design check</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Evaluate</div>
+        </div>
+      </div>
+
+      <!-- Assemble tab -->
+      <div class="ribbon-panel" role="tabpanel" data-tab-panel="assemble" hidden>
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" fill="currentColor" fill-opacity="0.18"/>
+                <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>
+              </svg>
+              <span>Place</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="12,3 18,6.5 18,13.5 12,17 6,13.5 6,6.5"/>
+                <circle cx="12" cy="10" r="2.5"/>
+                <path d="M9 17v4h6v-4"/>
+              </svg>
+              <span>Place Standard Part</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Component</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="6" width="7" height="12" rx="1"/>
+                <rect x="14" y="6" width="7" height="12" rx="1"/>
+                <path d="M10 12h4"/>
+              </svg>
+              <span>Joint</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 8h16M4 16h16"/><path d="M12 4v16" stroke-dasharray="2 2"/>
+              </svg>
+              <span>Constrain</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Relationships</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="6" y="4" width="12" height="4" rx="1" fill="currentColor" fill-opacity="0.18"/>
+                <rect x="9" y="8" width="6" height="12"/>
+                <path d="M9 12h6M9 15h6M9 18h6"/>
+              </svg>
+              <span>Bolted Connection</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Fasteners</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 0 1 8.5-3.5M13 8a5 5 0 0 1-8.5 3.5"/><polyline points="12,2 12,5 9,5"/><polyline points="4,14 4,11 7,11"/></svg>
+                <span>Update Links</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M2 7h12M6 7v6"/></svg>
+                <span>BOM</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Manage</div>
+        </div>
+      </div>
+
+      <!-- View tab -->
+      <div class="ribbon-panel" role="tabpanel" data-tab-panel="view" hidden>
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <button id="btn-ribbon-home" type="button" class="ribbon-btn ribbon-btn-large" title="Home view (F6)">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 11l9-7 9 7"/>
+                <path d="M5 10v10h14V10"/>
+                <rect x="9" y="14" width="6" height="6"/>
+              </svg>
+              <span>Home view</span>
+            </button>
+            <button id="btn-zoom-all" type="button" class="ribbon-btn ribbon-btn-large" title="Fit model in window">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+                <rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" fill-opacity="0.18"/>
+              </svg>
+              <span>Zoom all</span>
+            </button>
+          </div>
+          <div class="ribbon-group-title">Navigate</div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>
+                <span>Visual Style</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z"/><circle cx="8" cy="8" r="2"/></svg>
+                <span>Object Visibility</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Appearance</div>
+        </div>
+      </div>
     </div>
   </header>
 
   <div class="workspace">
-    <aside class="panel panel-left" aria-label="Model tree">
+    <aside id="panel-left" class="panel panel-left" aria-label="Model">
       <div class="panel-header">
-        <h2>Model tree</h2>
+        <h2>Model</h2>
       </div>
       <div id="tree-content" class="panel-body">
         <div class="empty-state">Loading model tree…</div>
@@ -55,42 +553,95 @@
       </section>
     </aside>
 
-    <main class="viewport-container" aria-label="3D-Ansicht">
+    <div id="splitter-left" class="panel-splitter" role="separator" aria-orientation="vertical" aria-label="Resize left panel"></div>
+
+    <main class="viewport-container" aria-label="3D view">
       <div id="viewport" class="viewport"></div>
       <div id="selection-banner" class="selection-banner" hidden></div>
-      <div class="viewport-hint">Z ↑ · Left: rotate · Right: pan · Wheel: zoom</div>
+      <div class="view-gizmo" aria-label="View controls">
+        <button id="btn-home-view" type="button" class="gizmo-home-btn" title="Home view (F6)" aria-label="Home view (F6)">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2 7.5L8 2.5l6 5M3.5 6.8V13.5h9V6.8"/>
+          </svg>
+        </button>
+        <svg id="axes-gizmo" class="axes-gizmo" viewBox="0 0 64 64" aria-label="Coordinate axes">
+          <circle cx="32" cy="32" r="28" class="axes-ring"/>
+          <line id="axis-x" x1="32" y1="32" x2="52" y2="32" class="axis-line axis-x"/>
+          <line id="axis-y" x1="32" y1="32" x2="32" y2="12" class="axis-line axis-y"/>
+          <line id="axis-z" x1="32" y1="32" x2="20" y2="44" class="axis-line axis-z"/>
+          <text id="axis-label-x" x="55" y="35" class="axis-label axis-x">X</text>
+          <text id="axis-label-y" x="32" y="9" class="axis-label axis-y">Y</text>
+          <text id="axis-label-z" x="15" y="50" class="axis-label axis-z">Z</text>
+          <circle cx="32" cy="32" r="2.2" class="axes-origin"/>
+        </svg>
+      </div>
+      <div class="viewport-hint">Z ↑ · Left: rotate · Right: pan · Wheel: zoom · F6: Home</div>
     </main>
 
-    <aside class="panel panel-right" aria-label="Findings">
-      <div class="panel-header">
-        <h2>Findings</h2>
-        <span id="findings-count" class="count-pill">0</span>
-      </div>
-      <div id="rule-setup" class="rule-setup" hidden>
-        <select id="rule-profile" aria-label="Manufacturing profile"></select>
-        <select id="rule-material" aria-label="Material" title="Material: thread engagement depth follows it"></select>
-      </div>
-      <div id="findings-summary" class="findings-summary" hidden></div>
-      <div id="findings-content" class="panel-body">
-        <div class="empty-state">Loading findings…</div>
-      </div>
-      <section id="agent-chat" class="chat-panel" hidden aria-label="Agent">
+    <div id="splitter-right" class="panel-splitter" role="separator" aria-orientation="vertical" aria-label="Resize right panel"></div>
+
+    <aside id="panel-right" class="panel panel-right" aria-label="Properties and checks">
+      <section id="properties-section" class="properties-section" aria-label="Properties">
         <div class="panel-header">
+          <h2>Properties</h2>
+        </div>
+        <div id="properties-content" class="panel-body properties-body">
+          <div class="empty-state">Select a command</div>
+        </div>
+      </section>
+
+      <details id="design-check-section" class="collapsible-section design-check-section" open>
+        <summary class="panel-header collapsible-header">
+          <h2>Design check</h2>
+          <span id="findings-count" class="count-pill">0</span>
+        </summary>
+        <div class="collapsible-content">
+          <div id="rule-setup" class="rule-setup" hidden>
+            <select id="rule-profile" aria-label="Manufacturing profile"></select>
+            <select id="rule-material" aria-label="Material" title="Material: thread engagement depth follows it"></select>
+          </div>
+          <div id="findings-summary" class="findings-summary" hidden></div>
+          <div id="findings-content" class="panel-body">
+            <div class="empty-state">Loading findings…</div>
+          </div>
+        </div>
+      </details>
+
+      <details id="agent-chat" class="chat-panel collapsible-section" open hidden aria-label="Agent">
+        <summary class="panel-header collapsible-header">
           <h2>Agent</h2>
           <span class="chat-actions">
             <button type="button" class="btn-text chat-undo" hidden title="Undo the agent's last turn"></button>
             <button type="button" class="btn-text chat-redo" hidden title="Put the undone turn back">↷ Redo</button>
           </span>
+        </summary>
+        <div class="collapsible-content chat-body">
+          <ul class="chat-log" aria-live="polite"></ul>
+          <div class="chat-composer">
+            <textarea class="chat-input" rows="2" placeholder="Select faces (Inspect → Select), then say what to do, e.g. &quot;a 1 × 45° chamfer here&quot;"></textarea>
+            <button type="button" class="mic-btn" title="Hold to speak" aria-label="Hold to speak">🎤</button>
+            <button type="button" class="send-btn" title="Send" aria-label="Send">↑</button>
+          </div>
+          <div class="composer-hint" hidden></div>
         </div>
-        <ul class="chat-log" aria-live="polite"></ul>
-        <div class="chat-composer">
-          <textarea class="chat-input" rows="2" placeholder="Select faces (Select tool), then say what to do, e.g. &quot;a 1 × 45° chamfer here&quot;"></textarea>
-          <button type="button" class="mic-btn" hidden title="Hold to speak" aria-label="Hold to speak">🎤</button>
-          <button type="button" class="send-btn" title="Send" aria-label="Send">↑</button>
-        </div>
-      </section>
+      </details>
     </aside>
   </div>
+
+  <footer id="statusbar" class="statusbar" aria-label="Status bar">
+    <div class="statusbar-left">
+      <span id="status-indicator" class="status-text">Ready</span>
+      <span class="status-sep" aria-hidden="true">·</span>
+      <span id="doc-name" class="doc-name">—</span>
+      <span id="doc-kind" class="badge badge-neutral" hidden></span>
+      <span id="doc-path" class="doc-path" hidden></span>
+      <span class="status-sep" aria-hidden="true">·</span>
+      <span id="core-info" class="status-core">Core: <a id="core-link" href="https://github.com/tangency-labs/solidcraft" target="_blank" rel="noopener noreferrer">SolidCraft <span id="core-version"></span></a></span>
+    </div>
+    <div class="statusbar-right">
+      <span id="verdict-badge" class="badge" hidden></span>
+    </div>
+  </footer>
 
   <script type="module" src="request.js"></script>
   <script type="module" src="app.js"></script>

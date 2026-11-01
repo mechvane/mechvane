@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { initViewTools } from "./viewtools.js";
 import { initAgentChat } from "./chat.js";
+import { openNewPartDialog } from "./newpart.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -16,6 +17,16 @@ const findingsContentEl = document.getElementById("findings-content");
 const findingsCountEl = document.getElementById("findings-count");
 const findingsSummaryEl = document.getElementById("findings-summary");
 const selectionBannerEl = document.getElementById("selection-banner");
+const axesLines = {
+  x: document.getElementById("axis-x"),
+  y: document.getElementById("axis-y"),
+  z: document.getElementById("axis-z"),
+};
+const axesLabels = {
+  x: document.getElementById("axis-label-x"),
+  y: document.getElementById("axis-label-y"),
+  z: document.getElementById("axis-label-z"),
+};
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10000);
@@ -52,26 +63,93 @@ let currentFindings = [];
 let selectedFindingIndex = null;
 let cameraFitted = false;
 let modelRadius = 50;
+let modelCenter = new THREE.Vector3(0, 0, 0);
 const viewTools = initViewTools({
   scene, camera, renderer, modelGroup, renderScene, controls,
   selectable: document.documentElement.dataset.static !== "1",
   containerEl: viewportEl.parentElement,
 });
 
+function updateAxesGizmo() {
+  if (!axesLines.x) return;
+  const invQuat = camera.quaternion.clone().invert();
+  const dirs = {
+    x: new THREE.Vector3(1, 0, 0).applyQuaternion(invQuat),
+    y: new THREE.Vector3(0, 1, 0).applyQuaternion(invQuat),
+    z: new THREE.Vector3(0, 0, 1).applyQuaternion(invQuat),
+  };
+  for (const k of ["x", "y", "z"]) {
+    const v = dirs[k];
+    const x2 = 32 + v.x * 17;
+    const y2 = 32 - v.y * 17;
+    const lx = 32 + v.x * 24;
+    const ly = 32 - v.y * 24 + 3;
+    if (axesLines[k]) {
+      axesLines[k].setAttribute("x2", x2.toFixed(1));
+      axesLines[k].setAttribute("y2", y2.toFixed(1));
+    }
+    if (axesLabels[k]) {
+      axesLabels[k].setAttribute("x", lx.toFixed(1));
+      axesLabels[k].setAttribute("y", ly.toFixed(1));
+    }
+  }
+}
+
 function applyThemeColors() {
   // Dark unless the page asks for the light theme (style.css)
   const isDark = document.documentElement.dataset.theme !== "light";
   scene.background = new THREE.Color(isDark ? 0x111418 : 0xf3f5f8);
+  if (currentMeshData) {
+    updateMeshView(currentMeshData, false);
+    if (selectedFindingIndex !== null && currentFindings[selectedFindingIndex]) {
+      highlightFinding(currentFindings[selectedFindingIndex]);
+    }
+  }
   renderScene();
 }
 
 applyThemeColors();
 
+new MutationObserver(() => applyThemeColors()).observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ["data-theme"],
+});
+
 function renderScene() {
+  updateAxesGizmo();
   renderer.render(scene, camera);
 }
 
 controls.addEventListener("change", renderScene);
+
+function fitCameraToModel(keepDirection = false) {
+  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
+  const effHalfFov = camera.aspect < 1 ? Math.atan(Math.tan(halfFov) * camera.aspect) : halfFov;
+  const dist = (modelRadius / Math.sin(effHalfFov)) * 1.15;
+  let dir = new THREE.Vector3(1.25, -1.45, 1.05).normalize();
+  if (keepDirection) {
+    const cur = camera.position.clone().sub(controls.target);
+    if (cur.lengthSq() > 1e-6) dir = cur.normalize();
+  } else {
+    camera.up.set(0, 0, 1);
+  }
+  camera.position.copy(modelCenter).addScaledVector(dir, dist);
+  camera.near = Math.max(0.05, modelRadius * 0.01);
+  camera.far = Math.max(2000, modelRadius * 40);
+  camera.updateProjectionMatrix();
+  controls.target.copy(modelCenter);
+  controls.update();
+  cameraFitted = true;
+  renderScene();
+}
+
+function homeView() {
+  fitCameraToModel(false);
+}
+
+function zoomAll() {
+  fitCameraToModel(true);
+}
 
 function resizeViewport() {
   const w = viewportEl.clientWidth || 640;
@@ -206,20 +284,16 @@ function updateMeshView(meshData, fitCamera) {
     const sphere = new THREE.Sphere();
     box.getBoundingSphere(sphere);
     modelRadius = Math.max(sphere.radius, 5);
+    modelCenter.copy(sphere.center);
 
     if (fitCamera || !cameraFitted) {
-      const center = sphere.center;
-      const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
-      const effHalfFov = camera.aspect < 1 ? Math.atan(Math.tan(halfFov) * camera.aspect) : halfFov;
-      const dist = (modelRadius / Math.sin(effHalfFov)) * 1.15;
-      const dir = new THREE.Vector3(1.25, -1.45, 1.05).normalize();
-      camera.position.copy(center).addScaledVector(dir, dist);
-      camera.near = Math.max(0.05, modelRadius * 0.01);
-      camera.far = Math.max(2000, modelRadius * 40);
-      camera.updateProjectionMatrix();
-      controls.target.copy(center);
-      controls.update();
-      cameraFitted = true;
+      fitCameraToModel(false);
+    }
+  } else {
+    modelRadius = 50;
+    modelCenter.set(0, 0, 0);
+    if (fitCamera || !cameraFitted) {
+      fitCameraToModel(false);
     }
   }
 
@@ -508,6 +582,32 @@ function renderOccurrenceNode(occ) {
   return li;
 }
 
+function renderOriginFolder() {
+  const details = document.createElement("details");
+  details.className = "tree-folder tree-origin";
+  const summary = document.createElement("summary");
+  summary.className = "tree-row tree-folder-summary";
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "tree-name";
+  nameSpan.textContent = "Origin";
+  summary.appendChild(nameSpan);
+  details.appendChild(summary);
+
+  const ul = document.createElement("ul");
+  ul.className = "tree-children";
+  for (const item of ["YZ Plane", "XZ Plane", "XY Plane", "X Axis", "Y Axis", "Z Axis", "Center Point"]) {
+    const li = document.createElement("li");
+    li.className = "tree-item tree-origin-item";
+    const span = document.createElement("span");
+    span.className = "tree-meta";
+    span.textContent = item;
+    li.appendChild(span);
+    ul.appendChild(li);
+  }
+  details.appendChild(ul);
+  return details;
+}
+
 function updateTreeView(treeData) {
   treeContentEl.innerHTML = "";
   if (!treeData) {
@@ -515,44 +615,55 @@ function updateTreeView(treeData) {
     return;
   }
 
+  const rootHeader = document.createElement("div");
+  rootHeader.className = "tree-root-header";
+  rootHeader.textContent = (docNameEl && docNameEl.textContent && docNameEl.textContent !== "—")
+    ? docNameEl.textContent
+    : (treeData.kind === "assembly" ? "Assembly" : "Part");
+  treeContentEl.appendChild(rootHeader);
+  treeContentEl.appendChild(renderOriginFolder());
+
   if (treeData.kind === "part") {
     const bodies = treeData.bodies || [];
     const features = treeData.features || [];
-    if (bodies.length === 0 && features.length === 0) {
-      treeContentEl.innerHTML = '<div class="empty-state">No features</div>';
-      return;
-    }
     if (bodies.length > 0) {
-      const bTitle = document.createElement("div");
-      bTitle.className = "tree-section-title";
-      bTitle.textContent = `Bodies (${bodies.length})`;
-      treeContentEl.appendChild(bTitle);
+      const bDetails = document.createElement("details");
+      bDetails.className = "tree-folder tree-bodies";
+      const bSum = document.createElement("summary");
+      bSum.className = "tree-row tree-folder-summary";
+      const bName = document.createElement("span");
+      bName.className = "tree-name";
+      bName.textContent = `Solid Bodies (${bodies.length})`;
+      bSum.appendChild(bName);
+      bDetails.appendChild(bSum);
 
       const bList = document.createElement("ul");
-      bList.className = "tree-list";
+      bList.className = "tree-children";
       bodies.forEach((b) => {
         const li = document.createElement("li");
         li.className = "tree-item tree-name";
         li.textContent = b;
         bList.appendChild(li);
       });
-      treeContentEl.appendChild(bList);
+      bDetails.appendChild(bList);
+      treeContentEl.appendChild(bDetails);
     }
-
-    const fTitle = document.createElement("div");
-    fTitle.className = "tree-section-title";
-    fTitle.textContent = "History";
-    treeContentEl.appendChild(fTitle);
 
     const fList = document.createElement("ul");
     fList.className = "tree-list";
     features.forEach((f) => fList.appendChild(renderFeatureNode(f)));
+    if (!features.some((f) => f.type === "EndOfPart")) {
+      fList.appendChild(renderFeatureNode({ type: "EndOfPart", name: "End of Part" }));
+    }
     treeContentEl.appendChild(fList);
   } else {
     const occs = treeData.occurrences || [];
     const asmFeats = treeData.assembly_features || [];
     if (occs.length === 0 && asmFeats.length === 0) {
-      treeContentEl.innerHTML = '<div class="empty-state">No components</div>';
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "No components";
+      treeContentEl.appendChild(empty);
       return;
     }
     if (occs.length > 0) {
@@ -712,7 +823,7 @@ function fillRuleSetup(data) {
 }
 
 async function changeRules() {
-  statusEl.textContent = "Checking…";
+  statusEl.textContent = "Computing…";
   try {
     const data = await fetchJson("api/rules", {
       method: "POST",
@@ -721,7 +832,7 @@ async function changeRules() {
     });
     updateFindingsView(data, true);
     fillRuleSetup(data);
-    statusEl.textContent = "Up to date";
+    statusEl.textContent = "Ready";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
@@ -731,7 +842,7 @@ ruleMaterialEl.addEventListener("change", changeRules);
 
 async function loadAll(initial = false) {
   try {
-    statusEl.textContent = "Loading…";
+    statusEl.textContent = "Computing…";
     const ver = await fetchJson(dataUrl("version"));
     docNameEl.textContent = ver.name || "Document";
     const [mesh, tree, findings] = await Promise.all([
@@ -752,7 +863,7 @@ async function loadAll(initial = false) {
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;
     else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
-    statusEl.textContent = STATIC ? "Live demo, precomputed" : "Up to date";
+    statusEl.textContent = "Ready";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
@@ -824,7 +935,7 @@ async function applyParams(ev) {
   if (!Object.keys(changes).length) return;
   paramsApply.disabled = true;
   paramsError.hidden = true;
-  statusEl.textContent = "Rebuilding…";
+  statusEl.textContent = "Computing…";
   try {
     const res = await fetch("api/params", {
       method: "POST",
@@ -835,6 +946,7 @@ async function applyParams(ev) {
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     updateParamsView(data);
     await pollVersion();
+    statusEl.textContent = "Ready";
   } catch (err) {
     paramsError.textContent = err.message;
     paramsError.hidden = false;
@@ -847,6 +959,164 @@ if (!STATIC) {
   paramsForm.addEventListener("submit", applyParams);
   paramsForm.addEventListener("keydown", (e) => { if (e.key === "Enter") applyParams(e); });
   paramsApply.addEventListener("click", applyParams);
+}
+
+// Ribbon tabs, File menu, Ribbon buttons, keyboard shortcuts (F6, Esc) and panel splitters
+const fileMenu = document.getElementById("file-menu");
+const ribbonTabs = Array.from(document.querySelectorAll(".ribbon-tab[data-tab]"));
+const ribbonPanels = Array.from(document.querySelectorAll(".ribbon-panel[data-tab-panel]"));
+
+function activateRibbonTab(tabId) {
+  for (const tab of ribbonTabs) {
+    const active = tab.dataset.tab === tabId;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  for (const panel of ribbonPanels) {
+    const active = panel.dataset.tabPanel === tabId;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  }
+}
+
+for (const tab of ribbonTabs) {
+  tab.addEventListener("click", () => activateRibbonTab(tab.dataset.tab));
+}
+
+document.addEventListener("click", (e) => {
+  if (fileMenu && fileMenu.open && !fileMenu.contains(e.target)) {
+    fileMenu.open = false;
+  }
+});
+
+const btnRibbonParams = document.getElementById("btn-ribbon-params");
+if (btnRibbonParams) {
+  btnRibbonParams.addEventListener("click", () => {
+    paramsSection.hidden = false;
+    if (!paramsForm.children.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "No parameters in this document";
+      paramsForm.appendChild(empty);
+    }
+    paramsSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const firstInput = paramsForm.querySelector("input");
+    if (firstInput) firstInput.focus();
+  });
+}
+
+const btnDesignCheck = document.getElementById("btn-design-check");
+const designCheckSection = document.getElementById("design-check-section");
+if (btnDesignCheck && designCheckSection) {
+  btnDesignCheck.addEventListener("click", () => {
+    designCheckSection.open = true;
+    designCheckSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (ruleProfileEl && !ruleSetupEl.hidden) ruleProfileEl.focus();
+  });
+}
+
+const btnRibbonHome = document.getElementById("btn-ribbon-home");
+const btnHomeView = document.getElementById("btn-home-view");
+const btnZoomAll = document.getElementById("btn-zoom-all");
+if (btnRibbonHome) btnRibbonHome.addEventListener("click", homeView);
+if (btnHomeView) btnHomeView.addEventListener("click", homeView);
+if (btnZoomAll) btnZoomAll.addEventListener("click", zoomAll);
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "F6") {
+    e.preventDefault();
+    homeView();
+  } else if (e.key === "Escape") {
+    if (fileMenu && fileMenu.open) fileMenu.open = false;
+    if (selectedFindingIndex !== null) {
+      selectFinding(selectedFindingIndex);
+    }
+  }
+});
+
+const LEFT_WIDTH_KEY = "mechvane.ui.leftWidth";
+const RIGHT_WIDTH_KEY = "mechvane.ui.rightWidth";
+
+function initSplitters() {
+  try {
+    const lw = Number(localStorage.getItem(LEFT_WIDTH_KEY));
+    if (lw >= 180 && lw <= 600) {
+      document.documentElement.style.setProperty("--left-panel-width", `${lw}px`);
+    }
+    const rw = Number(localStorage.getItem(RIGHT_WIDTH_KEY));
+    if (rw >= 220 && rw <= 640) {
+      document.documentElement.style.setProperty("--right-panel-width", `${rw}px`);
+    }
+  } catch {
+    // localStorage may be blocked or unavailable
+  }
+
+  const bindSplitter = (el, side) => {
+    if (!el) return;
+    let dragging = false;
+    el.addEventListener("pointerdown", (e) => {
+      if (window.innerWidth <= 760) return;
+      e.preventDefault();
+      dragging = true;
+      el.classList.add("dragging");
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      if (side === "left") {
+        const w = Math.round(Math.min(600, Math.max(180, e.clientX)));
+        document.documentElement.style.setProperty("--left-panel-width", `${w}px`);
+      } else {
+        const w = Math.round(Math.min(640, Math.max(220, window.innerWidth - e.clientX)));
+        document.documentElement.style.setProperty("--right-panel-width", `${w}px`);
+      }
+      resizeViewport();
+    });
+    const finish = () => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove("dragging");
+      try {
+        const val = document.documentElement.style.getPropertyValue(
+          side === "left" ? "--left-panel-width" : "--right-panel-width"
+        );
+        const px = parseInt(val, 10);
+        if (px) {
+          localStorage.setItem(side === "left" ? LEFT_WIDTH_KEY : RIGHT_WIDTH_KEY, String(px));
+        }
+      } catch {
+        // ignore storage errors
+      }
+    };
+    el.addEventListener("pointerup", finish);
+    el.addEventListener("pointercancel", finish);
+  };
+
+  bindSplitter(document.getElementById("splitter-left"), "left");
+  bindSplitter(document.getElementById("splitter-right"), "right");
+}
+
+initSplitters();
+resizeViewport();
+
+function populateFileDocList(items, currentVal, onSelect) {
+  const listEl = document.getElementById("file-doc-list");
+  if (!listEl) return;
+  listEl.replaceChildren();
+  for (const item of items) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "file-doc-item" + (item.value === currentVal ? " active" : "");
+    btn.textContent = item.label;
+    btn.dataset.value = item.value;
+    btn.addEventListener("click", () => {
+      onSelect(item.value);
+      if (fileMenu) fileMenu.open = false;
+    });
+    li.appendChild(btn);
+    listEl.appendChild(li);
+  }
 }
 
 async function pollVersion() {
@@ -864,6 +1134,7 @@ async function pollVersion() {
 async function initStatic() {
   const index = await fetchJson("demos/index.json");
   const select = document.getElementById("demo-select");
+  const items = index.demos.map((d) => ({ value: d.name, label: d.title }));
   for (const d of index.demos) {
     const opt = document.createElement("option");
     opt.value = d.name;
@@ -875,9 +1146,14 @@ async function initStatic() {
   const open = async (fit) => {
     demoBase = `demos/${select.value}/`;
     document.getElementById("mode-model").href = `model?demo=${select.value}`;
+    populateFileDocList(items, select.value, (val) => {
+      select.value = val;
+      select.dispatchEvent(new Event("change"));
+    });
     await loadAll(fit);
   };
   select.addEventListener("change", () => {
+    if (fileMenu) fileMenu.open = false;
     history.replaceState(null, "", `?demo=${select.value}`);
     open(true);
   });
@@ -890,9 +1166,20 @@ async function initStatic() {
 async function initFolder() {
   const project = await fetchJson("api/project");
   if (project.mode !== "folder") return;
+  const newPartBtn = document.getElementById("btn-new-part");
+  if (newPartBtn) {
+    newPartBtn.hidden = false;
+    newPartBtn.addEventListener("click", () => {
+      if (fileMenu) fileMenu.open = false;
+      openNewPartDialog((project.documents || []).map((d) => d.name), (data) => {
+        statusEl.textContent = "Computing…";
+        location.search = `?doc=${encodeURIComponent(data.document)}`;
+      });
+    });
+  }
   const docs = project.documents || [];
   if (!docs.length) {
-    statusEl.textContent = "No .solidcraft files in this folder yet: open Model by hand and click New part";
+    statusEl.textContent = "No .solidcraft files in this folder yet: click File → New part…";
     docNameEl.textContent = "No document";
     for (const el of [treeContentEl, findingsContentEl]) {
       el.innerHTML = '<div class="empty-state">Nothing open yet</div>';
@@ -900,12 +1187,16 @@ async function initFolder() {
     return false;
   }
   const select = document.getElementById("demo-select");
-  document.querySelector('label[for="demo-select"]').textContent = "Document";
+  document.querySelector('label[for="demo-select"]').textContent = "Open from folder";
   for (const a of document.querySelectorAll("#demo-bar a")) a.hidden = true;  // "Install to open your own files": live demo only
-  for (const d of docs) {
+  const items = docs.map((d) => ({
+    value: d.name,
+    label: d.name.replace(/\.solidcraft$/, "") + (d.kind === "assembly" ? " (assembly)" : ""),
+  }));
+  for (const item of items) {
     const opt = document.createElement("option");
-    opt.value = d.name;
-    opt.textContent = d.name.replace(/\.solidcraft$/, "") + (d.kind === "assembly" ? " (assembly)" : "");
+    opt.value = item.value;
+    opt.textContent = item.label;
     select.appendChild(opt);
   }
   const wanted = new URLSearchParams(location.search).get("doc");
@@ -916,10 +1207,15 @@ async function initFolder() {
     const res = await fetch("api/open/" + encodeURIComponent(select.value), { method: "POST" });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
     document.getElementById("mode-model").href = `model?doc=${encodeURIComponent(select.value)}`;
+    populateFileDocList(items, select.value, (val) => {
+      select.value = val;
+      select.dispatchEvent(new Event("change"));
+    });
     currentVersion = null;
     await loadAll(fit);
   };
   select.addEventListener("change", () => {
+    if (fileMenu) fileMenu.open = false;
     history.replaceState(null, "", `?doc=${encodeURIComponent(select.value)}`);
     open(true).catch((err) => { statusEl.textContent = `Error: ${err.message}`; });
   });
@@ -955,6 +1251,7 @@ if (!STATIC) {
     root: document.getElementById("agent-chat"),
     getSelection: () => viewTools.getSelection(),
     clearSelection: () => viewTools.clearSelection(),
+    onBusy: (b) => { statusEl.textContent = b ? "Computing…" : "Ready"; },
     onChanged: () => loadAll(false),
   });
 }

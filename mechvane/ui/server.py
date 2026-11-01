@@ -785,6 +785,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/request.js":
                 self._send_static("request.js", "application/javascript; charset=utf-8")
                 return
+            if path == "/newpart.js":
+                self._send_static("newpart.js", "application/javascript; charset=utf-8")
+                return
             if path == "/style.css":
                 self._send_static("style.css", "text/css; charset=utf-8")
                 return

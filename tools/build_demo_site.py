@@ -14,7 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from mechvane import links  # noqa: E402
+from mechvane import install, links  # noqa: E402
 from mechvane.documents import ASSEMBLY, Workspace  # noqa: E402
 from mechvane.examples import DEMOS  # noqa: E402
 from mechvane.ui.mesh import collect_mesh  # noqa: E402
@@ -68,7 +68,7 @@ def main():
         finally:
             ws.close_all()
     (demo / "demos" / "index.json").write_text(json.dumps({"demos": index}, indent=1), encoding="utf-8")
-    (demo / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": "live demo"}, indent=1), encoding="utf-8")
+    (demo / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": install.VERSION}, indent=1), encoding="utf-8")
     (out / ".nojekyll").write_text("")
     # Old live-demo addresses (before the website moved in) forward to /demo/, keeping ?demo=…
     (out / "model.html").write_text(

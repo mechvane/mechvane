@@ -704,6 +704,117 @@ def insert_rotation_checks(ws):
        str(sub_bbox))
 
     ws.close_all()
+
+
+def insert_grounded_checks(ws):
+    p1 = ws.new(PART, "g_part1")
+    p1.session.batch([{"command": "solid.box", "params": {"length": 30, "width": 20, "height": 10, "name": "Box"}}])
+    p1.save()
+
+    p2 = ws.new(PART, "g_part2")
+    p2.session.batch([{"command": "solid.box", "params": {"length": 20, "width": 20, "height": 10, "name": "Box"}}])
+    p2.save()
+
+    # 1. Empty assembly: first part without grounded argument -> grounded automatically
+    asm1 = ws.new(ASSEMBLY, "g_asm1")
+    ins1 = links.insert(ws, asm1, p1.path, name="P1")
+    occs1 = links._occurrences(asm1.session)
+    ok("insert: first part without grounded argument is grounded in empty assembly",
+       occs1.get(ins1["occurrence"], {}).get("grounded") is True,
+       f"occ={ins1['occurrence']} occs={occs1}")
+
+    # 2. Assembly with already grounded part: second part without grounded argument -> not grounded
+    ins2 = links.insert(ws, asm1, p2.path, name="P2", translate=[40, 0, 0])
+    occs2 = links._occurrences(asm1.session)
+    ok("insert: second part without grounded argument is not grounded when assembly already has a component",
+       occs2.get(ins2["occurrence"], {}).get("grounded") is False
+       and occs2.get(ins1["occurrence"], {}).get("grounded") is True,
+       f"occ2={ins2['occurrence']} occs={occs2}")
+
+    # 3. Empty assembly: first part with grounded=False -> not grounded
+    asm2 = ws.new(ASSEMBLY, "g_asm2")
+    ins_free = links.insert(ws, asm2, p1.path, name="P1", grounded=False)
+    occs_free = links._occurrences(asm2.session)
+    ok("insert: first part with grounded=False is not grounded",
+       occs_free.get(ins_free["occurrence"], {}).get("grounded") is False,
+       f"occ={ins_free['occurrence']} occs={occs_free}")
+
+    # 4. Explicit grounded=True on an assembly with an existing part
+    ins_exp = links.insert(ws, asm2, p2.path, name="P2", translate=[40, 0, 0], grounded=True)
+    occs_exp = links._occurrences(asm2.session)
+    ok("insert: second part with explicit grounded=True is grounded",
+       occs_exp.get(ins_exp["occurrence"], {}).get("grounded") is True
+       and occs_exp.get(ins_free["occurrence"], {}).get("grounded") is False,
+       f"occ={ins_exp['occurrence']} occs={occs_exp}")
+
+    # 5. Subassembly into empty assembly without grounded argument -> parent component grounded
+    sub_asm = ws.new(ASSEMBLY, "g_sub")
+    links.insert(ws, sub_asm, p1.path, name="SubP1", grounded=True)
+    links.insert(ws, sub_asm, p2.path, name="SubP2", translate=[10, 0, 0], grounded=False)
+    sub_asm.save()
+
+    top_asm1 = ws.new(ASSEMBLY, "g_top1")
+    ins_sub1 = links.insert(ws, top_asm1, sub_asm.path, name="Sub1")
+    top_occs1 = links._occurrences(top_asm1.session)
+    ok("insert: subassembly inserted into empty assembly without grounded argument has grounded parent component",
+       ins_sub1["kind"] == "subassembly" and top_occs1.get(ins_sub1["occurrence"], {}).get("grounded") is True,
+       f"sub_occ={ins_sub1.get('occurrence')} occs={top_occs1}")
+
+    # 6. Subassembly inserted into non-empty assembly without grounded argument -> parent component NOT grounded
+    ins_sub2 = links.insert(ws, top_asm1, sub_asm.path, name="Sub2", translate=[50, 0, 0])
+    top_occs2 = links._occurrences(top_asm1.session)
+    ok("insert: subassembly inserted into non-empty assembly without grounded argument is not grounded",
+       ins_sub2["kind"] == "subassembly" and top_occs2.get(ins_sub2["occurrence"], {}).get("grounded") is False,
+       f"sub2_occ={ins_sub2.get('occurrence')} occs={top_occs2}")
+
+    # 7. MCP server.insert_part tests
+    orig_server_ws = server.ws
+    server.ws = ws
+    try:
+        asm_mcp = ws.new(ASSEMBLY, "g_mcp_asm")
+        res1 = server.insert_part("g_mcp_asm", str(p1.path), name="McpP1")
+        mcp_occs1 = links._occurrences(asm_mcp.session)
+        ok("server.insert_part: first part without grounded argument is grounded",
+           mcp_occs1.get(res1["occurrence"], {}).get("grounded") is True,
+           f"res1={res1} occs={mcp_occs1}")
+
+        res2 = server.insert_part("g_mcp_asm", str(p2.path), name="McpP2", translate=[30, 0, 0])
+        mcp_occs2 = links._occurrences(asm_mcp.session)
+        ok("server.insert_part: second part without grounded argument is not grounded",
+           mcp_occs2.get(res2["occurrence"], {}).get("grounded") is False
+           and mcp_occs2.get(res1["occurrence"], {}).get("grounded") is True,
+           f"res2={res2} occs={mcp_occs2}")
+
+        # add_joint between the auto-grounded first part and the free second part:
+        # only the second part moves, the first keeps its transform
+        t1_before = mcp_occs2[res1["occurrence"]]["transform"]
+        t2_before = mcp_occs2[res2["occurrence"]]["transform"]
+        server.add_joint("g_mcp_asm", {
+            "name": "AutoGroundRigid",
+            "type": "rigid",
+            "a": {"occurrence": res1["occurrence"], "point": [0, 0, 10], "z": [0, 0, 1]},
+            "b": {"occurrence": res2["occurrence"], "point": [30, 0, 0], "z": [0, 0, -1]},
+        })
+        mcp_occs_j = links._occurrences(asm_mcp.session)
+        t1_after = mcp_occs_j[res1["occurrence"]]["transform"]
+        t2_after = mcp_occs_j[res2["occurrence"]]["transform"]
+        same = lambda a, b: all(abs(x - y) < 1e-6 for ra, rb in zip(a, b) for x, y in zip(ra, rb))
+        ok("add_joint: auto-grounded first part stays, only the second part moves",
+           same(t1_before, t1_after) and not same(t2_before, t2_after),
+           f"t1 {t1_before} -> {t1_after}, t2 {t2_before} -> {t2_after}")
+
+        asm_mcp2 = ws.new(ASSEMBLY, "g_mcp_asm2")
+        res_free = server.insert_part("g_mcp_asm2", str(p1.path), name="McpP1", grounded=False)
+        mcp_occs3 = links._occurrences(asm_mcp2.session)
+        ok("server.insert_part: first part with grounded=False is not grounded",
+           mcp_occs3.get(res_free["occurrence"], {}).get("grounded") is False,
+           f"res_free={res_free} occs={mcp_occs3}")
+    finally:
+        server.ws = orig_server_ws
+
+    ws.close_all()
+
+
 def design_rule_checks(ws):
     # 1. Hole too close to edge: fail
     doc_fail = ws.new(PART, "rule_fail")
@@ -5001,12 +5112,35 @@ def params_checks(tmp):
         with urllib.request.urlopen(base.replace("/api/params", "/chat.js")) as resp:
             chat_js = resp.read().decode()
         index_html = (ui_server.STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        app_js = (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8")
+        style_css = (ui_server.STATIC_DIR / "style.css").read_text(encoding="utf-8")
         ok("ui: Check page has the agent chat (chat.js) and a Select tool feeding it",
            "export function initAgentChat" in chat_js and 'id="agent-chat"' in index_html
            and "getSelection" in (ui_server.STATIC_DIR / "viewtools.js").read_text(encoding="utf-8"))
         ok("ui: measure and section tools served and loaded by the Check page",
            "javascript" in ctype and "export function initViewTools" in js
-           and 'from "./viewtools.js"' in (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8"), ctype)
+           and 'from "./viewtools.js"' in app_js, ctype)
+        ribbon_cmds = (
+            "Create 2D Sketch", "Extrude", "Revolve", "Hole", "Fillet", "Chamfer",
+            "Rectangular Pattern", "Circular Pattern", "Mirror", "Parameters",
+            "Measure", "Section", "Select", "Design check", "Home view", "Zoom all",
+        )
+        ok("ui: Inventor-style workspace (ADR 0005 stage 1) has ribbon tabs, commands, Properties, statusbar and splitters",
+           all(t in index_html for t in ("3D Model", "Sketch", "Inspect", "Assemble", "View"))
+           and all(c in index_html for c in ribbon_cmds)
+           and 'title="Coming in the next step"' in index_html
+           and "Open in SolidCraft (expert mode)" in index_html
+           and "Select a command" in index_html
+           and 'id="axes-gizmo"' in index_html and 'id="btn-home-view"' in index_html
+           and 'id="statusbar"' in index_html and "https://github.com/tangency-labs/solidcraft" in index_html
+           and 'id="splitter-left"' in index_html and 'id="splitter-right"' in index_html
+           and "renderOriginFolder" in app_js and "localStorage" in app_js
+           and "@media (max-width: 760px)" in style_css)
+        with urllib.request.urlopen(base.replace("/api/params", "/newpart.js")) as resp:
+            newpart_js = resp.read().decode()
+        ok("ui: New part uses the app's own dialog (newpart.js served), no browser prompt()",
+           "export function openNewPartDialog" in newpart_js and "prompt(" not in app_js
+           and 'from "./newpart.js"' in app_js)
     finally:
         srv.shutdown()
         srv.server_close()
@@ -5165,12 +5299,20 @@ def gltf_export_check(tmp):
 
 
 def session_env_checks():
-    """Windows: SolidCraft sessions render with DirectX 12 unless WGPU_BACKEND is set (Intel Vulkan crash)."""
+    """Windows: SolidCraft sessions render with DirectX 12 on Intel-only graphics unless WGPU_BACKEND is set
+    (Intel Vulkan crash); with an NVIDIA or AMD card Vulkan stays (DirectX 12 crash on an RTX 2070)."""
     from mechvane.solidcraft import session_env
-    ok("session env: DirectX 12 on Windows, nothing changed elsewhere, a set WGPU_BACKEND wins",
-       session_env("win32", {})["WGPU_BACKEND"] == "dx12"
-       and "WGPU_BACKEND" not in session_env("linux", {})
-       and session_env("win32", {"WGPU_BACKEND": "vulkan"})["WGPU_BACKEND"] == "vulkan")
+    intel = ["Intel(R) Iris(R) Xe Graphics"]
+    nvidia = ["Microsoft Basic Display Adapter", "NVIDIA GeForce RTX 2070"]
+    hybrid = ["Intel(R) UHD Graphics 630", "NVIDIA GeForce GTX 1650"]
+    ok("session env: DirectX 12 on Intel-only Windows, Vulkan default with NVIDIA/AMD, nothing changed "
+       "elsewhere, a set WGPU_BACKEND wins",
+       session_env("win32", {}, intel)["WGPU_BACKEND"] == "dx12"
+       and "WGPU_BACKEND" not in session_env("win32", {}, nvidia)
+       and "WGPU_BACKEND" not in session_env("win32", {}, hybrid)
+       and "WGPU_BACKEND" not in session_env("win32", {}, [])
+       and "WGPU_BACKEND" not in session_env("linux", {}, intel)
+       and session_env("win32", {"WGPU_BACKEND": "vulkan"}, intel)["WGPU_BACKEND"] == "vulkan")
 
 
 def demo_folder_checks(tmp):
@@ -5622,6 +5764,7 @@ def main():
             standard_parts_checks(ws)
             subassemblies(ws)
             insert_rotation_checks(ws)
+            insert_grounded_checks(ws)
             bolted_connection_checks(ws)
             bolted_review_fixes_checks(ws)
             bolted_pattern_and_edit_checks(ws)

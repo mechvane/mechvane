@@ -21,13 +21,16 @@ with sync_playwright() as pw:
     page = browser.new_page(viewport={"width": 1300, "height": 750})
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("dialog", lambda d: (errors.append(f"browser dialog: {d.message}"), d.dismiss()))
     page.goto(url)
     page.wait_for_timeout(5000)
+    page.click('.ribbon-tab[data-tab="inspect"]')
     box = page.locator("#viewport canvas").bounding_box()
     cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
     page.click("text=Measure")
-    for dx, dy in ((-150, -60), (150, 40)):
-        page.mouse.click(cx + dx, cy + dy)
+    # offsets relative to the 3D view: the workspace side panels make it narrower than the window
+    for fx, fy in ((-0.08, -0.04), (0.08, 0.02)):
+        page.mouse.click(cx + fx * box["width"], cy + fy * box["height"])
         page.wait_for_timeout(300)
     measured = page.locator(".measure-readout").inner_text()
     page.screenshot(path=os.path.join(out, "measure.png"))
@@ -52,9 +55,31 @@ with sync_playwright() as pw:
             page.wait_for_timeout(200)
             page.screenshot(path=os.path.join(out, "measure_edge.png"))
             break
+    # Folder mode only (File -> New part... visible): the app's own dialog, not prompt(). Typing the name of a
+    # file that exists shows the error inside the dialog; Cancel closes it. Nothing is created.
+    new_part = "skipped (no folder)"
+    page.click("#file-menu > summary")
+    if page.locator("#btn-new-part").is_visible():
+        existing = page.locator(".file-doc-item").first.get_attribute("data-value") or ""
+        page.click("#btn-new-part")
+        dlg = page.locator("#new-part-dialog")
+        default = page.locator("#new-part-name").input_value()
+        page.fill("#new-part-name", existing.removesuffix(".solidcraft"))
+        page.click("#new-part-dialog .btn-submit")
+        page.wait_for_timeout(500)
+        err = page.locator("#new-part-error")
+        shown = dlg.is_visible() and err.is_visible() and err.inner_text().strip() != ""
+        page.screenshot(path=os.path.join(out, "new_part.png"))
+        page.click("#new-part-dialog .btn-cancel")
+        new_part = f"default {default!r}, error for {existing!r}: {shown}, closes: {dlg.is_hidden()}"
+        new_part_ok = bool(default) and shown and dlg.is_hidden()
+    else:
+        page.keyboard.press("Escape")
+        new_part_ok = True
     browser.close()
+print("new part:", new_part)
 print("measure:", measured.replace("\n", " | "))
 print("section:", section)
 print("esc closes:", closed, "page errors:", errors)
 print("edge:", edge.replace("\n", " | ") or "none found")
-sys.exit(0 if "Distance" in measured and "Section" in section and closed and edge and not errors else 1)
+sys.exit(0 if "Distance" in measured and "Section" in section and closed and edge and new_part_ok and not errors else 1)

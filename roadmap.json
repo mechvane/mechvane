@@ -42,6 +42,30 @@
           "milestone": "v0.1"
         },
         {
+          "status": "planned",
+          "title": "Clear error messages for your agent",
+          "text": "When SolidCraft rejects a step, Mechvane names the feature and the spot and says in one sentence what touches what, with a suggestion, so your agent can fix it on the next try.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "A short report after every step",
+          "text": "After each change your agent learns how size, centre of mass, volume and number of bodies moved, and gets a warning when a cut hit nothing or the part fell apart.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "A picture to check against",
+          "text": "One image with iso, front, top and a section, with axes and sizes, the last change highlighted: a quick visual check for agents that can see images.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Roll back to find a problem",
+          "text": "Your agent can move the end of part before a failing feature, repair it there and step forward again, as you would in Inventor.",
+          "milestone": "v0.1"
+        },
+        {
           "status": "done",
           "title": "Install in one step",
           "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
@@ -62,7 +86,7 @@
         {
           "status": "planned",
           "title": "Open files from other CAD systems",
-          "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first."
+          "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first. Features that cannot be rebuilt directly stay as placeholders until your agent or a later version rebuilds them."
         }
       ]
     },
@@ -125,6 +149,18 @@
           "milestone": "v0.1"
         },
         {
+          "status": "progress",
+          "title": "Your own Mechvane workspace",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs for extrude, hole, fillet, chamfer and patterns, with SolidCraft computing underneath.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Live demo checks your changes",
+          "text": "Model by hand in the browser demo, save, and the design check runs again right there, no install needed.",
+          "milestone": "v0.1"
+        },
+        {
           "status": "done",
           "title": "Check settings saved with the part",
           "text": "Profile and material travel with the part file, so every browser and your agent check the same way.",
@@ -144,8 +180,28 @@
         },
         {
           "status": "planned",
+          "title": "Lock what you decided",
+          "text": "Mark parameters, features or faces as fixed; your agent works around them and tells you when a request would need them changed."
+        },
+        {
+          "status": "planned",
+          "title": "See what your agent changed",
+          "text": "The previous state as a ghost over the new one and changed features marked in the browser, to accept or undo each change."
+        },
+        {
+          "status": "planned",
+          "title": "Why a value is what it is",
+          "text": "Values your agent or an assistant calculates keep their derivation and source, shown when you hover over them."
+        },
+        {
+          "status": "planned",
+          "title": "Versions and variants",
+          "text": "Named versions you can compare side by side, variants your agent can try out for you to pick, later merged feature by feature."
+        },
+        {
+          "status": "planned",
           "title": "Own interface, SolidCraft in the background",
-          "text": "One consistent UI for modelling, checking and talking to your agent."
+          "text": "After the workspace: an own sketcher with live preview, so modelling never leaves Mechvane. SolidCraft keeps computing underneath and stays named in the app."
         },
         {
           "status": "planned",
@@ -198,6 +254,11 @@
         },
         {
           "status": "planned",
+          "title": "More rules per manufacturing process",
+          "text": "For 3D printing teardrop holes and heat-set inserts, for milling inner radii, drilling depth and tool access, each with its source."
+        },
+        {
+          "status": "planned",
           "title": "Material and appearance editor",
           "text": "Material and look per part, in an open format you can render 1:1 in Blender."
         }
@@ -219,6 +280,31 @@
         },
         {
           "status": "planned",
+          "title": "Named connection points",
+          "text": "Parts offer named anchors such as a shaft axis or a mounting face, for joints and for parts built to fit."
+        },
+        {
+          "status": "planned",
+          "title": "Geometry projected across parts",
+          "text": "A part built to fit another one keeps the link and follows when the other part changes."
+        },
+        {
+          "status": "planned",
+          "title": "Fit check across joints",
+          "text": "Hole and shaft fits checked against each other and against the kind of joint."
+        },
+        {
+          "status": "planned",
+          "title": "Clearance and collision check",
+          "text": "Find parts that overlap, at rest and along the range of each joint."
+        },
+        {
+          "status": "planned",
+          "title": "Exploded view and parts list",
+          "text": "Exploded views from joint axes and bolted connections, and a parts list to export."
+        },
+        {
+          "status": "planned",
           "title": "Sheet metal additions",
           "text": "Rules and helpers on top of SolidCraft's sheet metal."
         },
@@ -229,6 +315,11 @@
         },
         {
           "status": "planned",
+          "title": "Print check for your agent",
+          "text": "A quick slice in the background shows your agent where support, bridges or too thin walls would appear."
+        },
+        {
+          "status": "planned",
           "title": "Rule-based configuration",
           "text": "Parameter rules and configuration tables for families of parts."
         },
@@ -236,6 +327,11 @@
           "status": "planned",
           "title": "Welding",
           "text": "Weld seams as features (fillet and butt welds), weldments and ISO 2553 weld symbols in drawings."
+        },
+        {
+          "status": "planned",
+          "title": "Strength check",
+          "text": "A quick linear stress check right on the model, loads and supports picked on faces; CalculiX for contact, plasticity and vibration."
         }
       ]
     },
@@ -265,6 +361,11 @@
         },
         {
           "status": "planned",
+          "title": "Drawings that know the model",
+          "text": "Every edge in a view keeps the feature it comes from, with thread, depth, fit or weld, so dimensions follow the design intent."
+        },
+        {
+          "status": "planned",
           "title": "PDF and DXF export",
           "text": ""
         }
@@ -274,11 +375,6 @@
       "title": "Later",
       "intro": "As plugins, when there is a need.",
       "items": [
-        {
-          "status": "later",
-          "title": "FEM bridge",
-          "text": "Stress analysis via CalculiX."
-        },
         {
           "status": "later",
           "title": "Motion simulation",
