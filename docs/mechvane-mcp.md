@@ -39,7 +39,7 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
   sonst als Bauteil.
 - Jedes offene Dokument läuft in einer eigenen SolidCraft-Sitzung. Alle
   Sitzungen dürfen unter dem Arbeitsordner lesen und schreiben
-  (`MECHVANE_WORKSPACE`, in `.mcp.json` `/root/repos/mechvane/workspace`, nicht
+  (`MECHVANE_WORKSPACE`, in `.mcp.json` `./workspace`, nicht
   im Git).
 
 ## Werkzeuge
