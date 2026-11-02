@@ -498,6 +498,18 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Feature-Diff aus `document.json`, Git darunter), danach Branches (Varianten-Zweige), besonders für den Agenten
       („Variante A/B“, übernehmen oder verwerfen), zuletzt Zusammenführen auf Feature-Ebene mit
       Konfliktanzeige (Vorbild Onshape).
+- [ ] **Modell je Auftrag wählen** (Nutzer 2026-11-02: „eine Fase an eine Kante braucht kein Flaggschiff“): bisher
+      setzt Mechvane kein Modell, es gilt der Standard des Kontos (vermutlich Opus). Plan: (1) im Protokoll festhalten,
+      welches Modell lief (`agent_session`, seit 2026-11-02); (2) einfache Einstufung je Nachricht: ein Feature mit Maß
+      und Auswahl (Fase, Rundung, Bohrung, Parameter ändern) → Haiku, normales Modellieren mit mehreren Schritten →
+      Sonnet, Konstruieren, Baugruppen, „warum“, Fehlersuche → Opus; (3) Umschalten in derselben Sitzung über ACP
+      `session/set_model`, ohne den Verlauf zu verlieren; (4) Aufstufen, wenn ein Zug scheitert oder der Nutzer ihn
+      rückgängig macht; (5) Wahl im Chat sichtbar und überschreibbar (Auto / Schnell / Gründlich). Erst messen, wie
+      Haiku 5.5 einfache Mechvane-Züge schafft (Praxistest-Liste), dann Schwellen festlegen.
+      **Jev vorschalten** (Nutzer 2026-11-02, Skill `jev-bridge`): Einstufung als typisiertes Urteil mit Wahrscheinlichkeit,
+      unter einer Schwelle (z. B. 80 %) eine Stufe höher. Nur optional vor den Regeln (offline, ohne Schlüssel oder
+      abgeschaltet gelten die Regeln; der Auftragstext ginge an TypeSafe). Vorher prüfen: Antwortzeit, und auf einer
+      Liste von ~30 echten Aufträgen mit Soll-Stufe Jev gegen Regeln (Trefferquote, vor allem zu niedrig eingestuft).
 - [ ] **Kommentare und Aufgaben am Modell** (Nutzer 2026-11-02, Vorbild Onshape, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Notizen und
       Aufgaben an Flächen, Kanten oder Features geheftet, im Baum und in der Ansicht als Pins. Dieselbe Schicht trägt
       Befunde der Prüfseite und Aufträge an den Agenten („diese Fläche 2 mm dicker“), erledigte Aufgaben bleiben
@@ -592,6 +604,14 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       wie `bolted_connection` als Python mit fester Schnittstelle (Parameter, Eingabeauswahl, Erzeugen, Bearbeiten),
       die im Modellbaum als ein Feature stehen, sich bei Änderungen neu rechnen und vom Agenten wie vom Nutzer
       gleich benutzt werden. Grundlage für die Konstruktionsassistenten und Fachmodule.
+      *Upstream 2026-11-02:* SolidCraft plant genau das als Plugin-Generatoren (WIT + WebAssembly, #1221, #11169, #4980,
+      [Kommentar KyleTryon](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6584580471)): ein Feature
+      im Timeline, Formular aus deklarierten Eingaben, Bearbeiten mit gespeicherten Werten, Neuaufbau bei geänderten
+      Bezügen, ein Rückgängig-Schritt, feste Paketrevision, Öffnen ohne Plugin zeigt das Ergebnis. Abnahmebeispiele:
+      Stirnrad, metrische Schraube, Gewindebohrung. Kommt das, bauen wir Fachfeatures (Verschraubung, Welle, Zahnrad)
+      als SolidCraft-Plugins statt in der Python-Schicht; zählt beim Prüfpunkt Sprache für Rust/WASM.
+      Unser Kommentar (Nutzer-OK, 2026-11-02): [deklarierte Eingaben über die API lesbar für Hosts und Agenten, Auswahl
+      und Ergebnis nicht auf einen Körper festlegen](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6585010413).
 
 ### Ergänzungen Phase 2 (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
 

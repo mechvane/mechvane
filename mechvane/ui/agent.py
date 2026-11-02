@@ -108,6 +108,8 @@ class AcpAgent:
         new = self._call("session/new", {"cwd": self.cwd, "mcpServers": [mcp],
                                          "_meta": {"claudeCode": {"options": options}}}, timeout=120)
         self.session = new["sessionId"]
+        # which model the session runs on (and which it could): the debugging log should say
+        sessionlog.log("agent_session", models=new.get("models"), modes=(new.get("modes") or {}).get("currentModeId"))
 
     def _send(self, msg):
         self.proc.stdin.write(json.dumps(msg) + "\n")

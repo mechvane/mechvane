@@ -7,6 +7,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The session log also records which model your agent's session runs on, as a first step towards choosing the
+  model by how demanding a request is.
+
 ### Fixed
 
 - Closing the Mechvane app window now also stops Mechvane on Windows. Chrome keeps running in the background after
