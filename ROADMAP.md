@@ -494,8 +494,8 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Markierung im Baum (neu/geändert), einzelne Änderungen annehmen oder verwerfen. Abhängigkeiten aus
       `timeline.dependents`. Vorbild Onshape „Visual Compare“ (entfernt rot, neu blau, Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)):
       SolidCraft hat dafür `inspect.compare`, auch für benannte Stände (Versionen und Varianten).
-- [ ] **Versionen und Varianten** (Nutzer 2026-11-01): benannte Stände mit Vergleich (3D nebeneinander,
-      Feature-Diff aus `document.json`, Git darunter), danach Varianten-Zweige, besonders für den Agenten
+- [ ] **Versionen, Branches und Varianten** (Nutzer 2026-11-01): benannte Stände mit Vergleich (3D nebeneinander,
+      Feature-Diff aus `document.json`, Git darunter), danach Branches (Varianten-Zweige), besonders für den Agenten
       („Variante A/B“, übernehmen oder verwerfen), zuletzt Zusammenführen auf Feature-Ebene mit
       Konfliktanzeige (Vorbild Onshape).
 - [ ] **Kommentare und Aufgaben am Modell** (Nutzer 2026-11-02, Vorbild Onshape, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Notizen und

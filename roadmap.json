@@ -206,8 +206,8 @@
         },
         {
           "status": "planned",
-          "title": "Versions and variants",
-          "text": "Named versions you can compare side by side, variants your agent can try out for you to pick, later merged feature by feature."
+          "title": "Versions, branches and variants",
+          "text": "Named versions you can compare side by side, branches to try a variant (also by your agent, for you to pick), later merged back feature by feature."
         },
         {
           "status": "planned",
