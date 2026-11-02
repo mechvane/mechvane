@@ -763,6 +763,72 @@ def _check_anchor_movement(anchor: dict, new_pos: list[float], new_dir: list[flo
     return False, [0.0, 0.0, 0.0]
 
 
+def _check_part_collisions(doc, penetrated: list[dict]) -> None:
+    """Check for solid body interferences between parts in the bolted stack before drilling.
+    Clamping faces touching each other are valid and report count: 0 in inspect.interference.
+    Raises ValueError with details (colliding parts, center point, bbox, volume, advice) if bodies penetrate."""
+    s = doc.session
+    comps = s.cmd("component.list").get("components", [])
+
+    body_to_occ = {}
+    bolted_occ_names = {p["occurrence"]["name"] for p in penetrated}
+    bolted_bodies = set()
+
+    for c in comps:
+        occ_names = [o["name"] for o in c.get("occurrences", [])]
+        occ_label = occ_names[0] if occ_names else c["name"]
+        for b in c.get("bodies", []):
+            body_to_occ[b] = (occ_label, c["name"])
+            if any(o in bolted_occ_names for o in occ_names):
+                bolted_bodies.add(b)
+
+    if len(bolted_bodies) < 2:
+        return
+
+    try:
+        interf_res = s.cmd("inspect.interference", {"bodies": list(bolted_bodies)})
+    except Exception as e:
+        err_msg = str(e)
+        if any(term in err_msg for term in ("shell boundaries", "cavity ownership", "lumps", "intersect")):
+            part_names = sorted(list(bolted_occ_names))
+            raise ValueError(
+                f"collision detected between bolted parts {part_names}: "
+                f"overlapping bodies cause intersecting boundaries ({err_msg}); "
+                f"adjust component positions or dimensions so bodies touch at clamping faces without penetrating each other"
+            ) from None
+        raise
+
+    interferences = interf_res.get("interferences", [])
+    for item in interferences:
+        vol = item.get("volume_mm3", 0.0)
+        bbox = item.get("bbox", {})
+        bmin = bbox.get("min")
+        bmax = bbox.get("max")
+        if vol <= 1e-4 and not (bmin and bmax and any(bmax[i] - bmin[i] > 1e-3 for i in range(3))):
+            continue
+
+        b_a = item.get("a")
+        b_b = item.get("b")
+        occ_a = body_to_occ.get(b_a, (b_a, b_a))[0]
+        occ_b = body_to_occ.get(b_b, (b_b, b_b))[0]
+        center = item.get("center")
+
+        loc_str = ""
+        if center is not None:
+            c_coords = [0.0 if abs(round(x, 2)) == 0.0 else round(x, 2) for x in center]
+            loc_str += f"at center point {c_coords}"
+        if bmin is not None and bmax is not None:
+            min_coords = [0.0 if abs(round(x, 2)) == 0.0 else round(x, 2) for x in bmin]
+            max_coords = [0.0 if abs(round(x, 2)) == 0.0 else round(x, 2) for x in bmax]
+            loc_str += f" (bounding box min {min_coords}, max {max_coords}, volume {vol:.2f} mm³)"
+
+        occ_desc = f"bolted parts {occ_a!r} and {occ_b!r}" if occ_a != occ_b else f"bolted part {occ_a!r} (bodies {b_a!r} and {b_b!r})"
+        raise ValueError(
+            f"collision detected between {occ_desc}: overlapping bodies {loc_str}; "
+            f"adjust component positions or dimensions so bodies touch at clamping faces without penetrating each other"
+        )
+
+
 def preview_bolted_connection(
     ws,
     assembly: str,
@@ -820,6 +886,9 @@ def preview_bolted_connection(
                 f"each connected plate must be a distinct part file"
             )
         seen_files.add(fpath)
+
+    # Collision check: reject penetrating bodies in the bolted stack before proceeding
+    _check_part_collisions(doc, penetrated)
 
     # Validate all pattern positions for uniform penetration
     for k in range(1, len(rays)):
@@ -1235,8 +1304,6 @@ def bolted_connection(
                         "fit": sc_fit,
                         "name": feat_name,
                     }
-                    if not (is_top and prev.get("countersink")):
-                        hole_params["depth"] = p_k["thickness"]
                     if is_top and prev.get("countersink"):
                         hole_params["type"] = "countersink"
                         hole_params["cs_diameter"] = prev["cs_diameter"]

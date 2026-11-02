@@ -10,7 +10,7 @@ import struct
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import bolted, design_rules, geometry as g, iso286, katalog, links, query, sketch_rule, standard_parts, tree
+from . import bolted, design_rules, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
 from .documents import ASSEMBLY, PART, Workspace
 
 mcp = FastMCP(
@@ -18,7 +18,8 @@ mcp = FastMCP(
     instructions=(
         "Inventor-style CAD on SolidCraft. Parts and assemblies are separate .solidcraft files, each open "
         "document has its own SolidCraft session. Build parts with run(document, commands) using SolidCraft "
-        "command ids (as the solidcraft MCP batch tool takes them), or generate parametric standard parts "
+        "command ids (as the solidcraft MCP batch tool takes them), which in parts also returns a state "
+        "delta and warnings after each step; or generate parametric standard parts "
         "with standard_part (see list_standard_parts); a sketch used by one feature is kept directly before "
         "it. Put parts into an assembly with insert_part, join them with add_joint and change them with "
         "edit_joint or delete_joint (not raw joint.create or joint.edit, so Mechvane can check the joint "
@@ -143,23 +144,32 @@ def _compact(v):
 @mcp.tool()
 def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
     """Run SolidCraft commands ([{command, params}]) in a document, all or nothing. In a part, owned
-    sketches are then moved directly before their feature. The reply leaves out empty fields and
-    timings unless verbose."""
+    sketches are then moved directly before their feature, and a delta report (volume, bounding box,
+    body count and warnings) is returned. The reply leaves out empty fields and timings unless verbose."""
     doc = ws.get(document)
     cp = None
+    snap_before = None
     if doc.kind == PART:
         try:
             cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
         except Exception:
             cp = None
+        try:
+            snap_before = state_delta.snapshot(doc.session)
+        except Exception:
+            snap_before = None
     try:
         result = doc.session.batch(commands)
-    except Exception:
+    except Exception as e:
         if cp is not None:
             try:
                 doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
             except Exception:
                 pass
+        exp = sc_errors.explain(str(e))
+        if exp is not None:
+            # RuntimeError, not type(e): not every exception class takes a single message argument.
+            raise RuntimeError(f"{exp['message']} ({exp['hint']})\n{e}") from e
         raise
 
     out = {"results": result.get("results", result) if isinstance(result, dict) else result}
@@ -175,6 +185,12 @@ def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
                 except Exception:
                     pass
             raise RuntimeError(f"sketch rule failed, rolled back batch: {e}") from e
+        if snap_before is not None:
+            try:
+                snap_after = state_delta.snapshot(doc.session)
+                out["delta"] = state_delta.diff(snap_before, snap_after)
+            except Exception:
+                pass
     if cp is not None:
         try:
             doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})

@@ -214,10 +214,16 @@ Der native CAD-Import bleibt Langzeitziel: #32/#33 werden gesichtet, neue Auftr�
 Bis v0.1 fehlt noch:
 - [ ] **Eigene Oberfläche** (Nutzer 2026-10-31: „eigene vollständige Oberfläche“, schnell etwas zeigen):
       [ADR 0005](docs/adr/0005-eigene-oberflaeche.md) (angenommen 2026-10-31). Stufe 1 Arbeitsbereich wie Inventor,
-      Stufe 2 eigene Feature-Dialoge über `/api/feature`, Stufe 3 Skizzierer (so weit möglich, sonst
+      Stufe 2 eigene Feature-Dialoge über `/api/feature`, Stufe 3 Skizzierer (mit Übersicht der Abhängigkeiten und
+      farbiger Anzeige von Konflikten und Überbestimmung wie Onshapes Constraint Manager, auf SolidCraft
+      `sketch_constraints`; so weit möglich, sonst
       direkt nach v0.1). SolidCraft-App nur noch als Expertenmodus.
-      *Stufe 1 fertig (#36, gemergt 2026-11-01), offen: Stufe 2 und 3.*
-- [ ] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
+      *Stufe 1 fertig (#36, gemergt 2026-11-01, veröffentlicht mit 0.1.0a12 und Live-Demo 2026-11-02), offen: Stufe 2 und 3.*
+- [x] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
+      *Prototyp gemergt 2026-11-02* (`browser_check.py`, `demo_check.js`, ~5 MB Download, 2 ms je Prüfung).
+      *Fertig und veröffentlicht 2026-11-02 (0.1.0a12, Nutzer: Stufe 1 ausliefern):* in Chromium gegen die echte
+      Web-App getestet, unverändert gespeichert gleiche 6 Befunde wie vorberechnet, nach `parameters.change`
+      (Grundplatte 1,2 mm) live neue Befunde. Baugruppen in der Demo bleiben vorberechnet.
 - [ ] **Point and speak fertig** (2): Spracheingabe auf echten Geräten (Handy, Surface) mit Fachbegriffen
       testen, Fehler beheben.
 - [x] **Öffnen/Neu ohne Browser-Dialoge** (3): „New part“ mit eigenem Dialog statt `prompt()`/`alert()`
@@ -230,10 +236,12 @@ Bis v0.1 fehlt noch:
       in einem Satz erklärt, was sich berührt oder schneidet, mit Vorschlag (z. B. „Fase 3 trifft Bohrung 1
       bei z = −4,2; Fase ≤ 0,8 mm oder Bohrung versetzen“). Ausgangsfall: „lumps: shell boundaries intersect“
       (Praxistest 6, #34). Häufige SolidCraft-Meldungen sammeln und je eine Übersetzung mit Test.
+      *Stufe 1 fertig 2026-11-02* (#38, `sc_errors.py`: 24 Meldungen mit Erklärung und Vorschlag in `run`). Offen:
+      Stelle mit Mechvane-Namen lokalisieren, Mechvane-Werkzeuge außer `run`.
 - [ ] **Bauteilende für den Agenten** (Nutzer 2026-11-01, vorgezogen zur Fehlerübersetzung): MCP-Werkzeug,
       das den Bauteilende-Marker vor eine Fehlerstelle setzt (SolidCraft `timeline.rollback`/`timeline.roll_to`),
       dort isoliert messen und reparieren, dann schrittweise vorrücken. Regel im Skill `konstrukteur`.
-- [ ] **Zustandsbericht nach jedem Modellschritt** (Nutzer 2026-11-01, zweiter Gemini-Vorschlag): jede Änderung
+- [x] **Zustandsbericht nach jedem Modellschritt** (*fertig 2026-11-02, #37, `state_delta.py`*) (Nutzer 2026-11-01, zweiter Gemini-Vorschlag): jede Änderung
       über MCP (und später `/api/feature`) liefert ein knappes Delta: Hüllquader und Schwerpunkt vorher/nachher,
       Volumen- und Massendifferenz, Anzahl Körper. Warnt bei Schnitt ohne Wirkung (Volumen unverändert), bei
       großen Sprüngen und wenn ein Teil in mehrere Körper zerfällt. Wenige Zeilen, kein Bild.
@@ -243,8 +251,8 @@ Bis v0.1 fehlt noch:
       aus der Fehlerübersetzung markiert. Gezielt aufrufen (neues Feature an neuer Stelle, nach Fehlern, vor dem
       Abschluss; Regel im Skill `konstrukteur`), nicht nach jedem Schritt (Kontext). Zahlen bleiben maßgeblich
       (`measure`, `check_design`). Baut auf `screenshot` (headless) auf.
-- [ ] **Baugruppen wie Inventor**: erstes Teil festlegen (#26, erledigt 2026-11-01), `bolted_connection` durch alle und
-      Kollisionsprüfung (#34).
+- [x] **Baugruppen wie Inventor**: erstes Teil festlegen (#26, erledigt 2026-11-01), `bolted_connection` durch alle und
+      Kollisionsprüfung (#34, erledigt 2026-11-02; „durch alle“ bohrt auch eine zweite Wand desselben Teils dahinter).
 - [ ] **Desktop-App Schritt 1**: Sichtprüfung des App-Fensters unter Windows und Linux.
 - [ ] **Praxistests** (4): mindestens zwei weitere Runden mit dem Nutzer, je eine echte Konstruktion von
       Anfang bis Ende (Agent und Handbedienung), Befunde beheben.
@@ -320,6 +328,7 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       - Vorher klären: Anmeldung gegen Cloudflare Access aus einer App (Service-Token oder
         Browser-Login), Offline-Ansicht zuletzt geladener Modelle.
       - Verteilung zuerst über das eigene F-Droid-Repo im Homelab, Play Store später.
+      - Vorher schon die Web-Oberfläche für Touch tauglich machen (Tablet, Stift), Vorbild Onshape (Nutzer 2026-11-02).
       - Später prüfen: SolidCraft-Kern als Android-Bibliothek (Rust), dann ginge mehr ohne Server;
         hängt am Prüfpunkt Sprache.
 
@@ -378,7 +387,7 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       `check_joints`), Stufe 2 Auswahl an den Agenten (Point and speak), Chatfenster mit Spracheingabe.
       *Stand 2026-10-24:* Stufe 1 fertig (`python3 -m mechvane.ui <datei>`, Bericht
       `docs/research/2026-10-24-web-ui-stufe1-argon.md`). Nächster Schritt: Stufe 2.
-- [ ] **Bohrungsassistent mit Verschraubung**: Schraube + Scheibe + Mutter
+- [x] **Bohrungsassistent mit Verschraubung**: Schraube + Scheibe + Mutter
       + passende Bohrung in allen Bauteilen (Inventor „Verschraubung“).
       [Spezifikation](docs/research/2026-10-20-bohrungsassistent-spec.md).
       *Erster Stand 2026-10-20:* `bolted_connection` für Durchgang (mit
@@ -388,9 +397,10 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       unterstützt (`head="countersunk"`, quellengeprüft 2026-10-23).
       ISO-286-Passungen als `iso_fit` (Grenzabmaße, Spiel/Übermaß) seit 2026-10-23;
       offen: Passung als Attribut an Bohrung und Welle, Lagersitze in `standard_part`.
-      *Praxistest 6 (2026-10-31, [Bericht](docs/research/2026-10-31-praxistest-6.md)):* Bohrungen „durch alle“
-      statt fester Tiefe (wird bei dickerem Bauteil zum Sackloch); Kollisionsprüfung vor dem Bohren mit klarer
-      Meldung statt SolidCraft „lumps: shell boundaries intersect“.
+      *Praxistest 6 (2026-10-31, [Bericht](docs/research/2026-10-31-praxistest-6.md), umgesetzt 2026-11-02, #34):*
+      Durchgangsbohrungen, Senkungen und Flachsenkungen mit Ausdehnung „durch alle“ (parametrische
+      Dicke bleibt Durchgangsbohrung); Kollisionsprüfung vor dem Bohren mit verständlicher
+      Meldung (beteiligte Bauteile, Lage, Hüllquader, Volumen, Handlungsanweisung) und Rollback.
 - [ ] **Eigener offener Regelkatalog** (Nutzerwunsch 2026-10-20: Werte
       selbst belegen, keine Normen kaufen). *Seit 2026-10-23:* Format nach
       [ADR 0002](docs/adr/0002-wissenskatalog-format.md) angenommen, `katalog/` mit
@@ -458,11 +468,26 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
       Parameter haben ein Kommentarfeld); Tooltip in der eigenen Oberfläche.
 - [ ] **3D-Diff bei Agenten-Änderungen**: vorheriges Netz als Geistervolumen über dem neuen Stand,
       Markierung im Baum (neu/geändert), einzelne Änderungen annehmen oder verwerfen. Abhängigkeiten aus
-      `timeline.dependents`.
+      `timeline.dependents`. Vorbild Onshape „Visual Compare“ (entfernt rot, neu blau, Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)):
+      SolidCraft hat dafür `inspect.compare`, auch für benannte Stände (Versionen und Varianten).
 - [ ] **Versionen und Varianten** (Nutzer 2026-11-01): benannte Stände mit Vergleich (3D nebeneinander,
       Feature-Diff aus `document.json`, Git darunter), danach Varianten-Zweige, besonders für den Agenten
       („Variante A/B“, übernehmen oder verwerfen), zuletzt Zusammenführen auf Feature-Ebene mit
       Konfliktanzeige (Vorbild Onshape).
+- [ ] **Kommentare und Aufgaben am Modell** (Nutzer 2026-11-02, Vorbild Onshape, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Notizen und
+      Aufgaben an Flächen, Kanten oder Features geheftet, im Baum und in der Ansicht als Pins. Dieselbe Schicht trägt
+      Befunde der Prüfseite und Aufträge an den Agenten („diese Fläche 2 mm dicker“), erledigte Aufgaben bleiben
+      als Verlauf am Teil. Speichern in den Mechvane-Metadaten, Bezug über Flächennamen.
+- [ ] **Dem Agenten folgen** (Nutzer 2026-11-02, Vorbild Onshape Follow Mode, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Die Ansicht zeigt live,
+      woran der Agent gerade arbeitet (Kamera, Auswahl, aktuelles Feature), abschaltbar; umgekehrt bekommt der
+      Agent bei Point and speak Kamera und Auswahl des Nutzers.
+- [ ] **Mensch und Agent gleichzeitig am Modell** (Nutzer 2026-11-02, Vorbild Onshape Simultaneous Editing,
+      [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Der Nutzer arbeitet weiter, während der Agent ändert, ohne Sperre des ganzen Dokuments. SolidCraft
+      ist ein Prozess für einen Nutzer: zuerst Änderungen des Agenten als Vorschlag auf einer Kopie (siehe 3D-Diff,
+      Varianten), echtes gleichzeitiges Bearbeiten erst prüfen, wenn der Kern das hergibt.
+- [ ] **Webhooks** (Nutzer 2026-11-02, Vorbild Onshape, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Ereignisse wie „Teil gespeichert“,
+      „Prüfung fehlgeschlagen“ oder „Agent fertig“ an eine URL melden (ntfy, Home Assistant, Slicer-Kette).
+      Ergänzt die vorhandene HTTP-API `/api/*`.
 
 ## Phase 2: Fachmodule als Plugins (ca. 4–6 Monate)
 
@@ -500,7 +525,11 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       [Schweißen im CAD](docs/research/2026-10-30-schweissen-grundlagen-flash.md) mit Vorschlag fürs Datenmodell
       (Vorbereitung, Nähte, Nachbearbeitung wie Inventor; Naht als Volumen oder kosmetisch).
 - [ ] **Blech-Ergänzungen** (falls upstream noch Lücken): Blechregeln-
-      Bibliothek, Abwicklungs-DXF für Laser-Dienstleister.
+      Bibliothek, Abwicklungs-DXF für Laser-Dienstleister. **3D und Abwicklung nebeneinander**, beide live beim
+      Bearbeiten (Vorbild Onshape, Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)); SolidCraft rechnet die Abwicklung schon.
+      **Volumenkörper in Blech umwandeln** (Vorbild Onshape Convert & Rip, Nutzer 2026-11-02): Biegekanten und
+      Trennkanten wählen, der Rest wird Blech; SolidCraft hat dafür `sheet_convert`, Mechvane braucht Dialog und
+      Agenten-Werkzeug.
 - [ ] **Konstruktionsassistenten**: Welle (Absätze, Nuten, Sicherungsringe),
       Stirnrad, Zahnriemen-Trieb, Passfedern, mit Berechnung.
 - [ ] **Slicer-Modul (grafisch)** (Nutzerwunsch 2026-10-19): Plugin, das
@@ -532,7 +561,13 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       UI-Erweiterung upstream oder eine Mechvane-eigene Hülle (ADR 0001).
 - [ ] **Regeln/Konfiguration** (iLogic neu gedacht): Parameter-Regeln als
       lesbares Skript plus natürlichsprachliche Regeln, die ein Agent in
-      Code übersetzt und testet.
+      Code übersetzt und testet. **Konfigurationstabellen** wie Onshape: je Eigenschaft eine eigene, unabhängige
+      Tabelle (Länge × Werkstoff × Befestigung) statt einer großen Variantentabelle (Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)),
+      auf SolidCraft `config.*` (`config.rs`, `config_rules.rs`).
+- [ ] **Eigene Features als Code** (Nutzer 2026-11-02, Vorbild Onshape FeatureScript, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Fachfeatures
+      wie `bolted_connection` als Python mit fester Schnittstelle (Parameter, Eingabeauswahl, Erzeugen, Bearbeiten),
+      die im Modellbaum als ein Feature stehen, sich bei Änderungen neu rechnen und vom Agenten wie vom Nutzer
+      gleich benutzt werden. Grundlage für die Konstruktionsassistenten und Fachmodule.
 
 ### Ergänzungen Phase 2 (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
 
@@ -546,12 +581,26 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
          große Verformungen, Eigenfrequenzen, Temperatur.
 - [ ] **Benannte Anschlüsse (Ports)**: Features exportieren benannte Bezüge (`motor_mount_face`, `shaft_axis`),
       im UI als Fangpunkte, für Agent und Gelenke als stabile Anker. Baut auf den Mechvane-Flächennamen auf,
-      Grundlage für die adaptive Projektion.
+      Grundlage für die adaptive Projektion. Vorbild Onshape (Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Mate Connectors als
+      Anker, an denen Gelenke ohne Flächenwahl entstehen, dazu **gekoppelte Gelenke** (Higher-Order Mates: Zahnrad,
+      Zahnstange, Schraube, Riemen) über SolidCraft-Motion-Links.
+- [ ] **Teile vervielfachen** (Nutzer 2026-11-02, Vorbild Onshape Replicate, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): ein eingebautes Teil samt
+      Gelenk auf alle gleichen Stellen setzen, etwa eine Schraube in jedes Loch eines Lochbilds oder Gleiter in
+      jede Nut. Zusammen mit `bolted_connection` (ganze Verschraubung auf alle Löcher), auf SolidCraft
+      `component_matrix`.
+- [ ] **Zentrale Variablen** (Nutzer 2026-11-02, Vorbild Onshape Variable Studios, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): eine Variablentabelle
+      für mehrere Teile und die Baugruppe (Wandstärke, Spaltmaß, Achsabstand), eine Änderung schlägt auf alle
+      verknüpften Dateien durch. Erweitert `/api/params` über die Dateigrenze, Aktualisieren über `update_links`.
+- [ ] **Skelett-Modellierung über abgeleitete Geometrie** (Nutzer 2026-11-02, Vorbild Onshape Derived Feature,
+      [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Skizzen, Flächen oder Koordinatensysteme aus einem Skelett-Teil in andere Teile übernehmen, verknüpft
+      und nachgeführt. Deckt den Nutzen von Onshapes Mehrteil-Part-Studios ab, ohne Grundsatz 5 (getrennte
+      Dateien) aufzugeben. SolidCraft hat Ansätze in `project.rs` und `component_link.rs`; hängt mit der
+      adaptiven Projektion zusammen.
 - [ ] **Baugruppe auf Kollisionen und Freigang prüfen**: statisch (Durchdringungen, Schraube zu lang für das
       Sackloch) und entlang der Gelenkbereiche (SolidCraft `joint.sweep`, Kontaktsätze), als MCP-Werkzeug und
       Prüflauf im UI.
 - [ ] **Explosionsansicht und Stückliste**: Explosionsrichtungen aus Gelenkachsen und Verschraubungen,
-      interaktiv im UI; Stückliste als Export (später auch in der Zeichnung, Phase 3).
+      interaktiv im UI, mit Animation (Vorbild Onshape); Stückliste als Export (später auch in der Zeichnung, Phase 3).
 - [ ] **Adaptive Projektion in Baugruppen**: `project_geometry` speichert im Zielteil die semantische Abfrage
       der Quellfläche (`find`) statt Koordinaten, Aktualisieren der Baugruppe zieht nach. Hängt an
       Flächennamen über Verknüpfungen (SolidCraft #3330).
@@ -578,7 +627,8 @@ ohne Bezug zum 3D-Modell. Die exakten Ansichten müssen von SolidCraft kommen
 - [ ] Ansichten (Basis, Projektion, Schnitt, Detail) mit Hidden-Line-Removal
 - [ ] Bemaßung, Passungen, Gewindedarstellung nach ISO, Oberflächenzeichen,
       Form- und Lagetoleranzen
-- [ ] Schriftfeld DIN EN ISO 7200, Stückliste und Positionsnummern
+- [ ] Schriftfeld DIN EN ISO 7200, Stückliste und Positionsnummern. Stückliste live mit dem Modell gekoppelt,
+      in beide Richtungen (Vorbild Onshape, Nutzer 2026-11-02): SolidCraft `assembly.bom.get`/`set`.
 - [ ] **Agent leitet Zeichnung ab**: fertigungsgerecht bemaßt, prüft auf
       Über- und Unterbemaßung
 - [ ] PDF/DXF-Export
@@ -588,7 +638,9 @@ ohne Bezug zum 3D-Modell. Die exakten Ansichten müssen von SolidCraft kommen
 
 ## Später / bewusst nicht geplant
 
-Später als Plugin, wenn Bedarf da ist: Bewegungssimulation, Rendering (über Blender), CAM-Brücke.
+Später als Plugin, wenn Bedarf da ist: Bewegungssimulation, Rendering (über Blender), CAM-Brücke,
+schlanke Freigaben (Revisionsbuchstabe und Status „in Arbeit/freigegeben“ als Git-Tag, Vorbild Onshape Release
+Management, Nutzer 2026-11-02).
 
 Nicht geplant: T-Splines, Rohrleitungen, Kabelbaum, BIM/Revit, Vault-artiges PDM
 (Git reicht), iParts (ersetzt durch Konfigurationstabellen).

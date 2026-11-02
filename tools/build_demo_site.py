@@ -22,6 +22,19 @@ from mechvane.ui import webapp  # noqa: E402
 from mechvane.ui.server import STATIC_DIR, collect_findings, collect_tree, collect_version  # noqa: E402
 
 
+def make_mechvane_zip(dest: Path):
+    """Bundle the modules needed for the browser design rules check into a zip archive."""
+    import zipfile
+    modules = [
+        "__init__.py", "browser_check.py", "design_rules.py", "geometry.py",
+        "hole_tables.py", "standard_parts.py", "sketch_rule.py", "documents.py",
+        "solidcraft.py", "install.py"
+    ]
+    with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in modules:
+            zf.write(REPO / "mechvane" / name, f"mechvane/{name}")
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "site"
     if out.exists():
@@ -31,6 +44,7 @@ def main():
     shutil.copytree(REPO / "docs" / "media", out / "media")
     demo = out / "demo"
     shutil.copytree(STATIC_DIR, demo)
+    make_mechvane_zip(demo / "mechvane.zip")
     for page in ("index.html", "model.html"):
         html = (demo / page).read_text(encoding="utf-8")
         (demo / page).write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),
@@ -57,7 +71,7 @@ def main():
                 (d / "files").mkdir()
                 for fname, src in files.items():
                     shutil.copyfile(src, d / "files" / fname)
-                data["files"] = {"document": doc.path.name, "files": sorted(files)}
+                data["files"] = {"document": doc.path.name, "kind": doc.kind, "files": sorted(files)}
                 for body in data["mesh"].get("bodies", []):
                     body["positions"] = [round(v, 4) for v in body["positions"]]  # 0.1 µm, halves the download
                 for key, value in data.items():

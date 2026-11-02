@@ -42,13 +42,13 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "Clear error messages for your agent",
           "text": "When SolidCraft rejects a step, Mechvane names the feature and the spot and says in one sentence what touches what, with a suggestion, so your agent can fix it on the next try.",
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "A short report after every step",
           "text": "After each change your agent learns how size, centre of mass, volume and number of bodies moved, and gets a warning when a cut hit nothing or the part fell apart.",
           "milestone": "v0.1"
@@ -70,6 +70,11 @@
           "title": "Install in one step",
           "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
           "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Webhooks",
+          "text": "Mechvane reports events such as a saved part, a failed check or a finished agent task to a URL of your choice, next to the existing HTTP API."
         },
         {
           "status": "done",
@@ -151,13 +156,13 @@
         {
           "status": "progress",
           "title": "Your own Mechvane workspace",
-          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs for extrude, hole, fillet, chamfer and patterns, with SolidCraft computing underneath.",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs for extrude, hole, fillet, chamfer and patterns, with SolidCraft computing underneath. The workspace itself is available; the feature dialogs come next.",
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "Live demo checks your changes",
-          "text": "Model by hand in the browser demo, save, and the design check runs again right there, no install needed.",
+          "text": "Model a part by hand in the browser demo, save, and the design check runs again right there, no install needed. Assembly checks in the demo are precomputed.",
           "milestone": "v0.1"
         },
         {
@@ -186,7 +191,7 @@
         {
           "status": "planned",
           "title": "See what your agent changed",
-          "text": "The previous state as a ghost over the new one and changed features marked in the browser, to accept or undo each change."
+          "text": "The previous state as a ghost over the new one and changed features marked in the browser, to accept or undo each change. Removed geometry in red, new in blue, as in Onshape's visual compare."
         },
         {
           "status": "planned",
@@ -200,13 +205,28 @@
         },
         {
           "status": "planned",
+          "title": "Comments and tasks on the model",
+          "text": "Pin notes and tasks to a face, edge or feature. Check findings and requests for your agent live in the same place, and finished tasks stay with the part."
+        },
+        {
+          "status": "planned",
+          "title": "Follow your agent",
+          "text": "Watch live where your agent is working: camera, selection and the feature it is editing. When you point and speak, your agent sees your view."
+        },
+        {
+          "status": "planned",
+          "title": "Keep working while your agent works",
+          "text": "Your agent prepares its changes on a copy while you go on modelling, and you take them over when they are ready."
+        },
+        {
+          "status": "planned",
           "title": "Own interface, SolidCraft in the background",
           "text": "After the workspace: an own sketcher with live preview, so modelling never leaves Mechvane. SolidCraft keeps computing underneath and stays named in the app."
         },
         {
           "status": "planned",
           "title": "Online version and Android app",
-          "text": "Look at and change your models on the go."
+          "text": "Look at and change your models on the go. The web UI also becomes comfortable on tablets with touch and pen."
         }
       ]
     },
@@ -281,7 +301,22 @@
         {
           "status": "planned",
           "title": "Named connection points",
-          "text": "Parts offer named anchors such as a shaft axis or a mounting face, for joints and for parts built to fit."
+          "text": "Parts offer named anchors such as a shaft axis or a mounting face, for joints and for parts built to fit. Joints snap to them directly, and coupled joints (gears, rack, screw, belt) drive each other."
+        },
+        {
+          "status": "planned",
+          "title": "Replicate parts",
+          "text": "Place a part with its joint on every matching spot at once, for example a screw in every hole of a hole pattern."
+        },
+        {
+          "status": "planned",
+          "title": "Shared variables",
+          "text": "One table of variables for several parts and their assembly, such as wall thickness or gap; a change updates every linked file."
+        },
+        {
+          "status": "planned",
+          "title": "Skeleton modelling",
+          "text": "Take sketches, faces or coordinate systems from a skeleton part into other parts, linked and kept up to date, while parts stay separate files."
         },
         {
           "status": "planned",
@@ -301,12 +336,12 @@
         {
           "status": "planned",
           "title": "Exploded view and parts list",
-          "text": "Exploded views from joint axes and bolted connections, and a parts list to export."
+          "text": "Exploded views from joint axes and bolted connections with an animated preview, and a parts list to export."
         },
         {
           "status": "planned",
           "title": "Sheet metal additions",
-          "text": "Rules and helpers on top of SolidCraft's sheet metal."
+          "text": "Rules and helpers on top of SolidCraft's sheet metal. The 3D part and its flat pattern side by side, both live while you edit. Turn a solid into sheet metal by picking bend and rip edges, on top of SolidCraft's conversion."
         },
         {
           "status": "planned",
@@ -321,7 +356,12 @@
         {
           "status": "planned",
           "title": "Rule-based configuration",
-          "text": "Parameter rules and configuration tables for families of parts."
+          "text": "Parameter rules and configuration tables for families of parts. One small table per property (length, material, fastening) instead of one large variant table."
+        },
+        {
+          "status": "planned",
+          "title": "Your own features as code",
+          "text": "Write a feature such as a bolted connection in Python once; it sits in the model browser as one feature, recomputes on change, and you and your agent use it the same way."
         },
         {
           "status": "planned",
@@ -352,7 +392,7 @@
         {
           "status": "planned",
           "title": "Title block and parts list",
-          "text": "Title block, parts list and balloons."
+          "text": "Title block, parts list and balloons. The parts list stays linked to the model in both directions."
         },
         {
           "status": "planned",
@@ -389,6 +429,11 @@
           "status": "later",
           "title": "CAM bridge",
           "text": ""
+        },
+        {
+          "status": "later",
+          "title": "Simple release states",
+          "text": "Revision letters and a released state for parts, kept as Git tags."
         }
       ]
     }

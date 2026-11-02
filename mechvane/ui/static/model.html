@@ -86,6 +86,7 @@
     <div class="topbar-left">
       <span class="brand"><img class="brand-logo" src="logo.svg" alt="">Mechvane</span>
       <span id="doc-name" class="doc-name">—</span>
+      <span id="verdict-badge" class="badge" hidden></span>
       <span class="mode-switch"><strong>Model</strong> <a href="./">Check</a></span>
     </div>
     <div class="topbar-right">
@@ -135,6 +136,7 @@
   </div>
 <script type="module">
 import { initAgentChat } from "./chat.js";
+import { checkInBrowser, initDemoCheck } from "./demo_check.js";
 // "Model" mode: the SolidCraft web app edits the document in the browser's private file storage
 // (OPFS, read by the app at start as /opfs/<name>). This page puts the server's files there before
 // the app loads, opens the document and sends every file the app saves back to the server.
@@ -162,6 +164,13 @@ async function putFile(dir, name, bytes) {
 }
 
 function showFindings(f) {
+  const verdict = f.verdict || f.status || "ok";
+  const badge = document.getElementById("verdict-badge");
+  if (badge) {
+    badge.className = "badge badge-" + (verdict === "fail" ? "fail" : (verdict === "warn" ? "warn" : "ok"));
+    badge.textContent = "Check: " + verdict.toUpperCase();
+    badge.hidden = false;
+  }
   document.getElementById("summary").textContent = f.summary || "";
   const ul = document.getElementById("findings");
   ul.replaceChildren();
@@ -225,7 +234,8 @@ async function main() {
     base = `demos/${demo.name}/`;
     document.querySelector(".mode-switch a").href = `./?demo=${demo.name}`;
     document.getElementById("intro").textContent =
-      "Live demo: edit the example by hand, it stays in this browser. The findings were computed for the example as it is; installed, Mechvane checks your design again after every save.";
+      "Live demo: edit the example by hand, it stays in this browser. Mechvane checks your design again after every save.";
+    initDemoCheck().catch((err) => console.warn("Pyodide pre-load:", err));
   }
 
   const urlParams = new URLSearchParams(location.search);
@@ -358,9 +368,23 @@ async function syncSaved() {
     if (file.lastModified === known.get(name)) continue;
     known.set(name, file.lastModified);
     if (STATIC) {
-      status("Saved in this browser");
-      document.getElementById("summary").textContent =
-        "Saved in this browser. The live demo can't check edits again: install Mechvane to check your own designs after every save. The findings below are for the example as it was.";
+      const isAssembly = meta.kind === "assembly" || (meta.files && meta.files.length > 1);
+      if (isAssembly) {
+        status("Saved in this browser");
+        document.getElementById("summary").textContent =
+          "Saved in this browser. Assembly joint checks are precomputed in the live demo; install Mechvane to check joints live after saving.";
+        continue;
+      }
+      status("Checking " + name + " in browser…");
+      try {
+        const res = await checkInBrowser(app, meta.document);
+        showFindings(res);
+        window.mechvaneLastSave = { saved: true, findings: res };
+        status("Saved and checked " + name);
+      } catch (err) {
+        status("Check failed: " + err.message);
+        console.error("Browser check error:", err);
+      }
       continue;
     }
     status("Checking " + name + "…");

@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, query, server, sketch_rule, standard_parts, tree  # noqa: E402
+from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, query, sc_errors, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
 
 REL = 2e-4  # volume tolerance (tessellation, same as tests/reference/check.py)
@@ -4724,6 +4724,64 @@ def feature_request_checks(tmp, ws=None):
        f"out_demo files: {[p.name for p in out_demo.glob('*')]}")
 
 
+def demo_pyodide_checks(tmp):
+    """Checks for the Pyodide in-browser check prototype: browser_check shim, demo_check.js, mechvane.zip, and model.html."""
+    import shutil
+    import subprocess
+    import zipfile
+    from mechvane import browser_check
+    from mechvane.ui.server import STATIC_DIR
+    from tools.build_demo_site import make_mechvane_zip
+
+    fixtures_path = Path(__file__).resolve().parent / "demo_check_fixtures.json"
+    fixtures = json.loads(fixtures_path.read_text(encoding="utf-8"))
+
+    # 1. browser_check Python shim against bracket and flange recorded data
+    flange_res = browser_check.check_browser(
+        fixtures["flange"]["payload"], doc_name="flange.solidcraft"
+    )
+    ok("demo pyodide: browser_check produces ok verdict on flange fixture",
+       flange_res.get("verdict") == "ok" and len(flange_res.get("findings", [])) == 8,
+       f"verdict={flange_res.get('verdict')} findings={len(flange_res.get('findings', []))}")
+
+    bracket_res = browser_check.check_browser(
+        fixtures["bracket"]["payload"], doc_name="bracket.solidcraft"
+    )
+    ok("demo pyodide: browser_check produces fail verdict on bracket fixture",
+       bracket_res.get("verdict") == "fail" and len(bracket_res.get("findings", [])) == 6,
+       f"verdict={bracket_res.get('verdict')} findings={len(bracket_res.get('findings', []))}")
+
+    # 2. make_mechvane_zip packaging
+    zip_path = Path(tmp) / "mechvane.zip"
+    make_mechvane_zip(zip_path)
+    ok("demo pyodide: make_mechvane_zip packages required modules into zip",
+       zip_path.is_file() and zip_path.stat().st_size > 10000,
+       f"zip exists={zip_path.is_file()} size={zip_path.stat().st_size if zip_path.is_file() else 0}")
+    with zipfile.ZipFile(zip_path) as zf:
+        names = zf.namelist()
+        ok("demo pyodide: mechvane.zip includes browser_check, design_rules and hole_tables",
+           "mechvane/browser_check.py" in names and "mechvane/design_rules.py" in names and "mechvane/hole_tables.py" in names,
+           str(names))
+
+    # 3. Static assets: model.html and demo_check.js
+    model_html = (STATIC_DIR / "model.html").read_text(encoding="utf-8")
+    demo_check_js = (STATIC_DIR / "demo_check.js").read_text(encoding="utf-8")
+    ok("demo pyodide: model.html includes verdict-badge and imports demo_check.js",
+       'id="verdict-badge"' in model_html and "demo_check.js" in model_html,
+       "model.html missing verdict-badge or demo_check.js")
+    ok("demo pyodide: demo_check.js defines initDemoCheck and checkInBrowser with pinned Pyodide",
+       "initDemoCheck" in demo_check_js and "checkInBrowser" in demo_check_js and "v0.26.4" in demo_check_js,
+       "demo_check.js functions or Pyodide version")
+
+    # 4. Headless test via node if node is available
+    if shutil.which("node"):
+        test_script = Path(__file__).resolve().parents[2] / "tools" / "test_demo_check.js"
+        run = subprocess.run(["node", str(test_script)], capture_output=True, text=True, timeout=60)
+        ok("demo pyodide: test_demo_check.js runs clean in node",
+           run.returncode == 0 and ("All demo_check tests passed successfully" in run.stdout or "skip demo_check test" in run.stdout),
+           f"returncode={run.returncode} stdout={run.stdout} stderr={run.stderr}")
+
+
 def agent_turns_checks(tmp):
     """Web UI agent turns (ADR 0003) against tests/mechvane/fake_acp_agent.py, and the MCP side:
     files changed on disk are opened again, MECHVANE_AUTOSAVE saves after each tool call."""
@@ -5601,7 +5659,7 @@ def argon_review_finding_6_checks(ws):
     links.insert(ws, moved_rect, p1.path, name="Plate1", rotate={"axis": [0, 1, 0], "angle": 90},
                  translate=[100, 0, 0], grounded=True)
     links.insert(ws, moved_rect, p2.path, name="Plate2", rotate={"axis": [0, 1, 0], "angle": 90},
-                 translate=[100, 0, 0], grounded=True)
+                 translate=[90, 0, 0], grounded=True)
     moved_rect.set_metadata(asm_rect.metadata())
     moved_rect.save()
 
@@ -5749,6 +5807,342 @@ def argon_review_findings_9_11_checks(ws):
         ws.close(name)
 
 
+def state_delta_checks(ws):
+    """State delta and warnings after modelling steps in run (ROADMAP v0.1 #37)."""
+    server.ws = ws
+    doc = ws.new(PART, "state_delta_part")
+
+    # 1. Extrude box -> delta with volume > 0, body count 1, bbox, centre of mass, no warnings
+    r1 = server.run(
+        "state_delta_part",
+        rect("S1", "XY", [0, 0], [40, 20])
+        + [{"command": "solid.extrude", "params": {"sketch": "S1", "distance": 10, "name": "Box"}}],
+    )
+    d1 = r1.get("delta")
+    ok(
+        "state delta: extrude box produces delta with volume > 0 and 1 body",
+        d1 is not None and d1.get("volume_mm3", 0) > 0 and d1.get("bodies") == 1 and not d1.get("warnings"),
+        str(d1),
+    )
+    ok(
+        "state delta: box bbox and centre of mass match geometry",
+        d1 is not None
+        and d1.get("bbox") == {"min": [0.0, 0.0, 0.0], "max": [40.0, 20.0, 10.0]}
+        and d1.get("center_of_mass") == [20.0, 10.0, 5.0],
+        str(d1),
+    )
+
+    # 2. Pocket without intersection with body -> warning 'no effect'
+    r2 = server.run(
+        "state_delta_part",
+        rect("S2", "XY", [100, 100], [110, 110])
+        + [{"command": "solid.extrude", "params": {"sketch": "S2", "distance": 5, "operation": "cut", "name": "CutOutside"}}],
+    )
+    d2 = r2.get("delta")
+    ok(
+        "state delta: cut without intersection warns no effect",
+        d2 is not None and any("no effect" in w.lower() for w in d2.get("warnings", [])),
+        str(d2),
+    )
+
+    # 3. Cut that splits part into two bodies -> warning multiple bodies
+    r3 = server.run(
+        "state_delta_part",
+        rect("S3", "XY", [18, -5], [22, 25])
+        + [{"command": "solid.extrude", "params": {"sketch": "S3", "distance": 15, "operation": "cut", "name": "CutSplit"}}],
+    )
+    d3 = r3.get("delta")
+    ok(
+        "state delta: cut splitting part into two bodies warns of multiple bodies",
+        d3 is not None and d3.get("bodies") == 2 and any("multiple bodies" in w.lower() for w in d3.get("warnings", [])),
+        str(d3),
+    )
+
+    # 4. Large jump: volume change > 50% or bbox growth > factor 2
+    b_snap = {"bodies": 1, "volume_mm3": 1000.0, "bbox": {"min": [0, 0, 0], "max": [10, 10, 10]}}
+    a_vol = {"bodies": 1, "volume_mm3": 1600.0, "bbox": {"min": [0, 0, 0], "max": [10, 10, 16]}}
+    d_vol = state_delta.diff(b_snap, a_vol)
+    a_box = {"bodies": 1, "volume_mm3": 1200.0, "bbox": {"min": [0, 0, 0], "max": [25, 10, 10]}}
+    d_box = state_delta.diff(b_snap, a_box)
+    ok(
+        "state delta: large change warns on >50% volume change and >2x axis growth",
+        any("large change" in w.lower() for w in d_vol.get("warnings", []))
+        and any("factor 2" in w.lower() for w in d_box.get("warnings", [])),
+        f"vol={d_vol.get('warnings')} box={d_box.get('warnings')}",
+    )
+
+    # 5. Assembly: run does not produce delta
+    asm = ws.new(ASSEMBLY, "state_delta_asm")
+    r_asm = server.run(
+        "state_delta_asm",
+        [{"command": "solid.cylinder", "params": {"diameter": 6, "height": 30, "base": [0, 0, 0], "name": "AsmCyl"}}],
+    )
+    ok(
+        "state delta: assembly run does not return delta",
+        "delta" not in r_asm,
+        str(r_asm),
+    )
+
+    # 6. Material: snapshot includes mass_g when material is assigned
+    doc.session.cmd("material.assign", {"bodies": ["Body1"], "material": "Steel"})
+    snap = state_delta.snapshot(doc.session)
+    ok(
+        "state delta: snapshot includes mass when material is assigned",
+        snap.get("mass_g") is not None and snap["mass_g"] > 0,
+        str(snap),
+    )
+
+    ws.close("state_delta_part")
+    ws.close("state_delta_asm")
+def sc_errors_checks(ws):
+    recorded_errors = {
+        "lumps_shell_intersect": "failed: lumps: shell boundaries intersect or touch; cavity ownership is ambiguous",
+        "blend_too_large": "solid.fillet: blend is larger than the neighbouring faces: maximum radius along this edge is 5 mm (you asked for 15 mm)",
+        "chamfer_too_large": "solid.chamfer: chamfer runs past a neighbouring face: try a smaller distance",
+        "blend_meeting_edges": "where 3 edges meet: give a point along one edge",
+        "blend_no_edge": "no edge at [50 mm, 50 mm, 50 mm]: the nearest edge is 45 mm away",
+        "blend_non_positive_size": "fillet size must be positive",
+        "extrude_zero_distance": "extrude distance is zero",
+        "missing_sketch": "no sketch `sketch_nonexistent`",
+        "revolve_crosses_axis": "the profile crosses the revolve axis",
+        "revolve_angle_invalid": "revolve angle is zero",
+        "hole_not_on_face": "`position` [100 mm, 100 mm, 100 mm] is not on a face of a body; pick a point on the face to drill",
+        "hole_counterbore_invalid": "the counterbore must be wider than the hole and shallower than it",
+        "hole_countersink_invalid": "the countersink must be wider than the hole",
+        "shell_non_positive_thickness": "shell thickness must be positive",
+        "shell_too_thick": "the planes don't enclose a solid",
+        "combine_self": "a body cannot be combined with itself",
+        "unknown_body": "unknown body `nonexistent_body`",
+        "pattern_count_unit": "invalid parameters for `pattern.linear`: expected a unit-less number, got a length: 5 mm",
+        "sketch_zero_line": "zero-length line",
+        "sketch_overconstrained": "that conflicts with the sketch: remove a constraint or un-fix a point to make room",
+        "loft_section_count": "a loft needs 2…50 sections: add at least one more profile sketch",
+        "boolean_unreliable": "the cut could not be computed reliably: faces touch along a zero-thickness edge",
+        "intersect_empty": "the intersection is empty: nothing of Body 1 would remain",
+        "profile_no_area": "profile has no area",
+    }
+    table_codes = {entry["code"] for entry in sc_errors.ERROR_TABLE}
+    ok("sc_errors: all table codes covered by recorded errors", table_codes == set(recorded_errors.keys()))
+
+    all_matched = True
+    for code, raw_msg in recorded_errors.items():
+        exp = sc_errors.explain(raw_msg)
+        if not exp or exp["code"] != code or not exp["message"] or not exp["hint"]:
+            all_matched = False
+            break
+    ok("sc_errors: each table entry correctly translates recorded error message", all_matched)
+
+    ok("sc_errors: unknown error text returns None", sc_errors.explain("Some completely unknown message xyz") is None)
+    ok("sc_errors: empty string returns None", sc_errors.explain("") is None)
+    ok("sc_errors: JSON batch format unwraps inner error",
+       sc_errors.explain('{"failed": {"command": "solid.extrude", "error": "extrude distance is zero", "index": 0}}') is not None
+       and sc_errors.explain('{"failed": {"command": "solid.extrude", "error": "extrude distance is zero", "index": 0}}')["code"] == "extrude_zero_distance")
+
+    orig_ws = server.ws
+    server.ws = ws
+    try:
+        # Live case 1: extrude distance is zero
+        doc_a = ws.new(PART, "sc_err_extrude")
+        try:
+            caught_a = None
+            try:
+                server.run("sc_err_extrude", [
+                    {"command": "sketch.create", "params": {"plane": "xy", "name": "sk1"}},
+                    {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [10, 10]}},
+                    {"command": "sketch.finish", "params": {}},
+                    {"command": "solid.extrude", "params": {"sketch": "sk1", "distance": "0 mm"}},
+                ])
+            except Exception as e:
+                caught_a = str(e)
+            exp_a = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "extrude_zero_distance")
+            ok("sc_errors run live 1: extrude zero distance re-raised with explanation and hint",
+               caught_a is not None and exp_a["message"] in caught_a and exp_a["hint"] in caught_a and "extrude distance is zero" in caught_a)
+            tl_a = sketch_rule.timeline(doc_a.session)["timeline"]
+            ok("sc_errors run live 1: checkpoint restored on error", len(tl_a) == 0)
+        finally:
+            ws.close("sc_err_extrude")
+
+        # Live case 2: revolve profile crosses axis
+        doc_b = ws.new(PART, "sc_err_revolve")
+        try:
+            caught_b = None
+            try:
+                server.run("sc_err_revolve", [
+                    {"command": "sketch.create", "params": {"plane": "xy", "name": "sk_rev"}},
+                    {"command": "sketch.rectangle.two_point", "params": {"p0": [-5, 0], "p1": [5, 10]}},
+                    {"command": "sketch.finish", "params": {}},
+                    {"command": "solid.revolve", "params": {"sketch": "sk_rev", "axis": "y", "angle": "360 deg"}},
+                ])
+            except Exception as e:
+                caught_b = str(e)
+            exp_b = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "revolve_crosses_axis")
+            ok("sc_errors run live 2: revolve crossing axis re-raised with explanation and hint",
+               caught_b is not None and exp_b["message"] in caught_b and exp_b["hint"] in caught_b and "crosses the revolve axis" in caught_b)
+        finally:
+            ws.close("sc_err_revolve")
+
+        # Live case 3: fillet too large
+        doc_c = ws.new(PART, "sc_err_fillet")
+        try:
+            server.run("sc_err_fillet", [
+                {"command": "sketch.create", "params": {"plane": "xy", "name": "sk_box"}},
+                {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [10, 10]}},
+                {"command": "sketch.finish", "params": {}},
+                {"command": "solid.extrude", "params": {"sketch": "sk_box", "distance": "10 mm"}},
+            ])
+            caught_c = None
+            try:
+                server.run("sc_err_fillet", [
+                    {"command": "solid.fillet", "params": {"edges": [[5, 0, 0]], "radius": "15 mm"}},
+                ])
+            except Exception as e:
+                caught_c = str(e)
+            exp_c = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "blend_too_large")
+            ok("sc_errors run live 3: fillet too large re-raised with explanation and hint",
+               caught_c is not None and exp_c["message"] in caught_c and exp_c["hint"] in caught_c and "blend is larger" in caught_c)
+        finally:
+            ws.close("sc_err_fillet")
+
+        # Live case 4: hole not on face
+        doc_d = ws.new(PART, "sc_err_hole")
+        try:
+            server.run("sc_err_hole", [
+                {"command": "sketch.create", "params": {"plane": "xy", "name": "sk_h"}},
+                {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [10, 10]}},
+                {"command": "sketch.finish", "params": {}},
+                {"command": "solid.extrude", "params": {"sketch": "sk_h", "distance": "10 mm"}},
+            ])
+            caught_d = None
+            try:
+                server.run("sc_err_hole", [
+                    {"command": "solid.hole", "params": {"position": [50, 50, 50], "diameter": "4 mm", "depth": "5 mm"}},
+                ])
+            except Exception as e:
+                caught_d = str(e)
+            exp_d = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "hole_not_on_face")
+            ok("sc_errors run live 4: hole not on face re-raised with explanation and hint",
+               caught_d is not None and exp_d["message"] in caught_d and exp_d["hint"] in caught_d and "not on a face of a body" in caught_d)
+        finally:
+            ws.close("sc_err_hole")
+    finally:
+        server.ws = orig_ws
+def praxistest_6_fixes_checks(ws):
+    # Befund 3 (issue #34): Through hole drilled "through all" instead of fixed depth.
+    # Increasing plate thickness via parameter keeps through hole; check_design remains green.
+    p1 = ws.new(PART, "pt6_p1")
+    p1.session.batch([
+        {"command": "parameters.add", "params": {"name": "dicke", "expression": "8 mm"}},
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": "dicke", "corner": [-20, -20, 0], "name": "Box1"}}
+    ])
+    p1.save()
+
+    p2 = ws.new(PART, "pt6_p2")
+    p2.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0], "name": "Box2"})
+    p2.save()
+
+    asm = ws.new(ASSEMBLY, "pt6_asm")
+    links.insert(ws, asm, p1.path, name="Plate1", grounded=True)
+    links.insert(ws, asm, p2.path, name="Plate2", translate=[0, 0, -8], grounded=True)
+    asm.save()
+
+    res = bolted.bolted_connection(
+        ws, "pt6_asm",
+        placement={"position": [0, 0, 8], "direction": [0, 0, -1]},
+        size="M5",
+        counterbore=False,
+    )
+
+    # Change plate thickness from 8 mm to 12 mm
+    p1.session.cmd("parameters.change", {"name": "dicke", "expression": "12 mm"})
+    p1.save()
+    links.update_links(ws, asm)
+
+    chk = design_rules.check(p1.session)
+    td_findings = [f for f in chk.get("checks", []) if f.get("rule") == "thread_depth" and f.get("status") != "ok"]
+    vol_p1 = p1.session.tool("inspect_design", {"measure": True})["bodies"][0]["volume_mm3"]
+    expected_vol = 40.0 * 40.0 * 12.0 - math.pi * (2.75 ** 2) * 12.0
+    r_p1 = ws.reader(p1.path)
+    try:
+        faces_p1 = links._part_faces(r_p1)
+    finally:
+        r_p1.close()
+    bore_faces = [f for f in faces_p1 if "bore" in f.get("name", "")]
+
+    ok("praxistest 6 / finding 3: through hole goes through all after plate thickness increased (no thread_depth warning)",
+       chk.get("verdict") == "ok" and not td_findings and abs(vol_p1 - expected_vol) < 0.1 and len(bore_faces) >= 1,
+       f"verdict={chk.get('verdict')} td={td_findings} vol={vol_p1} expected={expected_vol}")
+
+    # Delete bolted connection removes holes and restores solid box volume
+    bolted.delete_bolted_connection(ws, "pt6_asm", res["id"])
+    vol_restored = p1.session.tool("inspect_design", {"measure": True})["bodies"][0]["volume_mm3"]
+    ok("praxistest 6 / finding 3: delete_bolted_connection restores original plate volume",
+       abs(vol_restored - 19200.0) < 1e-3, f"vol={vol_restored}")
+
+    for name in ("pt6_asm", "pt6_p2", "pt6_p1"):
+        ws.close(name)
+
+    # Befund 4 (issue #34): Collision check before drilling: overlapping plates raise ValueError
+    p_ol1 = ws.new(PART, "pt6_ol1")
+    p_ol1.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0], "name": "B1"})
+    p_ol1.save()
+
+    p_ol2 = ws.new(PART, "pt6_ol2")
+    p_ol2.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0], "name": "B2"})
+    p_ol2.save()
+
+    asm_ol = ws.new(ASSEMBLY, "pt6_asm_ol")
+    links.insert(ws, asm_ol, p_ol1.path, name="Plate1", grounded=True)
+    links.insert(ws, asm_ol, p_ol2.path, name="Plate2", translate=[0, 0, -6], grounded=True)  # 2 mm penetration
+    asm_ol.save()
+
+    bytes_1_before = p_ol1.path.read_bytes()
+    bytes_2_before = p_ol2.path.read_bytes()
+
+    collision_err = None
+    try:
+        bolted.bolted_connection(
+            ws, "pt6_asm_ol",
+            placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+            size="M5"
+        )
+    except ValueError as e:
+        collision_err = str(e)
+
+    bytes_1_after = p_ol1.path.read_bytes()
+    bytes_2_after = p_ol2.path.read_bytes()
+
+    err_has_parts = collision_err is not None and "Plate1:1" in collision_err and "Plate2:1" in collision_err
+    err_has_coords = collision_err is not None and "bounding box" in collision_err and "center" in collision_err
+    err_has_advice = collision_err is not None and "touch" in collision_err and "penetrat" in collision_err
+    files_untouched = (bytes_1_before == bytes_1_after) and (bytes_2_before == bytes_2_after)
+
+    ok("praxistest 6 / finding 4: overlapping plates raise ValueError with parts, location and advice, files unchanged",
+       collision_err is not None and err_has_parts and err_has_coords and err_has_advice and files_untouched,
+       f"err={collision_err} untouched={files_untouched}")
+
+    # Touching plates (at z = 0, no penetration) pass without collision error
+    asm_touch = ws.new(ASSEMBLY, "pt6_asm_touch")
+    links.insert(ws, asm_touch, p_ol1.path, name="Plate1", grounded=True)
+    links.insert(ws, asm_touch, p_ol2.path, name="Plate2", translate=[0, 0, -8], grounded=True)  # touching at z = 0
+    asm_touch.save()
+
+    touch_err = None
+    try:
+        bolted.preview_bolted_connection(
+            ws, "pt6_asm_touch",
+            placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+            size="M5"
+        )
+    except ValueError as e:
+        touch_err = str(e)
+
+    ok("praxistest 6 / finding 4: touching clamping faces without penetration pass collision check",
+       touch_err is None, f"err={touch_err}")
+
+    for name in ("pt6_asm_touch", "pt6_asm_ol", "pt6_ol2", "pt6_ol1"):
+        ws.close(name)
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="Mechvane-check-") as tmp:
         ws = Workspace(tmp)
@@ -5775,6 +6169,7 @@ def main():
             praxistest_3_fixes_checks(ws)
             praxistest_4_fixes_checks(ws)
             praxistest_5_fixes_checks(ws)
+            praxistest_6_fixes_checks(ws)
             bolted_anchor_associativity_checks(ws)
             bolted_countersunk_checks(ws)
             web_ui_stage1_checks(ws)
@@ -5794,6 +6189,7 @@ def main():
             split_face_name_check()
             edge_touches_check()
             feature_request_checks(tmp, ws)
+            demo_pyodide_checks(tmp)
             agent_turns_checks(tmp)
             selection_checks(tmp)
             speech_checks(tmp)
@@ -5803,7 +6199,9 @@ def main():
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)
             gltf_export_check(tmp)
+            state_delta_checks(ws)
             scratch_dir_checks()
+            sc_errors_checks(ws)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

@@ -7,8 +7,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a12] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **State delta and warnings after modelling steps in run (ADR 0001, ROADMAP v0.1).** `run` returns `delta`
+  for parts with bounding box, centre of mass, volume, mass (when a material is assigned), number of bodies,
+  and warnings when a feature has no effect, splits the part into multiple bodies, or causes a large jump.
+
+- **Clear SolidCraft error messages for agent and user (stage 1).** Common SolidCraft and geometric
+  kernel modeling errors (such as intersecting shells, blend too large, zero distance or angle,
+  hole not on face, self-combine, unit-less pattern count) are translated in `server.run` into clear
+  explanations and actionable hints (`mechvane/sc_errors.py`), re-raised alongside the original error
+  while preserving rollbacks.
+
+- **The live demo checks your changes.** When you edit a part in "Model by hand" on the live demo (mechvane.dev)
+  and save (Ctrl+S), the design check runs again right in your browser (Pyodide, about 5 MB on first use) and
+  updates the findings and verdict. Assembly checks in the demo stay precomputed.
+
 ### Changed
 
+- **Through-hole bolted connections drill "through all" instead of a fixed depth.** Clearance holes,
+  counterbores, and countersinks for through connections now adapt parametrically when plate thickness changes
+  (e.g. via parameters), avoiding shallow blind hole warnings in `check_design`. Blind holes and threaded inserts
+  retain their intentional engagement depth.
+- **Pre-drilling collision check in bolted connections.** `bolted_connection` and `preview_bolted_connection`
+  check for solid interferences between the bolted parts before modifying any files. If parts penetrate each other
+  (clamping faces that only touch remain valid), a clear error reports the colliding parts, overlap center point,
+  bounding box, volume, and guidance on how to adjust parts, leaving all files completely unchanged.
 - **Mechvane workspace in the layout of Inventor (ADR 0005, stage 1).** The Check page is now the Mechvane
   workspace: a ribbon with **File** menu (open/new from the folder, **Open in SolidCraft (expert mode)**,
   **Request a feature**, **Quit**) and tabs **3D Model**, **Sketch**, **Inspect**, **Assemble** and **View**;
