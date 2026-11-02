@@ -4792,14 +4792,19 @@ def agent_turns_checks(tmp):
     from mechvane.ui import agent as ag, server as ui_server
 
     d = ag.decide
-    ok("agent: Mechvane modelling runs, other tools, file commands and deletions are declined",
+    ok("agent: Mechvane modelling runs, also deleting features and sketch curves (a turn can be undone); "
+       "other tools and file commands are declined",
        d("mcp__mechvane__run", {"commands": [{"command": "solid.chamfer", "params": {"edges": [[0, 0, 0]]}}]})[0]
        and d("mcp__mechvane__run", {"commands": [{"command": "solid.sweep", "params": {"path": [3, 4]}}]})[0]
        and d("mcp__mechvane__check_design", {})[0]
        and not d("Bash", {"command": "ls"})[0]
        and not d("mcp__mechvane__run", {"commands": [{"command": "file.export", "params": {"path": "x.step"}}]})[0]
        and not d("mcp__mechvane__command", {"command": "sketch.insert_dxf", "params": {"path": "a/b.dxf"}})[0]
-       and not d("mcp__mechvane__delete_feature", {"feature": "Box1"})[0]
+       and d("mcp__mechvane__delete_feature", {"feature": "Box1"})[0]
+       and d("mcp__mechvane__run", {"commands": [{"command": "sketch.delete", "params": {"items": ["l1"]}}]})[0]
+       and d("mcp__mechvane__run", {"commands": [{"command": "timeline.delete", "params": {"feature": "Hole1"}}]})[0]
+       and not d("mcp__mechvane__run", {"commands": [{"command": "doc.open", "params": {"path": "x.solidcraft"}}]})[0]
+       and not d("mcp__mechvane__close_document", {"document": "a"})[0]
        and not d("mcp__mechvane__screenshot", {"path": "/tmp/s.png"})[0])
 
     root = Path(tmp) / "agent"
@@ -4845,9 +4850,9 @@ def agent_turns_checks(tmp):
         ok("agent: a turn runs, edits the project and reports changed files",
            idle and done and done[0]["changed"] == ["extra.solidcraft", "plate.solidcraft"]
            and features("plate.solidcraft") == n0 + 1 and changed, f"{ev}")
-        ok("agent: only the modelling call is allowed (export, shell and delete declined)",
+        ok("agent: modelling and deleting features are allowed, export and shell declined",
            '"run chamfer": true' in text and '"run export": false' in text and '"Bash": false' in text
-           and '"delete_feature": false' in text and declined == ["Bash", "delete_feature", "run"], text + str(declined))
+           and '"delete_feature": true' in text and declined == ["Bash", "run"], text + str(declined))
 
         out = turns.undo()
         ok("agent: undo writes back only the files the turn changed",

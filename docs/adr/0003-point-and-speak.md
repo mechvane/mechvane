@@ -160,7 +160,10 @@ es seine Änderung überschreibt. Vor dem Zurückspielen wird der aktuelle Stand
 - **Ohne Rückfrage:** Features anlegen und ändern, Normteile und Verschraubungen einsetzen (auch wenn
   das mehrere Projektdateien ändert, der Zug ist ja als Ganzes rückgängig zu machen), Gelenke
   anlegen, prüfen, messen. Alles landet als Feature im Baum und ist editierbar (Grundsatz 6).
-- **Mit Rückfrage im Chat:** Features, Körper oder Dateien löschen, SolidCraft-Befehle mit
+- **Geändert 2026-11-02 (Nutzer):** Features, Skizzengeometrie, Gelenke und Verschraubungen löschen darf der Agent
+  ohne Rückfrage. Der Chat kann noch nicht nachfragen, die Ablehnung blockierte normale Arbeit (`sketch.delete`), und
+  jeder Zug ist als Ganzes rückgängig zu machen. Weiter gesperrt: `file.*`, `doc.*`, Dateipfade, `close_document`.
+- **Mit Rückfrage im Chat (bis 2026-11-02):** Features, Körper oder Dateien löschen, SolidCraft-Befehle mit
   Dateinamen (Export, Import, Speichern unter, Öffnen: Parameter `file`, `dir`, `output`, `path`,
   `source`, Regel wie in SolidCraft `agent-chat.md`). Diese Prüfung sitzt in `run` und `command` des
   MCP-Servers, nicht nur im Prompt.

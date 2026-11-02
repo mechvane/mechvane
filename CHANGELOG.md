@@ -11,6 +11,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Built and tested with SolidCraft 0.25.1.
 
+### Changed
+
+- **Your agent may delete features, sketch curves, joints and bolted connections** while it works on the model.
+  It was refused before because the chat could not ask you yet, which stopped ordinary edits such as redrawing a
+  sketch line. Every turn of your agent can be undone as a whole. Reading, writing or removing files stays blocked.
+
 ### Fixed
 
 - Sketch shapes at negative positions (for example a rectangle at X -20) were refused; they are placed there now.

@@ -25,8 +25,9 @@ from pathlib import Path
 from .. import install
 
 MECHVANE_TOOL = "mcp__mechvane__"
-# Tools that remove something: they wait for the user (until the chat can ask, they are declined)
-ASK_TOOLS = {"delete_feature", "delete_joint", "delete_bolted_connection", "close_document"}
+# Tools the agent may not call on its own. Deleting features, joints and bolted connections is allowed since
+# 2026-11-02 (user): every turn can be undone as a whole, and the chat has no way yet to ask in between.
+ASK_TOOLS = {"close_document"}
 FILE_KEYS = {"file", "dir", "output", "path", "source"}
 FILE_EXTS = (".solidcraft", ".sc", ".step", ".stp", ".stl", ".3mf", ".obj", ".dxf", ".svg", ".png", ".iges",
              ".igs", ".gltf", ".glb", ".json", ".txt")
@@ -39,10 +40,11 @@ def _looks_like_file(v) -> bool:
 
 
 def _command_ok(cmd: dict) -> str | None:
-    """None when a SolidCraft command may run without asking, else the reason (ADR 0003, section 6)."""
+    """None when a SolidCraft command may run without asking, else the reason (ADR 0003, section 6).
+    Removing model content (timeline.delete, sketch.delete, …) is fine: the turn can be undone. Files are not."""
     cid = str(cmd.get("command", ""))
-    if cid.startswith(("file.", "doc.")) or "delete" in cid or cid.endswith(".remove"):
-        return f"`{cid}` reads, writes or removes files or features"
+    if cid.startswith(("file.", "doc.")):
+        return f"`{cid}` reads, writes or removes files"
     for k, v in (cmd.get("params") or {}).items():
         if k in ("file", "dir", "output") or (k in FILE_KEYS and _looks_like_file(v)):
             return f"`{cid}` names a file ({k})"
