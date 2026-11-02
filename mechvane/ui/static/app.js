@@ -799,6 +799,32 @@ function updateFindingsView(data, preserveSelection) {
 const STATIC = document.documentElement.dataset.static === "1";
 let demoBase = "";
 
+// Session log (mechvane/ui/sessionlog.py): what happens in the browser goes to the server's log, for debugging
+// test sessions; in the live demo there is no server and nothing is sent
+const logBuffer = [];
+function clientLog(kind, data = {}) {
+  if (STATIC) return;
+  logBuffer.push({ kind, ...data });
+  if (logBuffer.length > 300) logBuffer.splice(0, logBuffer.length - 300);
+}
+function flushLog(beacon = false) {
+  if (STATIC || !logBuffer.length) return;
+  const body = JSON.stringify({ events: logBuffer.splice(0) });
+  if (beacon && navigator.sendBeacon) navigator.sendBeacon("api/log", body);
+  else fetch("api/log", { method: "POST", body }).catch(() => {});
+}
+if (!STATIC) {
+  setInterval(flushLog, 1500);
+  window.addEventListener("pagehide", () => flushLog(true));
+  window.addEventListener("error", (e) => clientLog("js_error", { message: e.message, at: `${e.filename}:${e.lineno}:${e.colno}`,
+                                                                 stack: e.error && e.error.stack }));
+  window.addEventListener("unhandledrejection", (e) => clientLog("js_rejection", { message: String(e.reason && (e.reason.stack || e.reason)) }));
+  const origError = console.error.bind(console);
+  console.error = (...a) => { clientLog("console_error", { message: a.map(String).join(" ") }); origError(...a); };
+  clientLog("page", { url: location.href, size: `${innerWidth}x${innerHeight}`, touch: navigator.maxTouchPoints > 0,
+                      agent: navigator.userAgent });
+}
+
 // Live demo: the api/* requests of the dialogs go to the demo kernel (SolidCraft in a hidden iframe)
 let demoKernel = null;
 async function kernel() {
@@ -1337,7 +1363,7 @@ var viewBeforeEdit = null;
   featureDialogs = initFeatureDialogs({
     scene, viewTools, renderScene,
     propertiesEl: document.getElementById("properties-content"),
-    statusEl, post: postJson, get: (url) => fetchJson(url), showPreview, clearPreview,
+    statusEl, post: postJson, get: (url) => fetchJson(url), showPreview, clearPreview, log: clientLog,
     reload: () => loadAll(false),
     // editing a feature shows the model as it was before it; Cancel puts the current model back
     showModel: (mesh) => {
@@ -1498,4 +1524,29 @@ function initTreeActions() {
     featureDialogs.remove(selectedRow.dataset.feature);
     select(null);
   });
+}
+
+// Session log: what the user does, briefly (buttons, keys outside text fields, the status line)
+if (!STATIC) {
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest && e.target.closest("button, a, summary, .tree-row, .finding-card");
+    if (!el) return;
+    clientLog("click", { what: el.id || el.dataset.feature || el.dataset.tool || el.dataset.tab || el.className,
+                         text: (el.textContent || "").trim().slice(0, 60) });
+  }, true);
+  window.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest("input, textarea, [contenteditable]")) return;
+    if (e.key.length === 1 || /^(Escape|Delete|Enter|F\d+)$/.test(e.key)) {
+      clientLog("key", { key: (e.ctrlKey || e.metaKey ? "Ctrl+" : "") + (e.shiftKey && e.key.length > 1 ? "Shift+" : "") + e.key });
+    }
+  }, true);
+  let lastStatus = "";
+  new MutationObserver(() => {
+    const t = statusEl.textContent;
+    if (t !== lastStatus) {
+      lastStatus = t;
+      clientLog("status", { text: t });
+    }
+  }).observe(statusEl, { childList: true, characterData: true, subtree: true });
 }

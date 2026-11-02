@@ -5552,6 +5552,65 @@ def feature_dialog_checks(tmp):
         srv.server_close()
 
 
+def sessionlog_checks(tmp):
+    """Session log for debugging test sessions: api requests, browser events (/api/log), agent decisions,
+    developer messages to the agent, long values cut, old logs removed."""
+    import urllib.request
+    from datetime import datetime, timedelta
+    from mechvane import install
+    from mechvane.ui import agent as ag, server as ui_server, sessionlog
+
+    old_cache = install.CACHE
+    install.CACHE = Path(tmp) / "logcache"
+    sessionlog._pruned = False
+    try:
+        logs = install.CACHE / "logs"
+        logs.mkdir(parents=True)
+        stale = logs / f"{(datetime.now() - timedelta(days=30)):%Y-%m-%d}.jsonl"
+        stale.write_text("{}\n")
+        folder = Path(tmp) / "logproj"
+        folder.mkdir()
+        w = Workspace(folder)
+        try:
+            w.new(PART, "p").save()
+        finally:
+            w.close_all()
+        srv = ui_server.create_server(str(folder / "p.solidcraft"), port=0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+        try:
+            urllib.request.urlopen(base + "version").read()
+            req = urllib.request.Request(base + "log", method="POST", data=json.dumps({"events": [
+                {"kind": "click", "what": "btn-fillet"}, {"kind": "js_error", "message": "x" * 5000}]}).encode())
+            urllib.request.urlopen(req).read()
+            req = urllib.request.Request(base + "feature", method="POST", data=json.dumps(
+                {"command": "solid.shell", "params": {}}).encode())
+            try:
+                urllib.request.urlopen(req)
+            except urllib.error.HTTPError:
+                pass
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        sessionlog.log("agent_permission", tool="mcp__mechvane__run", allowed=False, reason="test")
+        today = logs / f"{datetime.now():%Y-%m-%d}.jsonl"
+        lines = [json.loads(x) for x in today.read_text(encoding="utf-8").splitlines()]
+        kinds = [(e.get("kind"), e.get("event") or e.get("path")) for e in lines]
+        click = next((e for e in lines if e.get("event") == "click"), {})
+        err = next((e for e in lines if e.get("event") == "js_error"), {})
+        refused = next((e for e in lines if e.get("path") == "/api/feature"), {})
+        msg = ag.AgentTurns(folder)._message("which tools?", [], "p.solidcraft", "developer")
+        ok("session log: browser events and refused api calls with their error, the agent's decisions; polls left "
+           "out; long values cut; logs older than 14 days removed; developer messages are marked for the agent",
+           click.get("what") == "btn-fillet" and len(err.get("message", "")) < 2100
+           and refused.get("status") == 403 and "not available" in refused.get("error", "")
+           and ("agent_permission", None) in kinds and not any(p == "/api/version" for _, p in kinds)
+           and not stale.exists() and "Developer: which tools?" in msg and "Mechvane developer" in msg,
+           f"{kinds} {stale.exists()} {msg[:120]}")
+    finally:
+        install.CACHE = old_cache
+
+
 def roadmap_json_checks():
     """roadmap.json (public roadmap page): valid statuses, every item with a title, every status named."""
     data = json.loads((Path(__file__).resolve().parents[2] / "roadmap.json").read_text(encoding="utf-8"))
@@ -6462,6 +6521,7 @@ def main():
             speech_cases_checks()
             params_checks(tmp)
             feature_dialog_checks(tmp)
+            sessionlog_checks(tmp)
             viewtools_checks(tmp)
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)

@@ -8,11 +8,12 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
 from .. import design_rules, hole_tables, links, modeling, query, sketch_rule, speech, tree
-from . import agent as agent_mod, selection, webapp
+from . import agent as agent_mod, selection, sessionlog, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
 from ..solidcraft import Session
@@ -825,7 +826,31 @@ class UIRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    # polled every few seconds: in the session log only when they fail
+    QUIET = ("/api/version", "/api/history", "/api/agent/events", "/api/log", "/api/project", "/api/files")
+
+    def _log_api(self, status: int, payload: dict):
+        url = urlparse(self.path)
+        if not url.path.startswith("/api/") or (status < 400 and url.path in self.QUIET):
+            return
+        entry = {"method": self.command, "path": url.path + (f"?{url.query}" if url.query else ""), "status": status,
+                 "ms": round((time.time() - getattr(self, "_t0", time.time())) * 1000)}
+        if getattr(self, "_req_body", None) is not None:
+            entry["body"] = self._req_body
+        if isinstance(payload, dict):
+            if payload.get("error"):
+                entry["error"] = payload["error"]
+            for k in ("done", "summary", "delta", "undone", "redone", "failing", "deleted"):
+                if payload.get(k) not in (None, "", [], {}):
+                    entry[k] = payload[k]
+            if isinstance(payload.get("bodies"), list):
+                entry["bodies"] = len(payload["bodies"])
+            if isinstance(payload.get("findings"), list):
+                entry["findings"] = len(payload["findings"])
+        sessionlog.log("api", **entry)
+
     def _send_json(self, status: int, payload: dict):
+        self._log_api(status, payload)
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -874,6 +899,7 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(length).decode("utf-8"))
         if not isinstance(body, dict):
             raise ValueError("expected a JSON object")
+        self._req_body = body
         return body
 
     def _agent_post(self, srv, path):
@@ -890,7 +916,8 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 return
             doc = srv.file_path.name if srv.file_path else None
             try:
-                turn = turns.send(text.strip(), body.get("selection"), doc)
+                sender = "developer" if body.get("from") == "developer" else "user"
+                turn = turns.send(text.strip(), body.get("selection"), doc, sender=sender)
             except RuntimeError as e:
                 self._send_json(409, {"error": str(e)})
                 return
@@ -913,7 +940,21 @@ class UIRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
         srv: UIServer = self.server  # type: ignore[assignment]
+        self._t0, self._req_body = time.time(), None
         try:
+            if path == "/api/log":
+                # what the browser reports for the session log: errors, dialogs, the status line
+                try:
+                    events = self._json_body(limit=262144).get("events") or []
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                for ev in events[:200]:
+                    if isinstance(ev, dict):
+                        data = {k: v for k, v in ev.items() if k not in ("t", "kind", "event")}
+                        sessionlog.log("browser", event=ev.get("kind"), **data)
+                self._send_json(200, {"logged": len(events)})
+                return
             if path.startswith("/api/agent/"):
                 self._agent_post(srv, path)
                 return
@@ -1133,6 +1174,7 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         path = url.path
         srv: UIServer = self.server  # type: ignore[assignment]
+        self._t0, self._req_body = time.time(), None
         try:
             if path == "/api/agent/events":
                 try:
@@ -1366,6 +1408,13 @@ def run_server(path, port: int = 8765, opener=None):
     actual_port = srv.server_address[1]
     target_name = srv.folder_path.name if srv.is_folder else srv.file_path.name
     url = f"http://127.0.0.1:{actual_port}/"
+    try:
+        from importlib.metadata import version as _version
+        mv = _version("mechvane")
+    except Exception:
+        mv = "dev"
+    # remote debugging finds the port and the project here (tools/remote_debug.py)
+    sessionlog.log("ui_start", port=actual_port, path=str(srv.path), mechvane=mv, pid=os.getpid())
     print(f"Mechvane UI running at {url} ({target_name})", flush=True)
     if opener:
         def open_ui():

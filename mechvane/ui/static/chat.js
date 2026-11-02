@@ -58,7 +58,8 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
         for (const e of st.events) {
           if (e.type === "user") {
             agentText = null;
-            const li = add("you", e.text);
+            // a message from the developer (Claude debugging this session over a tunnel) is marked as such
+            const li = e.from === "developer" ? add("dev", `Developer: ${e.text}`) : add("you", e.text);
             if (e.selected) {
               const sel = document.createElement("span");
               sel.className = "sel";

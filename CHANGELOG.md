@@ -7,6 +7,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a17] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **Session log for test sessions.** `mechvane ui` writes what happens to `logs/<date>.jsonl` in Mechvane's cache
+  folder (on Windows `%LOCALAPPDATA%\mechvane\logs`): the requests of the workspace with their errors, the clicks,
+  dialogs and status line in the browser, JavaScript errors, and every tool call of your agent with the reason when
+  it was declined. It stays on your computer; logs older than 14 days are removed. This makes problems you report
+  quick to trace.
+- Messages in the agent chat can come from a developer helping with a test session (marked "Developer"); your agent
+  answers them about what it did.
+
 ## [0.1.0a16] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

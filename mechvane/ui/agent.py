@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 
 from .. import install
+from . import sessionlog
 
 MECHVANE_TOOL = "mcp__mechvane__"
 # Tools the agent may not call on its own. Deleting features, joints and bolted connections is allowed since
@@ -155,6 +156,7 @@ class AcpAgent:
         call = msg["params"].get("toolCall") or {}
         tool = (call.get("_meta") or {}).get("claudeCode", {}).get("toolName") or call.get("name") or call.get("title") or ""
         ok, why = self.decide(tool, call.get("rawInput"))
+        sessionlog.log("agent_permission", tool=tool, params=call.get("rawInput"), allowed=ok, reason=why or None)
         allow = next((o for o in msg["params"].get("options", []) if o.get("kind") == "allow_once"), None)
         if ok and allow:
             outcome = {"outcome": "selected", "optionId": allow["optionId"]}
@@ -172,6 +174,7 @@ class AcpAgent:
                 self.on_event({"type": "text", "text": text})
         elif kind == "tool_call":
             title = u.get("title") or ""
+            sessionlog.log("agent_tool_call", id=u.get("toolCallId"), tool=title, params=u.get("rawInput"))
             self.on_event({"type": "tool", "id": u.get("toolCallId"), "tool": title.removeprefix(MECHVANE_TOOL),
                            "status": u.get("status") or "pending"})
         elif kind == "tool_call_update" and u.get("status") in ("completed", "failed"):
@@ -292,6 +295,14 @@ class AgentTurns:
         with self.lock:
             e = {"n": len(self.events) + 1, "turn": len(self.turns), **e}
             self.events.append(e)
+            # the session log gets the agent's text as one entry per stretch, not every streamed piece
+            if e.get("type") == "text":
+                self._text = getattr(self, "_text", "") + (e.get("text") or "")
+                return
+            text, self._text = getattr(self, "_text", ""), ""
+        if text:
+            sessionlog.log("agent_text", turn=e["turn"], text=text)
+        sessionlog.log("agent_event", **{k: v for k, v in e.items() if k != "n"})
 
     def events_since(self, n: int) -> dict:
         with self.lock:
@@ -316,19 +327,19 @@ class AgentTurns:
         s = t.get("summary") or {}
         return t["state"] == "done" and not t.get("undone") and bool(s.get("changed") or s.get("removed"))
 
-    def send(self, text: str, selection: list | None = None, document: str | None = None) -> int:
+    def send(self, text: str, selection: list | None = None, document: str | None = None, sender: str = "user") -> int:
         with self.lock:
             if self.busy:
                 raise RuntimeError("the agent is still working on the last message")
             self.busy = True
             self._stop = False
             self._drop_redo()
-            turn = {"id": len(self.turns) + 1, "text": text, "state": "running"}
+            turn = {"id": len(self.turns) + 1, "text": text, "state": "running", "from": sender}
             self.turns.append(turn)
         names = [x.get("name") or x.get("kind") for x in (selection or []) if isinstance(x, dict)]
-        self._event({"type": "user", "text": text, "selected": len(selection or []),
+        self._event({"type": "user", "text": text, "selected": len(selection or []), "from": sender,
                      "selection_names": [n for n in names if n][:8]})
-        threading.Thread(target=self._run, args=(turn, text, selection, document), daemon=True).start()
+        threading.Thread(target=self._run, args=(turn, text, selection, document, sender), daemon=True).start()
         return turn["id"]
 
     def _drop_redo(self):
@@ -375,16 +386,22 @@ class AgentTurns:
         """Something the agent's own history does not show (undo, redo, a stopped turn); goes with the next message."""
         self.notes.append(text)
 
-    def _message(self, text, selection, document):
+    def _message(self, text, selection, document, sender="user"):
         context = {"document": document, "selection": selection or []}
         notes, self.notes = self.notes, []
         prefix = "".join(f"Note: {n}\n" for n in notes)
+        if sender == "developer":
+            # Claude on the Mechvane side, debugging a test session with the user over a tunnel
+            return prefix + ("Message from the Mechvane developer (another Claude session that builds Mechvane and is "
+                             "debugging this test session; the user sees this exchange). Answer precisely: which tools "
+                             "and parameters you used, what came back, what you expected. Do not change the model "
+                             f"unless asked to.\nContext: {json.dumps({'document': document})}\n\nDeveloper: {text}")
         return prefix + ("You work on a Mechvane CAD project with the user, through the mechvane MCP tools only. "
                 "Changes are saved automatically after each tool call. Model with features that stay editable "
                 "in the tree. The user's selection uses Mechvane face names; `click` is where they clicked.\n"
                 f"Context: {json.dumps(context)}\n\nUser: {text}")
 
-    def _run(self, turn, text, selection, document):
+    def _run(self, turn, text, selection, document, sender="user"):
         try:
             turn["snapshot"] = Snapshot(self.folder, f"turn{turn['id']}")
             self._event({"type": "status", "status": "working"})
@@ -394,7 +411,7 @@ class AgentTurns:
                     raise RuntimeError("no agent found: install the Claude Code ACP adapter "
                                        "(npm install -g @agentclientprotocol/claude-agent-acp) or set MECHVANE_AGENT")
                 self.agent = AcpAgent(cmd, self.folder, self._event)
-            reason = self.agent.prompt(self._message(text, selection, document))
+            reason = self.agent.prompt(self._message(text, selection, document, sender))
             if self._stop or reason == "cancelled":
                 turn["state"] = "stopped"
                 self._event({"type": "status", "status": "stopped", **turn["snapshot"].restore()})

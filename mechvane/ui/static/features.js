@@ -563,7 +563,7 @@ function roundOnPlane(point, normal) {
 
 export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl, statusEl, post, get,
                                      showPreview, clearPreview, reload, showModel, restoreModel,
-                                     lookAlong = () => {} }) {
+                                     lookAlong = () => {}, log = () => {} }) {
   const pickGroup = new THREE.Group();
   scene.add(pickGroup);
   const emptyHtml = propertiesEl.innerHTML;
@@ -778,13 +778,15 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const seq = ++dlg.seq;
     const slow = setTimeout(() => { if (active === dlg) dlg.deltaEl.textContent = "Computing preview…"; }, 250);
     try {
-      const res = await post("api/feature", request(true));
+      const req = request(true);
+      const res = await post("api/feature", req);
       if (active !== dlg || dlg.stale || seq !== dlg.seq) return; // closed, or the values changed meanwhile
       setError("");
       showPreview(res.mesh);
       dlg.deltaEl.textContent = describeDelta(res.delta);
     } catch (err) {
       if (active !== dlg || dlg.stale || seq !== dlg.seq) return;
+      log("dialog_preview_error", { dialog: dlg.kind, values: values(), error: firstLine(err.message) });
       clearPreview();
       dlg.deltaEl.textContent = "";
       setError(firstLine(err.message));
@@ -802,13 +804,16 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     active.okBtn.disabled = true;
     const dlg = active;
     try {
-      const res = await post("api/feature", request(false));
+      const req = request(false);
+      log("dialog_ok", { dialog: dlg.kind, edit: dlg.edit, values: values(), request: req });
+      const res = await post("api/feature", req);
       const def = dlg.def;
       close();
       await reload();
       statusEl.textContent = res.done || "Done";
       if (def.after) def.after(res, api);
     } catch (err) {
+      log("dialog_ok_error", { dialog: dlg.kind, error: firstLine(err.message) });
       dlg.busy = false;
       if (active === dlg) {
         setError(firstLine(err.message));
@@ -819,6 +824,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
 
   function close() {
     if (!active) return;
+    log("dialog_close", { dialog: active.kind, edit: active.edit });
     clearTimeout(active.timer);
     const wasEdit = active.edit, wasSketch = active.def.view === "sketch";
     active = null;
@@ -880,6 +886,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       </form>`;
     const form = propertiesEl.querySelector("form");
     form.querySelector(".feature-dialog-title").textContent = edit ? `Edit ${edit.name}` : def.title;
+    log("dialog_open", { dialog: kind, edit: edit ? edit.name : null });
     active = {
       kind, def, form, edges: new Map(), point: null, edge1: null, face: null, features: [],
       timer: null, seq: 0, busy: false, edit: edit ? edit.name : null,
@@ -930,12 +937,14 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         if (!active) return;
         if (active.edges.has(pick.key)) active.edges.delete(pick.key);
         else active.edges.set(pick.key, pick);
+        log("pick_edge", { dialog: active.kind, kind: pick.edge.kind, point: pick.point, selected: active.edges.size });
         update();
       });
     } else if (def.view === "edge") {
       // one edge: a direction (straight edge) or an axis (straight or circular edge, a hole)
       viewTools.startEdgePick((pick) => {
         if (!active) return;
+        log("pick_edge", { dialog: active.kind, kind: pick.edge.kind, point: pick.point });
         const dir = pick.edge.kind === "line" ? pick.edge.dir.toArray().map((c) => +c.toFixed(9)) : null;
         active.edge1 = { ...pick, dir };
         const sel = def.fields.find((f) => f.type === "select" && f.options && (typeof f.options === "function"
@@ -948,6 +957,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     } else if (def.view === "face") {
       viewTools.startFacePick((pick) => {
         if (!active || !def.onFace) return;
+        log("pick_face", { dialog: active.kind, point: pick.point.toArray().map((c) => +c.toFixed(3)),
+                           normal: pick.normal.toArray().map((c) => +c.toFixed(3)), planar: pick.planar });
         def.onFace(pick, setValue, active);
         update();
       });
