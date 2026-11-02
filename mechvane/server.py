@@ -10,7 +10,7 @@ import struct
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import bolted, design_rules, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
+from . import bolted, design_rules, modeling, geometry as g, iso286, katalog, links, query, sketch_rule, standard_parts, tree
 from .documents import ASSEMBLY, PART, Workspace
 
 mcp = FastMCP(
@@ -132,13 +132,7 @@ def close_document(document: str, discard: bool = False) -> dict:
     return {"closed": document}
 
 
-def _compact(v):
-    """Leave out what a reply repeats without telling anything: nulls, empty lists, timings."""
-    if isinstance(v, dict):
-        return {k: _compact(x) for k, x in v.items() if k != "ms" and x is not None and x != [] and x != {}}
-    if isinstance(v, list):
-        return [_compact(x) for x in v]
-    return v
+_compact = modeling.compact
 
 
 @mcp.tool()
@@ -146,57 +140,7 @@ def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
     """Run SolidCraft commands ([{command, params}]) in a document, all or nothing. In a part, owned
     sketches are then moved directly before their feature, and a delta report (volume, bounding box,
     body count and warnings) is returned. The reply leaves out empty fields and timings unless verbose."""
-    doc = ws.get(document)
-    cp = None
-    snap_before = None
-    if doc.kind == PART:
-        try:
-            cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
-        except Exception:
-            cp = None
-        try:
-            snap_before = state_delta.snapshot(doc.session)
-        except Exception:
-            snap_before = None
-    try:
-        result = doc.session.batch(commands)
-    except Exception as e:
-        if cp is not None:
-            try:
-                doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
-            except Exception:
-                pass
-        exp = sc_errors.explain(str(e))
-        if exp is not None:
-            # RuntimeError, not type(e): not every exception class takes a single message argument.
-            raise RuntimeError(f"{exp['message']} ({exp['hint']})\n{e}") from e
-        raise
-
-    out = {"results": result.get("results", result) if isinstance(result, dict) else result}
-    if not verbose:
-        out["results"] = _compact(out["results"])
-    if doc.kind == PART:
-        try:
-            out["sketch_rule"] = sketch_rule.enforce(doc.session)
-        except Exception as e:
-            if cp is not None:
-                try:
-                    doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
-                except Exception:
-                    pass
-            raise RuntimeError(f"sketch rule failed, rolled back batch: {e}") from e
-        if snap_before is not None:
-            try:
-                snap_after = state_delta.snapshot(doc.session)
-                out["delta"] = state_delta.diff(snap_before, snap_after)
-            except Exception:
-                pass
-    if cp is not None:
-        try:
-            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
-        except Exception:
-            pass
-    return out
+    return modeling.run_commands(ws.get(document), commands, verbose)
 
 
 @mcp.tool()

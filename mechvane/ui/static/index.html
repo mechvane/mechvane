@@ -53,6 +53,15 @@
           </div>
         </details>
 
+        <div class="quick-access" aria-label="Quick access">
+          <button id="btn-undo" type="button" class="qa-btn" disabled hidden title="Nothing to undo" aria-label="Undo">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4L2.5 7.5 6 11"/><path d="M3 7.5h6.5a4 4 0 0 1 0 8H8"/></svg>
+          </button>
+          <button id="btn-redo" type="button" class="qa-btn" disabled hidden title="Nothing to redo" aria-label="Redo">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4l3.5 3.5L10 11"/><path d="M13 7.5H6.5a4 4 0 0 0 0 8H8"/></svg>
+          </button>
+        </div>
+
         <nav class="ribbon-tabs" role="tablist" aria-label="Workspace tabs">
           <button type="button" class="ribbon-tab active" role="tab" aria-selected="true" data-tab="3d-model">3D Model</button>
           <button type="button" class="ribbon-tab" role="tab" aria-selected="false" data-tab="sketch">Sketch</button>
@@ -82,7 +91,7 @@
 
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-extrude" data-feature="extrude" data-title="Extrude: a sketch into a solid (E)" disabled title="Coming in the next step">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 17l8 4 8-4"/>
                 <path d="M4 10l8 4 8-4-8-4-8 4z" fill="currentColor" fill-opacity="0.18"/>
@@ -91,7 +100,7 @@
               </svg>
               <span>Extrude</span>
             </button>
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-revolve" data-feature="revolve" data-title="Revolve: a sketch around an axis" disabled title="Coming in the next step">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <line x1="6" y1="3" x2="6" y2="21" stroke-dasharray="2.5 2"/>
                 <rect x="9" y="6" width="8" height="12" rx="1" fill="currentColor" fill-opacity="0.18"/>
@@ -120,7 +129,7 @@
 
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-hole" data-feature="hole" data-title="Hole: clearance, tapped, counterbore, countersink (H)" disabled title="Coming in the next step">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <ellipse cx="12" cy="6" rx="6" ry="2.5" fill="currentColor" fill-opacity="0.18"/>
                 <path d="M6 6v9l6 5 6-5V6"/>
@@ -128,7 +137,7 @@
               </svg>
               <span>Hole</span>
             </button>
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-fillet" data-feature="fillet" data-title="Fillet: round edges (F)" disabled title="Coming in the next step">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 20V12a8 8 0 0 1 8-8h8"/>
                 <path d="M4 12V4h8" stroke-dasharray="2 2" opacity="0.6"/>
@@ -137,7 +146,7 @@
               </svg>
               <span>Fillet</span>
             </button>
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-chamfer" data-feature="chamfer" data-title="Chamfer: bevel edges" disabled title="Coming in the next step">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 20v-8l8-8h8"/>
                 <path d="M4 12V4h8" stroke-dasharray="2 2" opacity="0.6"/>
@@ -185,21 +194,21 @@
         <div class="ribbon-group">
           <div class="ribbon-group-items">
             <div class="ribbon-stack">
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" id="btn-rectangular" data-feature="rectangular" data-title="Rectangular Pattern: copy features in rows" disabled title="Coming in the next step">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
                   <rect x="2" y="2" width="4.5" height="4.5"/><rect x="9.5" y="2" width="4.5" height="4.5"/>
                   <rect x="2" y="9.5" width="4.5" height="4.5"/><rect x="9.5" y="9.5" width="4.5" height="4.5"/>
                 </svg>
                 <span>Rectangular Pattern</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" id="btn-circular" data-feature="circular" data-title="Circular Pattern: copy features around an axis" disabled title="Coming in the next step">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
                   <circle cx="8" cy="2.5" r="1.5"/><circle cx="12.8" cy="5.2" r="1.5"/><circle cx="12.8" cy="10.8" r="1.5"/>
                   <circle cx="8" cy="13.5" r="1.5"/><circle cx="3.2" cy="10.8" r="1.5"/><circle cx="3.2" cy="5.2" r="1.5"/>
                 </svg>
                 <span>Circular Pattern</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" id="btn-mirror" data-feature="mirror" data-title="Mirror: mirror features about a plane" disabled title="Coming in the next step">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true">
                   <line x1="8" y1="1.5" x2="8" y2="14.5" stroke-dasharray="2 1.5"/>
                   <polygon points="2,12 6,4 6,12"/><polygon points="14,12 10,4 10,12" opacity="0.6"/>

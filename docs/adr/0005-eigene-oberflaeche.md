@@ -119,6 +119,41 @@ UI-Pakete nach festem Auftrag (Layout, Dialoge), je mit Tests (`tests/mechvane/c
 ## Offen (vor Stufe 2 klären)
 
 1. Wie schnell ist ein Zyklus Befehl → Netz → Anzeige für ein typisches Teil (Ziel < 0,5 s)? Messen,
-   bevor die Dialoge gebaut werden.
+   bevor die Dialoge gebaut werden. *Gemessen 2026-11-02 (Winkel, Rundung):* Befehl 23 ms, Netz 40–80 ms,
+   Zurücknehmen 1 ms, also ~65 ms je Vorschau ohne die 300 ms Verzögerung; nur der erste Befehl einer
+   Sitzung braucht ~1 s (Kern wärmt auf). Speichern 0,1 s, Befunde 0,2 s. Kein Teil-Netz nötig.
 2. Kann `timeline.edit` alle Feature-Parameter ändern, oder muss Bearbeiten löschen und neu anlegen?
+   *Geklärt 2026-11-02:* `timeline.edit {feature, set}` ändert alle Felder der Definition aus `timeline.inspect`,
+   auch die Kanten; ein Wert, der nicht passt, wirft einen Fehler und ändert nichts. Bearbeiten löscht also nicht.
+
+**Umgesetzt 2026-11-02 (Stufe 2, erster Schnitt):** `POST /api/feature {command, params, preview}` mit Liste
+erlaubter Befehle (`FEATURE_COMMANDS` in `ui/server.py`), Ausführen über `modeling.run_commands` (derselbe Weg
+wie das MCP-Werkzeug `run`: alles oder nichts, Skizzenregel, Zustandsbericht, erklärte Fehler). Vorschau:
+`edit.checkpoint` → Befehl → Netz → `edit.restore_checkpoint` (Achtung: `forget: true` allein geht *nicht*
+zurück, es verwirft nur den Checkpoint). Handschritte (Dialoge, Parameterformular) laufen über
+`AgentTurns.hand_step` in dieselbe Rückgängig-Liste wie die Agentenzüge, der Agent erfährt davon mit der
+nächsten Nachricht; ein neuer Schritt nach einem Rückgängig verwirft das Wiederholen. Rückgängig/Wiederholen in
+der Titelleiste und mit Strg+Z/Strg+Y. Kantenwahl in der Ansicht (`viewtools.startEdgePick`): Punkte exakt auf
+der Kante (Gerade projiziert, Kreis auf den wahren Radius, nicht die Sehne); SolidCraft folgt tangentialen
+Kanten selbst, ein Punkt rundet die ganze Bohrungskante. Dialoge Rundung und Fase (`features.js`).
+Bearbeiten wie Inventor: Doppelklick im Modellbaum, `GET /api/feature?name=` liefert die Werte und das Netz vor dem
+Feature (`timeline.roll_to` im Checkpoint), dort sind die verbrauchten Kanten wieder wählbar; OK schickt
+`timeline.edit` (Liste `EDITABLE`), ein Bearbeiten, nach dem ein Feature fehlschlägt, wird zurückgenommen.
+Löschen über Rechtsklick oder Entf (`POST /api/feature/delete`, wie `delete_feature` des Agenten mit der eigenen
+Skizze); fehlschlagende spätere Features meldet die Statusleiste, Strg+Z holt alles zurück.
+Bohrung: Fläche anklicken (Punkt auf 0,1 mm gerundet und in der Ebene gehalten, Richtung gegen die Normale der
+angeklickten Seite), Maße aus `GET /api/hole_sizes` (ISO 273, DIN 336, DIN 974-1, DIN 74-F). Angelegt wird mit
+expliziten Durchmessern (`solid.hole` braucht Senkungsmaße), bearbeitet in der Form der Definition (`hole: {type, …}`,
+`null` entfernt Tiefe oder Gewinde). Beim Öffnen erkennt der Dialog Durchgangslöcher über die Tabelle wieder.
+Muster und Spiegeln: Features im Modellbaum anklicken (`pickFeature`), Richtung/Achse aus X/Y/Z oder einer angeklickten
+Kante (Kreis: ihre Achse, beim Anlegen `{edge: Punkt}`, beim Bearbeiten `axis`+`origin`+`axis_ref`), Ebene aus
+XY/XZ/YZ oder einer angeklickten Fläche (beim Bearbeiten `custom` mit `x_dir`/`y_dir`). `timeline.edit` will Anzahl
+und Abstand eines Musters als Text. Muster rechnen in SolidCraft 2–7 s (Boolean retry bei koplanaren Werkzeugen),
+gleiche Werte kommen aus dem Cache; der Dialog zeigt „Computing preview…“ und schickt nie mehr als eine Vorschau
+gleichzeitig (nur den neuesten Stand nach).
+Extrusion und Drehung: Skizze aus `GET /api/sketches` (mit Nutzern, Vorschlag: neueste unbenutzte), Operation
+ausdrücklich (auf einer Flächenskizze wäre SolidCraft-Standard ein neuer Körper, Inventor fügt an; „Cut“ schlägt
+Richtung 2 vor). Anlegen mit `operation: new`, Definition und Bearbeiten mit `new_body`; `extent.through_all`
+wird mit `false` ausgeschaltet (nicht `null`), die Skizze geht beim Bearbeiten als ID. Drehachse X/Y/Z
+(`{type: world, axis}`) oder angeklickte Kante.
 3. Schriften und Symbole: eigene Icons (SVG) im Inventor-Stil, ohne Autodesk-Grafiken (Marken, #33).

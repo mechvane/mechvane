@@ -5205,7 +5205,7 @@ def params_checks(tmp):
 
 
 VIEWTOOLS_TEST = r"""
-import { faceInfo, bodyEdges, edgeInfo } from "./viewtools.js";
+import { faceInfo, bodyEdges, edgeInfo, pointOnEdge, edgeKey } from "./viewtools.js";
 // a cylinder r 8 around (30, 20) along Z, split into two half faces like SolidCraft's seam, and a flat face
 const positions = [], indices = [], face_ids = [];
 const n = 48;
@@ -5249,6 +5249,17 @@ console.log(JSON.stringify({
   seamDirZ: seam.dir && Math.abs(seam.dir.z), ringKind: ring.kind, ringR: ring.radius, ringCx: ring.center?.x,
   ringAxisZ: ring.axis && Math.abs(ring.axis.z),
 }));
+// feature dialogs send points on the true edge: a chord point of the hole goes out to r 8, a seam pick
+// stays inside the seam (not on its end vertex), and both halves of the hole give one key
+const seg = edges.filter((e) => e.faces[0] === 0 && e.faces[1] === 3)[3];
+const chordMid = seg.a.clone().add(seg.b).multiplyScalar(0.5);
+const onHole = pointOnEdge(hole, chordMid);
+const onSeam = pointOnEdge(seam, { x: 38, y: 20, z: -5 });
+const otherHalf = edgeInfo(edges, pickOf(1, 3));
+console.log(JSON.stringify({
+  chordR: Math.hypot(chordMid.x - 30, chordMid.y - 20), pickR: Math.hypot(onHole[0] - 30, onHole[1] - 20), pickZ: onHole[2],
+  seamZ: onSeam[2], seamLen: seam.length, sameKey: edgeKey(hole) === edgeKey(otherHalf), seamKey: edgeKey(seam) !== edgeKey(hole),
+}));
 """
 
 
@@ -5270,9 +5281,9 @@ def viewtools_checks(tmp):
     (d / "t.js").write_text(VIEWTOOLS_TEST)
     run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
     try:
-        r, e = (json.loads(line) for line in run.stdout.splitlines()[:2])
+        r, e, pk = (json.loads(line) for line in run.stdout.splitlines()[:3])
     except ValueError:
-        r, e = {}, {}
+        r, e, pk = {}, {}, {}
     ok("viewtools: edges, half circle as arc R 8 / 180°, two half faces as one circle, seam as straight edge 20 mm, "
        "closed circle over a repeated seam",
        e.get("holeKind") == "circle" and abs(e.get("holeR", 0) - 8) < 1e-3 and e.get("arcKind") == "arc" and abs(e.get("arcR", 0) - 8) < 1e-3 and abs(e.get("arcAngle", 0) - 180) < 0.5
@@ -5284,6 +5295,226 @@ def viewtools_checks(tmp):
        and abs(r.get("cx", 0) - 30) < 1e-3 and abs(r.get("cy", 0) - 20) < 1e-3
        and r.get("flatNormalZ") == 1 and abs(r.get("flatArea", 0) - 100) < 1e-9 and r.get("flatRadius") is None,
        f"{r} {run.stderr[-300:]}")
+    ok("viewtools: a dialog's edge pick lies on the true circle (not the chord), inside a straight edge, "
+       "and both halves of a hole give one edge key", _viewtools_pick_ok(pk), f"{pk} {run.stderr[-300:]}")
+
+
+def _viewtools_pick_ok(pk):
+    seam_lo, seam_hi = sorted((0, 20))
+    return (pk.get("chordR", 8) < 8 - 1e-4 and abs(pk.get("pickR", 0) - 8) < 1e-5 and abs(pk.get("pickZ", 1)) < 1e-9
+            and seam_lo < pk.get("seamZ", -1) < seam_hi and pk.get("sameKey") is True and pk.get("seamKey") is True)
+
+
+def feature_dialog_checks(tmp):
+    """Workspace feature dialogs (ADR 0005, stage 2): /api/feature previews without saving, runs and saves,
+    refuses commands outside the list, explains a size that does not fit; the step and parameter changes
+    land in the shared undo list with the agent's turns; a new step after an undo drops the redo."""
+    import urllib.error
+    import urllib.request
+    from mechvane import modeling
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "features"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        part = w.new(PART, "block")
+        part.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 10, "name": "Block"}}])
+        part.save()
+    finally:
+        w.close_all()
+    path = folder / "block.solidcraft"
+    srv = ui_server.create_server(str(path), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def features():
+        with srv.lock:
+            doc = srv.ensure_current()
+            return [f["name"] for f in doc.session.cmd("document.inspect", {"measure": False})["timeline"]]
+
+    top_edge = [20, 20, 10]  # middle of the long top edge at y = 20
+    try:
+        mtime = path.stat().st_mtime_ns
+        st_p, prev = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 2}, "preview": True})
+        ok("feature dialog: preview returns the mesh and volume change, saves nothing and leaves no feature",
+           st_p == 200 and prev.get("mesh", {}).get("bodies") and prev.get("delta", {}).get("volume_change_mm3", 0) < 0
+           and path.stat().st_mtime_ns == mtime and "Fillet1" not in features(),
+           f"{st_p} {str(prev)[:200]} {features()}")
+        st_big, big = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 50}, "preview": True})
+        st_no, no = call("feature", {"command": "solid.shell", "params": {}})
+        ok("feature dialog: a radius that does not fit is explained in one line with SolidCraft's words; "
+           "commands outside the dialog list are refused",
+           st_big == 400 and "\n" not in big.get("error", "\n") and "SolidCraft:" in big.get("error", "")
+           and st_no == 403, f"{st_big} {big.get('error')} {st_no}")
+        st_c, done = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 2}})
+        _, hist = call("history")
+        ok("feature dialog: OK runs the fillet, saves the part, and puts the step on the undo list",
+           st_c == 200 and "Fillet1" in features() and path.stat().st_mtime_ns != mtime
+           and hist.get("undo", "").startswith("Fillet R2 on 1 edge") and hist.get("redo") is None,
+           f"{st_c} {done} {features()} {hist}")
+        st_u, _ = call("agent/undo", {})
+        after_undo = features()
+        _, hist_u = call("history")
+        st_r, _ = call("agent/redo", {})
+        after_redo = features()
+        ok("feature dialog: Undo takes the fillet back, Redo puts it back",
+           st_u == 200 and "Fillet1" not in after_undo and hist_u.get("redo", "").startswith("Fillet R2")
+           and st_r == 200 and "Fillet1" in after_redo, f"{st_u} {after_undo} {hist_u} {st_r} {after_redo}")
+        call("agent/undo", {})
+        st_ch, _ = call("feature", {"command": "solid.chamfer", "params": {"edges": [[20, 0, 10]], "distance": 1}})
+        _, hist_ch = call("history")
+        ok("feature dialog: a new step after an undo drops the redo (it would discard the new step)",
+           st_ch == 200 and hist_ch.get("redo") is None and hist_ch.get("undo", "").startswith("Chamfer 1")
+           and "Fillet1" not in features(), f"{st_ch} {hist_ch} {features()}")
+        with srv.lock:
+            doc = srv.ensure_current()
+            pname = next(p["name"] for p in doc.session.cmd("parameters.list", {})["parameters"]
+                         if p.get("feature") == "Block")
+        st_pa, _ = call("params", {"changes": {pname: "12 mm"}})
+        _, hist_pa = call("history")
+        st_pu, _ = call("agent/undo", {})
+        with srv.lock:
+            back = {p["name"]: p["value"] for p in srv.ensure_current().session.cmd("parameters.list", {})["parameters"]}
+        ok("feature dialog: a parameter change from the form is a step on the same undo list",
+           st_pa == 200 and hist_pa.get("undo", "").startswith("Parameters in block") and st_pu == 200
+           and back.get(pname) == 10, f"{st_pa} {hist_pa} {st_pu} {back}")
+        # edit from the model browser: values and the model before the feature, then a change in place
+        st_e, ed = call("feature?name=Chamfer1")
+        before_bodies = ed.get("before", {}).get("bodies") or []
+        ok("feature dialog: opening Chamfer1 for editing gives its values and the model before it",
+           st_e == 200 and ed.get("dialog") == "chamfer" and ed.get("definition", {}).get("edges") == [[20, 0, 10]]
+           and str(ed.get("definition", {}).get("distance")) == "1" and before_bodies
+           and "Chamfer1" in features(), f"{st_e} {str(ed)[:300]}")
+        mtime_e = path.stat().st_mtime_ns
+        st_ep, _ = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1", "preview": True,
+                                    "params": {"edges": [[20, 0, 10]], "distance": 2}})
+        st_eb, eb = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1",
+                                     "params": {"edges": [[20, 0, 10]], "distance": 50}})
+        st_ew, _ = call("feature", {"command": "solid.fillet", "edit": "Chamfer1",
+                                    "params": {"edges": [[20, 0, 10]], "radius": 1}})
+        st_ec, _ = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1",
+                                    "params": {"edges": [[20, 0, 10], [20, 20, 10]], "distance": 2}})
+        with srv.lock:
+            d_after = srv.ensure_current().session.cmd("timeline.inspect", {"feature": "Chamfer1"})["definition"]
+        _, hist_e = call("history")
+        ok("feature dialog: editing previews without saving, refuses a size that does not fit and another command, "
+           "then changes Chamfer1 in place (two edges, 2 mm) as one undo step",
+           st_ep == 200 and st_eb == 400 and st_ew == 403 and st_ec == 200 and len(d_after.get("edges", [])) == 2
+           and str(d_after.get("distance")) in ("2", "2.0") and features().count("Chamfer1") == 1
+           and hist_e.get("undo", "").startswith("Edit Chamfer1") and path.stat().st_mtime_ns != mtime_e,
+           f"{st_ep} {st_eb} {eb.get('error')} {st_ew} {st_ec} {d_after} {hist_e}")
+        st_d, dele = call("feature/delete", {"name": "Chamfer1"})
+        gone = "Chamfer1" not in features()
+        call("agent/undo", {})
+        ok("feature dialog: Delete removes a feature as one undo step, Undo brings it back",
+           st_d == 200 and gone and "Chamfer1" in features() and dele.get("deleted") == ["Chamfer1"],
+           f"{st_d} {dele} {features()}")
+        # Hole dialog: tables from Mechvane (ISO 273, DIN 336, DIN 974-1), a counterbored clearance hole, then
+        # edited in place into a blind tapped hole (null removes "through all"'s missing depth the other way round)
+        _, sizes = call("hole_sizes")
+        m5 = sizes.get("sizes", {}).get("M5", {})
+        st_h, hole = call("feature", {"command": "solid.hole", "params": {
+            "position": [30, 10, 10], "direction": [0, 0, -1], "diameter": m5.get("clearance", {}).get("normal"),
+            "type": "counterbore", "cb_diameter": m5.get("counterbore", {}).get("diameter"),
+            "cb_depth": m5.get("counterbore", {}).get("depth")}})
+        hname = (hole.get("results") or [{}])[0].get("name")
+        st_he, _ = call("feature", {"command": "solid.hole", "edit": hname, "params": {
+            "position": [30, 10, 10], "diameter": m5.get("tap_drill"), "depth": 6, "thread": "M5", "hole": {"type": "simple"}}})
+        with srv.lock:
+            hdef = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
+        st_ht, _ = call("feature", {"command": "solid.hole", "edit": hname, "params": {"depth": None, "thread": None}})
+        with srv.lock:
+            hdef2 = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
+        ok("feature dialog: Hole with M5 values from Mechvane's tables (5.5 / Cb. 10 x 5.4), edited into a tapped M5 "
+           "6 deep, then back to through all",
+           m5.get("clearance", {}).get("normal") == 5.5 and m5.get("tap_drill") == 4.2
+           and m5.get("counterbore") == {"diameter": 10.0, "depth": 5.4} and sizes.get("sources", {}).get("clearance") == "ISO 273"
+           and st_h == 200 and hole.get("done", "").startswith("Counterbored hole Ø5.5, through all")
+           and st_he == 200 and hdef.get("thread") == "M5" and str(hdef.get("depth")) == "6"
+           and hdef.get("hole", {}).get("type") == "simple"
+           and st_ht == 200 and "depth" not in hdef2 and "thread" not in hdef2,
+           f"{m5} {st_h} {hole.get('done')} {st_he} {hdef} {st_ht} {hdef2}")
+        # patterns and mirror: a small through hole near x = 5, copied in a row, around it, and mirrored at x = 20
+        def volume():
+            with srv.lock:
+                return srv.ensure_current().session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
+        st_sh, small = call("feature", {"command": "solid.hole", "params": {"position": [5, 10, 10], "diameter": 3}})
+        sname = (small.get("results") or [{}])[0].get("name")
+        v_hole = volume()
+        st_rp, rp = call("feature", {"command": "solid.pattern.rectangular", "params": {
+            "features": [sname], "dir1": [1, 0, 0], "count1": 3, "spacing1": 4}})
+        rname = (rp.get("results") or [{}])[0].get("name")
+        v_rect = volume()
+        st_re, _ = call("feature", {"command": "solid.pattern.rectangular", "edit": rname, "params": {
+            "features": [sname], "pattern": {"type": "rectangular", "dir1": [1, 0, 0], "count1": "2", "spacing1": "4",
+                                             "dir2": None, "count2": None, "spacing2": None}}})
+        v_rect2 = volume()
+        _, red = call(f"feature?name={rname}")
+        ok("feature dialog: rectangular pattern of a hole (3 in a row), edited to 2 with counts as text; "
+           "the edit dialog gets feature names for the ids",
+           st_sh == 200 and st_rp == 200 and v_rect < v_hole - 1 and st_re == 200 and v_rect < v_rect2 < v_hole
+           and rp.get("done", "").startswith(f"Rectangular pattern of {sname}, 3")
+           and red.get("feature_names", {}).get(str(red.get("definition", {}).get("features", [None])[0])) == sname,
+           f"{st_sh} {st_rp} {rp.get('done')} {v_hole} {v_rect} {st_re} {v_rect2} {str(red.get('feature_names'))[:200]}")
+        st_mi, mi = call("feature", {"command": "solid.mirror", "params": {
+            "features": [sname], "plane": {"origin": [20, 0, 0], "normal": [1, 0, 0]}}})
+        mname = (mi.get("results") or [{}])[0].get("name")
+        v_mirror = volume()
+        st_me, _ = call("feature", {"command": "solid.mirror", "edit": mname, "params": {
+            "features": [sname], "plane": {"type": "origin", "name": "XZ"}}})
+        v_mirror_xz = volume()
+        ok("feature dialog: mirror of the hole about x = 20 adds a hole; edited to the XZ plane (outside the block) "
+           "it no longer cuts",
+           st_mi == 200 and v_mirror < v_rect2 - 1 and st_me == 200 and abs(v_mirror_xz - v_rect2) < 1e-6,
+           f"{st_mi} {mi.get('done')} {v_rect2} {v_mirror} {st_me} {v_mirror_xz}")
+        # Extrude and Revolve on a sketch made elsewhere (agent, expert mode): a boss on the top face, joined,
+        # then edited into a 3 mm cut (sketch sent by name, the definition keeps its id)
+        with srv.lock:
+            d0 = srv.ensure_current()
+            modeling.run_commands(d0, [
+                {"command": "sketch.create", "params": {"plane": {"face": [15, 12, 10]}, "name": "BossSketch"}},
+                {"command": "sketch.circle.center", "params": {"center": [15, 12], "radius": 3}},
+                {"command": "sketch.finish", "params": {}}])
+            d0.save()
+            srv.mtime = d0.path.stat().st_mtime
+        _, sk = call("sketches")
+        by_name = {x["name"]: x["used_by"] for x in sk.get("sketches", [])}
+        v_before_ex = volume()
+        st_ex, ex = call("feature", {"command": "solid.extrude", "params": {
+            "sketch": "BossSketch", "distance": 5, "operation": "join", "direction": "positive"}})
+        xname = (ex.get("results") or [{}])[0].get("name")
+        v_boss = volume()
+        st_xe, _ = call("feature", {"command": "solid.extrude", "edit": xname, "params": {
+            "sketch": "BossSketch", "operation": "cut",
+            "extent": {"direction": "negative", "through_all": False, "distance": "3"}}})
+        v_cut = volume()
+        ok("feature dialog: /api/sketches lists sketches with their users; Extrude joins a boss (+5 x πr²) and is "
+           "edited into a 3 mm cut",
+           "Block" in by_name.get("Base", []) and by_name.get("BossSketch") == [] and st_ex == 200
+           and abs((v_boss - v_before_ex) - 5 * 3.14159265 * 9) < 0.5 and st_xe == 200
+           and abs((v_before_ex - v_cut) - 3 * 3.14159265 * 9) < 0.5,
+           f"{by_name} {st_ex} {ex.get('done')} {v_before_ex} {v_boss} {st_xe} {v_cut}")
+        st_dx, _ = call("feature/delete", {"name": "NoSuchFeature"})
+        st_ex, _ = call("feature?name=Base")
+        ok("feature dialog: unknown features are 404, features without a dialog (a sketch) cannot be opened for editing (403)",
+           st_dx == 404 and st_ex == 403, f"{st_dx} {st_ex}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def roadmap_json_checks():
@@ -6195,6 +6426,7 @@ def main():
             speech_checks(tmp)
             speech_cases_checks()
             params_checks(tmp)
+            feature_dialog_checks(tmp)
             viewtools_checks(tmp)
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)

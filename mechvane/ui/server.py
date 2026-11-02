@@ -11,7 +11,7 @@ import threading
 from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
-from .. import design_rules, hole_tables, links, query, speech, tree
+from .. import design_rules, hole_tables, links, modeling, query, sketch_rule, speech, tree
 from . import agent as agent_mod, selection, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
@@ -175,6 +175,215 @@ def change_params(doc, changes: dict) -> dict:
     result = doc.session.cmd("parameters.change", {"changes": changes})
     doc.save()
     return dict(collect_params(doc), changed=result.get("changed", {}))
+
+
+def _num(v) -> str:
+    return f"{v:g}" if isinstance(v, (int, float)) else str(v)
+
+
+def _edges_label(params) -> str:
+    n = len(params.get("edges") or [])
+    return f"{n} edge" + ("" if n == 1 else "s")
+
+
+# Commands the workspace's own dialogs may send (ADR 0005, 2), each with the label of the step in the
+# undo list. Everything else stays with the agent and the expert mode.
+def _hole_label(p) -> str:
+    # create params carry the type at the top, an edit (the feature's definition) under "hole"
+    kind = {"counterbore": "Counterbored hole", "countersink": "Countersunk hole"}.get(
+        p.get("type") or (p.get("hole") or {}).get("type"), "Hole")
+    size = f"{p['thread']} tapped" if p.get("thread") else f"Ø{_num(p.get('diameter'))}"
+    return f"{kind} {size}" + (f", {_num(p['depth'])} deep" if p.get("depth") not in (None, "") else ", through all")
+
+
+def _op_label(p) -> str:
+    return {"cut": "Cut: ", "intersect": "Intersect: ", "new": "New body: ", "new_body": "New body: "}.get(
+        p.get("operation"), "")
+
+
+def _features_label(p) -> str:
+    names = [str(f) for f in p.get("features") or []]
+    return ", ".join(names[:3]) + (" …" if len(names) > 3 else "") if names else "features"
+
+
+def _pattern_label(kind):
+    def label(p):
+        q = p.get("pattern") or p  # an edit carries the values under "pattern"
+        n = q.get("count1", q.get("count"))
+        n2 = f" x {_num(q['count2'])}" if q.get("count2") else ""
+        return f"{kind} pattern of {_features_label(p)}" + (f", {_num(n)}{n2}" if n is not None else "")
+    return label
+
+
+FEATURE_COMMANDS = {
+    "solid.fillet": lambda p: f"Fillet R{_num(p.get('radius'))} on {_edges_label(p)}",
+    "solid.chamfer": lambda p: f"Chamfer {_num(p.get('distance'))} on {_edges_label(p)}",
+    "solid.hole": _hole_label,
+    "solid.pattern.rectangular": _pattern_label("Rectangular"),
+    "solid.pattern.circular": _pattern_label("Circular"),
+    "solid.mirror": lambda p: f"Mirror {_features_label(p)}",
+    "solid.extrude": lambda p: f"{_op_label(p)}Extrude {p.get('sketch', '')}"
+                               + (", through all" if (p.get("extent") or p).get("through_all") else
+                                  f", {_num((p.get('extent') or p).get('distance'))}"),
+    "solid.revolve": lambda p: f"{_op_label(p)}Revolve {p.get('sketch', '')}"
+                               + (f", {_num(p['angle'])}" if p.get("angle") is not None else ""),
+}
+
+
+def hole_sizes() -> dict:
+    """Metric sizes for the Hole dialog from Mechvane's tables: ISO 273 clearance (close, normal, loose),
+    DIN 336 tap drill, DIN 974-1 counterbore (ISO 4762 screw, no washer), DIN 74 countersink."""
+    out = {}
+    for size in sorted(hole_tables.ISO_273, key=lambda m: float(m[1:])):
+        entry = {"clearance": {fit: hole_tables.clearance_hole(size, fit) for fit in ("close", "normal", "loose")},
+                 "tap_drill": hole_tables.tap_drill(size), "counterbore": hole_tables.counterbore(size)}
+        try:
+            entry["countersink"] = hole_tables.countersink(size)
+        except (KeyError, ValueError):
+            pass
+        out[size] = entry
+    return {"sizes": out, "sources": {"clearance": "ISO 273", "tap_drill": "DIN 336", "counterbore": "DIN 974-1",
+                                      "countersink": "DIN 74-F"}}
+
+
+# Features a dialog can open again from the model browser: type → (dialog, the command that made it)
+EDITABLE = {
+    "FilletFeature": ("fillet", "solid.fillet"),
+    "ChamferFeature": ("chamfer", "solid.chamfer"),
+    "HoleFeature": ("hole", "solid.hole"),
+    "RectangularPatternFeature": ("rectangular", "solid.pattern.rectangular"),
+    "CircularPatternFeature": ("circular", "solid.pattern.circular"),
+    "MirrorFeature": ("mirror", "solid.mirror"),
+    "ExtrudeFeature": ("extrude", "solid.extrude"),
+    "RevolveFeature": ("revolve", "solid.revolve"),
+}
+
+
+def sketches(doc) -> dict:
+    """The part's sketches for Extrude and Revolve (oldest first), with what already uses each."""
+    if doc.kind != PART:
+        return {"sketches": []}
+    used = sketch_rule.consumers(doc.session)
+    return {"sketches": [{"name": f["name"], "used_by": sorted(used.get(f["name"]) or [])}
+                         for f in _timeline(doc) if f["type"] == "Sketch"]}
+
+
+def _timeline(doc) -> list[dict]:
+    return doc.session.cmd("document.inspect", {"measure": False}).get("timeline", [])
+
+
+def _errors(doc) -> dict:
+    return {f["name"]: f["error"] for f in _timeline(doc) if f.get("error")}
+
+
+def feature_for_edit(doc, name: str, tmp_dir) -> dict:
+    """What a dialog needs to edit a feature, Inventor style: its values, and the model as it was just
+    before the feature (the edges a fillet consumed can be picked again there)."""
+    if doc.kind != PART:
+        raise PermissionError("features are edited in a part")
+    timeline = _timeline(doc)
+    at = next((i for i, f in enumerate(timeline) if f["name"] == name), None)
+    if at is None:
+        raise KeyError(name)
+    if timeline[at]["type"] not in EDITABLE:
+        raise PermissionError(f"{name} ({timeline[at]['type']}) cannot be edited in the workspace yet; "
+                              "use File → Open in SolidCraft")
+    info = doc.session.cmd("timeline.inspect", {"feature": name})
+    cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
+    try:
+        doc.session.cmd("timeline.roll_to", {"position": at})
+        before = collect_mesh(doc, tmp_dir=tmp_dir)
+    finally:
+        doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+        try:
+            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+        except Exception:
+            pass
+    # patterns and mirrors name their features by id: the dialog shows and sends names
+    names = {str(f["id"]): f["name"] for f in timeline}
+    return {"name": name, "type": info.get("type"), "dialog": EDITABLE[info["type"]][0],
+            "definition": info.get("definition") or {}, "before": before, "feature_names": names}
+
+
+def delete_feature(srv, doc, name: str) -> dict:
+    """Delete a feature from the model browser, with the sketch it owns (as the agent's delete_feature)."""
+    if doc.kind != PART:
+        raise PermissionError("features are deleted in a part")
+    if name not in {f["name"] for f in _timeline(doc)}:
+        raise KeyError(name)
+
+    def apply():
+        failing_before = _errors(doc)
+        out = sketch_rule.delete_with_owned(doc.session, name)
+        doc.save()
+        srv.mtime = doc.path.stat().st_mtime
+        out["failing"] = {k: v for k, v in _errors(doc).items() if k not in failing_before}
+        return out
+
+    out = srv.agent.hand_step(f"Delete {name} in {doc.name}", apply)
+    return {"done": f"Deleted {', '.join(out['deleted'])}", **out}
+
+
+def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, edit: str | None = None) -> dict:
+    """Run one dialog command in the open part. preview: run it, return the mesh, take it back
+    (nothing saved). Otherwise run, save, and record the step for Undo. With edit (a feature name) the
+    feature is changed in place (timeline.edit) instead of a new one added."""
+    if command not in FEATURE_COMMANDS:
+        raise PermissionError(f"command not available in the workspace: {command}")
+    if doc.kind != PART:
+        raise PermissionError("features are added in a part; open the part file")
+    commands = [{"command": command, "params": params}]
+    if edit is not None:
+        kind = next((f["type"] for f in _timeline(doc) if f["name"] == edit), None)
+        if kind is None:
+            raise KeyError(edit)
+        if EDITABLE.get(kind, (None, None))[1] != command:
+            raise PermissionError(f"{edit} ({kind}) is not edited with {command}")
+        set_ = dict(params)
+        # the dialog sends feature and sketch names, the definition keeps ids (a sketch only as id)
+        ids = {f["name"]: f["id"] for f in _timeline(doc)}
+        if isinstance(set_.get("features"), list):
+            set_["features"] = [ids.get(f, f) for f in set_["features"]]
+        if isinstance(set_.get("sketch"), str) and set_["sketch"] in ids:
+            set_["sketch"] = ids[set_["sketch"]]
+        commands = [{"command": "timeline.edit", "params": {"feature": edit, "set": set_}}]
+    if preview:
+        failing_before = _errors(doc) if edit else {}
+        cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
+        try:
+            out = modeling.run_commands(doc, commands)
+            new = {k: v for k, v in _errors(doc).items() if k not in failing_before} if edit else {}
+            if new:
+                raise RuntimeError("; ".join(f"{k}: {v}" for k, v in new.items()))
+            return {"preview": True, "delta": out.get("delta"), "mesh": collect_mesh(doc, tmp_dir=tmp_dir)}
+        finally:
+            # back to the checkpoint (forget alone would drop it without going back), then drop it
+            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+            try:
+                doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+            except Exception:
+                pass
+
+    def apply():
+        failing_before = _errors(doc) if edit else {}
+        cp = doc.session.cmd("edit.checkpoint").get("checkpoint") if edit else None
+        out = modeling.run_commands(doc, commands)
+        if edit:
+            # an edit that leaves a feature failing is refused: back to how it was, nothing saved
+            new = {k: v for k, v in _errors(doc).items() if k not in failing_before}
+            if new:
+                doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+                raise RuntimeError("; ".join(f"{k}: {v}" for k, v in new.items()))
+            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+        doc.save()
+        srv.mtime = doc.path.stat().st_mtime
+        return out
+
+    label = f"{FEATURE_COMMANDS[command](params)} in {doc.name}"
+    if edit:
+        label = f"Edit {edit}: {label}"
+    out = srv.agent.hand_step(label, apply)
+    return {"done": label, "delta": out.get("delta"), "results": out.get("results")}
 
 
 def model_names(doc) -> list[str]:
@@ -647,7 +856,8 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     self._send_json(200, {"selection": selection.resolve(srv.ws, doc, items)})
                 return
-            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params", "/api/rules")):
+            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params", "/api/rules",
+                                                     "/api/feature")):
                 self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})
                 return
             if path == "/api/params":
@@ -665,10 +875,78 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                     if doc is None:
                         self._send_json(409, {"error": "no document open"})
                         return
+                    label = f"Parameters in {doc.name}: " + ", ".join(f"{k} = {v}" for k, v in changes.items())
                     try:
-                        result = change_params(doc, {k: str(v) for k, v in changes.items()})
+                        result = srv.agent.hand_step(label[:80], lambda: change_params(
+                            doc, {k: str(v) for k, v in changes.items()}))
+                        srv.mtime = doc.path.stat().st_mtime
+                    except agent_mod.Busy as e:
+                        self._send_json(409, {"error": str(e)})
+                        return
                     except Exception as e:  # a bad expression: SolidCraft changed nothing
                         self._send_json(400, {"error": str(e)})
+                        return
+                self._send_json(200, result)
+                return
+            if path == "/api/feature":
+                try:
+                    body = self._json_body()
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                command, params = body.get("command"), body.get("params")
+                if not isinstance(command, str) or not isinstance(params, dict):
+                    self._send_json(400, {"error": "command and params required"})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    try:
+                        result = run_feature(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir,
+                                             edit=body.get("edit") if isinstance(body.get("edit"), str) else None)
+                    except KeyError as e:
+                        self._send_json(404, {"error": f"feature not found: {e.args[0]}"})
+                        return
+                    except PermissionError as e:
+                        self._send_json(403, {"error": str(e)})
+                        return
+                    except agent_mod.Busy as e:
+                        self._send_json(409, {"error": str(e)})
+                        return
+                    except Exception as e:  # SolidCraft refused it: the part is as it was
+                        self._send_json(400, {"error": modeling.short_error(e), "detail": str(e)})
+                        return
+                self._send_json(200, result)
+                return
+            if path == "/api/feature/delete":
+                try:
+                    name = self._json_body().get("name")
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                if not isinstance(name, str) or not name:
+                    self._send_json(400, {"error": "name required"})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    try:
+                        result = delete_feature(srv, doc, name)
+                    except KeyError:
+                        self._send_json(404, {"error": f"feature not found: {name}"})
+                        return
+                    except PermissionError as e:
+                        self._send_json(403, {"error": str(e)})
+                        return
+                    except agent_mod.Busy as e:
+                        self._send_json(409, {"error": str(e)})
+                        return
+                    except Exception as e:
+                        self._send_json(400, {"error": modeling.short_error(e), "detail": str(e)})
                         return
                 self._send_json(200, result)
                 return
@@ -785,6 +1063,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/request.js":
                 self._send_static("request.js", "application/javascript; charset=utf-8")
                 return
+            if path == "/features.js":
+                self._send_static("features.js", "application/javascript; charset=utf-8")
+                return
             if path == "/newpart.js":
                 self._send_static("newpart.js", "application/javascript; charset=utf-8")
                 return
@@ -856,6 +1137,42 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     data = collect_version(doc)
                 self._send_json(200, data)
+                return
+
+            if path == "/api/feature":
+                name = (parse_qs(url.query).get("name") or [""])[0]
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    try:
+                        data = feature_for_edit(doc, name, srv.tmp_dir)
+                    except KeyError:
+                        self._send_json(404, {"error": f"feature not found: {name}"})
+                        return
+                    except PermissionError as e:
+                        self._send_json(403, {"error": str(e)})
+                        return
+                self._send_json(200, data)
+                return
+
+            if path == "/api/sketches":
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    data = sketches(doc)
+                self._send_json(200, data)
+                return
+
+            if path == "/api/hole_sizes":
+                self._send_json(200, hole_sizes())
+                return
+
+            if path == "/api/history":
+                self._send_json(200, srv.agent.history())
                 return
 
             if path == "/api/mesh":

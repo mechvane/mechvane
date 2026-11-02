@@ -20,11 +20,11 @@ ERROR_TABLE: list[dict[str, str]] = [
     {
         "pattern": r"(?:blend is larger than the neighbouring faces|a fillet larger than the faces next to it|blend would consume a neighbouring face)",
         "code": "blend_too_large",
-        "message": "The blend radius is too large for the adjacent faces.",
-        "hint": "Reduce the fillet radius (use the largest fitting radius indicated in the error) or check surrounding face dimensions.",
+        "message": "The fillet or chamfer is too large for the faces next to the edge.",
+        "hint": "Make it smaller: SolidCraft names the largest size that fits, or check the faces around the edge.",
     },
     {
-        "pattern": r"(?:chamfer runs past a neighbouring face|chamfer is larger than a corner radius)",
+        "pattern": r"(?:chamfer runs past a neighbouring face|chamfer is larger than a corner radius|too large for this chamfer)",
         "code": "chamfer_too_large",
         "message": "The chamfer distance is too large and extends past adjacent faces.",
         "hint": "Reduce the chamfer distance or inspect the surrounding geometry.",

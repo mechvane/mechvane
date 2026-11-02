@@ -1402,3 +1402,55 @@ dialog.request-dialog::backdrop {
 #new-part-file {
   font-family: ui-monospace, monospace;
 }
+
+/* Quick access: Undo / Redo next to the File menu */
+.quick-access { display: flex; align-items: center; gap: 2px; }
+.qa-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 24px; padding: 0;
+  background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text); cursor: pointer; }
+.qa-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.qa-btn:hover:not(:disabled) { background: var(--hover-bg); border-color: var(--border); }
+.qa-btn:disabled { opacity: 0.35; cursor: default; }
+.qa-btn[hidden] { display: none; }
+
+/* Feature dialogs in the Properties panel (ADR 0005, stage 2) */
+.feature-dialog { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.feature-dialog-title { font-weight: 600; font-size: 13px; }
+.feature-pick { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 24px;
+  padding: 3px 8px; border: 1px solid var(--selected-border); border-radius: 4px; background: var(--selected-bg); }
+.feature-pick-count { color: var(--text); }
+.feature-field { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.feature-field input { font: inherit; font-size: 12px; min-width: 0; padding: 3px 6px; color: var(--text);
+  background: transparent; border: 1px solid var(--border); border-radius: 4px; }
+.feature-field input:focus { outline: none; border-color: var(--selected-border); }
+.feature-unit { color: var(--text-muted); }
+.feature-delta { color: var(--text-muted); min-height: 0; }
+.feature-delta:empty { display: none; }
+.feature-error { color: var(--fail-fg); white-space: pre-wrap; }
+.feature-error[hidden] { display: none; }
+.feature-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.feature-ok { font: inherit; font-size: 12px; font-weight: 600; padding: 3px 14px; border-radius: 4px; cursor: pointer;
+  color: var(--bg); background: var(--selected-border); border: 1px solid var(--selected-border); }
+.feature-ok:disabled { opacity: 0.4; cursor: default; }
+
+/* Model browser: selected feature and its context menu */
+.tree-row[data-feature] { cursor: default; border-radius: 3px; }
+.tree-row[data-feature].selected { background: var(--selected-bg); outline: 1px solid var(--selected-border); }
+.context-menu { position: fixed; z-index: 50; min-width: 160px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.context-menu[hidden] { display: none; }
+.context-item { font: inherit; font-size: 12px; text-align: left; padding: 5px 10px; color: var(--text); background: transparent;
+  border: 0; border-radius: 4px; cursor: pointer; }
+.context-item:hover:not(:disabled) { background: var(--hover-bg); }
+.context-item:disabled { color: var(--text-muted); cursor: default; }
+.feature-field[hidden] { display: none; }
+.feature-field select { font: inherit; font-size: 12px; min-width: 0; padding: 2px 4px; color: var(--text);
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; }
+.feature-field input[readonly] { color: var(--text-muted); border-style: dashed; }
+.feature-check input { justify-self: start; margin: 0; }
+.feature-position { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.feature-position .feature-field { grid-template-columns: 12px minmax(0, 1fr) auto; gap: 3px; }
+.feature-position .feature-unit { display: none; }
+.feature-note { color: var(--text-muted); font-size: 11px; }
+.feature-note:empty { display: none; }
+.tree-row[data-feature].picked { background: var(--selected-bg); outline: 1px dashed var(--selected-border); }
+.tree-row[data-feature].picked .tree-name::before { content: "✓ "; color: var(--selected-border); }

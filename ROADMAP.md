@@ -218,7 +218,15 @@ Bis v0.1 fehlt noch:
       farbiger Anzeige von Konflikten und Überbestimmung wie Onshapes Constraint Manager, auf SolidCraft
       `sketch_constraints`; so weit möglich, sonst
       direkt nach v0.1). SolidCraft-App nur noch als Expertenmodus.
-      *Stufe 1 fertig (#36, gemergt 2026-11-01, veröffentlicht mit 0.1.0a12 und Live-Demo 2026-11-02), offen: Stufe 2 und 3.*
+      *Stufe 1 fertig (#36, gemergt 2026-11-01, veröffentlicht mit 0.1.0a12 und Live-Demo 2026-11-02).*
+      *Stufe 2 begonnen 2026-11-02:* `/api/feature` mit Vorschau, gemeinsame Rückgängig-Liste für Hand und Agent
+      (auch das Parameterformular), Kantenwahl in der Ansicht, Dialoge Rundung und Fase (ADR 0005, Abschnitt
+      „Umgesetzt“), Rundung und Fase aus dem Baum bearbeiten (Doppelklick) und Features löschen (Rechtsklick, Entf),
+      Bohrung (Durchgang nach ISO 273, Gewinde, Senkungen aus Mechvanes Tabellen, durch alle oder Tiefe; auch bearbeiten).
+      Rechteck- und Kreismuster, Spiegeln (Features im Baum anklicken, Richtung/Achse/Ebene aus X/Y/Z oder angeklickter
+      Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
+      durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen, `kernel.execute` für
+      die Live-Demo; dann Stufe 3.*
 - [x] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
       *Prototyp gemergt 2026-11-02* (`browser_check.py`, `demo_check.js`, ~5 MB Download, 2 ms je Prüfung).
       *Fertig und veröffentlicht 2026-11-02 (0.1.0a12, Nutzer: Stufe 1 ausliefern):* in Chromium gegen die echte

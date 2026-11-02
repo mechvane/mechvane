@@ -89,6 +89,9 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
           } else if (e.type === "error") {
             add("err", `Error: ${e.error}. The files are as before this message.`);
             changed = true;
+          } else if (e.type === "hand") {
+            // a step the user made in a dialog or the parameter form: same undo list, the agent hears of it
+            add("note", `✎ By hand: ${e.text}`);
           } else if (e.type === "undone" || e.type === "redone") {
             add("note", e.type === "undone" ? "↶ Undone" : "↷ Redone");
             changed = true;

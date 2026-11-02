@@ -3,6 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { initViewTools } from "./viewtools.js";
 import { initAgentChat } from "./chat.js";
 import { openNewPartDialog } from "./newpart.js";
+import { initFeatureDialogs, EDITABLE_TYPES } from "./features.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -470,9 +471,15 @@ function renderFeatureNode(node) {
   const row = document.createElement("div");
   row.className = "tree-row";
 
+  if (node.name && node.type && !STATIC) {
+    row.dataset.feature = node.name;
+    row.dataset.type = node.type;
+    row.tabIndex = -1;
+    if (EDITABLE_TYPES[node.type]) row.title = "Double-click to edit, right-click for more";
+  }
   const nameSpan = document.createElement("span");
   nameSpan.className = "tree-name";
-  nameSpan.textContent = node.name || "(unbenannt)";
+  nameSpan.textContent = node.name || "(unnamed)";
   row.appendChild(nameSpan);
 
   if (node.type) {
@@ -497,7 +504,7 @@ function renderFeatureNode(node) {
   if (node.error) {
     const err = document.createElement("span");
     err.className = "badge badge-fail";
-    err.textContent = `FEHLER: ${node.error}`;
+    err.textContent = `Error: ${node.error}`;
     row.appendChild(err);
   }
   li.appendChild(row);
@@ -856,13 +863,16 @@ async function loadAll(initial = false) {
     docKindEl.hidden = false;
     docPathEl.textContent = STATIC ? "" : (ver.path || "");
 
+    viewBeforeEdit = null;  // a dialog editing a feature showed an earlier state: the new model replaces it
     updateMeshView(mesh, initial);
+    if (featureDialogs) featureDialogs.modelChanged();
     updateTreeView(tree);
     updateFindingsView(findings, !initial);
     // rules are saved per part; an assembly has none to choose
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;
     else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
+    if (!STATIC) refreshHistory();
     statusEl.textContent = "Ready";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
@@ -1251,7 +1261,200 @@ if (!STATIC) {
     root: document.getElementById("agent-chat"),
     getSelection: () => viewTools.getSelection(),
     clearSelection: () => viewTools.clearSelection(),
-    onBusy: (b) => { statusEl.textContent = b ? "Computing…" : "Ready"; },
+    // only the agent's own turns: a hand step is busy for a moment too and sets its own status
+    onBusy: (b) => {
+      if (b) statusEl.textContent = "Computing…";
+      else if (statusEl.textContent === "Computing…") statusEl.textContent = "Ready";
+    },
     onChanged: () => loadAll(false),
+  });
+}
+
+// Preview of a feature dialog: the result drawn in place of the model, while picks still hit the
+// model underneath (the raycaster ignores visibility), so more edges can be added during a preview
+const previewGroup = new THREE.Group();
+scene.add(previewGroup);
+let hiddenForPreview = null;
+
+function showPreview(meshData) {
+  if (!hiddenForPreview) {
+    hiddenForPreview = modelGroup.children.filter((o) => o.visible);
+    hiddenForPreview.forEach((o) => { o.visible = false; });
+  }
+  clearGroup(previewGroup);
+  const isDark = document.documentElement.dataset.theme !== "light";
+  for (const b of (meshData && meshData.bodies) || []) {
+    if (!b.positions || !b.positions.length) continue;
+    const { geom, edgeGeom } = buildBodyGeometryAndEdges(b);
+    previewGroup.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      color: isDark ? 0x7d9cc4 : 0x9db8da, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+    })));
+    if (edgeGeom.attributes.position.count > 0) {
+      previewGroup.add(new THREE.LineSegments(edgeGeom, new THREE.LineBasicMaterial({
+        color: isDark ? 0x1e242c : 0x334155, transparent: true, opacity: 0.6 })));
+    }
+  }
+  renderScene();
+}
+
+function clearPreview() {
+  clearGroup(previewGroup);
+  if (hiddenForPreview) {
+    hiddenForPreview.forEach((o) => { if (o.parent === modelGroup) o.visible = true; });
+    hiddenForPreview = null;
+  }
+  renderScene();
+}
+
+async function postJson(url, body) {
+  return fetchJson(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+}
+
+var featureDialogs = null;
+var viewBeforeEdit = null;
+if (!STATIC) {
+  featureDialogs = initFeatureDialogs({
+    scene, viewTools, renderScene,
+    propertiesEl: document.getElementById("properties-content"),
+    statusEl, post: postJson, get: (url) => fetchJson(url), showPreview, clearPreview,
+    reload: () => loadAll(false),
+    // editing a feature shows the model as it was before it; Cancel puts the current model back
+    showModel: (mesh) => {
+      if (!viewBeforeEdit) viewBeforeEdit = currentMeshData;
+      updateMeshView(mesh, false);
+    },
+    restoreModel: () => {
+      if (viewBeforeEdit) updateMeshView(viewBeforeEdit, false);
+      viewBeforeEdit = null;
+    },
+  });
+  initTreeActions();
+  document.querySelectorAll("[data-feature]").forEach((b) => {
+    b.disabled = false;
+    b.title = b.dataset.title || b.title;
+    b.addEventListener("click", () => featureDialogs.open(b.dataset.feature));
+  });
+} else {
+  document.querySelectorAll("[data-feature]").forEach((b) => {
+    b.title = "Install Mechvane to model here; in the live demo use File → Open in SolidCraft";
+  });
+}
+
+// Undo and Redo: one list for hand steps (dialogs, parameters) and the agent's turns (Grundsatz 6)
+const undoBtn = document.getElementById("btn-undo");
+const redoBtn = document.getElementById("btn-redo");
+
+function refreshHistory() {
+  fetchJson("api/history").then((h) => {
+    undoBtn.disabled = !h.undo || h.busy;
+    redoBtn.disabled = !h.redo || h.busy;
+    undoBtn.title = h.undo ? `Undo: ${h.undo} (Ctrl+Z)` : "Nothing to undo";
+    redoBtn.title = h.redo ? `Redo: ${h.redo} (Ctrl+Y)` : "Nothing to redo";
+  }).catch(() => {});
+}
+
+async function undoRedo(which) {
+  if (featureDialogs && featureDialogs.isOpen()) featureDialogs.close();
+  try {
+    await postJson(`api/agent/${which}`, {});
+    statusEl.textContent = which === "undo" ? "Undone" : "Redone";
+    await loadAll(false);
+  } catch (err) {
+    statusEl.textContent = `${which === "undo" ? "Undo" : "Redo"}: ${err.message}`;
+    refreshHistory();
+  }
+}
+
+if (!STATIC) {
+  undoBtn.hidden = false;
+  redoBtn.hidden = false;
+  undoBtn.addEventListener("click", () => undoRedo("undo"));
+  redoBtn.addEventListener("click", () => undoRedo("redo"));
+  setInterval(refreshHistory, 4000);
+  window.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
+    if (document.querySelector("dialog[open]")) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+      e.preventDefault();
+      if (!undoBtn.disabled) undoRedo("undo");
+    } else if (mod && !e.altKey && (e.key === "y" || e.key === "Y" || ((e.key === "z" || e.key === "Z") && e.shiftKey))) {
+      e.preventDefault();
+      if (!redoBtn.disabled) undoRedo("redo");
+    } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {
+      e.preventDefault();
+      featureDialogs.open("fillet");
+    } else if (!mod && !e.altKey && (e.key === "e" || e.key === "E")) {
+      e.preventDefault();
+      featureDialogs.open("extrude");
+    } else if (!mod && !e.altKey && (e.key === "h" || e.key === "H")) {
+      e.preventDefault();
+      featureDialogs.open("hole");
+    }
+  });
+}
+
+// Model browser: double-click edits a feature in its dialog, right-click offers Edit and Delete,
+// Delete removes the selected feature (Ctrl+Z puts it back)
+function initTreeActions() {
+  let selectedRow = null;
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+  menu.hidden = true;
+  document.body.append(menu);
+  const hideMenu = () => { menu.hidden = true; };
+
+  function select(row) {
+    if (selectedRow) selectedRow.classList.remove("selected");
+    selectedRow = row;
+    if (row) row.classList.add("selected");
+  }
+  const rowOf = (e) => e.target.closest && e.target.closest(".tree-row[data-feature]");
+
+  treeContentEl.addEventListener("click", (e) => {
+    hideMenu();
+    const row = rowOf(e);
+    // a pattern or mirror dialog is open: the click picks the feature for it
+    if (row && featureDialogs.pickFeature(row.dataset.feature, row.dataset.type)) return;
+    select(row);
+  });
+  treeContentEl.addEventListener("dblclick", (e) => {
+    if (featureDialogs.picksFeatures()) return;
+    const row = rowOf(e);
+    if (row && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
+  });
+  treeContentEl.addEventListener("contextmenu", (e) => {
+    const row = rowOf(e);
+    if (!row) return;
+    e.preventDefault();
+    select(row);
+    const name = row.dataset.feature;
+    menu.innerHTML = "";
+    const item = (label, fn, disabled = false) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "context-item";
+      b.textContent = label;
+      b.disabled = disabled;
+      b.addEventListener("click", () => { hideMenu(); fn(); });
+      menu.append(b);
+    };
+    item(`Edit ${name}`, () => featureDialogs.edit(name), !EDITABLE_TYPES[row.dataset.type]);
+    item(`Delete ${name}`, () => featureDialogs.remove(name));
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+    menu.hidden = false;
+  });
+  document.addEventListener("click", (e) => { if (!menu.contains(e.target)) hideMenu(); });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideMenu();
+    if (e.key !== "Delete" || !selectedRow || !selectedRow.isConnected) return;
+    const t = e.target;
+    if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
+    e.preventDefault();
+    featureDialogs.remove(selectedRow.dataset.feature);
+    select(null);
   });
 }

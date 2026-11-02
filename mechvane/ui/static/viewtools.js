@@ -180,12 +180,44 @@ export function edgeInfo(edges, seg) {
            angle: THREE.MathUtils.radToDeg(angle) };
 }
 
+// A point exactly on the B-rep edge for SolidCraft, which takes edges as points on them: on a line
+// the click projected onto it, on a circle or arc onto the true circle (the mesh only has chords)
+export function pointOnEdge(edge, near) {
+  const p = new THREE.Vector3(near.x, near.y, near.z);
+  if (edge.kind === "line") {
+    const t = THREE.MathUtils.clamp(p.clone().sub(edge.start).dot(edge.dir), 0.02 * edge.length, 0.98 * edge.length);
+    p.copy(edge.start).addScaledVector(edge.dir, t);
+  } else if (edge.center && edge.radius && edge.axis) {
+    const r = p.clone().sub(edge.center);
+    r.addScaledVector(edge.axis, -r.dot(edge.axis));
+    if (r.lengthSq() > 1e-12) p.copy(edge.center).addScaledVector(r.normalize(), edge.radius);
+  } else {
+    // other curves: the mesh point nearest to the click
+    let best = edge.points[0], bd = Infinity;
+    for (const q of edge.points) { const d = q.distanceToSquared(p); if (d < bd) { bd = d; best = q; } }
+    p.copy(best);
+  }
+  return [p.x, p.y, p.z].map((v) => +v.toFixed(6));
+}
+
+// The same edge clicked twice gives the same key (its end points, rounded; a circle its centre and radius)
+export function edgeKey(edge) {
+  const r = (v) => [v.x, v.y, v.z].map((x) => x.toFixed(3)).join(",");
+  // a full circle has no ends: where its chain starts depends on the segment clicked
+  if (edge.kind === "circle") return `circle|${r(edge.center)}|${edge.radius.toFixed(3)}`;
+  const a = r(edge.points[0]), b = r(edge.points[edge.points.length - 1]);
+  const c = edge.center ? r(edge.center) : "";
+  return [edge.kind, c, ...[a, b].sort()].join("|");
+}
+
 export function initViewTools({ scene, camera, renderer, modelGroup, renderScene, containerEl, controls = null, selectable = false, toolsRoot = null }) {
   const measureGroup = new THREE.Group();
   scene.add(measureGroup);
 
   let meshData = null;
   let mode = null; // "measure" | "section" | "select" | null
+  let edgePick = null; // a feature dialog picking edges: called with {key, point, edge}
+  let facePick = null; // a feature dialog picking a point on a face: called with {point, normal, body, face}
   let picks = [];
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   let sectionAxis = "z";
@@ -442,6 +474,19 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     if (!hit) return;
     const body = meshData.bodies[hit.object.userData.bodyIndex];
     const fid = (body.face_ids || [])[hit.faceIndex] ?? 0;
+    if (facePick) {
+      const info = faceInfo(body, fid);
+      // the face normal from the mesh, facing the camera side the user clicked
+      let n = info.normal ? info.normal.clone() : hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      if (n.dot(ray.ray.direction) > 0) n.negate();
+      facePick({ point: hit.point.clone(), normal: n, body: body.name, face: fid, planar: !!info.normal, info });
+      return;
+    }
+    if (edgePick) {
+      const edge = nearEdge(hit.object.userData.bodyIndex, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect, ev.pointerType);
+      if (edge) edgePick({ key: edgeKey(edge), point: pointOnEdge(edge, hit.point), edge, body: body.name });
+      return;
+    }
     if (mode === "select") {
       const at = selection.findIndex((s) => s.body === body.name && s.index === fid);
       if (at >= 0) selection.splice(at, 1);
@@ -487,7 +532,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let down = null;
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if ((mode !== "measure" && mode !== "select") || !down || e.button !== 0) return;
+    if ((mode !== "measure" && mode !== "select" && !edgePick && !facePick) || !down || e.button !== 0) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < (TAP_PX[e.pointerType] ?? TAP_PX.mouse)) pick(e);
   });
   window.addEventListener("keydown", (e) => {
@@ -533,6 +578,24 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
         showSelection();
       }
       if (mode) setMode(mode);
+    },
+    // A feature dialog picks edges until stopEdgePick(); measuring and selecting pause meanwhile
+    startEdgePick(onPick) {
+      if (mode) setMode(mode);
+      edgePick = onPick;
+      if (controls) controls.touches.ONE = null;
+    },
+    stopEdgePick() {
+      edgePick = null;
+      facePick = null;
+      if (controls) controls.touches.ONE = THREE.TOUCH.ROTATE;
+    },
+    // A feature dialog picks a point on a face (a hole's position) until stopEdgePick()
+    startFacePick(onPick) {
+      if (mode) setMode(mode);
+      edgePick = null;
+      facePick = onPick;
+      if (controls) controls.touches.ONE = null;
     },
     getSelection() {
       return selection.map(({ name, ...item }) => item);

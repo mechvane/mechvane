@@ -264,6 +264,10 @@ class Snapshot:
         return {"restored": sorted(restored), "removed": sorted(removed)}
 
 
+class Busy(RuntimeError):
+    """The agent works on the files: a hand change has to wait."""
+
+
 class AgentTurns:
     """The chat of one UI server: one agent session, turns one after the other.
 
@@ -290,7 +294,16 @@ class AgentTurns:
     def events_since(self, n: int) -> dict:
         with self.lock:
             return {"busy": self.busy, "events": self.events[n:], "next": len(self.events),
-                    "undo": self._undo_label()}
+                    "undo": self._undo_label(), "redo": self._redo_label()}
+
+    def history(self) -> dict:
+        """What Undo and Redo would take back or put back, for the buttons in the workspace."""
+        with self.lock:
+            return {"busy": self.busy, "undo": self._undo_label(), "redo": self._redo_label()}
+
+    def _redo_label(self):
+        undone = [t for t in self.turns if t.get("undone")]
+        return max(undone, key=lambda t: t.get("undone_at", 0))["text"][:60] if undone else None
 
     def _undo_label(self):
         done = [t for t in self.turns if self._undoable(t)]
@@ -307,6 +320,7 @@ class AgentTurns:
                 raise RuntimeError("the agent is still working on the last message")
             self.busy = True
             self._stop = False
+            self._drop_redo()
             turn = {"id": len(self.turns) + 1, "text": text, "state": "running"}
             self.turns.append(turn)
         names = [x.get("name") or x.get("kind") for x in (selection or []) if isinstance(x, dict)]
@@ -314,6 +328,46 @@ class AgentTurns:
                      "selection_names": [n for n in names if n][:8]})
         threading.Thread(target=self._run, args=(turn, text, selection, document), daemon=True).start()
         return turn["id"]
+
+    def _drop_redo(self):
+        """A new step after an undo: the undone steps can no longer be put back (their redo copies
+        would discard the new step). Called under self.lock."""
+        for t in self.turns:
+            if t.get("undone"):
+                t.pop("redo", None)
+                t["undone"] = False
+                t["state"] = "discarded"
+
+    def hand_step(self, label: str, apply) -> dict:
+        """A change the user made by hand (a feature dialog, the parameter form): apply() changes and
+        saves the files. The step goes into the same undo list as the agent's turns (Grundsatz 6), and
+        the agent hears about it with its next message. Refused while the agent works."""
+        with self.lock:
+            if self.busy:
+                raise Busy("the agent is working on the files; wait or stop it")
+            self.busy = True
+        try:
+            snap = Snapshot(self.folder, "hand")
+            try:
+                result = apply()
+            except BaseException:
+                shutil.rmtree(snap.dir, ignore_errors=True)
+                raise
+            with self.lock:
+                self._drop_redo()
+                turn = {"id": len(self.turns) + 1, "text": label, "state": "done", "kind": "hand",
+                        "snapshot": snap, "after": _state(self.folder)}
+                before = set(json.loads((snap.dir / "manifest.json").read_text(encoding="utf-8")))
+                changed = sorted(r for r, m in turn["after"].items()
+                                 if r not in before or (snap.dir / r).stat().st_mtime_ns != m)
+                turn["summary"] = {"changed": changed, "removed": sorted(before - set(turn["after"]))}
+                self.turns.append(turn)
+                self._note(f"the user changed the model by hand: {label} (files: {', '.join(changed) or 'none'}).")
+            self._event({"type": "hand", "text": label, **turn["summary"]})
+            return result
+        finally:
+            with self.lock:
+                self.busy = False
 
     def _note(self, text: str):
         """Something the agent's own history does not show (undo, redo, a stopped turn); goes with the next message."""
@@ -384,9 +438,14 @@ class AgentTurns:
             redo = Snapshot(self.folder, f"redo{turn['id']}")
             out = turn["snapshot"].restore()
             turn["undone"] = True
+            self._undo_seq = getattr(self, "_undo_seq", 0) + 1
+            turn["undone_at"] = self._undo_seq
             turn["redo"] = redo
-            self._note(f"the user undid your turn {turn['id']} ({turn['text']!r}); the project files are back as "
-                       "they were before it. Do not redo it unless the user asks.")
+            if turn.get("kind") == "hand":
+                self._note(f"the user undid their own change {turn['text']!r}; the files are back as before it.")
+            else:
+                self._note(f"the user undid your turn {turn['id']} ({turn['text']!r}); the project files are back as "
+                           "they were before it. Do not redo it unless the user asks.")
         self._event({"type": "undone", "turn_id": turn["id"], **out})
         self.on_files_changed()
         return out
@@ -399,11 +458,14 @@ class AgentTurns:
             undone = [t for t in self.turns if t.get("undone")]
             if not undone:
                 raise LookupError("nothing to redo")
-            turn = undone[-1]
+            turn = max(undone, key=lambda t: t.get("undone_at", 0))
             out = turn.pop("redo").restore()
             turn["undone"] = False
             turn["after"] = _state(self.folder)
-            self._note(f"the user redid your turn {turn['id']} ({turn['text']!r}); its changes are back in the files.")
+            if turn.get("kind") == "hand":
+                self._note(f"the user redid their own change {turn['text']!r}.")
+            else:
+                self._note(f"the user redid your turn {turn['id']} ({turn['text']!r}); its changes are back in the files.")
         self._event({"type": "redone", "turn_id": turn["id"], **out})
         self.on_files_changed()
         return out

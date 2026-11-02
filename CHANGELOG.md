@@ -7,6 +7,40 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a13] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **Fillet and Chamfer in the Mechvane workspace (ADR 0005, stage 2).** Click **Fillet** (or press F) or
+  **Chamfer**, pick edges in the 3D view, type a size: a preview shows the result and the volume change while you
+  type, and when a size does not fit you see SolidCraft's own words, usually with the largest size that fits.
+  OK adds the feature to the model browser. A hole's edge is one pick, even where SolidCraft splits the hole in
+  two halves.
+- **Hole in the Mechvane workspace.** Click **Hole** (or press H), click the face where it goes and choose a
+  clearance hole for a screw (ISO 273, close, normal or loose fit), a tapped thread (DIN 336 tap drill) or a
+  diameter, simple, counterbored (DIN 974-1) or countersunk (DIN 74), through all or to a depth. The sizes come
+  from Mechvane's tables and the dialog names them; X, Y and Z can be typed. Double-click a hole to change it.
+- **Extrude and Revolve in the workspace** (press E for Extrude) for a sketch that is already in the part, for
+  example one your agent drew or one from the expert mode: join, cut, new body or intersect, either direction,
+  symmetric or through all, and revolve about X, Y, Z or a clicked edge. Double-click an extrusion or revolution
+  to change it, also the first one of the part.
+- **Rectangular Pattern, Circular Pattern and Mirror in the workspace.** Click the features to copy in the model
+  browser, then choose the direction, axis or plane: X, Y, Z (or XY, XZ, YZ), or click an edge (a hole's edge gives
+  its axis) or a flat face in the 3D view. Double-click a pattern or mirror to change it.
+- **Edit and delete features from the model browser.** Double-click a fillet or chamfer to open it again with its
+  edges and size; like in Inventor the model is shown as it was before the feature, so you can pick the edges it
+  rounded off. Right-click a feature for Edit and Delete, or select it and press Delete; when later features fail
+  after a delete, the status bar names them and Ctrl+Z brings everything back.
+- **Undo and Redo next to the File menu (Ctrl+Z, Ctrl+Y).** One list for your own steps (feature dialogs and
+  the parameter form) and your agent's turns, and your agent hears about the steps you made by hand.
+
+### Fixed
+
+- Redo after undoing several steps now puts back the step undone last, and a new step after an undo no longer
+  leaves a Redo that would throw the new step away.
+
 ## [0.1.0a12] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

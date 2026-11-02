@@ -1,5 +1,6 @@
-"""Click through the Check page in a headless browser: measure two points, open a section, Esc, then
-walk right from the centre until a click lands on an edge and the readout measures it.
+"""Click through the workspace in a headless browser: measure two points, open a section, Esc, then
+walk right from the centre until a click lands on an edge and the readout measures it; in a part also
+the Fillet dialog (preview, Esc, OK, edit by double-click, Ctrl+Z).
 
     <python with playwright> tools/ui_smoke.py [url] [out_dir]   (default http://127.0.0.1:8799/, screenshots in .)
 
@@ -76,10 +77,57 @@ with sync_playwright() as pw:
     else:
         page.keyboard.press("Escape")
         new_part_ok = True
+    # Feature dialog (parts only): Fillet opens in Properties, walking up from the centre a click picks an edge,
+    # the preview shows the volume change, Esc cancels without a change; again with OK the tree gets Fillet1,
+    # and Ctrl+Z takes it back, so the file ends as it started.
+    fillet = "skipped (assembly or static demo)"
+    fillet_ok = True
+    if page.locator("#btn-fillet").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
+        fillet_ok = False
+        page.click('.ribbon-tab[data-tab="3d-model"]')
+
+        def pick_edge():
+            page.click("#btn-fillet")
+            for dy in range(0, int(box["height"] / 2) - 10, 6):
+                page.mouse.click(cx, cy - dy)
+                page.wait_for_timeout(60)
+                if "selected" in page.locator(".feature-pick-count").inner_text():
+                    break
+            page.fill('.feature-dialog input[name="radius"]', "0.5")
+            # "Computing preview…" while SolidCraft works; then the volume change or an error
+            page.wait_for_function("/Volume|⚠/.test(document.querySelector('.feature-delta')?.textContent || '')"
+                                   " || !document.querySelector('.feature-error')?.hidden", timeout=30000)
+            return page.locator(".feature-delta").inner_text(), page.locator(".feature-error").inner_text()
+
+        tree_before = page.locator("#tree-content").inner_text()
+        delta, err = pick_edge()
+        page.screenshot(path=os.path.join(out, "fillet_preview.png"))
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(500)
+        cancelled = page.locator(".feature-dialog").count() == 0 and page.locator("#tree-content").inner_text() == tree_before
+        pick_edge()
+        page.click(".feature-ok")
+        page.wait_for_timeout(2500)
+        added = "Fillet" in page.locator("#tree-content").inner_text() and "Fillet" not in tree_before
+        # double-click in the model browser opens it again with its edge and radius; Esc leaves it as it is
+        page.dblclick('.tree-row[data-type="FilletFeature"]')
+        page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
+        reopened = ("1 edge" in page.locator(".feature-pick-count").inner_text()
+                    and page.input_value('.feature-dialog input[name="radius"]') == "0.5")
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(500)
+        page.keyboard.press("Control+z")
+        page.wait_for_timeout(2500)
+        undone = page.locator("#tree-content").inner_text() == tree_before
+        fillet = (f"preview {delta!r} {err!r}, esc cancels: {cancelled}, ok adds: {added}, edit reopens: {reopened}, "
+                  f"ctrl+z: {undone}")
+        fillet_ok = "Volume" in delta and not err and cancelled and added and reopened and undone
     browser.close()
+print("fillet:", fillet)
 print("new part:", new_part)
 print("measure:", measured.replace("\n", " | "))
 print("section:", section)
 print("esc closes:", closed, "page errors:", errors)
 print("edge:", edge.replace("\n", " | ") or "none found")
-sys.exit(0 if "Distance" in measured and "Section" in section and closed and edge and new_part_ok and not errors else 1)
+sys.exit(0 if "Distance" in measured and "Section" in section and closed and edge and new_part_ok and fillet_ok
+         and not errors else 1)

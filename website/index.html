@@ -36,7 +36,7 @@
       <a class="brand" href="#top" aria-label="Mechvane home">
         <img class="brand-logo" src="media/logo.svg" width="28" height="28" alt="">
         <span class="brand-name">Mech<span class="brand-vane">vane</span></span>
-        <span class="badge badge-alpha" title="Current PyPI release">alpha · 0.1.0a12</span>
+        <span class="badge badge-alpha" title="Current PyPI release">alpha · 0.1.0a13</span>
       </a>
 
       <nav class="site-nav" aria-label="Primary">
@@ -143,19 +143,20 @@
         <div class="showcase-pair">
           <figure class="ui-figure">
             <div class="ui-figure-bar">
-              <span class="ui-tab active">Check page</span>
-              <span class="ui-caption-tag">3D view · Model tree · Findings</span>
+              <span class="ui-tab active">Workspace</span>
+              <span class="ui-caption-tag">Ribbon · Model browser · Properties · Design check</span>
             </div>
             <img
-              src="media/web-ui-1.png"
+              src="media/web-workspace-fillet.png"
               width="1280"
               height="800"
               loading="lazy"
-              alt="Mechvane Check page showing the model tree on the left, 3D bracket model in the center with a red highlighted countersink edge, and design check findings on the right."
+              alt="Mechvane workspace in the layout of Inventor: ribbon on top, model browser and parameters on the left, a bracket in the 3D view with one picked edge, and the Fillet dialog with radius 3 mm and the volume change of the preview on the right, above the design check findings."
             >
             <figcaption>
-              <strong>Check page:</strong> Clicking the <code>countersink_clearance</code> finding highlights
-              the face where a countersink notches the neighbouring wall.
+              <strong>Workspace:</strong> Pick an edge, type a radius, and the preview shows the fillet and its
+              volume change before you press OK. SolidCraft computes it underneath, the design check runs after
+              every step.
             </figcaption>
           </figure>
 
@@ -184,7 +185,7 @@
     <section class="section section-alt" id="features" aria-labelledby="features-heading">
       <div class="container">
         <div class="section-header">
-          <p class="eyebrow">Available today · v0.1.0a12 (Alpha)</p>
+          <p class="eyebrow">Available today · v0.1.0a13 (Alpha)</p>
           <h2 id="features-heading">What works today</h2>
           <p class="section-lead">
             Mechvane is an early alpha for individual engineers, makers, and small and medium-sized
@@ -490,15 +491,15 @@
                 bolted connection assistant, design checks, Check page with parameters, measure (points, faces,
                 and edges), and section view, chat with your agent in the app (with stop, undo, and redo per turn), embedded SolidCraft
                 web app, glTF export, the Mechvane workspace in the layout of Inventor (ribbon, model browser,
-                properties), a short report after every modelling step for your agent, and a browser live demo that checks
+                properties) with dialogs for extrude, revolve, hole, fillet, chamfer, patterns and mirror, one Undo list for you
+                and your agent, a short report after every modelling step for your agent, and a browser live demo that checks
                 your changes after every save.
               </p>
             </div>
             <div class="rm-col rm-col-progress">
               <h4><span class="rm-dot"></span>In progress</h4>
               <p>
-                Feature dialogs for your Mechvane workspace (extrude, hole, fillet and more, with SolidCraft computing
-                underneath), point and speak on selected faces
+                Sketching in your Mechvane workspace, the feature dialogs in the browser live demo, point and speak on selected faces
                 (speech input works, testing on devices), clear error messages for your agent (the first common
                 SolidCraft messages are explained already), expanding the open knowledge catalog, and
                 growing the material database.
@@ -573,7 +574,7 @@
           <h4>Project</h4>
           <ul>
             <li><a href="https://github.com/mechvane/mechvane">GitHub</a></li>
-            <li><a href="https://pypi.org/project/mechvane/">PyPI (0.1.0a12)</a></li>
+            <li><a href="https://pypi.org/project/mechvane/">PyPI (0.1.0a13)</a></li>
             <li><a href="https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md">Changelog</a></li>
             <li><a href="https://github.com/mechvane/mechvane/issues/new?template=feature_request.yml">Request a feature</a></li>
           </ul>
