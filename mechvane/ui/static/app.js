@@ -471,7 +471,7 @@ function renderFeatureNode(node) {
   const row = document.createElement("div");
   row.className = "tree-row";
 
-  if (node.name && node.type && !STATIC) {
+  if (node.name && node.type) {
     row.dataset.feature = node.name;
     row.dataset.type = node.type;
     row.tabIndex = -1;
@@ -799,7 +799,20 @@ function updateFindingsView(data, preserveSelection) {
 const STATIC = document.documentElement.dataset.static === "1";
 let demoBase = "";
 
+// Live demo: the api/* requests of the dialogs go to the demo kernel (SolidCraft in a hidden iframe)
+let demoKernel = null;
+async function kernel() {
+  if (!demoKernel) {
+    const { createDemoKernel } = await import("./demo_kernel.js");
+    demoKernel = createDemoKernel({ base: () => demoBase, onStatus: (t) => { statusEl.textContent = t; } });
+  }
+  return demoKernel;
+}
+
 async function fetchJson(url, opts = {}) {
+  if (STATIC && url.startsWith("api/")) {
+    return (await kernel()).api(opts.method || "GET", url, opts.body ? JSON.parse(opts.body) : null);
+  }
   const res = await fetch(url, { cache: "no-store", ...opts });
   const data = await res.json();
   if (!res.ok) {
@@ -809,7 +822,8 @@ async function fetchJson(url, opts = {}) {
 }
 
 function dataUrl(name) {
-  if (STATIC) return `${demoBase}${name}.json`;
+  // the demo shows the precomputed example until a step was made in it
+  if (STATIC && !(demoKernel && demoKernel.changed)) return `${demoBase}${name}.json`;
   return `api/${name}`;
 }
 
@@ -872,7 +886,7 @@ async function loadAll(initial = false) {
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;
     else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
-    if (!STATIC) refreshHistory();
+    refreshHistory();
     statusEl.textContent = "Ready";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
@@ -1164,6 +1178,12 @@ async function initStatic() {
   };
   select.addEventListener("change", () => {
     if (fileMenu) fileMenu.open = false;
+    // SolidCraft in the page holds the other example: start afresh with this one
+    if (demoKernel && demoKernel.started) {
+      location.search = `?demo=${select.value}`;
+      return;
+    }
+    demoKernel = null;
     history.replaceState(null, "", `?demo=${select.value}`);
     open(true);
   });
@@ -1313,7 +1333,7 @@ async function postJson(url, body) {
 
 var featureDialogs = null;
 var viewBeforeEdit = null;
-if (!STATIC) {
+{
   featureDialogs = initFeatureDialogs({
     scene, viewTools, renderScene,
     propertiesEl: document.getElementById("properties-content"),
@@ -1335,10 +1355,6 @@ if (!STATIC) {
     b.title = b.dataset.title || b.title;
     b.addEventListener("click", () => featureDialogs.open(b.dataset.feature));
   });
-} else {
-  document.querySelectorAll("[data-feature]").forEach((b) => {
-    b.title = "Install Mechvane to model here; in the live demo use File → Open in SolidCraft";
-  });
 }
 
 // Undo and Redo: one list for hand steps (dialogs, parameters) and the agent's turns (Grundsatz 6)
@@ -1358,15 +1374,16 @@ async function undoRedo(which) {
   if (featureDialogs && featureDialogs.isOpen()) featureDialogs.close();
   try {
     await postJson(`api/agent/${which}`, {});
-    statusEl.textContent = which === "undo" ? "Undone" : "Redone";
+    refreshHistory();  // the buttons follow at once, the model view may take a moment
     await loadAll(false);
+    statusEl.textContent = which === "undo" ? "Undone" : "Redone";
   } catch (err) {
     statusEl.textContent = `${which === "undo" ? "Undo" : "Redo"}: ${err.message}`;
     refreshHistory();
   }
 }
 
-if (!STATIC) {
+{
   undoBtn.hidden = false;
   redoBtn.hidden = false;
   undoBtn.addEventListener("click", () => undoRedo("undo"));

@@ -19,7 +19,7 @@ from mechvane.documents import ASSEMBLY, Workspace  # noqa: E402
 from mechvane.examples import DEMOS  # noqa: E402
 from mechvane.ui.mesh import collect_mesh  # noqa: E402
 from mechvane.ui import webapp  # noqa: E402
-from mechvane.ui.server import STATIC_DIR, collect_findings, collect_tree, collect_version  # noqa: E402
+from mechvane.ui.server import STATIC_DIR, collect_findings, collect_tree, collect_version, hole_sizes  # noqa: E402
 
 
 def make_mechvane_zip(dest: Path):
@@ -45,6 +45,8 @@ def main():
     demo = out / "demo"
     shutil.copytree(STATIC_DIR, demo)
     make_mechvane_zip(demo / "mechvane.zip")
+    # Mechvane's hole tables for the Hole dialog (the server answers /api/hole_sizes, the demo reads this file)
+    (demo / "hole_sizes.json").write_text(json.dumps(hole_sizes()), encoding="utf-8")
     for page in ("index.html", "model.html"):
         html = (demo / page).read_text(encoding="utf-8")
         (demo / page).write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),

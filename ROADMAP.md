@@ -225,8 +225,10 @@ Bis v0.1 fehlt noch:
       Bohrung (Durchgang nach ISO 273, Gewinde, Senkungen aus Mechvanes Tabellen, durch alle oder Tiefe; auch bearbeiten).
       Rechteck- und Kreismuster, Spiegeln (Features im Baum anklicken, Richtung/Achse/Ebene aus X/Y/Z oder angeklickter
       Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
-      durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen, `kernel.execute` für
-      die Live-Demo; dann Stufe 3.*
+      durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen; dann Stufe 3.*
+      *Dialoge in der Live-Demo fertig 2026-11-02:* `demo_kernel.js` beantwortet die `api/*`-Anfragen im Browser über die
+      versteckte SolidCraft-Web-App (Netz per `file.export` 3mf-tagged in OPFS, Prüfung per Pyodide, Rückgängig über
+      `edit.undo/redo`).
 - [x] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
       *Prototyp gemergt 2026-11-02* (`browser_check.py`, `demo_check.js`, ~5 MB Download, 2 ms je Prüfung).
       *Fertig und veröffentlicht 2026-11-02 (0.1.0a12, Nutzer: Stufe 1 ausliefern):* in Chromium gegen die echte

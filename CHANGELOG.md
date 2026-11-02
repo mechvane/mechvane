@@ -7,6 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a14] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **The feature dialogs work in the live demo.** On mechvane.dev, Fillet, Chamfer, Hole, the patterns, Mirror,
+  Extrude and Revolve, editing and deleting from the model browser, and Undo and Redo now run right in your browser:
+  the first dialog starts SolidCraft in the page (about 50 MB the first time), the design check runs again after
+  every step, and the example stays in your browser.
+
 ## [0.1.0a13] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

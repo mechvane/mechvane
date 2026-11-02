@@ -156,4 +156,10 @@ ausdrücklich (auf einer Flächenskizze wäre SolidCraft-Standard ein neuer Kör
 Richtung 2 vor). Anlegen mit `operation: new`, Definition und Bearbeiten mit `new_body`; `extent.through_all`
 wird mit `false` ausgeschaltet (nicht `null`), die Skizze geht beim Bearbeiten als ID. Drehachse X/Y/Z
 (`{type: world, axis}`) oder angeklickte Kante.
+Live-Demo (`demo_kernel.js`): beantwortet dieselben `api/*`-Anfragen wie der Server im Browser, über die versteckte
+Web-App (startet beim ersten Dialog, ~11 s mit Download). Netz: `file.export` 3mf-tagged nach `/opfs/`, die Datei ist
+erst nach ~0,5 s vollständig (auf die gemeldete Byte-Zahl warten), Zip und XML im Browser gelesen. Baum aus
+`document.inspect` und `timeline.inspect`, Prüfung per Pyodide. Rückgängig über `edit.undo`/`edit.redo` (jeder
+Handschritt ist dort genau ein Befehl; Checkpoints taugen nicht: Rückspringen verwirft spätere). Löschen nimmt in der
+Demo nur das Feature, nicht seine Skizze.
 3. Schriften und Symbole: eigene Icons (SVG) im Inventor-Stil, ohne Autodesk-Grafiken (Marken, #33).

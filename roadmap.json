@@ -162,7 +162,7 @@
         {
           "status": "done",
           "title": "Live demo checks your changes",
-          "text": "Model a part by hand in the browser demo, save, and the design check runs again right there, no install needed. Assembly checks in the demo are precomputed.",
+          "text": "Model a part by hand in the browser demo, save, and the design check runs again right there, no install needed. The feature dialogs of the workspace work in the demo too. Assembly checks in the demo are precomputed.",
           "milestone": "v0.1"
         },
         {
