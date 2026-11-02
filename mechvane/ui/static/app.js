@@ -1367,6 +1367,11 @@ var viewBeforeEdit = null;
   });
   initTreeActions();
   document.querySelectorAll("[data-feature]").forEach((b) => {
+    // the sketch dialog is being replaced by a sketch environment like Inventor's (ADR 0005): not in the live demo
+    if (STATIC && b.dataset.feature === "sketch") {
+      b.title = "Sketching is being reworked to work like Inventor and Fusion; install Mechvane to try the first version";
+      return;
+    }
     b.disabled = false;
     b.title = b.dataset.title || b.title;
     b.addEventListener("click", () => featureDialogs.open(b.dataset.feature));
@@ -1419,7 +1424,7 @@ async function undoRedo(which) {
     } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {
       e.preventDefault();
       featureDialogs.open("fillet");
-    } else if (!mod && !e.altKey && (e.key === "s" || e.key === "S")) {
+    } else if (!mod && !e.altKey && (e.key === "s" || e.key === "S") && !STATIC) {
       e.preventDefault();
       featureDialogs.open("sketch");
     } else if (!mod && !e.altKey && (e.key === "e" || e.key === "E")) {

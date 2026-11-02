@@ -169,3 +169,41 @@ kommen; alles oder nichts über einen Checkpoint. `GET /api/sketch_plane` liefer
 Checkpoint anlegen, `sketch.inspect`, zurück); der Dialog zeichnet darauf selbst und klickt per Strahl gegen die Ebene
 (`viewtools.startPlanePick`). In der Demo ist die Skizze mehrere App-Schritte: der Rückgängig-Verlauf wird dort geleert.
 3. Schriften und Symbole: eigene Icons (SVG) im Inventor-Stil, ohne Autodesk-Grafiken (Marken, #33).
+
+## Nachtrag 2026-11-02: Skizzierumgebung wie Inventor und Fusion (Nutzer)
+
+Der erste Skizzierer (ein Dialog, der Ebene und Formen zusammen abfragt und gleich zur Extrusion springt) passt nicht:
+Skizze **anlegen** und Skizze **mit Geometrie füllen** sind in Inventor und Fusion getrennte Vorgänge. Neuer Ablauf:
+
+1. **Skizze erstellen** (S, Register 3D-Modell): Ebene XY/XZ/YZ oder ebene Fläche anklicken, sonst nichts. Mechvane
+   legt die Skizze an und **betritt die Skizzierumgebung**: Register „Skizze“ wird aktiv, Ansicht dreht auf die Ebene
+   („Look At“), der Rest des Modells tritt zurück, im Browser ist die Skizze als aktiv markiert, die Statusleiste zeigt
+   „Sketch1 · 4 Freiheitsgrade“ bzw. „voll bestimmt“.
+2. **Zeichnen mit eigenen Werkzeugen** im Register „Skizze“: Linie (L), Rechteck (zwei Punkte, Mittelpunkt), Kreis (C),
+   Bogen, Punkt; jedes Werkzeug bleibt aktiv, bis Esc oder ein anderes gewählt wird. Klicks auf der Ebene mit
+   Gummiband-Vorschau, Eingabefelder am Cursor (Länge/Winkel bzw. Durchmesser, Tab wechselt, Enter setzt; wie die
+   Dynamic Input in Inventor/Fusion). Fangen: End- und Mittelpunkte, Ursprung, horizontal/vertikal; daraus entstehen
+   Abhängigkeiten automatisch (SolidCraft `connect`, `sketch.constraint.*`).
+3. **Bemaßen** (D) als eigenes Werkzeug: Geometrie anklicken, Maß platzieren, Wert eingeben (auch `name = Ausdruck`
+   für einen Parameter). Abhängigkeiten als Werkzeuge (horizontal, vertikal, parallel, senkrecht, tangential,
+   koinzident, gleich, fest). Voll bestimmte Geometrie wird anders gefärbt; Konflikte rot (Constraint-Manager-Idee).
+4. **Skizze fertig stellen** (Knopf rechts im Register, Rechtsklick, Enter ohne Werkzeug): zurück ins Register
+   3D-Modell, vorherige Ansicht. **Keine** automatische Extrusion; Extrudieren ist ein eigener Schritt und nimmt die
+   neueste unbenutzte Skizze vor (Inventor wählt das Profil vor, wenn es nur eines gibt).
+5. **Skizze bearbeiten**: Doppelklick auf die Skizze im Browser betritt die Umgebung erneut (Inventor: „Skizze
+   bearbeiten“), danach rechnen die Features neu.
+
+Umsetzung:
+- Server: Skizzensitzung auf der Dokument-Sitzung: `POST /api/sketch/begin {plane|face|edit}`, `POST /api/sketch/cmd
+  {command, params}` (nur `sketch.*`), `GET /api/sketch/state` (`sketch.inspect`: Punkte, Kurven, Bemaßungen,
+  Abhängigkeiten, Freiheitsgrade, Profile), `POST /api/sketch/finish`, `POST /api/sketch/cancel`. Die ganze Sitzung
+  ist **ein** Schritt im gemeinsamen Rückgängig (Snapshot bei begin, Eintrag bei finish); innerhalb der Skizze
+  Rückgängig über `edit.undo`. Der Agent ist währenddessen gesperrt (wie bei einem Handschritt).
+- Ansicht: Skizzengeometrie aus `sketch/state` auf dem Ebenenrahmen gezeichnet (Linien, Bögen, Punkte, Maßtexte als
+  HTML-Überlagerung), Werkzeug-Zustandsmaschine im Browser (`sketcher.js`), Klick auf der Ebene per
+  `viewtools.startPlanePick` (gibt es schon), Fangen im Browser aus dem Zustand.
+- Demo: derselbe Weg über `demo_kernel.js`.
+- Der Dialog `mechvane.sketch` (Rechteck/Kreis voll bemaßt) entfällt als Bedienweg; Rechteck und Kreis werden Werkzeuge.
+
+Reihenfolge: (a) Umgebung betreten/verlassen, Linie, Rechteck, Kreis mit Fangen und Eingabefeldern; (b) Bemaßen und
+Freiheitsgrade; (c) Abhängigkeiten, Bogen, Skizze bearbeiten; (d) Stutzen, Versatz, Projizieren, Konfliktanzeige.

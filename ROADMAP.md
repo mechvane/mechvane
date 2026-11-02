@@ -227,8 +227,9 @@ Bis v0.1 fehlt noch:
       Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
       durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen.*
       *Stufe 3 begonnen 2026-11-02:* Skizze auf XY/XZ/YZ oder Fläche, Rechteck und Kreis per Klick oder Zahl, voll
-      bemaßt (`mechvane.sketch`), OK öffnet die Extrusion; auch in der Live-Demo. Offen: Linie, Bogen, Abhängigkeiten,
-      Konfliktanzeige, Skizze bearbeiten.
+      bemaßt (`mechvane.sketch`), OK öffnet die Extrusion; auch in der Live-Demo. **Nutzer 2026-11-02: so nicht**,
+      Skizze anlegen und füllen müssen getrennt sein wie in Inventor/Fusion: eigene Skizzierumgebung mit Werkzeugen,
+      Bemaßen, Fertig stellen, ohne Sprung zur Extrusion. Entwurf ADR 0005, Nachtrag 2026-11-02; ersetzt den Dialog.
       *Dialoge in der Live-Demo fertig 2026-11-02:* `demo_kernel.js` beantwortet die `api/*`-Anfragen im Browser über die
       versteckte SolidCraft-Web-App (Netz per `file.export` 3mf-tagged in OPFS, Prüfung per Pyodide, Rückgängig über
       `edit.undo/redo`).
