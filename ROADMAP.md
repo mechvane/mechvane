@@ -230,6 +230,10 @@ Bis v0.1 fehlt noch:
       bemaßt (`mechvane.sketch`), OK öffnet die Extrusion; auch in der Live-Demo. **Nutzer 2026-11-02: so nicht**,
       Skizze anlegen und füllen müssen getrennt sein wie in Inventor/Fusion: eigene Skizzierumgebung mit Werkzeugen,
       Bemaßen, Fertig stellen, ohne Sprung zur Extrusion. Entwurf ADR 0005, Nachtrag 2026-11-02; ersetzt den Dialog.
+      *Dialoge grafisch aufwerten (Nutzer 2026-11-02, später):* kleine Symbole wie in Inventor, etwa Bohrungstyp
+      (einfach, Senkung, Kegelsenkung) und Abschluss (durch alle, Abstand) als Bildknöpfe statt Auswahllisten,
+      Richtungsknöpfe (Seite 1/2, symmetrisch), Operation (Join/Cut/…) als Symbolreihe, Auswahlfelder mit Pfeil-Symbol
+      wie Inventors „Positionen“/„Kanten“. Eigene SVGs ohne Autodesk-Grafiken (ADR 0005, offene Frage 3).
       *Dialoge in der Live-Demo fertig 2026-11-02:* `demo_kernel.js` beantwortet die `api/*`-Anfragen im Browser über die
       versteckte SolidCraft-Web-App (Netz per `file.export` 3mf-tagged in OPFS, Prüfung per Pyodide, Rückgängig über
       `edit.undo/redo`).

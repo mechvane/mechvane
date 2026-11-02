@@ -7,6 +7,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a16] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Fixed
+
+- Sketch shapes at negative positions (for example a rectangle at X -20) were refused; they are placed there now.
+- The value fields of the dialogs no longer ask for a number keyboard, which hid the minus sign on some touch
+  keyboards and kept you from typing expressions such as `t/2`.
+
 ## [0.1.0a15] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

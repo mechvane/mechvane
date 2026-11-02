@@ -5529,6 +5529,15 @@ def feature_dialog_checks(tmp):
            and skins.get("fully_constrained") is True and len(features()) == n_before + 2 and st_ske == 200
            and len(new_body) == 1 and hist_sk.get("undo", "").startswith("Solid") is False,
            f"{st_sp} {frame} {st_sk} {sk_res} {skins.get('dof')} {st_ske} {[b['volume_mm3'] for b in bodies_sk]} {hist_sk}")
+        # negative positions: a sketch dimension has no sign, the shape stays on the negative side
+        st_neg, neg = call("feature", {"command": "mechvane.sketch", "params": {"plane": "XY", "shapes": [
+            {"type": "rectangle", "x": -30, "y": -8, "w": 6, "h": 4}, {"type": "circle", "x": -40, "y": -5, "d": 3}]}})
+        negname = (neg.get("results") or [{}])[0].get("name")
+        with srv.lock:
+            pts = srv.ensure_current().session.cmd("sketch.inspect", {"sketch": negname}).get("points", []) if negname else []
+        xs = sorted(round(pt.get("at", pt.get("position", [0, 0]))[0], 6) for pt in pts if pt.get("id") != "origin")
+        ok("feature dialog: a sketch takes negative positions (rectangle at -30/-8, circle at -40/-5)",
+           st_neg == 200 and xs and min(xs) == -40 and -30 in xs, f"{st_neg} {neg} {xs} {str(pts)[:300]}")
         st_dx, _ = call("feature/delete", {"name": "NoSuchFeature"})
         st_ex, _ = call("feature?name=Base")
         ok("feature dialog: unknown features are 404, features without a dialog (a sketch) cannot be opened for editing (403)",

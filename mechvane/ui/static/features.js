@@ -839,7 +839,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     } else if (f.type === "check") {
       control = `<input type="checkbox" name="${f.key}">`;
     } else {
-      control = `<input name="${f.key}" inputmode="decimal" spellcheck="false">`;
+      // no inputmode="decimal": some touch keyboards then hide the minus sign, and fields take expressions (t/2)
+      control = `<input name="${f.key}" spellcheck="false" autocapitalize="off" autocomplete="off">`;
     }
     return `<label class="feature-field${f.type === "check" ? " feature-check" : ""}"><span>${f.label}</span>${control}`
       + `<span class="feature-unit">${f.unit || ""}</span></label>`;

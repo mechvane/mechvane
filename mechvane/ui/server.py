@@ -264,7 +264,10 @@ def sketch_commands(doc, params: dict) -> dict:
             else:
                 raise ValueError(f"unknown shape: {sh.get('type')}")
             for spec, value in dims:
-                # a position of 0 coincides with the origin's axis: a distance of 0 is still a valid dimension
+                # a sketch dimension has no sign (SolidCraft refuses -20): the shape is already drawn on the
+                # negative side, so the distance is its size; expressions stay as they are
+                if isinstance(value, (int, float)):
+                    value = abs(value)
                 s.cmd("sketch.dimension", {**spec, "value": value})
         s.cmd("sketch.finish", {})
     except Exception:

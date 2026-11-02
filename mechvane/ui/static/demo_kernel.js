@@ -256,7 +256,8 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
                   [{ entities: ["origin", center], type: "distance_x" }, sh.x],
                   [{ entities: ["origin", center], type: "distance_y" }, sh.y]];
         }
-        for (const [spec, value] of dims) await exec("sketch.dimension", { ...spec, value });
+        // a sketch dimension has no sign: the shape is drawn on its side already, the distance is its size
+        for (const [spec, value] of dims) await exec("sketch.dimension", { ...spec, value: typeof value === "number" ? Math.abs(value) : value });
       }
       await exec("sketch.finish", {});
     } catch (err) {
