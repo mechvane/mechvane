@@ -86,7 +86,154 @@ function holeDefaults(v) {
   return out;
 }
 
+// Sketch dialog helpers: a shape in sketch coordinates drawn on the plane's frame
+const r05 = (v) => Math.round(v * 2) / 2;
+function shapeComplete(sh) {
+  const n = (k) => sh[k] !== null && sh[k] !== undefined && sh[k] !== "";
+  return n("x") && n("y") && (sh.type === "circle" ? n("d") : n("w") && n("h"));
+}
+function shapeLabel(sh) {
+  return sh.type === "circle" ? `Circle Ø${sh.d} at ${sh.x}, ${sh.y}` : `Rectangle ${sh.w} x ${sh.h} at ${sh.x}, ${sh.y}`;
+}
+function shapeLines(sh, frame) {
+  const o = new THREE.Vector3(...frame.origin), x = new THREE.Vector3(...frame.x_dir), y = new THREE.Vector3(...frame.y_dir);
+  const at = (u, v) => o.clone().addScaledVector(x, u).addScaledVector(y, v);
+  const nums = ["x", "y", "w", "h", "d"].map((k) => sh[k]);
+  if (nums.some((n, i) => (sh.type === "circle" ? [0, 1, 4] : [0, 1, 2, 3]).includes(i) && typeof n !== "number")) return null;
+  if (sh.type === "circle") {
+    const pts = [];
+    for (let i = 0; i <= 64; i++) {
+      const a = (i / 64) * Math.PI * 2;
+      pts.push(at(sh.x + (sh.d / 2) * Math.cos(a), sh.y + (sh.d / 2) * Math.sin(a)));
+    }
+    return pts;
+  }
+  return [at(sh.x, sh.y), at(sh.x + sh.w, sh.y), at(sh.x + sh.w, sh.y + sh.h), at(sh.x, sh.y + sh.h), at(sh.x, sh.y)];
+}
+
 const DIALOGS = {
+  sketch: {
+    title: "Sketch",
+    command: "mechvane.sketch",
+    view: "sketch",
+    noPreview: true,
+    noFieldCheck: true,
+    hint: "Click in the view: first the corner (or centre), then the opposite corner (or a point on the circle)",
+    fields: [
+      { key: "plane", label: "Plane", type: "select", value: "XY",
+        options: [["XY", "XY plane"], ["XZ", "XZ plane"], ["YZ", "YZ plane"], ["face", "Clicked face"]] },
+      { key: "shape", label: "Shape", type: "select", value: "rectangle", options: [["rectangle", "Rectangle"], ["circle", "Circle"]] },
+      { key: "x", label: "X", unit: "mm", value: "" },
+      { key: "y", label: "Y", unit: "mm", value: "" },
+      { key: "w", label: "Width", unit: "mm", value: "", show: (v) => v.shape === "rectangle" },
+      { key: "h", label: "Height", unit: "mm", value: "", show: (v) => v.shape === "rectangle" },
+      { key: "d", label: "Diameter", unit: "mm", value: "", show: (v) => v.shape === "circle" },
+    ],
+    extraHtml: `<div class="sketch-shapes"></div>
+      <div class="feature-actions sketch-add-row"><button type="button" class="btn-text sketch-add">Add another shape</button></div>`,
+    current: (v) => ({ type: v.shape, x: v.x, y: v.y, w: v.w, h: v.h, d: v.d }),
+    ready: (v, p) => p.sketch.shapes.length > 0 || shapeComplete(DIALOGS.sketch.current(v)),
+    status: (v, p) => (v.plane === "face" && !p.sketch.face ? "Click a flat face for the sketch" : null),
+    params(v, p) {
+      const cur = DIALOGS.sketch.current(v);
+      const shapes = [...p.sketch.shapes, ...(shapeComplete(cur) ? [cur] : [])];
+      return { plane: v.plane === "face" ? { face: p.sketch.face } : v.plane, shapes };
+    },
+    // the plane's frame from the server (also for faces), then clicks on it; the view turns onto it
+    async init(active, h) {
+      active.shapes = [];
+      active.clicks = 0;
+      const box = active.form.querySelector(".sketch-shapes");
+      const list = () => {
+        box.replaceChildren(...active.shapes.map((sh, i) => {
+          const row = document.createElement("div");
+          row.className = "sketch-shape";
+          row.textContent = shapeLabel(sh);
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "btn-text";
+          del.textContent = "×";
+          del.title = "Remove";
+          del.addEventListener("click", () => { active.shapes.splice(i, 1); list(); h.update(); });
+          row.append(del);
+          return row;
+        }));
+      };
+      active.form.querySelector(".sketch-add").addEventListener("click", () => {
+        const cur = DIALOGS.sketch.current(h.values());
+        if (!shapeComplete(cur)) return;
+        active.shapes.push(cur);
+        for (const k of ["x", "y", "w", "h", "d"]) h.setValue(k, "");
+        list();
+        h.update();
+      });
+      active.loadPlane = async () => {
+        const v = h.values();
+        active.frame = null;
+        h.update();
+        if (v.plane === "face" && !active.face) {
+          h.viewTools.startFacePick((pick) => {
+            if (!pick.planar) return;
+            active.face = pick.point.toArray().map((c) => +c.toFixed(4));
+            active.loadPlane();
+          });
+          return;
+        }
+        const q = v.plane === "face" ? `face=${active.face.join(",")}` : `plane=${v.plane}`;
+        try {
+          active.frame = await h.get(`api/sketch_plane?${q}`);
+        } catch (err) {
+          h.setError(err.message);
+          return;
+        }
+        h.lookAlong(active.frame);
+        h.viewTools.startPlanePick(active.frame, ([u, w]) => {
+          const val = h.values();
+          if (active.clicks === 0) {
+            h.setValue("x", fmt(r05(u)));
+            h.setValue("y", fmt(r05(w)));
+            for (const k of ["w", "h", "d"]) h.setValue(k, "");
+            active.clicks = 1;
+          } else {
+            if (val.shape === "circle") {
+              h.setValue("d", fmt(Math.max(0.5, r05(2 * Math.hypot(u - val.x, w - val.y)))));
+            } else {
+              // the dimensions are positive: the corner is the lower left one, whichever way it was dragged
+              let x0 = val.x, y0 = val.y, wd = r05(u - x0), ht = r05(w - y0);
+              if (wd < 0) { x0 += wd; wd = -wd; }
+              if (ht < 0) { y0 += ht; ht = -ht; }
+              h.setValue("x", fmt(x0)); h.setValue("y", fmt(y0));
+              h.setValue("w", fmt(Math.max(wd, 0.5))); h.setValue("h", fmt(Math.max(ht, 0.5)));
+            }
+            active.clicks = 0;
+          }
+          h.update();
+        });
+        h.update();
+      };
+      await active.loadPlane();
+    },
+    onChange(key, v, set, active) {
+      if (key === "plane" && active?.loadPlane) {
+        if (v.plane === "face") active.face = null;
+        active.loadPlane();
+      }
+      if (key === "shape" && active) active.clicks = 0;
+    },
+    draw(active, v, add) {
+      if (!active.frame) return;
+      // the sketch's own axes from its origin: X red, Y green, as in the view's axis gizmo
+      const f = active.frame;
+      const axis = (dir, color) => add([new THREE.Vector3(...f.origin),
+        new THREE.Vector3(...f.origin).addScaledVector(new THREE.Vector3(...dir), 25)], color);
+      axis(f.x_dir, 0xe5534b);
+      axis(f.y_dir, 0x57ab5a);
+      active.shapes.forEach((sh) => add(shapeLines(sh, active.frame), 0x58a6ff));
+      add(shapeLines(DIALOGS.sketch.current(v), active.frame), 0xf0b429);
+    },
+    // a finished sketch goes straight on to Extrude, as in Inventor
+    after: (res, dialogs) => dialogs.open("extrude"),
+  },
   fillet: {
     title: "Fillet",
     command: "solid.fillet",
@@ -415,7 +562,8 @@ function roundOnPlane(point, normal) {
 }
 
 export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl, statusEl, post, get,
-                                     showPreview, clearPreview, reload, showModel, restoreModel }) {
+                                     showPreview, clearPreview, reload, showModel, restoreModel,
+                                     lookAlong = () => {} }) {
   const pickGroup = new THREE.Group();
   scene.add(pickGroup);
   const emptyHtml = propertiesEl.innerHTML;
@@ -456,7 +604,15 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       pickGroup.add(line);
     }
     markTree();
-    if (active.def.fields.some((f) => f.key === "x")) {
+    if (active.def.draw) {
+      active.def.draw(active, values(), (pts, color) => {
+        if (!pts) return;
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+          new THREE.LineBasicMaterial({ color, depthTest: false }));
+        line.renderOrder = 21;
+        pickGroup.add(line);
+      });
+    } else if (active.def.fields.some((f) => f.key === "x")) {
       const v = values();
       if ([v.x, v.y, v.z].every((c) => typeof c === "number")) {
         const at = new THREE.Vector3(v.x, v.y, v.z);
@@ -541,7 +697,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
 
   function picks() {
     return { edges: Array.from(active.edges.values(), (e) => e.point), direction: active.point?.direction || null,
-             features: [...active.features], edge1: active.edge1, face: active.face };
+             features: [...active.features], edge1: active.edge1, face: active.face,
+             sketch: { shapes: active.shapes || [], face: active.face } };
   }
 
   // Everything the command needs is there: picks, and every shown number field filled
@@ -549,6 +706,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const def = active.def, v = values(), p = picks();
     if (def.view === "edges" && !active.edges.size) return false;
     if (def.ready && !def.ready(v, p)) return false;
+    if (def.noFieldCheck) return true; // the sketch: shapes already added count, the fields may be empty
     return def.fields.every((f) => f.type === "check" || f.type === "select" || (f.show && !f.show(v))
       || v[f.key] !== null);
   }
@@ -569,6 +727,9 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       active.clearBtn.hidden = true;
     }
     active.countEl.textContent = text;
+    if (def.view === "sketch" && !active.frame && !(def.status && def.status(v, p))) {
+      active.countEl.textContent = "Loading the plane…";
+    }
     active.okBtn.disabled = !ready() || active.busy;
     refreshFields();
     drawPicks();
@@ -577,6 +738,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
 
   function schedulePreview() {
     clearTimeout(active.timer);
+    if (active.def.noPreview) return; // drawn here, made with OK
     if (!ready()) {
       active.seq++; // a preview still on its way is no longer wanted
       active.stale = false;
@@ -641,9 +803,11 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const dlg = active;
     try {
       const res = await post("api/feature", request(false));
+      const def = dlg.def;
       close();
       await reload();
       statusEl.textContent = res.done || "Done";
+      if (def.after) def.after(res, api);
     } catch (err) {
       dlg.busy = false;
       if (active === dlg) {
@@ -656,9 +820,10 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   function close() {
     if (!active) return;
     clearTimeout(active.timer);
-    const wasEdit = active.edit;
+    const wasEdit = active.edit, wasSketch = active.def.view === "sketch";
     active = null;
     if (wasEdit) restoreModel();
+    if (wasSketch) lookAlong(null); // back to the usual view, as Inventor does after Finish Sketch
     viewTools.stopEdgePick();
     clearPreview();
     drawPicks();
@@ -725,7 +890,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       errorEl: form.querySelector(".feature-error"),
     };
     for (const f of def.fields) setValue(f.key, typeof f.value === "function" ? f.value() : f.value);
-    if (def.onChange) def.onChange("size", values(), setValue);
+    if (def.extraHtml) active.noteEl.insertAdjacentHTML("beforebegin", def.extraHtml);
+    if (def.onChange) def.onChange("size", values(), setValue, active);
     form.addEventListener("submit", (e) => { e.preventDefault(); apply(); });
     form.querySelector(".feature-cancel").addEventListener("click", close);
     active.clearBtn.addEventListener("click", () => {
@@ -735,7 +901,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     });
     form.querySelectorAll("input, select").forEach((el) => {
       const handler = () => {
-        if (def.onChange) def.onChange(el.name, values(), setValue);
+        if (def.onChange) def.onChange(el.name, values(), setValue, active);
         update();
       };
       el.addEventListener(el.tagName === "SELECT" || el.type === "checkbox" ? "change" : "input", handler);
@@ -776,6 +942,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         if (sel) setValue(sel.key, "edge");
         update();
       });
+    } else if (def.view === "sketch") {
+      await def.init(active, { get, setValue, values, update, setError, viewTools, lookAlong });
     } else if (def.view === "face") {
       viewTools.startFacePick((pick) => {
         if (!active || !def.onFace) return;
@@ -839,7 +1007,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     return true;
   }
 
-  return {
+  const api = {
     open,
     close,
     edit,
@@ -859,4 +1027,5 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     },
     isOpen: () => !!active,
   };
+  return api;
 }

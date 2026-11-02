@@ -5508,6 +5508,27 @@ def feature_dialog_checks(tmp):
            and abs((v_boss - v_before_ex) - 5 * 3.14159265 * 9) < 0.5 and st_xe == 200
            and abs((v_before_ex - v_cut) - 3 * 3.14159265 * 9) < 0.5,
            f"{by_name} {st_ex} {ex.get('done')} {v_before_ex} {v_boss} {st_xe} {v_cut}")
+        # Sketch dialog: the plane's frame without leaving a sketch, then a fully dimensioned rectangle and
+        # circle on the XZ plane (sizes as parameters), extruded symmetric into a new body
+        st_sp, frame = call("sketch_plane?plane=XZ")
+        n_before = len(features())
+        st_sk, sk_res = call("feature", {"command": "mechvane.sketch", "params": {"plane": "XZ", "shapes": [
+            {"type": "rectangle", "x": 50, "y": 0, "w": 20, "h": 10}, {"type": "circle", "x": 60, "y": 5, "d": 4}]}})
+        skname = (sk_res.get("results") or [{}])[0].get("name")
+        with srv.lock:
+            skins = srv.ensure_current().session.cmd("sketch.inspect", {"sketch": skname}) if skname else {}
+        st_ske, _ = call("feature", {"command": "solid.extrude", "params": {
+            "sketch": skname, "distance": 6, "direction": "symmetric", "operation": "new"}})
+        with srv.lock:
+            bodies_sk = srv.ensure_current().session.cmd("document.inspect", {"measure": True})["bodies"]
+        new_body = [b for b in bodies_sk if abs(b["volume_mm3"] - (20 * 10 - 3.14159265 * 4) * 6) < 0.5]
+        _, hist_sk = call("history")
+        ok("feature dialog: sketch plane frame (XZ: y along -Z) leaves nothing behind; a sketch with a rectangle and a "
+           "circle is fully defined, one undo step, and extrudes into the expected body",
+           st_sp == 200 and frame.get("y_dir") == [0.0, 0.0, -1.0] and st_sk == 200 and skname
+           and skins.get("fully_constrained") is True and len(features()) == n_before + 2 and st_ske == 200
+           and len(new_body) == 1 and hist_sk.get("undo", "").startswith("Solid") is False,
+           f"{st_sp} {frame} {st_sk} {sk_res} {skins.get('dof')} {st_ske} {[b['volume_mm3'] for b in bodies_sk]} {hist_sk}")
         st_dx, _ = call("feature/delete", {"name": "NoSuchFeature"})
         st_ex, _ = call("feature?name=Base")
         ok("feature dialog: unknown features are 404, features without a dialog (a sketch) cannot be opened for editing (403)",

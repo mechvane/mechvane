@@ -156,7 +156,7 @@
         {
           "status": "progress",
           "title": "Your own Mechvane workspace",
-          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. Next: sketching in Mechvane.",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. Sketches with rectangles and circles are in; lines, arcs and constraints come next.",
           "milestone": "v0.1"
         },
         {

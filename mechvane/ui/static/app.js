@@ -1348,6 +1348,22 @@ var viewBeforeEdit = null;
       if (viewBeforeEdit) updateMeshView(viewBeforeEdit, false);
       viewBeforeEdit = null;
     },
+    // the sketch dialog turns the view onto its plane: looking against the normal, the sketch's Y up
+    lookAlong: (frame) => {
+      if (!frame) return fitCameraToModel(false);
+      const x = new THREE.Vector3(...frame.x_dir), y = new THREE.Vector3(...frame.y_dir);
+      const n = new THREE.Vector3().crossVectors(x, y).normalize();
+      // an empty part has no size yet: leave room for a first sketch of a few centimetres
+      const empty = !(currentMeshData && (currentMeshData.bodies || []).length);
+      const dist = empty ? 220 : Math.max(modelRadius * 2.8, 80);
+      camera.up.copy(y);
+      camera.position.copy(modelCenter).addScaledVector(n, dist);
+      controls.target.copy(modelCenter);
+      camera.lookAt(modelCenter);
+      controls.update();
+      updateAxesGizmo();
+      renderScene();
+    },
   });
   initTreeActions();
   document.querySelectorAll("[data-feature]").forEach((b) => {
@@ -1403,6 +1419,9 @@ async function undoRedo(which) {
     } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {
       e.preventDefault();
       featureDialogs.open("fillet");
+    } else if (!mod && !e.altKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      featureDialogs.open("sketch");
     } else if (!mod && !e.altKey && (e.key === "e" || e.key === "E")) {
       e.preventDefault();
       featureDialogs.open("extrude");

@@ -10,7 +10,7 @@ const FT_NS = "https://github.com/bherbruck/solidcraft/formats/3mf-face-tags/202
 
 // Same lists as the server: what dialogs may run, and which feature types open in a dialog again
 const COMMANDS = {
-  "solid.fillet": "Fillet", "solid.chamfer": "Chamfer", "solid.hole": "Hole",
+  "mechvane.sketch": "Sketch", "solid.fillet": "Fillet", "solid.chamfer": "Chamfer", "solid.hole": "Hole",
   "solid.pattern.rectangular": "Rectangular pattern", "solid.pattern.circular": "Circular pattern",
   "solid.mirror": "Mirror", "solid.extrude": "Extrude", "solid.revolve": "Revolve",
 };
@@ -95,6 +95,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   let booting = null;
   let files = null;      // files.json of the example
   let version = 1;
+  let stepped = false;   // a step was made: the page shows this model, no longer the precomputed one
   let meshSeq = 0;
   const done = [];       // hand steps for Undo: {label}
   const undone = [];     // for Redo
@@ -232,9 +233,68 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     return out;
   }
 
+  // mechvane.sketch as the server's sketch_commands: rectangles and circles, each fully dimensioned,
+  // all or nothing; one undo step in the app is not guaranteed here, so the step is not undoable
+  async function sketch(params) {
+    const plane = params.plane && params.plane.face ? { face: params.plane.face } : params.plane;
+    const cp = (await exec("edit.checkpoint")).checkpoint;
+    try {
+      await exec("sketch.create", { plane });
+      for (const sh of params.shapes || []) {
+        const num = (v, d) => (typeof v === "number" ? v : d);
+        let dims;
+        if (sh.type === "rectangle") {
+          const r = await exec("sketch.rectangle.two_point", { p0: [num(sh.x, 0), num(sh.y, 0)],
+            p1: [num(sh.x, 0) + num(sh.w, 10), num(sh.y, 0) + num(sh.h, 10)], connect: false });
+          dims = [[{ entities: [r.sides.bottom], type: "length" }, sh.w], [{ entities: [r.sides.left], type: "length" }, sh.h],
+                  [{ entities: ["origin", r.corners.bottom_left], type: "distance_x" }, sh.x],
+                  [{ entities: ["origin", r.corners.bottom_left], type: "distance_y" }, sh.y]];
+        } else {
+          const r = await exec("sketch.circle.center", { center: [num(sh.x, 0), num(sh.y, 0)], diameter: num(sh.d, 10), connect: false });
+          const center = r.created.points.find((pt) => pt.endsWith("center"));
+          dims = [[{ entities: [r.created.curves[0]], type: "diameter" }, sh.d],
+                  [{ entities: ["origin", center], type: "distance_x" }, sh.x],
+                  [{ entities: ["origin", center], type: "distance_y" }, sh.y]];
+        }
+        for (const [spec, value] of dims) await exec("sketch.dimension", { ...spec, value });
+      }
+      await exec("sketch.finish", {});
+    } catch (err) {
+      await exec("edit.restore_checkpoint", { checkpoint: cp }).catch(() => {});
+      throw new ApiError(400, shortError(err));
+    }
+    await exec("edit.restore_checkpoint", { checkpoint: cp, forget: true }).catch(() => {});
+    // several app steps: Undo in the demo stops here (the list is cleared), the sketch stays
+    done.length = 0;
+    undone.length = 0;
+    version++;
+    stepped = true;
+    const name = (await timeline()).filter((f) => f.type === "Sketch").at(-1)?.name;
+    return { done: "Sketch", results: [{ name }] };
+  }
+
+  async function sketchPlane(url) {
+    const face = url.searchParams.get("face");
+    const plane = face ? { face: face.split(",").map(Number) } : (url.searchParams.get("plane") || "XY");
+    const cp = (await exec("edit.checkpoint")).checkpoint;
+    try {
+      await exec("sketch.create", { plane });
+      const f = (await exec("sketch.inspect", {})).plane || {};
+      return { origin: f.origin, x_dir: f.x_dir, y_dir: f.y_dir };
+    } catch (err) {
+      throw new ApiError(400, shortError(err));
+    } finally {
+      await exec("edit.restore_checkpoint", { checkpoint: cp });
+    }
+  }
+
   async function feature(body) {
     const { command, params, preview } = body;
     if (!COMMANDS[command]) throw new ApiError(403, `command not available in the workspace: ${command}`);
+    if (command === "mechvane.sketch") {
+      if (preview || body.edit) throw new ApiError(403, "a sketch is drawn in the dialog and made with OK");
+      return sketch(params);
+    }
     let step = { cmd: command, params };
     if (typeof body.edit === "string") {
       const f = (await timeline()).find((x) => x.name === body.edit);
@@ -266,6 +326,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     done.push({ label });
     undone.length = 0;
     version++;
+    stepped = true;
     return { done: label, delta: d, results: [result] };
   }
 
@@ -300,6 +361,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     done.push({ label: `Delete ${name}` });
     undone.length = 0;
     version++;
+    stepped = true;
     return { done: `Deleted ${name}`, deleted: [name],
              failing: Object.fromEntries(Object.entries(now).filter(([k]) => !(k in failingBefore))) };
   }
@@ -323,6 +385,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     await exec(which === "undo" ? "edit.undo" : "edit.redo");
     to.push(from.pop());
     version++;
+    stepped = true;
     return { [which === "undo" ? "undone" : "redone"]: to[to.length - 1].label };
   }
 
@@ -338,7 +401,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       return { busy: !app && !!booting, undo: done.at(-1)?.label ?? null, redo: undone.at(-1)?.label ?? null };
     }
     if (!files) files = await (await fetch(`${base()}files.json`)).json();
-    if (files.kind === "assembly" && /^feature|^sketches/.test(route)) {
+    if (files.kind === "assembly" && /^feature|^sketch/.test(route)) {
       throw new ApiError(403, "features are added in a part: open one of the parts in Model by hand");
     }
     await boot();
@@ -347,6 +410,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     if (route === "tree") return tree();
     if (route === "findings") return findings();
     if (route === "sketches") return sketches();
+    if (route === "sketch_plane") return sketchPlane(url);
     if (route === "feature" && method === "GET") return featureForEdit(url.searchParams.get("name") || "");
     if (route === "feature") return feature(body);
     if (route === "feature/delete") return remove(body.name);
@@ -359,6 +423,6 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     api,
     get started() { return !!app; },
     // a step was made here: the page shows the kernel's model from now on, not the precomputed files
-    get changed() { return done.length + undone.length > 0; },
+    get changed() { return stepped; },
   };
 }

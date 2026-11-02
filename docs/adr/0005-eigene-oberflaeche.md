@@ -162,4 +162,10 @@ erst nach ~0,5 s vollständig (auf die gemeldete Byte-Zahl warten), Zip und XML 
 `document.inspect` und `timeline.inspect`, Prüfung per Pyodide. Rückgängig über `edit.undo`/`edit.redo` (jeder
 Handschritt ist dort genau ein Befehl; Checkpoints taugen nicht: Rückspringen verwirft spätere). Löschen nimmt in der
 Demo nur das Feature, nicht seine Skizze.
+Skizzierer, erster Schnitt (Stufe 3): `mechvane.sketch {plane, shapes}` führt `sketch.create`, je Form Rechteck oder Kreis
+(`connect: false`, sonst setzt SolidCraft am Ursprung eine Koinzidenz und die Lagebemaßung wäre doppelt) und
+Bemaßungen (Länge, Durchmesser, `distance_x/y` zum `origin`) Schritt für Schritt aus, weil die IDs aus den Antworten
+kommen; alles oder nichts über einen Checkpoint. `GET /api/sketch_plane` liefert den Rahmen der Ebene (Skizze im
+Checkpoint anlegen, `sketch.inspect`, zurück); der Dialog zeichnet darauf selbst und klickt per Strahl gegen die Ebene
+(`viewtools.startPlanePick`). In der Demo ist die Skizze mehrere App-Schritte: der Rückgängig-Verlauf wird dort geleert.
 3. Schriften und Symbole: eigene Icons (SVG) im Inventor-Stil, ohne Autodesk-Grafiken (Marken, #33).

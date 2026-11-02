@@ -218,6 +218,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let mode = null; // "measure" | "section" | "select" | null
   let edgePick = null; // a feature dialog picking edges: called with {key, point, edge}
   let facePick = null; // a feature dialog picking a point on a face: called with {point, normal, body, face}
+  let planePick = null; // the sketch dialog: {frame: {origin, x_dir, y_dir}, cb([u, v], worldPoint)}
   let picks = [];
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   let sectionAxis = "z";
@@ -465,6 +466,18 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
+    if (planePick) {
+      // the sketch plane, not the model: a click anywhere on it, also beside the part
+      const { origin, x_dir: xd, y_dir: yd } = planePick.frame;
+      const o = new THREE.Vector3(...origin), x = new THREE.Vector3(...xd), y = new THREE.Vector3(...yd);
+      const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3().crossVectors(x, y).normalize(), o);
+      const at = ray.ray.intersectPlane(pl, new THREE.Vector3());
+      if (at) {
+        const d = at.clone().sub(o);
+        planePick.cb([d.dot(x), d.dot(y)], at);
+      }
+      return;
+    }
     const meshes = modelGroup.children.filter((o) => o.isMesh && !o.userData.sectionCap);
     let hits = ray.intersectObjects(meshes, false);
     if (renderer.clippingPlanes.length) {
@@ -532,7 +545,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let down = null;
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if ((mode !== "measure" && mode !== "select" && !edgePick && !facePick) || !down || e.button !== 0) return;
+    if ((mode !== "measure" && mode !== "select" && !edgePick && !facePick && !planePick) || !down || e.button !== 0) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < (TAP_PX[e.pointerType] ?? TAP_PX.mouse)) pick(e);
   });
   window.addEventListener("keydown", (e) => {
@@ -588,12 +601,23 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     stopEdgePick() {
       edgePick = null;
       facePick = null;
+      planePick = null;
       if (controls) controls.touches.ONE = THREE.TOUCH.ROTATE;
+    },
+    // The sketch dialog picks points on its plane ([u, v] in sketch coordinates) until stopEdgePick();
+    // a face click first (to choose the plane) still goes to startFacePick
+    startPlanePick(frame, onPick) {
+      if (mode) setMode(mode);
+      edgePick = null;
+      facePick = null;
+      planePick = { frame, cb: onPick };
+      if (controls) controls.touches.ONE = null;
     },
     // A feature dialog picks a point on a face (a hole's position) until stopEdgePick()
     startFacePick(onPick) {
       if (mode) setMode(mode);
       edgePick = null;
+      planePick = null;
       facePick = onPick;
       if (controls) controls.touches.ONE = null;
     },

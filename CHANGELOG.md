@@ -7,6 +7,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a15] - 2026-11-02
+
+Built and tested with SolidCraft 0.25.1.
+
+### Added
+
+- **Sketches in the Mechvane workspace (first step).** Click **Create 2D Sketch** (or press S), choose the XY, XZ
+  or YZ plane or click a flat face; the view turns onto it. Draw rectangles and circles with two clicks or type
+  position and size; they are fully dimensioned, so every size is a parameter. OK goes straight on to Extrude with
+  the new sketch, so a part can now be built from scratch in Mechvane: new part, sketch, extrude, hole, fillet.
+  Also in the live demo. Lines, arcs and free constraints come next.
+
 ## [0.1.0a14] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

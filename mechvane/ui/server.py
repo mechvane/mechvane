@@ -215,7 +215,85 @@ def _pattern_label(kind):
     return label
 
 
+def _sketch_label(p) -> str:
+    shapes = p.get("shapes") or []
+    counts = [(k, sum(1 for sh in shapes if sh.get("type") == k)) for k in ("rectangle", "circle")]
+    what = ", ".join(f"{n} {k}" + ("s" if n > 1 else "") for k, n in counts if n)
+    where = p.get("plane") if isinstance(p.get("plane"), str) else "a face"
+    return f"Sketch on {where}: {what}"
+
+
+def sketch_commands(doc, params: dict) -> dict:
+    """mechvane.sketch: a sketch on a plane or face with rectangles and circles, each dimensioned
+    (size and distance of its corner or centre from the sketch origin), so it is fully defined and its
+    sizes are parameters. Runs step by step (the curve ids come from each reply), all or nothing."""
+    s = doc.session
+    plane = params.get("plane")
+    plane = {"face": plane["face"]} if isinstance(plane, dict) and "face" in plane else plane
+    if plane not in ("XY", "XZ", "YZ") and not isinstance(plane, dict):
+        raise ValueError("plane: XY, XZ, YZ or {face: [x, y, z]}")
+    shapes = params.get("shapes") or []
+    if not shapes:
+        raise ValueError("draw at least one rectangle or circle")
+    cp = s.cmd("edit.checkpoint").get("checkpoint")
+    try:
+        made = s.cmd("sketch.create", {"plane": plane})
+        for sh in shapes:
+            x, y = sh.get("x", 0), sh.get("y", 0)
+            if sh.get("type") == "rectangle":
+                w, h = sh.get("w"), sh.get("h")
+                fx = lambda v: float(v) if isinstance(v, (int, float)) else 10.0  # noqa: E731
+                # connect: false: no automatic coincidence with the origin, the dimensions place it
+                r = s.cmd("sketch.rectangle.two_point", {"p0": [fx(x), fx(y)], "p1": [fx(x) + fx(w), fx(y) + fx(h)],
+                                                         "connect": False})
+                bottom, left, corner = r["sides"]["bottom"], r["sides"]["left"], r["corners"]["bottom_left"]
+                dims = [({"entities": [bottom], "type": "length"}, w), ({"entities": [left], "type": "length"}, h),
+                        ({"entities": ["origin", corner], "type": "distance_x"}, x),
+                        ({"entities": ["origin", corner], "type": "distance_y"}, y)]
+            elif sh.get("type") == "circle":
+                d = sh.get("d")
+                r = s.cmd("sketch.circle.center", {"center": [float(x) if isinstance(x, (int, float)) else 0.0,
+                                                              float(y) if isinstance(y, (int, float)) else 0.0],
+                                                   "diameter": float(d) if isinstance(d, (int, float)) else 10.0,
+                                                   "connect": False})
+                circle = r["created"]["curves"][0]
+                center = next(pt for pt in r["created"]["points"] if pt.endswith("center"))
+                dims = [({"entities": [circle], "type": "diameter"}, d),
+                        ({"entities": ["origin", center], "type": "distance_x"}, x),
+                        ({"entities": ["origin", center], "type": "distance_y"}, y)]
+            else:
+                raise ValueError(f"unknown shape: {sh.get('type')}")
+            for spec, value in dims:
+                # a position of 0 coincides with the origin's axis: a distance of 0 is still a valid dimension
+                s.cmd("sketch.dimension", {**spec, "value": value})
+        s.cmd("sketch.finish", {})
+    except Exception:
+        s.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+        raise
+    s.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+    name = next((f["name"] for f in reversed(_timeline(doc)) if f["type"] == "Sketch"), None)
+    return {"results": [{"name": name, "sketch": made.get("sketch")}]}
+
+
+def sketch_plane(doc, plane) -> dict:
+    """The frame of a sketch plane (origin, x_dir, y_dir in world coordinates) without leaving a sketch:
+    the dialog draws the shapes on it before anything is made."""
+    plane = {"face": plane["face"]} if isinstance(plane, dict) and "face" in plane else plane
+    cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
+    try:
+        doc.session.cmd("sketch.create", {"plane": plane})
+        frame = doc.session.cmd("sketch.inspect", {}).get("plane") or {}
+    finally:
+        doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+        try:
+            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+        except Exception:
+            pass
+    return {k: frame.get(k) for k in ("origin", "x_dir", "y_dir")}
+
+
 FEATURE_COMMANDS = {
+    "mechvane.sketch": _sketch_label,
     "solid.fillet": lambda p: f"Fillet R{_num(p.get('radius'))} on {_edges_label(p)}",
     "solid.chamfer": lambda p: f"Chamfer {_num(p.get('distance'))} on {_edges_label(p)}",
     "solid.hole": _hole_label,
@@ -333,6 +411,18 @@ def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, ed
     if doc.kind != PART:
         raise PermissionError("features are added in a part; open the part file")
     commands = [{"command": command, "params": params}]
+    if command == "mechvane.sketch":
+        if preview or edit is not None:
+            raise PermissionError("a sketch is drawn in the dialog and made with OK")
+
+        def apply_sketch():
+            out = sketch_commands(doc, params)
+            doc.save()
+            srv.mtime = doc.path.stat().st_mtime
+            return out
+
+        out = srv.agent.hand_step(f"{_sketch_label(params)} in {doc.name}", apply_sketch)
+        return {"done": f"{_sketch_label(params)}", "results": out["results"]}
     if edit is not None:
         kind = next((f["type"] for f in _timeline(doc) if f["name"] == edit), None)
         if kind is None:
@@ -1153,6 +1243,23 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     except PermissionError as e:
                         self._send_json(403, {"error": str(e)})
+                        return
+                self._send_json(200, data)
+                return
+
+            if path == "/api/sketch_plane":
+                q = parse_qs(url.query)
+                face = (q.get("face") or [""])[0]
+                plane = {"face": [float(c) for c in face.split(",")]} if face else (q.get("plane") or ["XY"])[0]
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None or doc.kind != PART:
+                        self._send_json(409, {"error": "no part open"})
+                        return
+                    try:
+                        data = sketch_plane(doc, plane)
+                    except Exception as e:
+                        self._send_json(400, {"error": modeling.short_error(e)})
                         return
                 self._send_json(200, data)
                 return

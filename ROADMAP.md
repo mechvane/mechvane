@@ -225,7 +225,10 @@ Bis v0.1 fehlt noch:
       Bohrung (Durchgang nach ISO 273, Gewinde, Senkungen aus Mechvanes Tabellen, durch alle oder Tiefe; auch bearbeiten).
       Rechteck- und Kreismuster, Spiegeln (Features im Baum anklicken, Richtung/Achse/Ebene aus X/Y/Z oder angeklickter
       Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
-      durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen; dann Stufe 3.*
+      durch alle; auch bearbeiten). Offen: Bohrungsposition über Abstände zu Kanten, Profilwahl bei mehreren Profilen.*
+      *Stufe 3 begonnen 2026-11-02:* Skizze auf XY/XZ/YZ oder Fläche, Rechteck und Kreis per Klick oder Zahl, voll
+      bemaßt (`mechvane.sketch`), OK öffnet die Extrusion; auch in der Live-Demo. Offen: Linie, Bogen, Abhängigkeiten,
+      Konfliktanzeige, Skizze bearbeiten.
       *Dialoge in der Live-Demo fertig 2026-11-02:* `demo_kernel.js` beantwortet die `api/*`-Anfragen im Browser über die
       versteckte SolidCraft-Web-App (Netz per `file.export` 3mf-tagged in OPFS, Prüfung per Pyodide, Rückgängig über
       `edit.undo/redo`).

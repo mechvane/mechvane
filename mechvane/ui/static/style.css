@@ -1454,3 +1454,7 @@ dialog.request-dialog::backdrop {
 .feature-note:empty { display: none; }
 .tree-row[data-feature].picked { background: var(--selected-bg); outline: 1px dashed var(--selected-border); }
 .tree-row[data-feature].picked .tree-name::before { content: "✓ "; color: var(--selected-border); }
+.sketch-shapes { display: flex; flex-direction: column; gap: 2px; }
+.sketch-shape { display: flex; justify-content: space-between; align-items: center; padding: 1px 6px;
+  border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
+.sketch-add-row { justify-content: flex-start; }
