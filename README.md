@@ -13,8 +13,8 @@ Model by hand, hand a step to an AI agent, or both: you work on the same parts a
 same design checks either way. The core stays small; domain modules (sheet metal, standard
 parts, frames, drawings …) load only when a document or the user needs them.
 
-**[Try the web UI in your browser](https://mechvane.dev/demo/)**: example models with the model
-tree and design check findings, nothing to install.
+**[Try it in your browser](https://mechvane.dev/demo/)**: the Mechvane workspace with example models,
+the feature dialogs and the design check, nothing to install (SolidCraft runs in the page).
 
 ![A joint jumps to the wrong bore after a part edit, update_links puts it back](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/update_links.gif)
 
@@ -90,7 +90,7 @@ For development, clone the repo and run the checks:
 ```sh
 git clone https://github.com/mechvane/mechvane && cd mechvane
 pip install -e .
-python3 tests/mechvane/check.py      # about 240 checks, a few minutes
+python3 tests/mechvane/check.py      # about 400 checks, a few minutes
 python3 tests/reference/check.py     # reference parts with expected values
 ```
 
@@ -102,27 +102,27 @@ Windows: [docs/installation-windows.md](https://github.com/mechvane/mechvane/blo
 
 ## Status
 
-Phase 1: a Python prototype running as an MCP server on top of SolidCraft. Separate part
-and assembly files, sketches owned by their feature, a model browser in the classic tree
-style, joints across files with checking and repair, standard parts (screws, nuts,
-washers, ball bearings), a bolted connection assistant with patterns, `check_design` with
-design rules, ISO 286 fits and a knowledge catalog of sourced standard values. A read-only
-web UI (`python3 -m mechvane.ui <file.solidcraft> [--port 8765]`) shows the 3D model,
-the model browser tree and design/joint findings with interactive face highlighting.
-Its "Model by hand" mode (`/model`) embeds the SolidCraft web app: edit the part or
-assembly with the mouse, save, and Mechvane checks it again and updates the links. The web
-app is downloaded once from the SolidCraft release and checked against a pinned SHA256.
+Alpha, Phase 1: Mechvane runs as a Python layer on top of SolidCraft, as an MCP server for your agent and as a
+web UI on your computer.
 
-![Mechvane read-only web UI showing model tree, 3D viewport and highlighted countersink finding](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/web-ui-1.png)
+- **Workspace** in the layout of classic mechanical CAD (`mechvane ui`): ribbon, model browser, properties and
+  design check. Dialogs with live preview for extrude, revolve, hole (clearance, tapped, counterbore, countersink
+  from ISO/DIN tables), fillet, chamfer, rectangular and circular pattern and mirror; double-click a feature to
+  edit it, right-click to delete it. One Undo list for your own steps and your agent's.
+- **Your agent in the app**: a chat next to the model; select faces and say what should happen there.
+- **Parts and assemblies** as separate files, joints across files that `update_links` checks and repairs,
+  standard parts (screws, nuts, washers, ball bearings) and a bolted connection assistant.
+- **Design check** with sourced rules, ISO 286 fits and an open knowledge catalog.
+- **Expert mode**: the SolidCraft web app embedded for everything the workspace does not have yet.
 
-*A countersink that notches the wall, highlighted on click (regenerate with
-`python3 tools/demo_web_ui.py`).*
+Sketching in the workspace is being reworked to work like Inventor and Fusion (a sketch environment with its own
+tools); until then, sketches come from your agent or the expert mode. See the
+[roadmap](https://mechvane.dev/roadmap/).
 
-![Model by hand: the SolidCraft web app embedded in Mechvane, the countersink moved away from the wall and Mechvane's findings updated after saving](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/model-mode.png)
+![Mechvane workspace: a bracket with one picked edge and the Fillet dialog showing radius 3 mm and the volume change of the preview](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/web-workspace-fillet.png)
 
-*Model by hand: the same bracket in the embedded SolidCraft web app, the countersink moved away
-from the wall and saved, Mechvane checked it again (regenerate with `python3 tools/demo_model_ui.py`).
-Try it without installing: [live demo](https://mechvane.dev/demo/model.html?demo=bracket).*
+*Pick an edge, type a radius, and the preview shows the fillet before you press OK. SolidCraft computes it
+underneath.*
 
 ## Contents
 
