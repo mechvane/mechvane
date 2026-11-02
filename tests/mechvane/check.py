@@ -5611,6 +5611,45 @@ def sessionlog_checks(tmp):
         install.CACHE = old_cache
 
 
+def window_close_checks(tmp):
+    """The app window closed (the page said "closing" and nothing came after): the server stops after a few seconds,
+    although the browser process lives on (Chrome on Windows); a reload (a request after "closing") keeps it."""
+    import time
+    import urllib.request
+    from mechvane.ui import server as ui_server
+    folder = Path(tmp) / "winclose"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        w.new(PART, "p").save()
+    finally:
+        w.close_all()
+    old = ui_server.CLOSING_GRACE_S
+    ui_server.CLOSING_GRACE_S = 1
+    try:
+        results = []
+        for reload_after in (False, True):
+            srv = ui_server.create_server(str(folder / "p.solidcraft"), port=0)
+            t = threading.Thread(target=srv.serve_forever, daemon=True)
+            t.start()
+            watcher = threading.Thread(target=ui_server._watch_closing, args=(srv,), daemon=True)
+            watcher.start()
+            base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+            urllib.request.urlopen(urllib.request.Request(base + "closing", method="POST", data=b"{}")).read()
+            if reload_after:
+                time.sleep(0.2)
+                urllib.request.urlopen(base + "version").read()
+            t.join(timeout=8)
+            results.append(not t.is_alive())
+            if t.is_alive():
+                srv.shutdown()
+            srv.server_close()
+        ok("ui: a closed app window stops the server (page says closing, nothing follows); a reload keeps it",
+           results == [True, False], str(results))
+    finally:
+        ui_server.CLOSING_GRACE_S = old
+
+
 def roadmap_json_checks():
     """roadmap.json (public roadmap page): valid statuses, every item with a title, every status named."""
     data = json.loads((Path(__file__).resolve().parents[2] / "roadmap.json").read_text(encoding="utf-8"))
@@ -6522,6 +6561,7 @@ def main():
             params_checks(tmp)
             feature_dialog_checks(tmp)
             sessionlog_checks(tmp)
+            window_close_checks(tmp)
             viewtools_checks(tmp)
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)

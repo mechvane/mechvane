@@ -331,6 +331,11 @@ async function main() {
   await startApp();
   window.mechvaneReady = true;
   status("Ready");
+  if (!STATIC) {
+    // the server stops when its app window closes; this page asks it nothing else regularly, so say it is here
+    setInterval(() => fetch("api/version").catch(() => {}), 3000);
+    window.addEventListener("pagehide", () => { if (navigator.sendBeacon) navigator.sendBeacon("api/closing", "{}"); });
+  }
   if (!STATIC) initChat();
 
   // Send every file the app saved back to the server.

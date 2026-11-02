@@ -84,6 +84,12 @@
         },
         {
           "status": "planned",
+          "title": "Windows installer with its own window",
+          "text": "Mechvane as a Windows program with an installer and its own window, no Python or browser setup needed, with SolidCraft included.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
           "title": "Stable 0.1 release",
           "text": "Tested in practice on Linux and Windows, rough edges fixed, a release you can rely on.",
           "milestone": "v0.1"

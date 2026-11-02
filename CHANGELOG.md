@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Closing the Mechvane app window now also stops Mechvane on Windows. Chrome keeps running in the background after
+  its last window closes, so Mechvane went on running unseen; it now notices when the page goes away (a reload does
+  not count) and also ends the browser process of its own window.
+
 ## [0.1.0a17] - 2026-11-02
 
 Built and tested with SolidCraft 0.25.1.

@@ -941,6 +941,12 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         srv: UIServer = self.server  # type: ignore[assignment]
         self._t0, self._req_body = time.time(), None
+        if path == "/api/closing":
+            # the page goes away (window closed or reloaded): see _watch_closing
+            srv.closing_at = time.time()
+            self._send_json(200, {"ok": True})
+            return
+        srv.last_seen = time.time()
         try:
             if path == "/api/log":
                 # what the browser reports for the session log: errors, dialogs, the status line
@@ -1175,6 +1181,7 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         path = url.path
         srv: UIServer = self.server  # type: ignore[assignment]
         self._t0, self._req_body = time.time(), None
+        srv.last_seen = time.time()
         try:
             if path == "/api/agent/events":
                 try:
@@ -1419,10 +1426,32 @@ def run_server(path, port: int = 8765, opener=None):
     if opener:
         def open_ui():
             srv.stops_with_window = opener(url, srv.shutdown) == "window"
+            if srv.stops_with_window:
+                threading.Thread(target=_watch_closing, args=(srv,), daemon=True).start()
         threading.Thread(target=open_ui, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        sessionlog.log("ui_stop", port=actual_port)
         srv.server_close()
+        if srv.stops_with_window:
+            from . import appwindow
+            appwindow.close_windows()  # Chrome keeps the window's process alive in the background on Windows
+
+
+CLOSING_GRACE_S = 8
+
+
+def _watch_closing(srv):
+    """Stop the server when its app window was closed. The browser process cannot tell (Chrome keeps running in
+    the background on Windows after its last window closed), so the page says "closing" when it goes away; a
+    reload asks again within seconds, a closed window does not."""
+    while True:
+        time.sleep(2)
+        closing = getattr(srv, "closing_at", None)
+        if closing and time.time() - closing > CLOSING_GRACE_S and getattr(srv, "last_seen", 0) <= closing:
+            sessionlog.log("ui_window_closed")
+            srv.shutdown()
+            return

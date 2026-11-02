@@ -815,7 +815,11 @@ function flushLog(beacon = false) {
 }
 if (!STATIC) {
   setInterval(flushLog, 1500);
-  window.addEventListener("pagehide", () => flushLog(true));
+  window.addEventListener("pagehide", () => {
+    flushLog(true);
+    // a closed app window stops Mechvane (the server waits a few seconds: a reload comes back at once)
+    if (navigator.sendBeacon) navigator.sendBeacon("api/closing", "{}");
+  });
   window.addEventListener("error", (e) => clientLog("js_error", { message: e.message, at: `${e.filename}:${e.lineno}:${e.colno}`,
                                                                  stack: e.error && e.error.stack }));
   window.addEventListener("unhandledrejection", (e) => clientLog("js_rejection", { message: String(e.reason && (e.reason.stack || e.reason)) }));

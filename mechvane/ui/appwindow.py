@@ -57,6 +57,19 @@ def app_command(browser: str, url: str) -> list[str]:
             "--no-first-run", "--no-default-browser-check"]
 
 
+_windows: list = []  # browser processes this Mechvane started for its app windows
+
+
+def close_windows():
+    """End the browser processes of our app windows (its own profile, so no other browser window goes with it)."""
+    for proc in _windows:
+        try:
+            if proc.poll() is None:
+                proc.terminate()
+        except OSError:
+            pass
+
+
 def open_window(url: str, on_close=None) -> str | bool:
     """Open url in an app window; on_close() runs when the user closes it.
 
@@ -76,6 +89,7 @@ def open_window(url: str, on_close=None) -> str | bool:
             except subprocess.TimeoutExpired:
                 rc = None
             if rc is None:
+                _windows.append(proc)
                 if on_close:
                     threading.Thread(target=lambda: (proc.wait(), on_close()), daemon=True).start()
                 return "window"

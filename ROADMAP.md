@@ -272,6 +272,12 @@ Bis v0.1 fehlt noch:
 - [x] **Baugruppen wie Inventor**: erstes Teil festlegen (#26, erledigt 2026-11-01), `bolted_connection` durch alle und
       Kollisionsprüfung (#34, erledigt 2026-11-02; „durch alle“ bohrt auch eine zweite Wand desselben Teils dahinter).
 - [ ] **Desktop-App Schritt 1**: Sichtprüfung des App-Fensters unter Windows und Linux.
+- [ ] **Eigenes Fenster unter Windows, vor 0.1.0** (Nutzer 2026-11-02, Zwischenschritt zu Grundsatz 12, nach
+      Skizzierumgebung Schritt a): pywebview auf WebView2 (Edge-Engine, in Windows 11 eingebaut, WebGL/WebGPU) statt
+      Chrome-App-Fenster: eigenes Fenster, Symbol und Titel, der Prozess gehört Mechvane (Fenster zu = Mechvane zu).
+      Paket mit PyInstaller und Installer (Inno Setup): Python und SolidCraft im Paket, kein `pip`. Linux bleibt vorerst
+      beim Chrome-App-Fenster (WebKitGTK). Die endgültige Hülle (Tauri/Electron/Qt) bleibt beim Prüfpunkt Sprache.
+      Prüfen auf Surface und win-cad, auch Expertenmodus und Pyodide im WebView2.
 - [ ] **Praxistests** (4): mindestens zwei weitere Runden mit dem Nutzer, je eine echte Konstruktion von
       Anfang bis Ende (Agent und Handbedienung), Befunde beheben.
 - [ ] **Stabile Version** 0.1.0 auf PyPI, wenn alles oben erledigt ist und Linux und Windows laufen.
