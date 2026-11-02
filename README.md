@@ -7,6 +7,8 @@
 
 **You and your agent on the same model.**
 
+**[Website](https://mechvane.dev/)** · **[Live demo](https://mechvane.dev/demo/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
+
 Parametric 3D CAD for everyday mechanical engineering (individual engineers, makers,
 small and medium-sized companies), following the workflow of classic mechanical CAD systems.
 Model by hand, hand a step to an AI agent, or both: you work on the same parts and get the
