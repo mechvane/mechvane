@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mechvane roadmap</title>
+  <meta name="description" content="What Mechvane can do today and what comes next: parametric CAD on SolidCraft, you and your agent on the same model.">
+  <link rel="icon" href="../media/logo.svg">
+  <style>
+    :root {
+      --bg: #f6f7f9; --panel: #ffffff; --border: #d8dee4; --text: #1f2328; --muted: #59636e;
+      --done: #1a7f37; --done-bg: #dafbe1; --next: #0969da; --next-bg: #ddf4ff;
+      --progress: #9a6700; --progress-bg: #fff8c5; --planned: #59636e; --planned-bg: #eaeef2;
+      --later: #8250df; --later-bg: #fbefff; --accent: #d26a0c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111418; --panel: #181c22; --border: #2b313a; --text: #e6edf3; --muted: #8b949e;
+        --done: #3fb950; --done-bg: #12261a; --next: #58a6ff; --next-bg: #11233a;
+        --progress: #d29922; --progress-bg: #2b2111; --planned: #8b949e; --planned-bg: #21262d;
+        --later: #bc8cff; --later-bg: #251a33; --accent: #ffad45;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+    header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    header img { width: 44px; height: 44px; }
+    h1 { font-size: 26px; margin: 0; }
+    .tagline { color: var(--muted); margin: 2px 0 0; }
+    header nav { margin-left: auto; display: flex; gap: 14px; font-size: 14px; }
+    a { color: var(--next); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .milestone { margin: 28px 0 8px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--border);
+      border-left: 4px solid var(--accent); border-radius: 8px; }
+    .milestone h2 { margin: 0 0 4px; font-size: 17px; }
+    .milestone p { margin: 0; color: var(--muted); }
+    .ms-bar { height: 14px; border-radius: 7px; background: var(--planned-bg); overflow: hidden; margin: 14px 0 4px; }
+    .ms-bar span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 7px; transition: width 0.6s ease; }
+    .milestone p.ms-detail { font-size: 13px; margin-bottom: 18px; }
+    .tag { font-size: 11px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 600; }
+    .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 14px 0 8px; background: var(--planned-bg); }
+    .bar span { display: block; height: 100%; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 0; list-style: none; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer; font-family: inherit; }
+    .chip[aria-pressed="false"] { opacity: 0.45; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    section { margin-top: 36px; }
+    section > h2 { font-size: 19px; margin: 0 0 2px; }
+    section > p { margin: 0 0 14px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .card h3 { font-size: 15px; margin: 0 0 4px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .pill { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+    .s-done { --c: var(--done); --cb: var(--done-bg); }
+    .s-next { --c: var(--next); --cb: var(--next-bg); }
+    .s-progress { --c: var(--progress); --cb: var(--progress-bg); }
+    .s-planned { --c: var(--planned); --cb: var(--planned-bg); }
+    .s-later { --c: var(--later); --cb: var(--later-bg); }
+    .pill, .dot { color: var(--c); background: var(--cb); }
+    .dot { background: var(--c); }
+    .card { border-left: 3px solid var(--c); }
+    footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="../media/logo.svg" alt="">
+    <div>
+      <h1 id="title">Mechvane roadmap</h1>
+      <p class="tagline" id="tagline"></p>
+    </div>
+    <nav>
+      <a href="../">Home</a>
+      <a href="../demo/">Live demo</a>
+      <a href="https://github.com/mechvane/mechvane">GitHub</a>
+      <a href="https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md">Changelog</a>
+    </nav>
+  </header>
+
+  <div class="milestone">
+    <h2 id="milestone-title"></h2>
+    <p id="milestone-goal"></p>
+    <div class="ms-bar" aria-hidden="true"><span id="milestone-fill"></span></div>
+    <p class="ms-detail" id="milestone-detail"></p>
+    <div class="bar" id="bar" aria-hidden="true"></div>
+    <ul class="legend" id="legend" aria-label="Filter by status"></ul>
+  </div>
+
+  <div id="sections"></div>
+
+  <footer>
+    <p>Built on <a href="https://github.com/tangency-labs/solidcraft">SolidCraft</a>, the open CAD kernel and app
+      where everything is a command. This page reads <code>roadmap.json</code> from the main branch, so it follows
+      every push. <span id="source"></span></p>
+    <p>Missing something? <a href="https://github.com/mechvane/mechvane/issues/new?template=feature_request.yml">Request a feature</a>.</p>
+  </footer>
+</main>
+<script>
+  const LIVE = "https://raw.githubusercontent.com/mechvane/mechvane/main/roadmap.json";
+  const ORDER = ["done", "next", "progress", "planned", "later"];
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text) e.textContent = text;
+    return e;
+  };
+
+  async function load() {
+    for (const [url, label] of [[LIVE, "Live from GitHub."], ["roadmap.json", "Copy from the last site build."]]) {
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (r.ok) return [await r.json(), label];
+      } catch {
+        // next source
+      }
+    }
+    throw new Error("roadmap not available");
+  }
+
+  function render(data, label) {
+    document.getElementById("tagline").textContent = data.tagline || "";
+    // progress of the milestone in % instead of a date: its items that are done (released or in the next release)
+    const ms = data.sections.flatMap((s) => s.items).filter((i) => i.milestone === data.milestone.name);
+    const msDone = ms.filter((i) => i.status === "done" || i.status === "next").length;
+    const pct = ms.length ? Math.round((100 * msDone) / ms.length) : 0;
+    document.getElementById("milestone-title").textContent = `Next milestone: ${data.milestone.name} · ${pct} % done`;
+    document.getElementById("milestone-detail").textContent =
+      `${msDone} of ${ms.length} parts of ${data.milestone.name} are done, ${ms.filter((i) => i.status === "progress").length} in progress.`;
+    const fill = document.getElementById("milestone-fill");
+    fill.style.width = `${pct}%`;
+    document.getElementById("milestone-goal").textContent = data.milestone.goal;
+    document.getElementById("source").textContent = label;
+
+    const items = data.sections.flatMap((s) => s.items);
+    const count = Object.fromEntries(ORDER.map((k) => [k, items.filter((i) => i.status === k).length]));
+    const bar = document.getElementById("bar");
+    const legend = document.getElementById("legend");
+    const shown = new Set(ORDER);
+    for (const k of ORDER) {
+      if (!count[k]) continue;
+      const seg = el("span", `s-${k}`);
+      seg.style.width = `${(100 * count[k]) / items.length}%`;
+      seg.style.background = "var(--c)";
+      bar.appendChild(seg);
+      const li = el("li");
+      const chip = el("button", `chip s-${k}`);
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", "true");
+      chip.append(el("span", "dot"), `${data.statuses[k]} · ${count[k]}`);
+      chip.addEventListener("click", () => {
+        if (shown.has(k)) shown.delete(k); else shown.add(k);
+        chip.setAttribute("aria-pressed", String(shown.has(k)));
+        document.querySelectorAll(".card").forEach((c) => c.classList.toggle("hidden", !shown.has(c.dataset.status)));
+        document.querySelectorAll("section").forEach((s) =>
+          s.classList.toggle("hidden", !s.querySelector(".card:not(.hidden)")));
+      });
+      li.appendChild(chip);
+      legend.appendChild(li);
+    }
+
+    const root = document.getElementById("sections");
+    for (const s of data.sections) {
+      const sec = el("section");
+      sec.append(el("h2", "", s.title));
+      if (s.intro) sec.append(el("p", "", s.intro));
+      const grid = el("div", "grid");
+      const sorted = [...s.items].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status));
+      for (const it of sorted) {
+        const card = el("article", `card s-${it.status}`);
+        card.dataset.status = it.status;
+        const h = el("h3");
+        const name = el("span", "", it.title);
+        if (it.milestone) name.append(el("span", "tag", it.milestone));
+        h.append(name, el("span", "pill", data.statuses[it.status]));
+        card.append(h);
+        if (it.text) card.append(el("p", "", it.text));
+        grid.append(card);
+      }
+      sec.append(grid);
+      root.append(sec);
+    }
+  }
+
+  load().then(([d, l]) => render(d, l)).catch((e) => {
+    document.getElementById("sections").textContent = `The roadmap could not be loaded (${e.message}).`;
+  });
+</script>
+</body>
+</html>

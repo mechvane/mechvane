@@ -1,0 +1,1 @@
+{"kind":"part","name":"bracket","bodies":["Bracket"],"features":[{"name":"BasePlate","type":"BoxFeature"},{"name":"Wall","type":"BoxFeature"},{"name":"Hole","type":"HoleFeature"},{"name":"CountersinkNearWall","type":"HoleFeature"},{"type":"EndOfPart"}],"groups":{"sketches":[],"work_features":[]}}

@@ -1,0 +1,468 @@
+{
+  "title": "Mechvane roadmap",
+  "tagline": "You and your agent on the same model.",
+  "milestone": {
+    "name": "v0.1",
+    "goal": "The foundations run, with a good web UI for working together with your agent: the agent builds, you see, point and check."
+  },
+  "statuses": {
+    "done": "Available",
+    "next": "Done, in the next release",
+    "progress": "In progress",
+    "planned": "Planned",
+    "later": "Later"
+  },
+  "sections": [
+    {
+      "title": "Foundation",
+      "intro": "Mechvane builds on SolidCraft, an open parametric CAD kernel and app where everything is a command. SolidCraft stays unchanged; Mechvane adds its own layer on top.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Built on SolidCraft",
+          "text": "Parametric modelling, sketches, features and assemblies from SolidCraft, used as a dependency without changes.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Parts and assemblies as separate files",
+          "text": "One file per part, assemblies link their parts like in classic mechanical CAD.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Joints that survive part changes",
+          "text": "update_links notices when a joint moved to another face after a part edit and puts it back.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "MCP server for your agent",
+          "text": "Parts, assemblies, joints, standard parts and design checks as tools for Claude and other agents.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Clear error messages for your agent",
+          "text": "When SolidCraft rejects a step, Mechvane names the feature and the spot and says in one sentence what touches what, with a suggestion, so your agent can fix it on the next try.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "A short report after every step",
+          "text": "After each change your agent learns how size, centre of mass, volume and number of bodies moved, and gets a warning when a cut hit nothing or the part fell apart.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "A picture to check against",
+          "text": "One image with iso, front, top and a section, with axes and sizes, the last change highlighted: a quick visual check for agents that can see images.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Roll back to find a problem",
+          "text": "Your agent can move the end of part before a failing feature, repair it there and step forward again, as you would in Inventor.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Install in one step",
+          "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Webhooks",
+          "text": "Mechvane reports events such as a saved part, a failed check or a finished agent task to a URL of your choice, next to the existing HTTP API."
+        },
+        {
+          "status": "done",
+          "title": "Own app window and start menu entry",
+          "text": "Opens like a desktop app, one instance per project folder.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Windows installer with its own window",
+          "text": "Mechvane as a Windows program with an installer and its own window, no Python or browser setup needed, with SolidCraft included.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Stable 0.1 release",
+          "text": "Tested in practice on Linux and Windows, rough edges fixed, a release you can rely on.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Import STEP as a reference body",
+          "text": "Bring in STEP files from suppliers or other tools as solid bodies, using SolidCraft's STEP reader: place bought parts in an assembly, measure them and run the checks on them. In the workspace (File → Import STEP…) or through your agent."
+        },
+        {
+          "status": "planned",
+          "title": "Open files from other CAD systems",
+          "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first. Features that cannot be rebuilt directly stay as placeholders until your agent or a later version rebuilds them."
+        }
+      ]
+    },
+    {
+      "title": "Web UI",
+      "intro": "Model by hand, let your agent take a step, check the result: all on the same model.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Check page",
+          "text": "3D view, model tree and design findings; reloads when the file changes.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Model by hand",
+          "text": "The SolidCraft web app embedded in Mechvane, saving back into your project.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Live demo in the browser",
+          "text": "Example models at mechvane.dev, nothing to install.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Request a feature from the app",
+          "text": "A short form that opens a prepared GitHub issue.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Parameters",
+          "text": "Change parameters and dimensions in a form; several changes apply together or not at all.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Measure",
+          "text": "Distances, gaps between faces, angles, hole diameters and axis distances by clicking in the 3D view.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Measure edges",
+          "text": "Click an edge for its length, a circle's diameter or an arc's radius; two edges give their angle, gap or whether they are coaxial.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Section view",
+          "text": "Cut the model along X, Y or Z with a slider.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Profile and material for the checks",
+          "text": "Choose how the part is made and what it is made of.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "progress",
+          "title": "Your own Mechvane workspace",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. A sketch environment with lines, rectangles and circles, snapping, arcs, constraints, a dimension tool and dimensions typed at the cursor is ready for the next release; projecting model edges, trim and offset are in too.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Switch project folders in the app",
+          "text": "Pick another project folder from inside Mechvane, with recently used folders at hand, instead of starting it again with a different folder. Opening a single file makes its folder the project, so assemblies keep finding their parts."
+        },
+        {
+          "status": "planned",
+          "title": "Direct editing",
+          "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
+        },
+        {
+          "status": "done",
+          "title": "Hole positioning by edge distances",
+          "text": "Place holes by distances from one or two straight edges in the Hole dialog (Inventor style), with interactive edge picking and live preview.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Live demo checks your changes",
+          "text": "Model a part by hand in the browser demo, save, and the design check runs again right there, no install needed. The feature dialogs of the workspace work in the demo too. Assembly checks in the demo are precomputed.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Check settings saved with the part",
+          "text": "Profile and material travel with the part file, so every browser and your agent check the same way.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Chat with your agent",
+          "text": "Your agent works in the same window, on the Check page and in Model by hand, with stop, undo and redo for each turn.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "progress",
+          "title": "Point and speak",
+          "text": "Select a face and say what should happen there, e.g. \"chamfer 1 × 45°\". Speech input works; testing on devices.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Lock what you decided",
+          "text": "Mark parameters, features or faces as fixed; your agent works around them and tells you when a request would need them changed."
+        },
+        {
+          "status": "planned",
+          "title": "See what your agent changed",
+          "text": "The previous state as a ghost over the new one and changed features marked in the browser, to accept or undo each change. Removed geometry in red, new in blue, as in Onshape's visual compare."
+        },
+        {
+          "status": "planned",
+          "title": "Why a value is what it is",
+          "text": "Values your agent or an assistant calculates keep their derivation and source, shown when you hover over them."
+        },
+        {
+          "status": "planned",
+          "title": "Versions, branches and variants",
+          "text": "Named versions you can compare side by side, branches to try a variant (also by your agent, for you to pick), later merged back feature by feature."
+        },
+        {
+          "status": "planned",
+          "title": "Comments and tasks on the model",
+          "text": "Pin notes and tasks to a face, edge or feature. Check findings and requests for your agent live in the same place, and finished tasks stay with the part."
+        },
+        {
+          "status": "planned",
+          "title": "Follow your agent",
+          "text": "Watch live where your agent is working: camera, selection and the feature it is editing. When you point and speak, your agent sees your view."
+        },
+        {
+          "status": "planned",
+          "title": "Keep working while your agent works",
+          "text": "Your agent prepares its changes on a copy while you go on modelling, and you take them over when they are ready."
+        },
+        {
+          "status": "planned",
+          "title": "Own interface, SolidCraft in the background",
+          "text": "After the workspace: an own sketcher with live preview, so modelling never leaves Mechvane. SolidCraft keeps computing underneath and stays named in the app."
+        },
+        {
+          "status": "planned",
+          "title": "Online version and Android app",
+          "text": "Look at and change your models on the go. The web UI also becomes comfortable on tablets with touch and pen."
+        }
+      ]
+    },
+    {
+      "title": "Engineering knowledge",
+      "intro": "Rules and values with their sources, so the checks do not guess and your agent proposes what an experienced engineer would.",
+      "items": [
+        {
+          "status": "done",
+          "title": "Design checks",
+          "text": "Wall thickness, hole edge distance, thread depth and printability, for 3D printing and CNC milling.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Standard parts",
+          "text": "Generated on demand: socket and countersunk screws, hex bolts, nuts, washers, ball bearings, heat-set inserts.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Bolted connection assistant",
+          "text": "Through holes, tapped blind holes and heat-set inserts with matching screw, washer and nut.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Thread depth by material",
+          "text": "Checks use the material assigned to the part, e.g. 1.0 × d in steel, 2.0 × d in soft aluminium."
+        },
+        {
+          "status": "progress",
+          "title": "Open knowledge catalog",
+          "text": "Every value with its source, quotation and status, checked automatically against the source."
+        },
+        {
+          "status": "progress",
+          "title": "Material database",
+          "text": "28 materials so far (steels, stainless steels, aluminium alloys and casting, cast iron, copper, brass, engineering plastics and 3D-printing materials), every value with its source, ready to assign in SolidCraft as a material library."
+        },
+        {
+          "status": "planned",
+          "title": "Rules from material properties",
+          "text": "Minimum thread depth, edge distance and contact pressure calculated from strength values instead of fixed tables."
+        },
+        {
+          "status": "planned",
+          "title": "More rules per manufacturing process",
+          "text": "For 3D printing teardrop holes and heat-set inserts, for milling inner radii, drilling depth and tool access, each with its source."
+        },
+        {
+          "status": "planned",
+          "title": "Material and appearance editor",
+          "text": "Material and look per part, in an open format you can render 1:1 in Blender."
+        }
+      ]
+    },
+    {
+      "title": "Domain modules",
+      "intro": "Loaded only when a document needs them.",
+      "items": [
+        {
+          "status": "planned",
+          "title": "Frame generator",
+          "text": "Aluminium profile frames (20/30/40 slot) and steel sections with connectors."
+        },
+        {
+          "status": "planned",
+          "title": "Design accelerators",
+          "text": "Shafts, gears, springs and more as guided assistants."
+        },
+        {
+          "status": "planned",
+          "title": "Named connection points",
+          "text": "Parts offer named anchors such as a shaft axis or a mounting face, for joints and for parts built to fit. Joints snap to them directly, and coupled joints (gears, rack, screw, belt) drive each other."
+        },
+        {
+          "status": "planned",
+          "title": "Replicate parts",
+          "text": "Place a part with its joint on every matching spot at once, for example a screw in every hole of a hole pattern."
+        },
+        {
+          "status": "planned",
+          "title": "Shared variables",
+          "text": "One table of variables for several parts and their assembly, such as wall thickness or gap; a change updates every linked file."
+        },
+        {
+          "status": "planned",
+          "title": "Skeleton modelling",
+          "text": "Take sketches, faces or coordinate systems from a skeleton part into other parts, linked and kept up to date, while parts stay separate files."
+        },
+        {
+          "status": "planned",
+          "title": "Geometry projected across parts",
+          "text": "A part built to fit another one keeps the link and follows when the other part changes."
+        },
+        {
+          "status": "planned",
+          "title": "Fit check across joints",
+          "text": "Hole and shaft fits checked against each other and against the kind of joint."
+        },
+        {
+          "status": "planned",
+          "title": "Clearance and collision check",
+          "text": "Find parts that overlap, at rest and along the range of each joint."
+        },
+        {
+          "status": "planned",
+          "title": "Exploded view and parts list",
+          "text": "Exploded views from joint axes and bolted connections with an animated preview, and a parts list to export."
+        },
+        {
+          "status": "planned",
+          "title": "Sheet metal additions",
+          "text": "Rules and helpers on top of SolidCraft's sheet metal. The 3D part and its flat pattern side by side, both live while you edit. Turn a solid into sheet metal by picking bend and rip edges, on top of SolidCraft's conversion."
+        },
+        {
+          "status": "planned",
+          "title": "Slicer module",
+          "text": "Slice and send parts to your 3D printer from Mechvane."
+        },
+        {
+          "status": "planned",
+          "title": "Print check for your agent",
+          "text": "A quick slice in the background shows your agent where support, bridges or too thin walls would appear."
+        },
+        {
+          "status": "planned",
+          "title": "Rule-based configuration",
+          "text": "Parameter rules and configuration tables for families of parts. One small table per property (length, material, fastening) instead of one large variant table."
+        },
+        {
+          "status": "planned",
+          "title": "Your own features as code",
+          "text": "Write a feature such as a bolted connection in Python once; it sits in the model browser as one feature, recomputes on change, and you and your agent use it the same way."
+        },
+        {
+          "status": "planned",
+          "title": "Welding",
+          "text": "Weld seams as features (fillet and butt welds), weldments and ISO 2553 weld symbols in drawings."
+        },
+        {
+          "status": "planned",
+          "title": "Strength check",
+          "text": "A quick linear stress check right on the model, loads and supports picked on faces; CalculiX for contact, plasticity and vibration."
+        }
+      ]
+    },
+    {
+      "title": "Manufacturing drawings",
+      "intro": "ISO drawings straight from the 3D model.",
+      "items": [
+        {
+          "status": "planned",
+          "title": "Views",
+          "text": "Base, projected, section and detail views with hidden lines."
+        },
+        {
+          "status": "planned",
+          "title": "Dimensions and tolerances",
+          "text": "Fits, thread representation, surface symbols, geometric tolerances to ISO."
+        },
+        {
+          "status": "planned",
+          "title": "Title block and parts list",
+          "text": "Title block, parts list and balloons. The parts list stays linked to the model in both directions."
+        },
+        {
+          "status": "planned",
+          "title": "Drawings by your agent",
+          "text": "Your agent derives a drawing ready for manufacturing and checks it for missing or duplicate dimensions."
+        },
+        {
+          "status": "planned",
+          "title": "Drawings that know the model",
+          "text": "Every edge in a view keeps the feature it comes from, with thread, depth, fit or weld, so dimensions follow the design intent."
+        },
+        {
+          "status": "planned",
+          "title": "PDF and DXF export",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "title": "Later",
+      "intro": "As plugins, when there is a need.",
+      "items": [
+        {
+          "status": "later",
+          "title": "Motion simulation",
+          "text": ""
+        },
+        {
+          "status": "later",
+          "title": "Rendering via Blender",
+          "text": ""
+        },
+        {
+          "status": "later",
+          "title": "CAM bridge",
+          "text": ""
+        },
+        {
+          "status": "later",
+          "title": "Simple release states",
+          "text": "Revision letters and a released state for parts, kept as Git tags."
+        }
+      ]
+    }
+  ]
+}
