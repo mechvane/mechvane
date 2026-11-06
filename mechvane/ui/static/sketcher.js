@@ -936,6 +936,7 @@ export function initSketcher(h) {
     h.lookAlong(active.frame);
     h.activateTab("sketch");
     document.body.classList.add("sketching");
+    h.onMode?.(true);
     // keys go to the sketcher (L, R, C, D, A, Esc, Enter), not to a frame or a ribbon button that had the focus
     if (canvas.tabIndex < 0 && !canvas.hasAttribute("tabindex")) canvas.tabIndex = -1;
     canvas.focus({ preventScroll: true });
@@ -970,6 +971,7 @@ export function initSketcher(h) {
     dimLayer.textContent = "";
     snapEl.hidden = true;
     document.body.classList.remove("sketching");
+    h.onMode?.(false);
     const hint = document.querySelector(".viewport-hint");
     if (hint && savedHint !== null) hint.textContent = savedHint;
     savedHint = null;
@@ -995,12 +997,28 @@ export function initSketcher(h) {
     if (active || choosing) return;
     const bar = document.createElement("div");
     bar.className = "sketch-plane-bar";
-    bar.innerHTML = `<span>New sketch: click a flat face, or choose a plane</span>
+    bar.innerHTML = `<span>New sketch: click a plane or a flat face</span>
       <button type="button" data-plane="XY">XY</button><button type="button" data-plane="XZ">XZ</button>
       <button type="button" data-plane="YZ">YZ</button><button type="button" data-plane="">Cancel</button>`;
     h.viewportEl.appendChild(bar);
+    // the origin planes (also hidden ones, as SolidCraft brings them back for this) are clicked directly
+    h.revealOriginPlanes?.(true);
+    const overPlane = (ev) => h.hoverOriginPlane?.(h.originPlaneAt?.(ev.clientX, ev.clientY) || null);
+    const downPlane = (ev) => {
+      if (ev.button !== 0) return;
+      const name = h.originPlaneAt?.(ev.clientX, ev.clientY);
+      if (!name) return;
+      ev.stopImmediatePropagation();
+      done();
+      begin({ plane: name });
+    };
+    canvas.addEventListener("pointermove", overPlane);
+    canvas.addEventListener("pointerdown", downPlane, true);
     const done = () => {
       h.viewTools.stopEdgePick();
+      canvas.removeEventListener("pointermove", overPlane);
+      canvas.removeEventListener("pointerdown", downPlane, true);
+      h.revealOriginPlanes?.(false);
       bar.remove();
       window.removeEventListener("keydown", esc, true);
       choosing = null;
@@ -1018,7 +1036,7 @@ export function initSketcher(h) {
       begin({ plane: { face: pick.point.toArray().map((c) => +c.toFixed(4)) } });
     });
     choosing = bar;
-    h.statusEl.textContent = "New sketch: click a flat face, or choose XY, XZ or YZ";
+    h.statusEl.textContent = "New sketch: click an origin plane or a flat face, or choose XY, XZ or YZ";
   }
 
   async function finish() {
@@ -1068,6 +1086,7 @@ export function initSketcher(h) {
 
   return {
     start,
+    startOn: (plane) => { if (!active && !choosing) begin({ plane }); },
     edit: (name) => { if (!active) begin({ edit: name }); },
     isActive: () => !!active || !!choosing,
     finish,

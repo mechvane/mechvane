@@ -7,6 +7,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a19] - 2026-11-06
+
+### Fixed
+
+- In a project folder (as the Start menu shortcut opens Mechvane) 0.1.0a18 opened no document: the File menu's
+  section title it looked for was gone. Fixed, and the click tests now cover folder mode.
+- Opening Mechvane a second time while an app window was open left Python and SolidCraft running after all windows
+  were closed. It now ends with its window too.
+
+### Changed
+
+- The 3D view uses a parallel (orthographic) projection, and Home shows the part isometrically. Standard views
+  (front, top, right, back, left, bottom) in the View tab, oriented as in SolidCraft.
+- Extrude: click the profiles to extrude in the view; they light up when picked. A sketch with one closed region
+  has it picked for you, a sketch with several waits for your choice instead of taking them all.
+- The **Origin** shows in the view as in SolidCraft: the three planes, the axes and the centre point, sized to the
+  view. Hide or show the Origin or each item with the eye in the model browser; right-click a plane to create a
+  sketch on it. Create 2D Sketch lets you click an origin plane directly, hidden ones come back while it waits.
+- Sketches nothing uses yet stay visible in the model, and Home and Zoom All take them in.
+
 ## [0.1.0a18] - 2026-11-06
 
 ### Added

@@ -225,7 +225,8 @@ Bis v0.1 fehlt noch:
       Bohrung (Durchgang nach ISO 273, Gewinde, Senkungen aus Mechvanes Tabellen, durch alle oder Tiefe; auch bearbeiten).
       Rechteck- und Kreismuster, Spiegeln (Features im Baum anklicken, Richtung/Achse/Ebene aus X/Y/Z oder angeklickter
       Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
-      durch alle; auch bearbeiten). Bohrungsposition über Abstände zu ein oder zwei Kanten gemergt 2026-11-05 (#43, SolidCraft `references`). Profilwahl in Extrusion und Drehung fertig 2026-11-05 (alle oder ein Profil, Liste mit Fläche/Löchern aus `sketch.inspect`, auch bearbeiten; mehrere einzeln gewählte nur über den Agenten, im Dialog „Several (as set)“). Offen: Profile per Klick in der Ansicht wie Inventor.*
+      durch alle; auch bearbeiten). Bohrungsposition über Abstände zu ein oder zwei Kanten gemergt 2026-11-05 (#43, SolidCraft `references`). Profilwahl in Extrusion und Drehung fertig 2026-11-05 (alle oder ein Profil, Liste mit Fläche/Löchern aus `sketch.inspect`, auch bearbeiten; mehrere einzeln gewählte nur über den Agenten, im Dialog „Several (as set)“). Profile per Klick in der Ansicht fertig 2026-11-06 (Nutzer: Extrusion nahm alle Profile; `sketchgeom.js`,
+      ein Profil vorgewählt, mehrere zum Anklicken); Drehung noch mit Auswahlliste.*
       *Skizzierumgebung (Nutzer 2026-11-05: dringend): Server-Teil fertig 2026-11-05 (`/api/sketch/*`, ein Rückgängig-
       Schritt je Sitzung). Schritt (a) fertig 2026-11-06: `sketcher.js` (Ebene/Fläche wählen, Linie als Kette,
       Rechteck, Kreis, Gummiband, Fangen End-/Mittelpunkt/Ursprung/H/V/Raster, Eingabefelder am Cursor →

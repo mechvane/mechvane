@@ -5,6 +5,7 @@ import { initAgentChat } from "./chat.js";
 import { openNewPartDialog, openImportStepDialog } from "./newpart.js";
 import { initFeatureDialogs, EDITABLE_TYPES } from "./features.js";
 import { initSketcher } from "./sketcher.js";
+import { curvePoints, toWorld } from "./sketchgeom.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -31,7 +32,19 @@ const axesLabels = {
 };
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10000);
+// Parallel projection as in Inventor and every drawing: sizes do not shrink with depth (user 2026-11-06).
+// viewHalf is half the visible height in mm at zoom 1; OrbitControls zooms through camera.zoom.
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
+let viewHalf = 60;
+function setFrustum() {
+  const w = viewportEl.clientWidth || 640, h = viewportEl.clientHeight || 480;
+  const a = w / h;
+  camera.left = -viewHalf * a;
+  camera.right = viewHalf * a;
+  camera.top = viewHalf;
+  camera.bottom = -viewHalf;
+  camera.updateProjectionMatrix();
+}
 camera.up.set(0, 0, 1);
 camera.position.set(120, -140, 100);
 
@@ -119,16 +132,21 @@ new MutationObserver(() => applyThemeColors()).observe(document.documentElement,
 
 function renderScene() {
   updateAxesGizmo();
+  if (originGroup) scaleOrigin();
   renderer.render(scene, camera);
 }
 
 controls.addEventListener("change", renderScene);
 
 function fitCameraToModel(keepDirection = false) {
-  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
-  const effHalfFov = camera.aspect < 1 ? Math.atan(Math.tan(halfFov) * camera.aspect) : halfFov;
-  const dist = (modelRadius / Math.sin(effHalfFov)) * 1.15;
-  let dir = new THREE.Vector3(1.25, -1.45, 1.05).normalize();
+  // the whole model in view, also when the window is narrower than high
+  const w = viewportEl.clientWidth || 640, h = viewportEl.clientHeight || 480;
+  viewHalf = modelRadius * 1.15 * Math.max(1, h / w);
+  camera.zoom = 1;
+  setFrustum();
+  const dist = modelRadius * 4 + 50;
+  // home: isometric, looking down onto the X, -Y, Z corner
+  let dir = new THREE.Vector3(1, -1, 1).normalize();
   if (keepDirection) {
     const cur = camera.position.clone().sub(controls.target);
     if (cur.lengthSq() > 1e-6) dir = cur.normalize();
@@ -136,8 +154,8 @@ function fitCameraToModel(keepDirection = false) {
     camera.up.set(0, 0, 1);
   }
   camera.position.copy(modelCenter).addScaledVector(dir, dist);
-  camera.near = Math.max(0.05, modelRadius * 0.01);
-  camera.far = Math.max(2000, modelRadius * 40);
+  camera.near = 0.1;
+  camera.far = dist + modelRadius * 8 + 1000;
   camera.updateProjectionMatrix();
   controls.target.copy(modelCenter);
   controls.update();
@@ -149,6 +167,27 @@ function homeView() {
   fitCameraToModel(false);
 }
 
+// Standard views as SolidCraft has them (crates/render/src/camera.rs): front looks along +Y, right from +X,
+// top down onto XY with +Y up, iso from the front-right-top corner (Home). Direction = from the target to the eye.
+const STANDARD_VIEWS = {
+  front: [[0, -1, 0], [0, 0, 1]], back: [[0, 1, 0], [0, 0, 1]],
+  right: [[1, 0, 0], [0, 0, 1]], left: [[-1, 0, 0], [0, 0, 1]],
+  top: [[0, 0, 1], [0, 1, 0]], bottom: [[0, 0, -1], [0, 1, 0]],
+  iso: [[1, -1, 1], [0, 0, 1]],
+};
+function standardView(name) {
+  const v = STANDARD_VIEWS[name];
+  if (!v) return;
+  fitCameraToModel(false);
+  const dist = camera.position.distanceTo(controls.target);
+  camera.up.set(...v[1]);
+  camera.position.copy(controls.target).addScaledVector(new THREE.Vector3(...v[0]).normalize(), dist);
+  camera.lookAt(controls.target);
+  controls.update();
+  renderScene();
+}
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => standardView(b.dataset.view)));
+
 function zoomAll() {
   fitCameraToModel(true);
 }
@@ -156,8 +195,7 @@ function zoomAll() {
 function resizeViewport() {
   const w = viewportEl.clientWidth || 640;
   const h = viewportEl.clientHeight || 480;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+  setFrustum();
   renderer.setSize(w, h, false);
   renderScene();
 }
@@ -284,6 +322,8 @@ function updateMeshView(meshData, fitCamera) {
 
   if (!box.isEmpty()) {
     const sphere = new THREE.Sphere();
+    // a shown Origin belongs in the picture (its planes are what a first sketch goes on)
+    if (originGroup && originState.folder) box.expandByPoint(new THREE.Vector3(0, 0, 0));
     box.getBoundingSphere(sphere);
     modelRadius = Math.max(sphere.radius, 5);
     modelCenter.copy(sphere.center);
@@ -590,6 +630,17 @@ function renderOccurrenceNode(occ) {
   return li;
 }
 
+function eyeButton(key, title) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "tree-eye";
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>';
+  b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); toggleOrigin(key); });
+  return b;
+}
+
 function renderOriginFolder() {
   const details = document.createElement("details");
   details.className = "tree-folder tree-origin";
@@ -599,17 +650,21 @@ function renderOriginFolder() {
   nameSpan.className = "tree-name";
   nameSpan.textContent = "Origin";
   summary.appendChild(nameSpan);
+  summary.appendChild(eyeButton("folder", "Show or hide the Origin"));
   details.appendChild(summary);
 
   const ul = document.createElement("ul");
   ul.className = "tree-children";
-  for (const item of ["YZ Plane", "XZ Plane", "XY Plane", "X Axis", "Y Axis", "Z Axis", "Center Point"]) {
+  for (const [key, label] of [["YZ", "YZ Plane"], ["XZ", "XZ Plane"], ["XY", "XY Plane"], ["X", "X Axis"], ["Y", "Y Axis"],
+    ["Z", "Z Axis"], ["O", "Center Point"]]) {
     const li = document.createElement("li");
     li.className = "tree-item tree-origin-item";
+    li.dataset.originRow = key;
     const span = document.createElement("span");
     span.className = "tree-meta";
-    span.textContent = item;
+    span.textContent = label;
     li.appendChild(span);
+    li.appendChild(eyeButton(key, `Show or hide ${label}`));
     ul.appendChild(li);
   }
   details.appendChild(ul);
@@ -630,6 +685,7 @@ function updateTreeView(treeData) {
     : (treeData.kind === "assembly" ? "Assembly" : "Part");
   treeContentEl.appendChild(rootHeader);
   treeContentEl.appendChild(renderOriginFolder());
+  loadOriginState();
 
   if (treeData.kind === "part") {
     const bodies = treeData.bodies || [];
@@ -919,11 +975,153 @@ async function loadAll(initial = false) {
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;
     else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
+    await refreshSketchOverlay(ver.kind, initial);
     refreshHistory();
     statusEl.textContent = "Ready";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
+}
+
+// Sketches nothing uses yet stay visible in the model, as in Inventor: drawn on their planes over the bodies.
+// Not in the precomputed live demo (that would start SolidCraft in the page); after a step there, yes.
+const sketchOverlay = new THREE.Group();
+sketchOverlay.renderOrder = 8;
+scene.add(sketchOverlay);
+async function refreshSketchOverlay(kind, fit = false) {
+  clearGroup(sketchOverlay);
+  if (kind === "assembly" || (STATIC && !(demoKernel && demoKernel.changed))) { renderScene(); return; }
+  let list = [];
+  try { list = (await fetchJson("api/sketches")).sketches || []; } catch (_) { return; }
+  const isDark = document.documentElement.dataset.theme !== "light";
+  for (const sk of list) {
+    if ((sk.used_by || []).length || !sk.plane) continue;
+    for (const c of sk.curves || []) {
+      const pts = curvePoints(c);
+      if (pts.length < 2) continue;
+      const mat = c.construction
+        ? new THREE.LineDashedMaterial({ color: 0x8b949e, dashSize: 2, gapSize: 1.5, depthTest: false })
+        : new THREE.LineBasicMaterial({ color: isDark ? 0x58a6ff : 0x1f6feb, depthTest: false });
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(toWorld(sk.plane, pts)), mat);
+      if (c.construction) line.computeLineDistances();
+      line.renderOrder = 8;
+      line.userData.sketch = sk.name;
+      sketchOverlay.add(line);
+    }
+  }
+  sketchOverlay.visible = !document.body.classList.contains("sketching");
+  // zoom all and home take the unused sketches in, as in Inventor
+  if (sketchOverlay.children.length) {
+    const box = new THREE.Box3().setFromObject(modelGroup);
+    box.union(new THREE.Box3().setFromObject(sketchOverlay));
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    if (sphere.radius > modelRadius * 1.01 || sphere.center.distanceTo(modelCenter) > modelRadius * 0.01) {
+      modelRadius = Math.max(sphere.radius, 5);
+      modelCenter.copy(sphere.center);
+      if (fit) fitCameraToModel(false);
+    }
+  }
+  renderScene();
+}
+
+// The Origin as SolidCraft draws it (crates/ui-egui/src/selection.rs origin_quads/origin_size): the three planes
+// as squares in the positive quadrant, the axes and the centre point, sized to 15 % of the visible height so
+// they stay the same on screen. Shown by default; the Origin folder and each item hide one by one (kept per
+// document in the browser). While Create 2D Sketch waits for its plane, hidden planes come back to be clicked.
+const ORIGIN_PLANES = { XY: [[1, 0, 0], [0, 1, 0]], XZ: [[1, 0, 0], [0, 0, 1]], YZ: [[0, 1, 0], [0, 0, 1]] };
+const ORIGIN_AXES = { X: [[1, 0, 0], 0xe5534b], Y: [[0, 1, 0], 0x57ab5a], Z: [[0, 0, 1], 0x539bf5] };
+// var: renderScene runs before this point while the page starts
+var originGroup = new THREE.Group();
+originGroup.renderOrder = 7;
+scene.add(originGroup);
+const originParts = {};
+for (const [name, [u, v]] of Object.entries(ORIGIN_PLANES)) {
+  const a = new THREE.Vector3(...u), b = new THREE.Vector3(...v);
+  const corners = [new THREE.Vector3(), a.clone(), a.clone().add(b), b.clone()];
+  const geom = new THREE.BufferGeometry().setFromPoints([corners[0], corners[1], corners[2], corners[0], corners[2], corners[3]]);
+  const fill = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color: 0xd29922, transparent: true, opacity: 0.12,
+    side: THREE.DoubleSide, depthWrite: false }));
+  const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(corners),
+    new THREE.LineBasicMaterial({ color: 0xd29922, transparent: true, opacity: 0.7 }));
+  const g = new THREE.Group();
+  g.add(fill, edge);
+  g.userData = { origin: name, kind: "plane", fill };
+  originGroup.add(g);
+  originParts[name] = g;
+}
+for (const [name, [d, color]] of Object.entries(ORIGIN_AXES)) {
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(...d).multiplyScalar(1.3)]),
+    new THREE.LineBasicMaterial({ color }));
+  line.userData = { origin: name, kind: "axis" };
+  originGroup.add(line);
+  originParts[name] = line;
+}
+{
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshBasicMaterial({ color: 0xd29922 }));
+  dot.userData = { origin: "O", kind: "point" };
+  originGroup.add(dot);
+  originParts.O = dot;
+}
+var originState = { folder: true, hidden: new Set(), reveal: false, hover: null };
+const originKey = () => `mechvane-origin:${docNameEl?.textContent || "doc"}`;
+function loadOriginState() {
+  try {
+    const st = JSON.parse(localStorage.getItem(originKey()) || "{}");
+    originState.folder = st.folder !== false;
+    originState.hidden = new Set(st.hidden || []);
+  } catch (_) { /* defaults */ }
+  applyOrigin();
+}
+function saveOriginState() {
+  try { localStorage.setItem(originKey(), JSON.stringify({ folder: originState.folder, hidden: [...originState.hidden] })); } catch (_) { /* private mode */ }
+}
+function applyOrigin() {
+  for (const [name, part] of Object.entries(originParts)) {
+    const plane = part.userData.kind === "plane";
+    part.visible = (originState.reveal && plane) || (originState.folder && !originState.hidden.has(name));
+    if (plane) part.userData.fill.material.opacity = originState.hover === name ? 0.35 : 0.12;
+  }
+  document.querySelectorAll("[data-origin-row]").forEach((li) => {
+    const off = !originState.folder || originState.hidden.has(li.dataset.originRow);
+    li.classList.toggle("origin-hidden", off);
+  });
+  const folder = document.querySelector(".tree-origin");
+  if (folder) folder.classList.toggle("origin-hidden", !originState.folder);
+  renderScene();
+}
+function toggleOrigin(name) {
+  if (name === "folder") originState.folder = !originState.folder;
+  else if (originState.hidden.has(name)) { originState.hidden.delete(name); originState.folder = true; }
+  else originState.hidden.add(name);
+  saveOriginState();
+  applyOrigin();
+}
+// keep the Origin 15 % of the visible height, as SolidCraft's origin_size
+function scaleOrigin() {
+  const visibleHeight = (camera.top - camera.bottom) / (camera.zoom || 1);
+  originGroup.scale.setScalar(Math.max(visibleHeight * 0.15, 1e-3));
+}
+// the origin plane under the pointer (shown ones only), for Create 2D Sketch
+function originPlaneAt(clientX, clientY) {
+  const r = renderer.domElement.getBoundingClientRect();
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), camera);
+  const fills = Object.values(originParts).filter((p) => p.userData.kind === "plane" && p.visible).map((p) => p.userData.fill);
+  const hit = ray.intersectObjects(fills, false)[0];
+  if (!hit) return null;
+  // a body face in front of the plane wins (the face pick of Create 2D Sketch takes it)
+  const body = ray.intersectObjects(modelGroup.children, true).find((h) => h.object.isMesh);
+  return body && body.distance < hit.distance - 1e-6 ? null : hit.object.parent.userData.origin;
+}
+function revealOriginPlanes(on) {
+  originState.reveal = on;
+  if (!on) originState.hover = null;
+  applyOrigin();
+}
+function hoverOriginPlane(name) {
+  if (originState.hover === name) return;
+  originState.hover = name;
+  applyOrigin();
 }
 
 // Parameter form: user parameters first, feature dimensions folded away. Changes go to SolidCraft
@@ -1263,7 +1461,8 @@ async function initFolder() {
     return false;
   }
   const select = document.getElementById("demo-select");
-  document.querySelector('label[for="demo-select"]').textContent = "Open from folder";
+  const sectionLabel = document.getElementById("demo-section-label");
+  if (sectionLabel) sectionLabel.textContent = "Open from folder";
   for (const a of document.querySelectorAll("#demo-bar a")) a.hidden = true;  // "Install to open your own files": live demo only
   const items = docs.map((d) => ({
     value: d.name,
@@ -1384,7 +1583,11 @@ function lookAlongFrame(frame) {
   const n = new THREE.Vector3().crossVectors(x, y).normalize();
   // an empty part has no size yet: leave room for a first sketch of a few centimetres
   const empty = !(currentMeshData && (currentMeshData.bodies || []).length);
-  const dist = empty ? 220 : Math.max(modelRadius * 2.8, 80);
+  const dist = modelRadius * 4 + 50;
+  viewHalf = empty ? 60 : Math.max(modelRadius * 1.3, 30);
+  camera.zoom = 1;
+  setFrustum();
+  camera.far = dist + modelRadius * 8 + 1000;
   camera.up.copy(y);
   camera.position.copy(modelCenter).addScaledVector(n, dist);
   controls.target.copy(modelCenter);
@@ -1424,6 +1627,9 @@ var viewBeforeEdit = null;
       scene, camera, renderer, controls, renderScene, viewTools, lookAlong: lookAlongFrame, statusEl, viewportEl,
       get: (url) => fetchJson(url), post: postJson, reload: () => loadAll(false), activateTab: activateRibbonTab,
       log: clientLog, isDark: () => document.documentElement.dataset.theme !== "light",
+      // the sketch being edited is drawn by the sketcher, not twice by the overlay of unused sketches
+      onMode: (on) => { sketchOverlay.visible = !on; renderScene(); },
+      originPlaneAt, revealOriginPlanes, hoverOriginPlane,
     });
     if (btnSketch) {
       btnSketch.disabled = false;
@@ -1528,6 +1734,27 @@ function initTreeActions() {
     else if (row && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
   });
   treeContentEl.addEventListener("contextmenu", (e) => {
+    const originRow = e.target.closest && e.target.closest("[data-origin-row]");
+    if (originRow) {
+      // as SolidCraft's origin_plane_items: Create Sketch on a plane, Show/Hide on every item
+      e.preventDefault();
+      const key = originRow.dataset.originRow;
+      menu.innerHTML = "";
+      const add = (label, fn) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "context-item";
+        b.textContent = label;
+        b.addEventListener("click", () => { hideMenu(); fn(); });
+        menu.append(b);
+      };
+      if (ORIGIN_PLANES[key] && sketcher) add(`Create Sketch on ${key}`, () => sketcher.startOn(key));
+      add(originState.folder && !originState.hidden.has(key) ? "Hide" : "Show", () => toggleOrigin(key));
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.hidden = false;
+      return;
+    }
     const row = rowOf(e);
     if (!row) return;
     e.preventDefault();

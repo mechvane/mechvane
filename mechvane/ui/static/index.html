@@ -34,7 +34,7 @@
               Import STEP…
             </button>
             <div id="demo-bar" class="demo-bar file-menu-section" hidden>
-              <span class="menu-section-label">Examples</span>
+              <span id="demo-section-label" class="menu-section-label">Examples</span>
               <select id="demo-select" class="file-select"></select>
               <ul id="file-doc-list" class="file-doc-list"></ul>
               <a class="menu-install-link" href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
@@ -543,6 +543,39 @@
             </button>
           </div>
           <div class="ribbon-group-title">Navigate</div>
+        </div>
+        <div class="ribbon-group">
+          <div class="ribbon-group-items">
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="front" title="Front view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10v8H3z"/></svg>
+                <span>Front</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="top" title="Top view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5-3 5 3-5 3z"/></svg>
+                <span>Top</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="right" title="Right view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l7 2v8l-7-2z"/></svg>
+                <span>Right</span>
+              </button>
+            </div>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="back" title="Back view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10v8H3z M3 4l2-2h10l-2 2"/></svg>
+                <span>Back</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="left" title="Left view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L3 5v8l7-2z"/></svg>
+                <span>Left</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-view="bottom" title="Bottom view">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 10l5 3 5-3-5-3z"/></svg>
+                <span>Bottom</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-title">Views</div>
         </div>
 
         <div class="ribbon-group">

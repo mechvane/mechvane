@@ -1517,3 +1517,10 @@ body.sketching #viewport canvas { cursor: crosshair; }
 /* the examples are listed in the File menu; the select only holds the chosen one */
 #demo-select { display: none; }
 .sketch-glyph.conflict { border-color: var(--fail-border); color: var(--fail-fg); background: var(--fail-bg); }
+/* Origin rows: an eye to show or hide, dimmed when hidden */
+.tree-eye { margin-left: auto; background: none; border: 0; padding: 0 2px; cursor: pointer; color: var(--text-muted); opacity: 0.55; }
+.tree-eye svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.3; }
+.tree-eye:hover { opacity: 1; color: var(--text); }
+.tree-origin-item { display: flex; align-items: center; }
+.tree-origin-item.origin-hidden .tree-meta, .tree-origin.origin-hidden > summary .tree-name { opacity: 0.45; }
+.origin-hidden > .tree-eye, .tree-origin.origin-hidden > summary .tree-eye { opacity: 0.25; }

@@ -109,6 +109,8 @@ hole_ok = True
 extrude = "skipped (no extrude dialog or not a part)"
 extrude_ok = True
 sketch = "skipped (no sketch button or not a part)"
+folder_mode = "skipped (server given)"
+folder_ok = True
 sketch_ok = True
 new_part = "skipped (no folder)"
 new_part_ok = True
@@ -129,10 +131,22 @@ try:
         page.click('.ribbon-tab[data-tab="inspect"]')
         box = page.locator("#viewport canvas").bounding_box()
         cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-        page.click("text=Measure")
-        # offsets relative to the 3D view: the workspace side panels make it narrower than the window
-        for fx, fy in ((-0.08, -0.04), (0.08, 0.02)):
+        # find the body on screen first: "zoom all" frames unused sketches too, so the part need not be in the
+        # middle; then measure between two points a little apart on it
+        on_body = None
+        for fx, fy in ((0, 0), (-0.08, -0.04), (-0.15, -0.08), (-0.2, 0), (0.08, 0.02), (-0.1, 0.1), (0.15, -0.1)):
+            page.click("text=Measure")
             page.mouse.click(cx + fx * box["width"], cy + fy * box["height"])
+            page.wait_for_timeout(200)
+            hit = "Point" in page.locator(".measure-readout").inner_text()
+            page.keyboard.press("Escape")
+            if hit:
+                on_body = (cx + fx * box["width"], cy + fy * box["height"])
+                break
+        bx, by = on_body or (cx, cy)
+        page.click("text=Measure")
+        for dx, dy in ((0, 0), (0.06 * box["width"], 0.02 * box["height"])):
+            page.mouse.click(bx + dx, by + dy)
             page.wait_for_timeout(300)
         measured = page.locator(".measure-readout").inner_text()
         page.screenshot(path=os.path.join(out, "measure.png"))
@@ -145,14 +159,14 @@ try:
         closed = page.locator(".measure-readout").is_hidden()
         for dx in range(0, int(box["width"] / 2), 2):
             page.click("text=Measure")
-            page.mouse.click(cx + dx, cy)
+            page.mouse.click(bx + dx, by)
             page.wait_for_timeout(60)
             text = page.locator(".measure-readout").inner_text()
             page.keyboard.press("Escape")
             if any(w in text for w in ("Edge length", "Circle", "Arc")):
                 edge = text
                 page.click("text=Measure")
-                page.mouse.click(cx + dx, cy)
+                page.mouse.click(bx + dx, by)
                 page.wait_for_timeout(200)
                 page.screenshot(path=os.path.join(out, "measure_edge.png"))
                 break
@@ -286,19 +300,29 @@ try:
             page.click("#btn-extrude")
             page.wait_for_selector(".feature-dialog", timeout=5000)
 
-            # select[name="profile"] zeigt drei Einträge
-            opt_count = page.locator('.feature-dialog select[name="profile"] option').count()
-            profiles_three = (opt_count == 3)
-
-            # Profil 2 wählen
-            page.select_option('.feature-dialog select[name="profile"]', "1")
-
-            # Vorschau zeigt „Volume +785“ (± 1)
+            # Profile werden in der Ansicht angeklickt: bei zwei Profilen ist zuerst keins gewählt (OK gesperrt);
+            # die Ansicht absuchen, bis ein Klick genau eins wählt (r 10: +3141 mm³, r 5: +785 mm³)
+            count = lambda: page.locator(".feature-pick-count").inner_text()
+            profiles_prompt = "Click the profiles" in count() and not page.locator(".feature-ok").is_enabled()
+            box = page.locator("#viewport canvas").bounding_box()
+            picked_one = False
+            for fx in (0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55):
+                for fy in (0.5, 0.45, 0.55, 0.4, 0.6, 0.65):
+                    page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
+                    page.wait_for_timeout(200)
+                    if "1 of 2" in count():
+                        picked_one = True
+                        break
+                if picked_one:
+                    break
             page.wait_for_function("/Volume|⚠/.test(document.querySelector('.feature-delta')?.textContent || '')"
                                    " || !document.querySelector('.feature-error')?.hidden", timeout=30000)
             extrude_delta = page.locator(".feature-delta").inner_text()
             page.screenshot(path=os.path.join(out, "extrude_profile_preview.png"))
-            vol_785 = bool(re.search(r"Volume\s*\+\s*78[456]", extrude_delta))
+            m = re.search(r"Volume\s*\+\s*([0-9.]+)", extrude_delta)
+            one_vol = float(m.group(1)) if m else 0.0
+            vol_785 = picked_one and (abs(one_vol - 785.4) < 1.5 or abs(one_vol - 3141.6) < 1.5)
+            profiles_three = profiles_prompt
 
             # OK
             added_extrude = False
@@ -312,8 +336,9 @@ try:
             # Doppelklick auf Extrude1 im Baum öffnet den Dialog mit Profil-Wert 1, Esc
             page.dblclick('.tree-row[data-type="ExtrudeFeature"]')
             page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
-            reopened_val = page.input_value('.feature-dialog select[name="profile"]')
-            reopened_ok = (reopened_val == "1")
+            # the stored single profile comes back as the one picked
+            page.wait_for_timeout(1500)
+            reopened_ok = "1 of 2" in count()
             page.keyboard.press("Escape")
             page.wait_for_timeout(500)
 
@@ -321,8 +346,8 @@ try:
             page.keyboard.press("Control+z")
             page.wait_for_timeout(2000)
             undone_extrude = page.locator("#tree-content").inner_text() == tree_before_extrude
-            extrude = (f"3 profiles: {profiles_three}, delta: {extrude_delta!r} (vol_785: {vol_785}), "
-                       f"ok adds: {added_extrude}, edit profile 1: {reopened_ok}, ctrl+z: {undone_extrude}")
+            extrude = (f"pick prompt: {profiles_three}, one picked: {picked_one}, delta: {extrude_delta!r} (one profile: {vol_785}), "
+                       f"ok adds: {added_extrude}, edit keeps it: {reopened_ok}, ctrl+z: {undone_extrude}")
             extrude_ok = profiles_three and vol_785 and added_extrude and reopened_ok and undone_extrude
 
         # Sketch environment (sketcher.js): S, plane XY, a line with a typed length (40, a dimension), a rectangle,
@@ -402,6 +427,27 @@ try:
             sketch_ok = (hud_shown and kinds.count("line") == 5 and kinds.count("circle") == 1 and dim_label and 45 in lengths
                          and undone_circle and glyph_deleted and closed_sketch and added_sketch and undone_sketch)
 
+        # Folder mode (mechvane ui <folder>, as the Start-menu shortcut starts it): the document opens and its
+        # tree loads. 0.1.0a18 broke here on a renamed menu label while every file-mode check above passed.
+        if tmp_dir:
+            folder_ok = False
+            from mechvane.ui.server import create_server as _cs
+            fsrv = _cs(tmp_dir.name, port=port + 1)
+            threading.Thread(target=fsrv.serve_forever, daemon=True).start()
+            try:
+                fpage = browser.new_page(viewport={"width": 1300, "height": 750})
+                fpage.on("pageerror", lambda e: errors.append(f"folder mode: {e}"))
+                fpage.goto(f"http://{host}:{port + 1}/")
+                fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('End of Part')",
+                                        timeout=60000)
+                folder_mode = "tree loaded"
+                folder_ok = True
+            except Exception as e:
+                folder_mode = f"no document: {e}"[:200]
+            finally:
+                fsrv.shutdown()
+                fsrv.server_close()
+
         browser.close()
 except Exception as exc:
     errors.append(f"browser test exception: {exc}")
@@ -433,6 +479,7 @@ print("fillet:", fillet)
 print("hole:", hole)
 print("extrude:", extrude)
 print("sketch:", sketch)
+print("folder mode:", folder_mode)
 print("new part:", new_part)
 print("measure:", measured.replace("\n", " | "))
 print("section:", section)
@@ -441,7 +488,7 @@ print("session log js_errors:", js_errors)
 print("edge:", edge.replace("\n", " | ") or "none found")
 
 all_checks_ok = ("Distance" in measured and "Section" in section and closed and bool(edge) and new_part_ok and fillet_ok
-                 and hole_ok and extrude_ok and sketch_ok and not errors and not js_errors)
+                 and hole_ok and extrude_ok and sketch_ok and folder_ok and not errors and not js_errors)
 
 if errors:
     for e in errors:

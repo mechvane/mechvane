@@ -381,7 +381,20 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       const def = (await exec("timeline.inspect", { feature: f.id })).definition || {};
       if (byId[def.sketch]) (used[byId[def.sketch]] ||= []).push(f.name);
     }
-    return { sketches: tl.filter((f) => f.type === "Sketch").map((f) => ({ name: f.name, used_by: used[f.name] || [] })) };
+    // as sketch_shapes() in mechvane/ui/server.py: plane, curves and profiles for drawing and picking
+    const keys = ["id", "type", "start_at", "end_at", "center_at", "radius", "construction"];
+    const out = [];
+    for (const f of tl.filter((x) => x.type === "Sketch")) {
+      let insp = {};
+      try { insp = await exec("sketch.inspect", { sketch: f.name }); } catch (_) { /* drawn without it */ }
+      out.push({
+        name: f.name, used_by: used[f.name] || [], plane: insp.plane || null,
+        curves: (insp.curves || []).map((c) => Object.fromEntries(keys.filter((k) => k in c).map((k) => [k, c[k]]))),
+        profiles: (insp.profiles || []).map((p) => ({ index: p.index, area: Math.round(p.area_mm2 * 10) / 10, curves: p.curves,
+          holes: (p.holes || []).length, hole_loops: p.holes || [] })),
+      });
+    }
+    return { sketches: out };
   }
 
   // Each hand step here is one SolidCraft command, so one step of the app's own undo history

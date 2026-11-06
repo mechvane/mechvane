@@ -94,7 +94,7 @@ def open_window(url: str, on_close=None) -> str | bool:
                     threading.Thread(target=lambda: (proc.wait(), on_close()), daemon=True).start()
                 return "window"
             if rc == 0 and time.monotonic() - started < HANDOFF_S:
-                return "handoff"  # the server keeps running
+                return "handoff"  # the page tells the server when its window closes (_watch_closing)
     webbrowser.open(url)
     return False
 

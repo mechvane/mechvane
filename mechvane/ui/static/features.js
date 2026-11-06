@@ -6,6 +6,7 @@
 // shown or hidden by the other values), how the values become the command's parameters, and for
 // editing how a feature's definition (timeline.inspect) becomes values and back (timeline.edit).
 import * as THREE from "three";
+import { profileShapes, profileAt, profileMesh, toWorld } from "./sketchgeom.js";
 import { bodyEdges, edgeInfo, edgeKey } from "./viewtools.js";
 
 // Feature types the model browser can open in a dialog again (the server keeps the same list)
@@ -562,31 +563,83 @@ const DIALOGS = {
     needs: async (get) => { sketchList = (await get("api/sketches")).sketches || []; },
     fields: [
       { key: "sketch", label: "Sketch", type: "select", value: defaultSketch, options: SKETCH_OPTIONS },
-      PROFILE_FIELD,
       { key: "operation", label: "Operation", type: "select", value: "join", options: OPERATIONS },
       { key: "direction", label: "Direction", type: "select", value: "positive",
         options: [["positive", "Direction 1"], ["negative", "Direction 2"], ["symmetric", "Symmetric"]] },
       { key: "through", label: "Through all", type: "check", value: false },
       { key: "distance", label: "Distance", unit: "mm", value: "10", show: (v) => !v.through },
+      // the profile choice is made by clicking in the view; this keeps it for editing (see init)
+      { ...PROFILE_FIELD, show: () => false },
     ],
     // a cut usually goes into the material, against the face's outward side
-    onChange(key, v, set) {
+    onChange(key, v, set, active) {
       if (key === "operation" && v.operation === "cut" && v.direction === "positive") set("direction", "negative");
       if (key === "operation" && v.operation !== "cut" && v.direction === "negative") set("direction", "positive");
+      if (key === "sketch" && active?.startProfilePick) active.startProfilePick(v.sketch, "fresh");
     },
-    ready: (v) => !!v.sketch,
-    status: (v) => (sketchList.length ? null : "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent"),
-    params(v) {
+    // Profiles as in Inventor: one closed region is picked for you, several are clicked in the view
+    async init(active, h) {
+      active.startProfilePick = (name, from) => {
+        const sk = sketchList.find((x) => x.name === name);
+        active.prof = { sketch: sk, shapes: sk?.plane ? profileShapes(sk) : [], picked: new Set(), touched: false };
+        const n = active.prof.shapes.length;
+        const val = h.values().profile;
+        if (from !== "fresh" && val === "all") active.prof.shapes.forEach((x) => active.prof.picked.add(x.index));
+        else if (from !== "fresh" && /^\d+$/.test(String(val))) active.prof.picked.add(Number(val));
+        else if (from !== "fresh" && val === "multi") active.prof.keep = true;  // the agent's own choice: kept unless clicked
+        else if (n === 1) active.prof.picked.add(active.prof.shapes[0].index);
+        if (from === "fresh") active.prof.touched = true;
+        if (sk?.plane && n) {
+          h.viewTools.startPlanePick(sk.plane, ([u, w]) => {
+            const hit = profileAt(active.prof.shapes, [u, w]);
+            if (!hit) return;
+            const p = active.prof;
+            if (p.picked.has(hit.index)) p.picked.delete(hit.index); else p.picked.add(hit.index);
+            p.touched = true;
+            p.keep = false;
+            h.log?.("pick_profile", { sketch: name, profile: hit.index, picked: p.picked.size });
+            h.update();
+          });
+        } else h.viewTools.stopEdgePick();
+        h.update();
+      };
+      // a stored choice only when editing; a new extrusion starts from nothing (one profile: that one)
+      active.startProfilePick(h.values().sketch, active.edit ? "edit" : "fresh");
+    },
+    draw(active, v, add, addMesh) {
+      const p = active.prof;
+      if (!p?.sketch?.plane) return;
+      for (const shape of p.shapes) {
+        const on = p.picked.has(shape.index) || p.keep;
+        addMesh(profileMesh(p.sketch.plane, shape, on ? 0x58a6ff : 0x8b949e, on ? 0.45 : 0.12));
+        add(toWorld(p.sketch.plane, [...shape.outer, shape.outer[0]]), on ? 0x58a6ff : 0x8b949e);
+      }
+    },
+    ready: (v, pk, active) => !!v.sketch && !!(active?.prof?.picked.size || active?.prof?.keep),
+    status: (v, pk, active) => {
+      if (!sketchList.length) return "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent";
+      const p = active?.prof;
+      if (!p || !p.shapes.length) return null;
+      if (p.keep) return "Extrudes the profiles chosen before; click profiles in the view to choose again";
+      const n = p.shapes.length, k = p.picked.size;
+      if (!k) return `Click the profile${n > 1 ? "s" : ""} to extrude in the view (${n} in ${v.sketch})`;
+      return n > 1 ? `${k} of ${n} profiles selected · click in the view to add or remove` : null;
+    },
+    params(v, pk, active) {
       const p = { sketch: v.sketch, operation: opParam(v.operation), direction: v.direction };
-      if (profileParam(v)) p.profiles = profileParam(v);
+      const pr = active?.prof;
+      if (pr && pr.picked.size && pr.picked.size < pr.shapes.length) p.profiles = [...pr.picked].sort((a, b) => a - b);
       if (v.through) p.through_all = true;
       else p.distance = v.distance;
       return p;
     },
-    editSet(v) {
+    editSet(v, pk, active) {
       const set = { sketch: v.sketch, operation: v.operation,
                     extent: { direction: v.direction, through_all: !!v.through, distance: v.through ? "0" : String(v.distance) } };
-      if (profileSet(v) !== undefined) set.profiles = profileSet(v);
+      const pr = active?.prof;
+      if (pr && pr.touched && pr.picked.size) {
+        set.profiles = pr.picked.size === pr.shapes.length ? "all" : [...pr.picked].sort((a, b) => a - b);
+      }
       return set;
     },
     fromDefinition(d, names) {
@@ -837,7 +890,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
           new THREE.LineBasicMaterial({ color, depthTest: false }));
         line.renderOrder = 21;
         pickGroup.add(line);
-      });
+      }, (mesh) => pickGroup.add(mesh));
     } else if (active.def.fields.some((f) => f.key === "x")) {
       const v = values();
       if ([v.x, v.y, v.z].every((c) => typeof c === "number")) {
@@ -947,7 +1000,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   function ready() {
     const def = active.def, v = values(), p = picks();
     if (def.view === "edges" && !active.edges.size) return false;
-    if (def.ready && !def.ready(v, p)) return false;
+    if (def.ready && !def.ready(v, p, active)) return false;
     if (def.noFieldCheck) return true; // the sketch: shapes already added count, the fields may be empty
     return def.fields.every((f) => f.type === "check" || f.type === "select" || (f.show && !f.show(v))
       || v[f.key] !== null);
@@ -955,7 +1008,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
 
   function update() {
     const def = active.def, v = values(), p = picks();
-    let text = def.status ? def.status(v, p) : null;
+    let text = def.status ? def.status(v, p, active) : null;
     if (def.view === "edges") {
       const n = active.edges.size;
       text = text || (n ? `${n} edge${n === 1 ? "" : "s"} selected` : def.hint);
@@ -1000,8 +1053,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const body = { command: active.def.command, preview };
     if (active.edit) {
       body.edit = active.edit;
-      body.params = active.def.editSet ? active.def.editSet(v, p) : active.def.params(v, p);
-    } else body.params = active.def.params(v, p);
+      body.params = active.def.editSet ? active.def.editSet(v, p, active) : active.def.params(v, p, active);
+    } else body.params = active.def.params(v, p, active);
     return body;
   }
 

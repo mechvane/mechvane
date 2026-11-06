@@ -342,6 +342,24 @@ EDITABLE = {
 }
 
 
+CURVE_KEYS = ("id", "type", "start_at", "end_at", "center_at", "radius", "construction")
+
+
+def sketch_shapes(session, name: str) -> dict:
+    """What the workspace draws of a sketch outside the sketch environment (unused sketches, the profiles to
+    click in Extrude and Revolve): its plane, curves in sketch coordinates and the closed regions, each with the
+    curve ids of its outline and of its holes (index as solid.extrude's profiles)."""
+    try:
+        insp = session.cmd("sketch.inspect", {"sketch": name})
+    except Exception:
+        return {"profiles": [], "plane": None, "curves": []}
+    profiles = [{"index": p["index"], "area": round(p["area_mm2"], 1), "curves": p["curves"],
+                 "holes": len(p.get("holes") or []), "hole_loops": p.get("holes") or []}
+                for p in insp.get("profiles", [])]
+    curves = [{k: c[k] for k in CURVE_KEYS if k in c} for c in insp.get("curves", [])]
+    return {"profiles": profiles, "plane": insp.get("plane"), "curves": curves}
+
+
 def sketches(doc) -> dict:
     """The part's sketches for Extrude and Revolve (oldest first), with what already uses each."""
     if doc.kind != PART:
@@ -351,13 +369,7 @@ def sketches(doc) -> dict:
     for f in _timeline(doc):
         if f["type"] != "Sketch":
             continue
-        try:  # the closed regions Extrude and Revolve can take one by one (index as solid.extrude's profiles)
-            profiles = [{"index": p["index"], "area": round(p["area_mm2"], 1), "curves": p["curves"],
-                         "holes": len(p.get("holes") or [])}
-                        for p in doc.session.cmd("sketch.inspect", {"sketch": f["name"]}).get("profiles", [])]
-        except Exception:
-            profiles = []
-        out.append({"name": f["name"], "used_by": sorted(used.get(f["name"]) or []), "profiles": profiles})
+        out.append({"name": f["name"], "used_by": sorted(used.get(f["name"]) or []), **sketch_shapes(doc.session, f["name"])})
     return {"sketches": out}
 
 
@@ -1399,6 +1411,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/features.js":
                 self._send_static("features.js", "application/javascript; charset=utf-8")
                 return
+            if path == "/sketchgeom.js":
+                self._send_static("sketchgeom.js", "application/javascript; charset=utf-8")
+                return
             if path == "/sketcher.js":
                 self._send_static("sketcher.js", "application/javascript; charset=utf-8")
                 return
@@ -1627,8 +1642,12 @@ def run_server(path, port: int = 8765, opener=None):
     print(f"Mechvane UI running at {url} ({target_name})", flush=True)
     if opener:
         def open_ui():
-            srv.stops_with_window = opener(url, srv.shutdown) == "window"
-            if srv.stops_with_window:
+            mode = opener(url, srv.shutdown)
+            srv.stops_with_window = mode == "window"
+            # a window handed to an app window that was already open closes the same way: the page says
+            # "closing" (seen on the Surface 2026-11-06: a second instance kept its Python and solidcraft-cli
+            # running after all windows were closed); only the instance that opened Chrome closes its windows
+            if mode in ("window", "handoff"):
                 threading.Thread(target=_watch_closing, args=(srv,), daemon=True).start()
         threading.Thread(target=open_ui, daemon=True).start()
     try:
