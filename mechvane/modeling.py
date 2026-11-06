@@ -43,11 +43,7 @@ def run_commands(doc, commands: list[dict], verbose: bool = False) -> dict:
     except Exception as e:
         if cp is not None:
             _restore(doc.session, cp)
-        exp = sc_errors.explain(str(e))
-        if exp is not None:
-            # RuntimeError, not type(e): not every exception class takes a single message argument.
-            raise RuntimeError(f"{exp['message']} ({exp['hint']})\n{e}") from e
-        raise
+        sc_errors.reraise(e)
 
     out = {"results": result.get("results", result) if isinstance(result, dict) else result}
     if not verbose:
@@ -64,6 +60,28 @@ def run_commands(doc, commands: list[dict], verbose: bool = False) -> dict:
                 out["delta"] = state_delta.diff(snap_before, state_delta.snapshot(doc.session))
             except Exception:
                 pass
+        try:
+            insp = doc.session.cmd("document.inspect")
+            marker = insp.get("marker")
+            tl = insp.get("timeline", [])
+            if marker is not None and marker < len(tl):
+                rolled_back = [f["name"] for f in tl[marker:]]
+                first_rolled = rolled_back[0] if rolled_back else "?"
+                msg = (
+                    f"Part end is not at the end (position {marker} of {len(tl)}, "
+                    f"before {first_rolled!r}); {len(rolled_back)} feature(s) rolled back. "
+                    f"Call part_end({doc.name!r}) to roll to the end."
+                )
+                out.setdefault("warnings", []).append(msg)
+                if "delta" in out and isinstance(out["delta"], dict):
+                    out["delta"].setdefault("warnings", []).append(msg)
+                out["part_end"] = {
+                    "position": marker,
+                    "total_features": len(tl),
+                    "rolled_back": rolled_back,
+                }
+        except Exception:
+            pass
     if cp is not None:
         _restore(doc.session, cp)
     return out

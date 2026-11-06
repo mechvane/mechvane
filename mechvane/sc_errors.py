@@ -6,9 +6,10 @@ explanations (code, message, hint) for agents and users.
 
 from __future__ import annotations
 
+import functools
 import json
 import re
-from typing import Any
+from typing import Any, Callable
 
 ERROR_TABLE: list[dict[str, str]] = [
     {
@@ -205,3 +206,24 @@ def explain(text: str | Exception, command: str | None = None) -> dict[str, str]
                 }
 
     return None
+
+
+def reraise(e: Exception):
+    """Re-raise e as RuntimeError with explanation and hint when explain() recognises it, else unchanged."""
+    exp = explain(e)
+    if exp is not None:
+        # RuntimeError, not type(e): not every exception class takes a single message argument.
+        raise RuntimeError(f"{exp['message']} ({exp['hint']})\n{e}") from e
+    raise e
+
+
+def explained(fn: Callable) -> Callable:
+    """Decorator for tools: SolidCraft errors raised by fn come back with explanation and hint."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            reraise(exc)
+
+    return wrapper

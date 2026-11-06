@@ -207,3 +207,17 @@ Umsetzung:
 
 Reihenfolge: (a) Umgebung betreten/verlassen, Linie, Rechteck, Kreis mit Fangen und Eingabefeldern; (b) Bemaßen und
 Freiheitsgrade; (c) Abhängigkeiten, Bogen, Skizze bearbeiten; (d) Stutzen, Versatz, Projizieren, Konfliktanzeige.
+
+*Stand 2026-11-05:* Server-Teil von (a) fertig: `mechvane/ui/sketch_session.py` mit `POST /api/sketch/begin {plane|edit}`,
+`/cmd {command, params}` (nur `sketch.*` außer create/edit/finish), `/undo` (ein Befehl zurück, Sicherungspunkt je
+Befehl), `/finish`, `/cancel`, `GET /api/sketch/state`. Die Sitzung ist ein Handschritt über mehrere Anfragen
+(`AgentSession.begin_hand`/`end_hand`), der Agent und andere Dialoge sind solange gesperrt. Test
+`sketch_session_checks`. Offen für (a): `sketcher.js` (Register Skizze, Look At, Werkzeuge, Gummiband, Fangen,
+Eingabefelder am Cursor).
+
+*Stand 2026-11-06:* Schritt (a) fertig: `mechvane/ui/static/sketcher.js` (Fangradien 8/7 px wie SolidCraft, Recherche #53),
+Eingabefelder am Cursor über `sketch.draw.dimensioned` (Rollen length/angle, width/height, diameter), Mittelpunkt-Fang
+hält per `sketch.constraint.midpoint`. Noch nicht in der Live-Demo (braucht `demo_kernel.js`).
+Schritt (b) fertig: Bemaßen (D) über `sketch.dimension` (`type: length` für eine Linie, sonst `auto` mit `text_at`),
+Ändern per `parameters.change` (in der Skizzensitzung zusätzlich erlaubt), `name = Ausdruck` beim Setzen (ein Schritt
+zurück, dann neu mit Wert). Das erste Längenmaß skaliert die Skizze (SolidCraft `scale_sketch`, wie Inventor).

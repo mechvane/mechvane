@@ -125,5 +125,55 @@
   "ausnahmen": "Aufgrund des Kupfer- und Bleigehalts nicht schweißbar und korrosionsempfindlich gegen Witterung und Salzwasser. Nicht dekorativ eloxierbar.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 80,
+      "form": "rund",
+      "R_p02_min": 250,
+      "R_m_min": 370,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200,
+      "form": "rund",
+      "R_p02_min": 220,
+      "R_m_min": 340,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 210,
+      "R_m_min": 330,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 30,
+      "form": "rund_gezogen",
+      "R_p02_min": 240,
+      "R_m_min": 370,
+      "norm": "DIN EN 754-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 80,
+      "form": "rund_gezogen",
+      "R_p02_min": 220,
+      "R_m_min": 340,
+      "norm": "DIN EN 754-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 30,
+      "form": "profil",
+      "R_p02_min": 250,
+      "R_m_min": 370,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    }
+  ]
 }

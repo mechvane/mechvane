@@ -50,7 +50,7 @@ MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its own la
 ## Quick start
 
 Requirements: Python ≥ 3.11. Everything else comes with `mechvane setup`: it downloads the
-pinned `solidcraft-cli` and SolidCraft web app (v0.25.1) from the
+pinned `solidcraft-cli` and SolidCraft web app (v0.30.1) from the
 [SolidCraft release](https://github.com/tangency-labs/solidcraft/releases) for your platform
 (Linux x86_64/aarch64, Windows x64/arm64, macOS) and checks their SHA256. No build needed;
 rendering works headless too.

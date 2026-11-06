@@ -815,6 +815,7 @@ details[open] > .collapsible-header h2::before {
 }
 
 .viewport {
+  position: relative;
   width: 100%;
   height: 100%;
 }
@@ -1032,7 +1033,7 @@ details.chat-panel .chat-log { min-height: 64px; max-height: 160px; overflow-y: 
 .chat-input { flex: 1; min-width: 0; resize: vertical; font: inherit; font-size: 13px; color: var(--text); background: var(--bg);
   border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
 .send-btn { align-self: flex-end; width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; font-size: 15px;
-  background: #d97757; color: #fff; flex-shrink: 0; }
+  background: #b8562f; color: #fff; flex-shrink: 0; }
 .send-btn.stop { background: var(--fail-border); }
 .mic-btn { align-self: flex-end; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); cursor: pointer;
   background: var(--panel-bg); font-size: 14px; flex-shrink: 0; }
@@ -1459,3 +1460,60 @@ dialog.request-dialog::backdrop {
 .sketch-shape { display: flex; justify-content: space-between; align-items: center; padding: 1px 6px;
   border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
 .sketch-add-row { justify-content: flex-start; }
+
+/* Sketch environment (sketcher.js) */
+body.sketching #viewport canvas { cursor: crosshair; }
+.sketch-plane-bar {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; gap: 6px; align-items: center; padding: 6px 10px;
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;
+}
+.sketch-plane-bar button {
+  background: var(--hover-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 10px; cursor: pointer; font: inherit;
+}
+.sketch-plane-bar button:hover { border-color: var(--selected-border); }
+.sketch-snap {
+  position: absolute; z-index: 4; pointer-events: none; transform: translate(-50%, -50%);
+  width: 12px; height: 12px; border: 2px solid #f0b429; border-radius: 50%;
+  font: 600 10px/12px system-ui, sans-serif; color: #f0b429; text-align: center;
+}
+.sketch-snap[data-kind="mid"] { border-radius: 0; transform: translate(-50%, -50%) rotate(45deg); width: 9px; height: 9px; }
+.sketch-snap[data-kind="horizontal"], .sketch-snap[data-kind="vertical"] {
+  border: none; width: auto; height: auto; transform: translate(8px, -18px);
+}
+.sketch-hud {
+  position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 3px; padding: 4px 6px;
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 5px; font-size: 12px; color: var(--text-muted);
+}
+.sketch-hud label { display: flex; align-items: center; gap: 5px; }
+.sketch-hud label > span:first-child { width: 54px; }
+.sketch-hud input {
+  width: 64px; padding: 1px 4px; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+}
+.sketch-hud input:focus { outline: none; border-color: var(--selected-border); }
+.sketch-hud input.locked { border-color: #f0b429; }
+.sketch-dims { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.sketch-dim {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; white-space: nowrap;
+  padding: 0 4px; border-radius: 3px; font: 12px/18px system-ui, sans-serif; color: var(--text);
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent); border: 1px solid var(--border);
+}
+.sketch-dim:hover { border-color: var(--selected-border); }
+.sketch-dim-edit {
+  position: absolute; transform: translate(-50%, -50%); z-index: 6; width: 110px; padding: 1px 4px;
+  font: 12px/18px system-ui, sans-serif; color: var(--text); background: var(--bg);
+  border: 1px solid #f0b429; border-radius: 3px; outline: none;
+}
+.sketch-glyph {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer;
+  min-width: 14px; padding: 0 2px; text-align: center; border-radius: 3px;
+  font: 600 11px/14px system-ui, sans-serif; color: var(--text-muted);
+  background: var(--panel-bg); border: 1px solid var(--border);
+}
+.sketch-glyph:hover, .sketch-dim.picked, .sketch-glyph.picked { border-color: #f0b429; color: var(--text); }
+
+/* the examples are listed in the File menu; the select only holds the chosen one */
+#demo-select { display: none; }
+.sketch-glyph.conflict { border-color: var(--fail-border); color: var(--fail-fg); background: var(--fail-bg); }

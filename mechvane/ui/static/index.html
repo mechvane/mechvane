@@ -29,8 +29,12 @@
               <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2h5l4 4v8H4z"/><path d="M9 2v4h4M8 7v5M5.5 9.5h5"/></svg>
               New part…
             </button>
+            <button id="btn-import-step" type="button" class="menu-item" role="menuitem" hidden>
+              <svg class="menu-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9v4h10V9M8 2v8M5 7l3 3 3-3"/></svg>
+              Import STEP…
+            </button>
             <div id="demo-bar" class="demo-bar file-menu-section" hidden>
-              <label for="demo-select" class="menu-section-label">Example</label>
+              <span class="menu-section-label">Examples</span>
               <select id="demo-select" class="file-select"></select>
               <ul id="file-doc-list" class="file-doc-list"></ul>
               <a class="menu-install-link" href="https://github.com/mechvane/mechvane#quick-start">Install to open your own files</a>
@@ -77,7 +81,7 @@
       <div class="ribbon-panel active" role="tabpanel" data-tab-panel="3d-model">
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-sketch" data-feature="sketch" data-title="Create 2D Sketch: rectangles and circles on a plane or face (S)" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" id="btn-sketch" data-title="Create 2D Sketch: click a flat face or an origin plane, then draw (S)" disabled title="Create 2D Sketch (S)">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="3" y="5" width="14" height="14" rx="1.5" stroke-dasharray="3 2"/>
                 <path d="M7 15h6V9"/>
@@ -238,26 +242,26 @@
       <div class="ribbon-panel" role="tabpanel" data-tab-panel="sketch" hidden>
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-tool="line" disabled title="Line (L)">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>
               </svg>
               <span>Line</span>
             </button>
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-tool="circle" disabled title="Circle (C)">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>
               </svg>
               <span>Circle</span>
             </button>
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-tool="rectangle" disabled title="Rectangle (R)">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="4" cy="6" r="1.8"/><circle cx="20" cy="18" r="1.8"/>
               </svg>
               <span>Rectangle</span>
             </button>
             <div class="ribbon-stack">
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="arc" disabled title="Three-point arc (A): start, end, a point on the arc">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13A9 9 0 0 1 13 3"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="3" r="1.5"/></svg>
                 <span>Arc</span>
               </button>
@@ -279,7 +283,7 @@
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v8M4 8h8"/></svg>
                 <span>Point</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="project" disabled title="Project Geometry (P): click model edges to bring them into the sketch">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 12h10M5 4h6l2 4H3z"/></svg>
                 <span>Project Geometry</span>
               </button>
@@ -291,15 +295,15 @@
         <div class="ribbon-group">
           <div class="ribbon-group-items">
             <div class="ribbon-stack">
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="trim" disabled title="Trim (T): click the piece of a curve to remove">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12L10 4M10 4l4-4" stroke-dasharray="2 1.5"/><line x1="6" y1="2" x2="12" y2="14"/></svg>
                 <span>Trim</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="extend" disabled title="Extend: click near the end of a line or arc">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="10" x2="9" y2="10"/><line x1="9" y1="10" x2="13" y2="10" stroke-dasharray="2 1.5"/><line x1="13" y1="3" x2="13" y2="14"/></svg>
                 <span>Extend</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="offset" disabled title="Offset (O): click a curve, then the side and distance">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13V6h10"/><path d="M6 13V9h7" opacity="0.65"/></svg>
                 <span>Offset</span>
               </button>
@@ -310,7 +314,7 @@
 
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-tool="dimension" disabled title="Dimension (D): click a line, a circle or two points, then where the value goes">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <line x1="4" y1="6" x2="4" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>
                 <line x1="4" y1="12" x2="20" y2="12"/>
@@ -319,31 +323,41 @@
               <span>General Dimension</span>
             </button>
             <div class="ribbon-stack">
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:horizontal" disabled title="Horizontal: click a line, or two points">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="8" x2="14" y2="8"/></svg>
                 <span>Horizontal</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:vertical" disabled title="Vertical: click a line, or two points">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="8" y1="2" x2="8" y2="14"/></svg>
                 <span>Vertical</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:perpendicular" disabled title="Perpendicular: click two curves">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13V3M3 13h10"/><rect x="3" y="9" width="4" height="4"/></svg>
                 <span>Perpendicular</span>
               </button>
             </div>
             <div class="ribbon-stack">
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:parallel" disabled title="Parallel: click two curves">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="3" y1="12" x2="11" y2="4"/><line x1="5" y1="14" x2="13" y2="6"/></svg>
                 <span>Parallel</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:tangent" disabled title="Tangent: click two curves">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="9" r="4"/><line x1="3" y1="13" x2="14" y2="2"/></svg>
                 <span>Tangent</span>
               </button>
-              <button type="button" class="ribbon-btn ribbon-btn-small" disabled title="Coming in the next step">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:equal" disabled title="Equal: click two curves">
                 <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="10" x2="13" y2="10"/></svg>
                 <span>Equal</span>
+              </button>
+            </div>
+            <div class="ribbon-stack">
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:coincident" disabled title="Coincident: click two points, or a point and a curve">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M2 14L14 2"/></svg>
+                <span>Coincident</span>
+              </button>
+              <button type="button" class="ribbon-btn ribbon-btn-small" data-sketch-tool="con:fix" disabled title="Fix: click a point or curve to hold it where it is">
+                <svg class="ribbon-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4 8a4 4 0 0 0 8 0M6 4h4"/></svg>
+                <span>Fix</span>
               </button>
             </div>
           </div>
@@ -352,11 +366,17 @@
 
         <div class="ribbon-group">
           <div class="ribbon-group-items">
-            <button type="button" class="ribbon-btn ribbon-btn-large" disabled title="Coming in the next step">
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-action="finish" disabled title="Finish Sketch (Enter with no tool active)">
               <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 13l4 4L19 7"/>
               </svg>
               <span>Finish Sketch</span>
+            </button>
+            <button type="button" class="ribbon-btn ribbon-btn-large" data-sketch-action="cancel" disabled title="Leave the sketch without keeping it">
+              <svg class="ribbon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18"/>
+              </svg>
+              <span>Cancel</span>
             </button>
           </div>
           <div class="ribbon-group-title">Exit</div>

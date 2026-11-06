@@ -55,9 +55,10 @@ def bolted_plates(ws):
     return asm
 
 
-DEMOS = [("bolted_plates", "Bolted connection (assembly)", bolted_plates),
-         ("bracket", "Bracket with a design check finding", bracket),
-         ("flange", "Parametric flange", flange)]
+# The first one opens when the live demo starts: a part that passes the design check (user 2026-11-06)
+DEMOS = [("flange", "Parametric flange", flange),
+         ("bolted_plates", "Bolted connection (assembly)", bolted_plates),
+         ("bracket", "Bracket with a design check finding", bracket)]
 
 
 def build_all(ws):

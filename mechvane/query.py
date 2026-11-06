@@ -455,7 +455,7 @@ def _query_holes(doc, targets, where, limit, tl_map, tl_by_name):
                     if abs(e["length"] - d_end) < 1e-3:
                         seam_lens.append(e["length"])
 
-            meas_len = total_area / (2.0 * math.pi * r) if len(grp) >= 2 else total_area / (math.pi * r)
+            meas_len = g.cylinder_group_length(grp)
             if seam_lens:
                 depth = max(seam_lens)
             elif feat_info.get("definition", {}).get("depth"):

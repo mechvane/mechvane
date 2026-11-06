@@ -118,5 +118,103 @@
   "ausnahmen": "Dekorative Eloxierung ist wegen des Silizium- und Mangangehalts nur eingeschränkt möglich (graue Verfärbung). Rissgefahr bei scharfen Kantungen im Zustand T6.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 12.5,
+      "form": "blech",
+      "R_p02_min": 255,
+      "R_m_min": 300,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 60.0,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 295,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 100.0,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 295,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 150.0,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 275,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 175.0,
+      "form": "blech",
+      "R_p02_min": 230,
+      "R_m_min": 275,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 350.0,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 260,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 20,
+      "form": "rund",
+      "R_p02_min": 250,
+      "R_m_min": 295,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 150,
+      "form": "rund",
+      "R_p02_min": 260,
+      "R_m_min": 310,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200,
+      "form": "rund",
+      "R_p02_min": 240,
+      "R_m_min": 280,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 200,
+      "R_m_min": 270,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 5,
+      "form": "profil",
+      "R_p02_min": 250,
+      "R_m_min": 290,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 25,
+      "form": "profil",
+      "R_p02_min": 260,
+      "R_m_min": 310,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    }
+  ]
 }

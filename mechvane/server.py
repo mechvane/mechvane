@@ -10,7 +10,7 @@ import struct
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import bolted, design_rules, modeling, geometry as g, iso286, katalog, links, query, sketch_rule, standard_parts, tree
+from . import bolted, design_rules, step_import, modeling, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
 from .documents import ASSEMBLY, PART, Workspace
 
 mcp = FastMCP(
@@ -21,12 +21,16 @@ mcp = FastMCP(
         "command ids (as the solidcraft MCP batch tool takes them), which in parts also returns a state "
         "delta and warnings after each step; or generate parametric standard parts "
         "with standard_part (see list_standard_parts); a sketch used by one feature is kept directly before "
-        "it. Put parts into an assembly with insert_part, join them with add_joint and change them with "
+        "it. Keep the design intent: when a request names a relation (in the middle of a face, 10 mm from an "
+        "edge, flush, concentric, equal, symmetric), build it as sketch constraints on projected edges "
+        "(sketch.project, sketch.constraint.midpoint, dimensions to the projected line), never as computed "
+        "coordinates, so it still holds when the part changes. Put parts into an assembly with insert_part, join them with add_joint and change them with "
         "edit_joint or delete_joint (not raw joint.create or joint.edit, so Mechvane can check the joint "
         "later), and after changing a part file call update_links: it reports joints that moved to another "
-        "face. Save with save_document. For holes and screws use bolted_connection; check a part with "
-        "check_design (pass material, or assign one in SolidCraft; values carry their sources); export with "
-        "export_gltf for Blender or the web. Lengths in mm."
+        "face. Save with save_document. To inspect or repair a part before a feature, roll there with "
+        "part_end(document, before=feature) and back with part_end(document). For holes and screws use bolted_connection; "
+        "check a part with check_design (pass material, or assign one in SolidCraft; values carry their sources); "
+        "export with export_gltf for Blender or the web. Lengths in mm."
     ),
 )
 
@@ -63,6 +67,18 @@ def new_part(name: str, path: str | None = None, overwrite: bool = False) -> dic
 
 
 @mcp.tool()
+@sc_errors.explained
+def import_step(source: str, name: str | None = None, path: str | None = None, overwrite: bool = False,
+                up: str = "z") -> dict:
+    """Make a part file from a STEP (or IGES, FreeCAD, Rhino) file and keep it open: a fixed body without
+    history, e.g. a bought-in part to insert into an assembly with insert_part, or a part to measure and
+    check. source is absolute or relative to the project folder; up="y" turns a file with Y up so that Y
+    becomes Z. Returns the bodies with volume and bounding box."""
+    return step_import.import_step(ws, source, name=name, path=path, overwrite=overwrite, up=up)
+
+
+@mcp.tool()
+@sc_errors.explained
 def standard_part(norm: str, size: str, length: float | None = None,
                   name: str | None = None, path: str | None = None,
                   overwrite: bool = False) -> dict:
@@ -112,10 +128,47 @@ def list_documents() -> dict:
 
 @mcp.tool()
 def save_document(document: str) -> dict:
-    """Save a document to its file."""
+    """Save a document to its file. A part rolled back with part_end is saved as it is, marker included
+    (as in Inventor)."""
     doc = ws.get(document)
     doc.save()
     return doc.info()
+
+
+@mcp.tool()
+def part_end(document: str, before: str | None = None) -> dict:
+    """Move the end-of-part marker before a feature, or to the end of the history (before=None).
+    Returns position, features behind (suppressed), current volume and bounding box."""
+    doc = ws.get(document, PART)
+    insp = doc.session.cmd("document.inspect")
+    tl = insp.get("timeline", [])
+    if before is None:
+        doc.session.cmd("timeline.roll_to", {})
+        pos = len(tl)
+        behind = []
+    else:
+        idx = None
+        for i, f in enumerate(tl):
+            if f.get("name") == before or str(f.get("id")) == str(before):
+                idx = i
+                break
+        if idx is None:
+            raise ValueError(f"feature {before!r} not found in {document!r}")
+        doc.session.cmd("timeline.roll_to", {"position": idx})
+        pos = idx
+        behind = [f["name"] for f in tl[idx:]]
+
+    snap = state_delta.snapshot(doc.session)
+    return {
+        "document": document,
+        "position": pos,
+        "total_features": len(tl),
+        "before": before,
+        "rolled_back": behind,
+        "volume_mm3": snap.get("volume_mm3", 0.0),
+        "bbox": snap.get("bbox"),
+        "bodies": snap.get("bodies", 0),
+    }
 
 
 @mcp.tool()
@@ -164,6 +217,7 @@ def delete_feature(document: str, feature: str, keep_sketch: bool = False) -> di
 
 
 @mcp.tool()
+@sc_errors.explained
 def insert_part(assembly: str, part_path: str, name: str | None = None, translate: list[float] | None = None,
                 rotate: dict | list | None = None, grounded: bool | None = None) -> dict:
     """Place a part or subassembly file in an assembly. A part is linked directly; a subassembly
@@ -176,6 +230,7 @@ def insert_part(assembly: str, part_path: str, name: str | None = None, translat
 
 
 @mcp.tool()
+@sc_errors.explained
 def add_joint(assembly: str, params: dict) -> dict:
     """Create a joint (params as SolidCraft joint.create takes them, `name` required) and record which
     part face each side sits on, so update_links can check it later."""
@@ -189,6 +244,7 @@ def add_joint(assembly: str, params: dict) -> dict:
 
 
 @mcp.tool()
+@sc_errors.explained
 def edit_joint(assembly: str, joint: str, params: dict) -> dict:
     """Change a joint (params as SolidCraft joint.edit takes them, e.g. flip, offset, a, b) and record
     its part faces again."""
@@ -226,6 +282,7 @@ def adopt_joint(assembly: str, joint: str) -> dict:
 
 
 @mcp.tool()
+@sc_errors.explained
 def update_links(assembly: str, repair: bool = False) -> dict:
     """Read the linked part files again, check every joint made with add_joint against its part face,
     and check every bolted connection against its geometric anchor. `warnings` lists joints and bolted
@@ -363,6 +420,7 @@ def check_design(document: str, profile: str | None = None, build_direction: str
 
 
 @mcp.tool()
+@sc_errors.explained
 def bolted_connection(
     assembly: str,
     placement: dict,
@@ -402,6 +460,7 @@ def bolted_connection(
 
 
 @mcp.tool()
+@sc_errors.explained
 def preview_bolted_connection(
     assembly: str,
     placement: dict,
@@ -504,6 +563,7 @@ from . import inplace
 
 
 @mcp.tool()
+@sc_errors.explained
 def edit_in_place(assembly: str, occurrence: str, point: list[float] | None = None) -> dict:
     """Open the part file behind an occurrence (including subassemblies like 'Sub:1/Plate:1') for
     in-place editing. If already open, returns the existing document. Returns document name and the
@@ -512,6 +572,7 @@ def edit_in_place(assembly: str, occurrence: str, point: list[float] | None = No
 
 
 @mcp.tool()
+@sc_errors.explained
 def finish_edit(part: str, update: bool = True) -> dict:
     """Save an edited part document and run update_links (repair=false) in all open assemblies that link it,
     returning their reports with any joint warnings visible."""

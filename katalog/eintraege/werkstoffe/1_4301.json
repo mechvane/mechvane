@@ -115,5 +115,52 @@
   "ausnahmen": "Nicht meerwasserbeständig (Gefahr von Lochfraßkorrosion durch Chloride; dafür 1.4404 wählen). Nach dem Schweißen ohne Nachbehandlung Gefahr von interkristalliner Korrosion (da C <= 0,07 %; für dicke Schweißteile 1.4307 bevorzugen). Stark kaltverfestigend bei Zerspanung.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 8,
+      "form": "blech",
+      "R_p02_min": 230,
+      "R_m_min": 540,
+      "R_m_max": 750,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 13.5,
+      "form": "blech",
+      "R_p02_min": 210,
+      "R_m_min": 520,
+      "R_m_max": 720,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 75,
+      "form": "blech",
+      "R_p02_min": 210,
+      "R_m_min": 520,
+      "R_m_max": 720,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 160,
+      "form": "rund",
+      "R_p02_min": 190,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 190,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    }
+  ]
 }

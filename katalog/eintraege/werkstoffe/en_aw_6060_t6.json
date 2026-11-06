@@ -117,5 +117,39 @@
   "ausnahmen": "Nicht für hochbelastete Strukturbauteile geeignet (dafür 6082 oder 7075 wählen). Bei Schweißverbindungen Festigkeitsabfall in der Wärmeeinflußzone auf Zustand 0/T4-Niveau.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 5,
+      "form": "profil",
+      "R_p02_min": 150,
+      "R_m_min": 190,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 25,
+      "form": "profil",
+      "R_p02_min": 140,
+      "R_m_min": 170,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 150,
+      "form": "rund",
+      "R_p02_min": 150,
+      "R_m_min": 190,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 80,
+      "form": "rund_gezogen",
+      "R_p02_min": 160,
+      "R_m_min": 215,
+      "norm": "DIN EN 754-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    }
+  ]
 }

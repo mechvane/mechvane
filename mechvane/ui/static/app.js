@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { initViewTools } from "./viewtools.js";
 import { initAgentChat } from "./chat.js";
-import { openNewPartDialog } from "./newpart.js";
+import { openNewPartDialog, openImportStepDialog } from "./newpart.js";
 import { initFeatureDialogs, EDITABLE_TYPES } from "./features.js";
+import { initSketcher } from "./sketcher.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -846,7 +847,9 @@ async function fetchJson(url, opts = {}) {
   const res = await fetch(url, { cache: "no-store", ...opts });
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || `HTTP ${res.status}`);
+    const err = new Error(data.error || `HTTP ${res.status}`);
+    Object.assign(err, data);
+    throw err;
   }
   return data;
 }
@@ -1237,6 +1240,19 @@ async function initFolder() {
       });
     });
   }
+  const importBtn = document.getElementById("btn-import-step");
+  if (importBtn && project.mode === "folder") {
+    importBtn.hidden = false;
+    importBtn.addEventListener("click", async () => {
+      if (fileMenu) fileMenu.open = false;
+      // the folder may have new files since the page loaded
+      const fresh = await fetchJson("api/project").catch(() => project);
+      openImportStepDialog(fresh.step_files || [], (data) => {
+        statusEl.textContent = "Computing…";
+        location.search = `?doc=${encodeURIComponent(data.document)}`;
+      });
+    });
+  }
   const docs = project.documents || [];
   if (!docs.length) {
     statusEl.textContent = "No .solidcraft files in this folder yet: click File → New part…";
@@ -1361,7 +1377,25 @@ async function postJson(url, body) {
   return fetchJson(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
+// A sketch turns the view onto its plane: looking against the normal, the sketch's Y up
+function lookAlongFrame(frame) {
+  if (!frame) return fitCameraToModel(false);
+  const x = new THREE.Vector3(...frame.x_dir), y = new THREE.Vector3(...frame.y_dir);
+  const n = new THREE.Vector3().crossVectors(x, y).normalize();
+  // an empty part has no size yet: leave room for a first sketch of a few centimetres
+  const empty = !(currentMeshData && (currentMeshData.bodies || []).length);
+  const dist = empty ? 220 : Math.max(modelRadius * 2.8, 80);
+  camera.up.copy(y);
+  camera.position.copy(modelCenter).addScaledVector(n, dist);
+  controls.target.copy(modelCenter);
+  camera.lookAt(modelCenter);
+  controls.update();
+  updateAxesGizmo();
+  renderScene();
+}
+
 var featureDialogs = null;
+var sketcher = null;
 var viewBeforeEdit = null;
 {
   featureDialogs = initFeatureDialogs({
@@ -1378,30 +1412,26 @@ var viewBeforeEdit = null;
       if (viewBeforeEdit) updateMeshView(viewBeforeEdit, false);
       viewBeforeEdit = null;
     },
-    // the sketch dialog turns the view onto its plane: looking against the normal, the sketch's Y up
-    lookAlong: (frame) => {
-      if (!frame) return fitCameraToModel(false);
-      const x = new THREE.Vector3(...frame.x_dir), y = new THREE.Vector3(...frame.y_dir);
-      const n = new THREE.Vector3().crossVectors(x, y).normalize();
-      // an empty part has no size yet: leave room for a first sketch of a few centimetres
-      const empty = !(currentMeshData && (currentMeshData.bodies || []).length);
-      const dist = empty ? 220 : Math.max(modelRadius * 2.8, 80);
-      camera.up.copy(y);
-      camera.position.copy(modelCenter).addScaledVector(n, dist);
-      controls.target.copy(modelCenter);
-      camera.lookAt(modelCenter);
-      controls.update();
-      updateAxesGizmo();
-      renderScene();
-    },
+    lookAlong: lookAlongFrame,
   });
   initTreeActions();
-  document.querySelectorAll("[data-feature]").forEach((b) => {
-    // the sketch dialog is being replaced by a sketch environment like Inventor's (ADR 0005): not in the live demo
-    if (STATIC && b.dataset.feature === "sketch") {
-      b.title = "Sketching is being reworked to work like Inventor and Fusion; install Mechvane to try the first version";
-      return;
+  // the sketch environment (ADR 0005): not in the live demo yet, it needs the SolidCraft session on the server
+  // in the live demo the same environment runs on the demo kernel (demo_kernel.js), SolidCraft in the browser
+  const btnSketch = document.getElementById("btn-sketch");
+  {
+    sketcher = initSketcher({
+      resume: !STATIC,
+      scene, camera, renderer, controls, renderScene, viewTools, lookAlong: lookAlongFrame, statusEl, viewportEl,
+      get: (url) => fetchJson(url), post: postJson, reload: () => loadAll(false), activateTab: activateRibbonTab,
+      log: clientLog, isDark: () => document.documentElement.dataset.theme !== "light",
+    });
+    if (btnSketch) {
+      btnSketch.disabled = false;
+      btnSketch.title = btnSketch.dataset.title || btnSketch.title;
+      btnSketch.addEventListener("click", () => sketcher.start());
     }
+  }
+  document.querySelectorAll("[data-feature]").forEach((b) => {
     b.disabled = false;
     b.title = b.dataset.title || b.title;
     b.addEventListener("click", () => featureDialogs.open(b.dataset.feature));
@@ -1454,9 +1484,9 @@ async function undoRedo(which) {
     } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {
       e.preventDefault();
       featureDialogs.open("fillet");
-    } else if (!mod && !e.altKey && (e.key === "s" || e.key === "S") && !STATIC) {
+    } else if (!mod && !e.altKey && (e.key === "s" || e.key === "S") && sketcher) {
       e.preventDefault();
-      featureDialogs.open("sketch");
+      sketcher.start();
     } else if (!mod && !e.altKey && (e.key === "e" || e.key === "E")) {
       e.preventDefault();
       featureDialogs.open("extrude");
@@ -1494,7 +1524,8 @@ function initTreeActions() {
   treeContentEl.addEventListener("dblclick", (e) => {
     if (featureDialogs.picksFeatures()) return;
     const row = rowOf(e);
-    if (row && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
+    if (row && row.dataset.type === "Sketch" && sketcher) sketcher.edit(row.dataset.feature);
+    else if (row && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
   });
   treeContentEl.addEventListener("contextmenu", (e) => {
     const row = rowOf(e);
@@ -1512,7 +1543,8 @@ function initTreeActions() {
       b.addEventListener("click", () => { hideMenu(); fn(); });
       menu.append(b);
     };
-    item(`Edit ${name}`, () => featureDialogs.edit(name), !EDITABLE_TYPES[row.dataset.type]);
+    if (row.dataset.type === "Sketch" && sketcher) item(`Edit ${name}`, () => sketcher.edit(name), false);
+    else item(`Edit ${name}`, () => featureDialogs.edit(name), !EDITABLE_TYPES[row.dataset.type]);
     item(`Delete ${name}`, () => featureDialogs.remove(name));
     menu.style.left = `${e.clientX}px`;
     menu.style.top = `${e.clientY}px`;

@@ -1,5 +1,5 @@
 """Click through the feature dialogs of the static live demo (demo_kernel.js) in a headless browser:
-fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint.
+fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint, a sketch.
 
     tools/build_demo_site.py /tmp/demosite && (cd /tmp/demosite && python3 -m http.server 8811 &)
     <python with playwright> tools/demo_smoke.py [url]   (default http://localhost:8811/demo/?demo=bracket)
@@ -49,6 +49,22 @@ with sync_playwright() as pw:
     print("hole:", p.locator(".feature-note").inner_text(), "|", p.locator(".feature-delta").inner_text(), p.locator(".feature-error").inner_text())
     p.keyboard.press("Escape")
     p.keyboard.press("e"); p.wait_for_timeout(1500); print("extrude:", p.locator(".feature-pick-count").inner_text())
+    p.keyboard.press("Escape"); p.wait_for_timeout(500)
+    # Sketch environment on the demo kernel: S, XZ, a 50 x 20 rectangle typed at the cursor, Enter finishes,
+    # the sketch is one step for Ctrl+Z
+    box = p.locator("#viewport canvas").bounding_box(); cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    p.keyboard.press("s"); p.click(".sketch-plane-bar [data-plane=XZ]")
+    p.wait_for_selector('.ribbon-tab[data-tab="sketch"].active', timeout=60000); p.wait_for_timeout(500)
+    p.keyboard.press("r"); p.mouse.click(cx - 150, cy + 150); p.mouse.move(cx + 50, cy + 50)
+    p.keyboard.type("50"); p.keyboard.press("Tab"); p.keyboard.type("20"); p.keyboard.press("Enter"); p.wait_for_timeout(3000)
+    dims = sorted(p.locator(".sketch-dim").all_inner_texts())
+    p.keyboard.press("Escape"); p.keyboard.press("Enter")
+    p.wait_for_function("document.querySelector('.ribbon-tab[data-tab=\"3d-model\"]').classList.contains('active')", timeout=60000)
+    p.wait_for_function("document.querySelector('#tree-content').innerText.includes('Sketch1')", timeout=60000)
+    p.keyboard.press("Control+z"); p.wait_for_function("!document.querySelector('#tree-content').innerText.includes('Sketch1')", timeout=60000)
+    print("sketch:", dims, "finished and undone")
+    if dims != ["20", "50"]:
+        errs.append(f"sketch: dimensions {dims}, expected 20 and 50")
     print("\n".join(errs) or "no errors")
     b.close()
 sys.exit(1 if errs else 0)

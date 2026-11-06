@@ -20,10 +20,15 @@ import sys
 import tempfile
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 from .. import install
 from . import sessionlog
+
+# Snapshot retention in cache: keep at most 50 steps per project hash, discard older than 14 days.
+HISTORY_KEEP_STEPS = 50
+HISTORY_KEEP_DAYS = 14
 
 MECHVANE_TOOL = "mcp__mechvane__"
 # Tools the agent may not call on its own. Deleting features, joints and bolted connections is allowed since
@@ -271,6 +276,40 @@ class Snapshot:
         return {"restored": sorted(restored), "removed": sorted(removed)}
 
 
+def _snapshot_time(p: Path) -> float:
+    """When a snapshot was taken: from its name (Snapshot writes "%Y%m%d-%H%M%S-<label>"), else its mtime."""
+    try:
+        return datetime.strptime(p.name[:15], "%Y%m%d-%H%M%S").timestamp()
+    except ValueError:
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
+
+
+def prune_history(cache_dir: Path | None = None, keep_dirs: set[Path] | None = None,
+                  keep_steps: int = HISTORY_KEEP_STEPS, keep_days: int = HISTORY_KEEP_DAYS) -> list[Path]:
+    """Prune the snapshot history: per project hash drop snapshots older than keep_days, then keep only the
+    keep_steps newest. Directories in keep_dirs (turns of a running session) are never removed."""
+    base = Path(cache_dir if cache_dir is not None else install.CACHE) / "history"
+    protected = {Path(d).resolve() for d in (keep_dirs or ())}
+    cutoff = time.time() - keep_days * 86400
+    removed = []
+    try:
+        key_dirs = [p for p in base.iterdir() if p.is_dir()] if base.is_dir() else []
+        for key_dir in key_dirs:
+            entries = sorted((p for p in key_dir.iterdir() if p.is_dir()), key=lambda p: (_snapshot_time(p), p.name))
+            excess = len(entries) - keep_steps
+            for i, p in enumerate(entries):
+                if p.resolve() in protected or (i >= excess and _snapshot_time(p) >= cutoff):
+                    continue
+                shutil.rmtree(p, ignore_errors=True)
+                removed.append(p)
+    except OSError:
+        pass  # pruning is housekeeping; never let it break a turn
+    return removed
+
+
 class Busy(RuntimeError):
     """The agent works on the files: a hand change has to wait."""
 
@@ -292,6 +331,17 @@ class AgentTurns:
         self.notes: list[str] = []  # for the agent, sent with the next message
         self.agent: AcpAgent | None = None
         self._stop = False
+        self.prune_history()
+
+    def active_snapshot_dirs(self) -> set[Path]:
+        """Directories of snapshots that belong to turns of this session and must not be pruned."""
+        with self.lock:
+            snaps = [t.get(k) for t in self.turns for k in ("snapshot", "redo")]
+        return {Path(s.dir).resolve() for s in snaps if s is not None}
+
+    def prune_history(self) -> list[Path]:
+        """Remove old historical snapshots outside this session's turns."""
+        return prune_history(install.CACHE, self.active_snapshot_dirs())
 
     def _event(self, e: dict):
         with self.lock:
@@ -357,17 +407,36 @@ class AgentTurns:
         """A change the user made by hand (a feature dialog, the parameter form): apply() changes and
         saves the files. The step goes into the same undo list as the agent's turns (Grundsatz 6), and
         the agent hears about it with its next message. Refused while the agent works."""
+        snap = self.begin_hand()
+        try:
+            result = apply()
+        except BaseException:
+            self.end_hand(snap, None)
+            raise
+        self.end_hand(snap, label)
+        return result
+
+    def begin_hand(self):
+        """Start a hand step that spans several requests (the sketch environment): the agent is locked out
+        until end_hand. Returns the snapshot of the files as they were."""
         with self.lock:
             if self.busy:
                 raise Busy("the agent is working on the files; wait or stop it")
             self.busy = True
         try:
-            snap = Snapshot(self.folder, "hand")
-            try:
-                result = apply()
-            except BaseException:
+            return Snapshot(self.folder, "hand")
+        except BaseException:
+            with self.lock:
+                self.busy = False
+            raise
+
+    def end_hand(self, snap, label: str | None) -> None:
+        """Finish a hand step: with a label it becomes one entry of the undo list, without (cancelled,
+        failed) the snapshot is dropped. Unlocks the agent either way."""
+        try:
+            if label is None:
                 shutil.rmtree(snap.dir, ignore_errors=True)
-                raise
+                return
             with self.lock:
                 self._drop_redo()
                 turn = {"id": len(self.turns) + 1, "text": label, "state": "done", "kind": "hand",
@@ -378,8 +447,8 @@ class AgentTurns:
                 turn["summary"] = {"changed": changed, "removed": sorted(before - set(turn["after"]))}
                 self.turns.append(turn)
                 self._note(f"the user changed the model by hand: {label} (files: {', '.join(changed) or 'none'}).")
+            self.prune_history()
             self._event({"type": "hand", "text": label, **turn["summary"]})
-            return result
         finally:
             with self.lock:
                 self.busy = False
@@ -406,6 +475,7 @@ class AgentTurns:
     def _run(self, turn, text, selection, document, sender="user"):
         try:
             turn["snapshot"] = Snapshot(self.folder, f"turn{turn['id']}")
+            self.prune_history()
             self._event({"type": "status", "status": "working"})
             if self.agent is None or self.agent.proc.poll() is not None:
                 cmd = self.command or agent_command()
@@ -467,6 +537,7 @@ class AgentTurns:
             else:
                 self._note(f"the user undid your turn {turn['id']} ({turn['text']!r}); the project files are back as "
                            "they were before it. Do not redo it unless the user asks.")
+        self.prune_history()
         self._event({"type": "undone", "turn_id": turn["id"], **out})
         self.on_files_changed()
         return out

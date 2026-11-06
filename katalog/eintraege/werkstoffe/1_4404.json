@@ -115,5 +115,52 @@
   "ausnahmen": "Geringere Wärmeleitfähigkeit (15 W/(m*K)) als ferritische Stähle führt zu höherem Verzug beim Schweißen. Nicht beständig gegen Salzsäure oder hochkonzentrierte Chloride bei erhöhter Temperatur.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 8,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 530,
+      "R_m_max": 680,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 13.5,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 530,
+      "R_m_max": 680,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 75,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 520,
+      "R_m_max": 670,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 160,
+      "form": "rund",
+      "R_p02_min": 200,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 200,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    }
+  ]
 }

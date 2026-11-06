@@ -115,5 +115,34 @@
   "ausnahmen": "Nur bedingt schweißbar (Aufhärtungsgefahr durch C-Gehalt ~0,45 %, Vorwärmen zwingend erforderlich). Bei größeren Abmessungen (z. B. d > 16 mm bis 100 mm) sinkt Rp0,2 auf 430 bzw. 370 N/mm².",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 16,
+      "form": "rund",
+      "R_p02_min": 490,
+      "R_m_min": 700,
+      "R_m_max": 850,
+      "norm": "DIN EN 10083-2",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 40,
+      "form": "rund",
+      "R_p02_min": 430,
+      "R_m_min": 650,
+      "R_m_max": 800,
+      "norm": "DIN EN 10083-2",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 100,
+      "form": "rund",
+      "R_p02_min": 370,
+      "R_m_min": 630,
+      "R_m_max": 780,
+      "norm": "DIN EN 10083-2",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    }
+  ]
 }

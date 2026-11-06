@@ -69,6 +69,34 @@ const OPERATIONS = [["join", "Join"], ["cut", "Cut"], ["new_body", "New body"], 
 const opParam = (op) => (op === "new_body" ? "new" : op);
 // the newest sketch nothing uses yet, else the newest
 const defaultSketch = () => ([...sketchList].reverse().find((sk) => !sk.used_by.length) || sketchList[sketchList.length - 1])?.name || "";
+// Profile of the chosen sketch: all regions (SolidCraft's default) or one; "multi" keeps a choice of several
+// made elsewhere (the agent) when the feature is edited here
+const PROFILE_OPTIONS = (v) => {
+  const sk = sketchList.find((x) => x.name === v?.sketch);
+  const profs = sk?.profiles || [];
+  const opts = [["all", profs.length > 1 ? `All ${profs.length} profiles` : "All"]];
+  for (const p of profs) {
+    opts.push([String(p.index), `Profile ${p.index + 1}: ${p.area} mm²${p.holes ? `, ${p.holes} hole${p.holes > 1 ? "s" : ""}` : ""}`]);
+  }
+  if (v?.profile === "multi") opts.push(["multi", "Several (as set)"]);
+  return opts;
+};
+const PROFILE_FIELD = { key: "profile", label: "Profile", type: "select", value: "all", options: PROFILE_OPTIONS,
+  show: (v) => (sketchList.find((x) => x.name === v.sketch)?.profiles?.length || 0) > 1 || v.profile !== "all" };
+const profileParam = (v) => (/^\d+$/.test(v.profile) ? [Number(v.profile)] : undefined);
+const profileSet = (v) => (v.profile === "all" ? "all" : /^\d+$/.test(v.profile) ? [Number(v.profile)] : undefined);
+// a stored choice (loops of curves) back to a profile of the sketch
+function profileValue(d, names) {
+  const pr = d.profiles;
+  if (!pr || pr.type === "all") return "all";
+  const sk = sketchList.find((x) => x.name === (names[d.sketch] || d.sketch));
+  const loops = pr.loops || [];
+  const same = (a, b) => a.length === b.length && a.every((c) => b.includes(c));
+  // one profile: its outer loop, then one loop per hole
+  const hit = loops.length ? (sk?.profiles || []).find((p) => same(p.curves, loops[0]) && p.holes === loops.length - 1) : null;
+  if (hit) return String(hit.index);
+  return "multi";
+}
 
 // Tables for the Hole dialog (GET /api/hole_sizes), loaded once
 let holeTables = null;
@@ -257,8 +285,120 @@ const DIALOGS = {
     command: "solid.hole",
     view: "face",
     hint: "Click a face where the hole goes",
-    status: (v) => ([v.x, v.y, v.z].every((c) => c !== null) ? "Click another face to move it, or type the position" : null),
-    // a click on a face places the hole: rounded to 0.1 mm in the plane, drilled into the clicked side
+    status: (v, p) => {
+      if ([v.x, v.y, v.z].some((c) => c === null || c === undefined || c === "")) return null;
+      if (v.centre) return "Middle of the face: the hole stays in the middle when the part changes";
+      if (v.edge1 === "edge" && v.edge2 === "edge") {
+        if (p?.edgePicks?.length >= 2) {
+          const [e1, e2] = p.edgePicks;
+          if (e1?.edge?.dir && e2?.edge?.dir && e1.edge.dir.clone().cross(e2.edge.dir).length() < 1e-4) {
+            return "The reference edges are parallel: pick edges that cross";
+          }
+        }
+        return "2 edges selected: set the distances";
+      }
+      if (v.edge1 === "edge") return "Edge 1 selected: click a second edge, or set the distance";
+      return "Face selected: click up to 2 edges for distance references, or type the position";
+    },
+    ready: (v, p) => {
+      if ([v.x, v.y, v.z].some((c) => c === null || c === undefined || c === "")) return false;
+      if (v.centre) return true;
+      const n = p?.edgePicks?.length || 0;
+      if (v.edge1 === "edge" && n < 1) return false;
+      if (v.edge2 === "edge" && n < 2) return false;
+      if (n >= 2) {
+        const [e1, e2] = p.edgePicks;
+        if (e1?.edge?.dir && e2?.edge?.dir && e1.edge.dir.clone().cross(e2.edge.dir).length() < 1e-4) return false;
+      }
+      return true;
+    },
+    onClear(active, set) {
+      active.edges.clear();
+      set("edge1", "none");
+      set("dist1", "");
+      set("edge2", "none");
+      set("dist2", "");
+      if (active.startFace) active.startFace();
+    },
+    async init(active, h) {
+      function startEdges() {
+        h.viewTools.startEdgePick((pick) => {
+          if (!active || h.values().centre) return;
+          if (pick.edge.kind !== "line") {
+            h.log("pick_edge_ignored", { kind: pick.edge.kind, reason: "not_straight" });
+            return;
+          }
+          if (active.edges.has(pick.key)) {
+            active.edges.delete(pick.key);
+            syncEdgesToFields();
+          } else {
+            if (active.edges.size >= 2) return;
+            active.edges.set(pick.key, pick);
+            syncEdgesToFields(pick);
+          }
+          h.update();
+        });
+      }
+
+      function syncEdgesToFields(justAddedPick) {
+        const edgeList = Array.from(active.edges.values());
+        const v = h.values();
+        const pt = [Number(v.x) || 0, Number(v.y) || 0, Number(v.z) || 0];
+        if (edgeList.length === 0) {
+          h.setValue("edge1", "none");
+          h.setValue("dist1", "");
+          h.setValue("edge2", "none");
+          h.setValue("dist2", "");
+        } else if (edgeList.length === 1) {
+          h.setValue("edge1", "edge");
+          if (justAddedPick && justAddedPick.key === edgeList[0].key) {
+            const d = distanceToLineEdge(pt, edgeList[0].edge);
+            h.setValue("dist1", fmt(Math.round(d * 10) / 10));
+          }
+          h.setValue("edge2", "none");
+          h.setValue("dist2", "");
+        } else if (edgeList.length === 2) {
+          h.setValue("edge1", "edge");
+          h.setValue("edge2", "edge");
+          if (justAddedPick && justAddedPick.key === edgeList[1].key) {
+            const d = distanceToLineEdge(pt, edgeList[1].edge);
+            h.setValue("dist2", fmt(Math.round(d * 10) / 10));
+          }
+        }
+      }
+
+      function startFace() {
+        h.viewTools.startFacePick((pick) => {
+          if (!active) return;
+          h.log("pick_face", { dialog: active.kind, point: pick.point.toArray().map((c) => +c.toFixed(3)),
+                             normal: pick.normal.toArray().map((c) => +c.toFixed(3)), planar: pick.planar });
+          const p = pick.planar ? roundOnPlane(pick.point, pick.normal) : pick.point;
+          h.setValue("x", fmt(p.x));
+          h.setValue("y", fmt(p.y));
+          h.setValue("z", fmt(p.z));
+          active.face = null;
+          active.point = { direction: pick.normal.clone().negate().toArray().map((c) => +c.toFixed(6)) };
+          active.edges.clear();
+          h.setValue("edge1", "none");
+          h.setValue("dist1", "");
+          h.setValue("edge2", "none");
+          h.setValue("dist2", "");
+          startEdges();
+          h.update();
+        });
+      }
+
+      active.startEdges = startEdges;
+      active.startFace = startFace;
+
+      const v = h.values();
+      if (v.x !== null && v.x !== "" && v.x !== undefined) {
+        startEdges();
+      } else {
+        startFace();
+      }
+    },
+    // a click on a face places the hole (fallback if init not used):
     onFace(pick, set, active) {
       const p = pick.planar ? roundOnPlane(pick.point, pick.normal) : pick.point;
       set("x", fmt(p.x));
@@ -269,9 +409,23 @@ const DIALOGS = {
     },
     needs: async (get) => { if (!holeTables) holeTables = await get("api/hole_sizes"); },
     fields: [
-      { key: "x", label: "X", unit: "mm", value: "", group: "position" },
-      { key: "y", label: "Y", unit: "mm", value: "", group: "position" },
-      { key: "z", label: "Z", unit: "mm", value: "", group: "position" },
+      { key: "x", label: "X", unit: "mm", value: "", group: "position",
+        show: (v) => v.edge1 !== "edge" },
+      { key: "y", label: "Y", unit: "mm", value: "", group: "position",
+        show: (v) => v.edge1 !== "edge" },
+      { key: "z", label: "Z", unit: "mm", value: "", group: "position",
+        show: (v) => v.edge1 !== "edge" },
+      { key: "centre", label: "Middle of face", type: "check", value: false,
+        show: (v) => v.edge1 !== "edge" },
+      { key: "edge1", label: "Edge 1", type: "select", value: "none",
+        options: [["none", "None"], ["edge", "Clicked edge"]], show: (v) => !v.centre },
+      { key: "dist1", label: "Distance 1", unit: "mm", value: "",
+        show: (v) => v.edge1 === "edge" },
+      { key: "edge2", label: "Edge 2", type: "select", value: "none",
+        options: [["none", "None"], ["edge", "Clicked edge"]],
+        show: (v) => v.edge1 === "edge" },
+      { key: "dist2", label: "Distance 2", unit: "mm", value: "",
+        show: (v) => v.edge2 === "edge" },
       { key: "spec", label: "Size", type: "select", value: "clearance",
         options: [["clearance", "Clearance for screw"], ["tapped", "Tapped thread"], ["diameter", "Diameter"]] },
       { key: "size", label: "Screw", type: "select", value: "M5", options: HOLE_SIZE_OPTIONS,
@@ -290,7 +444,23 @@ const DIALOGS = {
       { key: "depth", label: "Depth", unit: "mm", value: "10", show: (v) => !v.through },
     ],
     // size, fit or type changed: the table values follow (the user may still type over them)
-    onChange(key, v, set) {
+    onChange(key, v, set, active) {
+      if (key === "edge1" && v.edge1 === "none") {
+        active.edges.clear();
+        set("dist1", "");
+        set("edge2", "none");
+        set("dist2", "");
+        if (active.startEdges) active.startEdges();
+      }
+      if (key === "edge2" && v.edge2 === "none") {
+        if (active.edges.size === 2) {
+          const first = Array.from(active.edges.values())[0];
+          active.edges.clear();
+          active.edges.set(first.key, first);
+        }
+        set("dist2", "");
+        if (active.startEdges) active.startEdges();
+      }
       if (!["spec", "size", "fit", "type"].includes(key)) return;
       const d = holeDefaults(v);
       for (const k of ["diameter", "cb_diameter", "cb_depth", "cs_diameter", "cs_angle"]) {
@@ -308,12 +478,27 @@ const DIALOGS = {
       return notes.length ? `Values: ${notes.join(", ")}` : "";
     },
     params(v, picks) {
-      const p = { position: [v.x, v.y, v.z], diameter: v.diameter };
+      const p = { position: [+v.x, +v.y, +v.z], diameter: v.diameter };
       if (picks.direction) p.direction = picks.direction;
       if (v.spec === "tapped") p.thread = v.size;
       if (!v.through) p.depth = v.depth;
       if (v.type === "counterbore") Object.assign(p, { type: "counterbore", cb_diameter: v.cb_diameter, cb_depth: v.cb_depth });
       if (v.type === "countersink") Object.assign(p, { type: "countersink", cs_diameter: v.cs_diameter, cs_angle: v.cs_angle });
+
+      if (v.centre) {
+        p.centre = true;  // the server ties the hole to the middle of the face (design intent rule)
+        return p;
+      }
+      const edgeList = (picks.edgePicks || []);
+      const refs = [];
+      const pt = (q) => (Array.isArray(q) ? q : [q.x, q.y, q.z].map((c) => +c.toFixed(6)));
+      if (v.edge1 === "edge" && edgeList[0] && v.dist1 !== null && v.dist1 !== "") {
+        refs.push({ edge: pt(edgeList[0].point), distance: v.dist1 });
+      }
+      if (v.edge2 === "edge" && edgeList[1] && v.dist2 !== null && v.dist2 !== "") {
+        refs.push({ edge: pt(edgeList[1].point), distance: v.dist2 });
+      }
+      if (refs.length > 0) p.references = refs;
       return p;
     },
     // timeline.edit merges into the definition: same fields, the hole type under "hole", null removes
@@ -321,9 +506,20 @@ const DIALOGS = {
       const hole = { type: v.type };
       if (v.type === "counterbore") Object.assign(hole, { cb_diameter: v.cb_diameter, cb_depth: v.cb_depth });
       if (v.type === "countersink") Object.assign(hole, { cs_diameter: v.cs_diameter, cs_angle: v.cs_angle });
-      const set = { position: [v.x, v.y, v.z], diameter: v.diameter, depth: v.through ? null : v.depth,
+      const set = { position: [+v.x, +v.y, +v.z], diameter: v.diameter, depth: v.through ? null : v.depth,
                     thread: v.spec === "tapped" ? v.size : null, hole };
       if (picks.direction) set.direction = picks.direction;
+
+      const edgeList = (picks.edgePicks || []);
+      const refs = [];
+      const pt = (q) => (Array.isArray(q) ? q : [q.x, q.y, q.z].map((c) => +c.toFixed(6)));
+      if (v.edge1 === "edge" && edgeList[0] && v.dist1 !== null && v.dist1 !== "") {
+        refs.push({ edge: pt(edgeList[0].point), distance: v.dist1 });
+      }
+      if (v.edge2 === "edge" && edgeList[1] && v.dist2 !== null && v.dist2 !== "") {
+        refs.push({ edge: pt(edgeList[1].point), distance: v.dist2 });
+      }
+      set.references = refs.length > 0 ? refs : null;
       return set;
     },
     fromDefinition(d) {
@@ -331,7 +527,8 @@ const DIALOGS = {
       const dia = parseFloat(d.diameter);
       const v = { x: d.position?.[0], y: d.position?.[1], z: d.position?.[2], diameter: dia, type: h.type || "simple",
                   through: d.depth === undefined || d.depth === null, depth: d.depth ?? "10",
-                  cb_diameter: h.cb_diameter, cb_depth: h.cb_depth, cs_diameter: h.cs_diameter, cs_angle: h.cs_angle };
+                  cb_diameter: h.cb_diameter, cb_depth: h.cb_depth, cs_diameter: h.cs_diameter, cs_angle: h.cs_angle,
+                  edge1: "none", dist1: "", edge2: "none", dist2: "" };
       // which table entry made this diameter: a thread, a clearance hole of some fit, or neither
       if (d.thread) Object.assign(v, { spec: "tapped", size: d.thread });
       else {
@@ -341,7 +538,21 @@ const DIALOGS = {
         }
         Object.assign(v, match ? { spec: "clearance", ...match } : { spec: "diameter" });
       }
-      return { values: v, direction: d.direction };
+      const edgePoints = [];
+      if (Array.isArray(d.references) && d.references.length > 0) {
+        const refs = d.references;
+        if (refs[0]) {
+          v.edge1 = "edge";
+          v.dist1 = refs[0].distance;
+          edgePoints.push(refs[0].edge);
+        }
+        if (refs[1]) {
+          v.edge2 = "edge";
+          v.dist2 = refs[1].distance;
+          edgePoints.push(refs[1].edge);
+        }
+      }
+      return { values: v, direction: d.direction, edges: edgePoints };
     },
   },
   extrude: {
@@ -351,6 +562,7 @@ const DIALOGS = {
     needs: async (get) => { sketchList = (await get("api/sketches")).sketches || []; },
     fields: [
       { key: "sketch", label: "Sketch", type: "select", value: defaultSketch, options: SKETCH_OPTIONS },
+      PROFILE_FIELD,
       { key: "operation", label: "Operation", type: "select", value: "join", options: OPERATIONS },
       { key: "direction", label: "Direction", type: "select", value: "positive",
         options: [["positive", "Direction 1"], ["negative", "Direction 2"], ["symmetric", "Symmetric"]] },
@@ -363,20 +575,23 @@ const DIALOGS = {
       if (key === "operation" && v.operation !== "cut" && v.direction === "negative") set("direction", "positive");
     },
     ready: (v) => !!v.sketch,
-    status: (v) => (sketchList.length ? null : "This part has no sketch yet: make one in File → Open in SolidCraft, or ask your agent"),
+    status: (v) => (sketchList.length ? null : "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent"),
     params(v) {
       const p = { sketch: v.sketch, operation: opParam(v.operation), direction: v.direction };
+      if (profileParam(v)) p.profiles = profileParam(v);
       if (v.through) p.through_all = true;
       else p.distance = v.distance;
       return p;
     },
     editSet(v) {
-      return { sketch: v.sketch, operation: v.operation,
-               extent: { direction: v.direction, through_all: !!v.through, distance: v.through ? "0" : String(v.distance) } };
+      const set = { sketch: v.sketch, operation: v.operation,
+                    extent: { direction: v.direction, through_all: !!v.through, distance: v.through ? "0" : String(v.distance) } };
+      if (profileSet(v) !== undefined) set.profiles = profileSet(v);
+      return set;
     },
     fromDefinition(d, names) {
       const e = d.extent || {};
-      return { values: { sketch: names[d.sketch] || d.sketch, operation: d.operation || "join", direction: e.direction || "positive",
+      return { values: { sketch: names[d.sketch] || d.sketch, profile: profileValue(d, names), operation: d.operation || "join", direction: e.direction || "positive",
                          through: !!e.through_all, distance: e.through_all ? "10" : e.distance } };
     },
   },
@@ -388,19 +603,23 @@ const DIALOGS = {
     needs: async (get) => { sketchList = (await get("api/sketches")).sketches || []; },
     fields: [
       { key: "sketch", label: "Sketch", type: "select", value: defaultSketch, options: SKETCH_OPTIONS },
+      PROFILE_FIELD,
       { key: "axis", label: "Axis", type: "select", value: "Z", options: AXIS_OPTIONS("Clicked edge") },
       { key: "angle", label: "Angle", unit: "°", value: "360" },
       { key: "operation", label: "Operation", type: "select", value: "join", options: OPERATIONS },
     ],
     ready: (v, p) => !!v.sketch && (v.axis !== "edge" || !!p.edge1),
-    status: (v, p) => (!sketchList.length ? "This part has no sketch yet: make one in File → Open in SolidCraft, or ask your agent"
+    status: (v, p) => (!sketchList.length ? "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent"
       : v.axis === "edge" && !p.edge1 ? "Click a straight edge in the sketch's plane for the axis" : null),
     params(v, p) {
-      return { sketch: v.sketch, axis: v.axis === "edge" ? { edge: p.edge1.point } : v.axis, angle: deg(v.angle),
-               operation: opParam(v.operation) };
+      const out = { sketch: v.sketch, axis: v.axis === "edge" ? { edge: p.edge1.point } : v.axis, angle: deg(v.angle),
+                    operation: opParam(v.operation) };
+      if (profileParam(v)) out.profiles = profileParam(v);
+      return out;
     },
     editSet(v, p) {
       const set = { sketch: v.sketch, angle: deg(v.angle), operation: v.operation };
+      if (profileSet(v) !== undefined) set.profiles = profileSet(v);
       if (v.axis !== "edge") set.axis = { type: "world", axis: v.axis };
       else if (p.edge1?.keep) set.axis = p.edge1.keep;
       else set.axis = { edge: p.edge1.point };
@@ -408,7 +627,7 @@ const DIALOGS = {
     },
     fromDefinition(d, names) {
       const world = d.axis?.type === "world";
-      return { values: { sketch: names[d.sketch] || d.sketch, axis: world ? d.axis.axis : "edge",
+      return { values: { sketch: names[d.sketch] || d.sketch, profile: profileValue(d, names), axis: world ? d.axis.axis : "edge",
                          angle: String(d.angle ?? "360").replace(/\s*deg$/, ""), operation: d.operation || "join" },
                edge1: world ? null : { point: d.axis?.at || [0, 0, 0], keep: d.axis } };
     },
@@ -561,6 +780,13 @@ function roundOnPlane(point, normal) {
   return r.addScaledVector(normal, -new THREE.Vector3().subVectors(r, point).dot(normal));
 }
 
+// Perpendicular distance from a 3D point to a straight edge's line
+function distanceToLineEdge(point, edge) {
+  if (!edge || !edge.start || !edge.dir) return 0;
+  const p = new THREE.Vector3(...point);
+  return p.sub(edge.start).cross(edge.dir).length();
+}
+
 export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl, statusEl, post, get,
                                      showPreview, clearPreview, reload, showModel, restoreModel,
                                      lookAlong = () => {}, log = () => {} }) {
@@ -660,13 +886,28 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const f = active.def.fields.find((x) => x.key === key);
     if (!el || !f || value === undefined || value === null) return;
     if (f.type === "check") el.checked = !!value;
-    else el.value = String(value);
+    else {
+      if (f.type === "select" && typeof f.options === "function") fillOptions(el, f, { ...values(), [key]: value });
+      el.value = String(value);
+    }
+  }
+
+  // A select whose options depend on the other values (Profile follows Sketch): rebuilt when they change
+  function fillOptions(el, f, v) {
+    const opts = f.options(v);
+    const sig = JSON.stringify(opts);
+    if (el.dataset.sig === sig) return;
+    const cur = el.value;
+    el.innerHTML = opts.map(([val, l]) => `<option value="${val}">${l}</option>`).join("");
+    el.dataset.sig = sig;
+    if (opts.some(([val]) => val === cur)) el.value = cur;
   }
 
   // Fields shown or read-only by the other values, and the note naming the tables
   function refreshFields() {
     const v = values();
     for (const f of active.def.fields) {
+      if (f.type === "select" && typeof f.options === "function" && f.options.length) fillOptions(input(f.key), f, v);
       const row = input(f.key).closest(".feature-field");
       row.hidden = f.show ? !f.show(v) : false;
       if (f.readonly) input(f.key).readOnly = f.readonly(v);
@@ -696,7 +937,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   }
 
   function picks() {
-    return { edges: Array.from(active.edges.values(), (e) => e.point), direction: active.point?.direction || null,
+    return { edges: Array.from(active.edges.values(), (e) => e.point), edgePicks: Array.from(active.edges.values()),
+             direction: active.point?.direction || null,
              features: [...active.features], edge1: active.edge1, face: active.face,
              sketch: { shapes: active.shapes || [], face: active.face } };
   }
@@ -724,7 +966,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       active.clearBtn.hidden = n === 0;
     } else {
       text = text || def.hint;
-      active.clearBtn.hidden = true;
+      active.clearBtn.hidden = active.edges.size === 0;
     }
     active.countEl.textContent = text;
     if (def.view === "sketch" && !active.frame && !(def.status && def.status(v, p))) {
@@ -789,7 +1031,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       log("dialog_preview_error", { dialog: dlg.kind, values: values(), error: firstLine(err.message) });
       clearPreview();
       dlg.deltaEl.textContent = "";
-      setError(firstLine(err.message));
+      setError(err.explanation || firstLine(err.message));
     } finally {
       clearTimeout(slow);
       dlg.inflight = false;
@@ -816,7 +1058,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       log("dialog_ok_error", { dialog: dlg.kind, error: firstLine(err.message) });
       dlg.busy = false;
       if (active === dlg) {
-        setError(firstLine(err.message));
+        setError(err.explanation || firstLine(err.message));
         update();
       }
     }
@@ -903,6 +1145,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     form.addEventListener("submit", (e) => { e.preventDefault(); apply(); });
     form.querySelector(".feature-cancel").addEventListener("click", close);
     active.clearBtn.addEventListener("click", () => {
+      if (def.onClear) def.onClear(active, setValue, values());
       active.edges.clear();
       active.features = [];
       update();
@@ -932,7 +1175,9 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const box = new THREE.Box3().setFromObject(scene);
     markerSize = Math.max(box.isEmpty() ? 1 : box.getSize(new THREE.Vector3()).length() / 250, 0.05);
 
-    if (def.view === "edges") {
+    if (def.init) {
+      await def.init(active, { get, setValue, values, update, setError, viewTools, lookAlong, log });
+    } else if (def.view === "edges") {
       viewTools.startEdgePick((pick) => {
         if (!active) return;
         if (active.edges.has(pick.key)) active.edges.delete(pick.key);
@@ -952,8 +1197,6 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         if (sel) setValue(sel.key, "edge");
         update();
       });
-    } else if (def.view === "sketch") {
-      await def.init(active, { get, setValue, values, update, setError, viewTools, lookAlong });
     } else if (def.view === "face") {
       viewTools.startFacePick((pick) => {
         if (!active || !def.onFace) return;

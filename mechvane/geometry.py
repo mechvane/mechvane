@@ -139,6 +139,17 @@ def group_cylindrical_faces(cyl_faces: list[dict]) -> list[list[dict]]:
     return groups
 
 
+def cylinder_group_length(grp: list[dict]) -> float:
+    """Axial length of a group of coaxial cylinder faces from their area. truck splits a cylinder into two
+    half faces, solidcore keeps it whole: a lone face counts as a half only if its centroid lies off the axis
+    (2r/pi for a half cylinder, on the axis for a full one)."""
+    c = grp[0]["cylinder"]
+    r = c["radius"]
+    area = sum(f["area"] for f in grp)
+    lone_half = len(grp) == 1 and dist_to_line(grp[0]["centroid"], c["origin"], unit(c["axis"])) > 0.3 * r
+    return area / (math.pi * r) if lone_half else area / (2.0 * math.pi * r)
+
+
 def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
                          timeline_map: dict, threads: list[dict] = None,
                          bbox: dict = None, probe: bool = True) -> list[bool]:
@@ -240,18 +251,24 @@ def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
                 try:
                     # One probe at a time: a cut that misses the body fails, which means air
                     # outside the cylinder (boss), and must not hide the other probes' results.
+                    # A cut into material leaves a spherical dent, so the body gets a face; a cut into air
+                    # leaves the faces as they were. `changed_bodies` is no guide: SolidCraft 0.40 (solidcore)
+                    # names the body there even when the cut hits only air.
+                    def face_count():
+                        return len(session.cmd("model.faces", {"body": body_name}).get("faces") or [])
+                    n_faces = face_count()
                     for idx, cmd in zip(probe_indices, probe_cmds):
                         try:
-                            cmd_res = session.cmd(cmd["command"], cmd["params"])
+                            session.cmd(cmd["command"], cmd["params"])
                         except Exception as e:
                             if "no body to cut" not in str(e):
                                 raise
                             is_hole[idx] = False
                             handled.add(idx)
                         else:
-                            # Probes only run in part sessions, so a cut that changes nothing hit air.
-                            changed = cmd_res.get("changed_bodies", []) if isinstance(cmd_res, dict) else []
-                            is_hole[idx] = bool(changed)
+                            n_after = face_count()
+                            is_hole[idx] = n_after > n_faces
+                            n_faces = n_after
                             handled.add(idx)
                 finally:
                     if cp and isinstance(cp, dict) and "checkpoint" in cp:

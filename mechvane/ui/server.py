@@ -12,8 +12,9 @@ import time
 from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
-from .. import design_rules, hole_tables, links, modeling, query, sketch_rule, speech, tree
-from . import agent as agent_mod, selection, sessionlog, webapp
+from .. import geometry as g
+from .. import design_rules, hole_tables, step_import, links, modeling, query, sc_errors, sketch_rule, speech, tree
+from . import agent as agent_mod, selection, sessionlog, sketch_session, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
 from ..solidcraft import Session
@@ -346,8 +347,18 @@ def sketches(doc) -> dict:
     if doc.kind != PART:
         return {"sketches": []}
     used = sketch_rule.consumers(doc.session)
-    return {"sketches": [{"name": f["name"], "used_by": sorted(used.get(f["name"]) or [])}
-                         for f in _timeline(doc) if f["type"] == "Sketch"]}
+    out = []
+    for f in _timeline(doc):
+        if f["type"] != "Sketch":
+            continue
+        try:  # the closed regions Extrude and Revolve can take one by one (index as solid.extrude's profiles)
+            profiles = [{"index": p["index"], "area": round(p["area_mm2"], 1), "curves": p["curves"],
+                         "holes": len(p.get("holes") or [])}
+                        for p in doc.session.cmd("sketch.inspect", {"sketch": f["name"]}).get("profiles", [])]
+        except Exception:
+            profiles = []
+        out.append({"name": f["name"], "used_by": sorted(used.get(f["name"]) or []), "profiles": profiles})
+    return {"sketches": out}
 
 
 def _timeline(doc) -> list[dict]:
@@ -383,7 +394,10 @@ def feature_for_edit(doc, name: str, tmp_dir) -> dict:
             pass
     # patterns and mirrors name their features by id: the dialog shows and sends names
     names = {str(f["id"]): f["name"] for f in timeline}
-    return {"name": name, "type": info.get("type"), "dialog": EDITABLE[info["type"]][0],
+    # the type from the timeline: timeline.inspect's `type` is "chamfer" since SolidCraft 0.30 ("ChamferFeature"
+    # moved to `type_name`), the timeline keeps the class name
+    kind = timeline[at]["type"]
+    return {"name": name, "type": kind, "dialog": EDITABLE[kind][0],
             "definition": info.get("definition") or {}, "before": before, "feature_names": names}
 
 
@@ -406,6 +420,71 @@ def delete_feature(srv, doc, name: str) -> dict:
     return {"done": f"Deleted {', '.join(out['deleted'])}", **out}
 
 
+def centred_hole_commands(doc, params: dict) -> list[dict]:
+    """A hole in the middle of the clicked planar face that stays there (design intent rule): a sketch on the
+    face with two opposite straight edges projected, a construction line from the middle of one to the middle of
+    the other, its midpoint as the hole centre. params: the hole's, with position on the face and direction into
+    it (the dialog's), plus centre: true."""
+    pos, direction = params.get("position"), params.get("direction")
+    if not (isinstance(pos, list) and len(pos) == 3 and isinstance(direction, list) and len(direction) == 3):
+        raise ValueError("a centred hole needs a clicked face (position and direction)")
+    pos, n = [float(c) for c in pos], g.unit([-float(c) for c in direction])
+    face, body = None, None
+    for b in doc.session.cmd("document.inspect").get("bodies", []):
+        name = b.get("name") if isinstance(b, dict) else b
+        for f in doc.session.cmd("model.faces", {"body": name}).get("faces", []):
+            pn = f.get("plane_normal")
+            if pn and g.dot(g.unit(pn), n) > 0.999 and abs(g.dot(g.sub(pos, f["point"]), n)) < 1e-4:
+                edges = [e for e in doc.session.cmd("model.edges", {"body": name}).get("edges", [])
+                         if f["name"] in e["name"].split("|")]
+                lo = [min(e[k][i] for e in edges for k in ("start", "end")) - 1e-4 for i in range(3)]
+                hi = [max(e[k][i] for e in edges for k in ("start", "end")) + 1e-4 for i in range(3)]
+                if edges and all(lo[i] <= pos[i] <= hi[i] for i in range(3)):
+                    face, body, face_edges = f, name, edges
+                    break
+        if face:
+            break
+    if face is None:
+        raise ValueError("no planar face at the clicked point")
+    lines = [e for e in face_edges if abs(g.norm(g.sub(e["end"], e["start"])) - e["length"]) < 1e-6]
+    best = None
+    for i, a in enumerate(lines):
+        da = g.unit(g.sub(a["end"], a["start"]))
+        for b in lines[i + 1:]:
+            db = g.unit(g.sub(b["end"], b["start"]))
+            if abs(abs(g.dot(da, db)) - 1) < 1e-6:
+                gap = g.norm(g.sub(g.sub(b["mid"], a["mid"]), g.scale(da, g.dot(g.sub(b["mid"], a["mid"]), da))))
+                if gap > 1e-6 and (best is None or a["length"] + b["length"] > best[0]):
+                    best = (a["length"] + b["length"], a, b, da)
+    if best is None:
+        raise ValueError("the middle of this face needs two opposite straight edges")
+    _, ea, eb, xd = best
+    yd = g.cross(n, xd)
+    origin = g.add(pos, g.scale(n, -g.dot(g.sub(pos, face["point"]), n)))
+    uv = lambda q: [round(g.dot(g.sub(q, origin), xd), 6), round(g.dot(g.sub(q, origin), yd), 6)]
+    ma, mb = uv(ea["mid"]), uv(eb["mid"])
+    mid = [(ma[0] + mb[0]) / 2, (ma[1] + mb[1]) / 2]
+    names = {f.get("name") for f in doc.session.cmd("document.inspect").get("timeline", [])}
+    k = 1
+    while f"Hole centre {k}" in names:
+        k += 1
+    sketch = f"Hole centre {k}"
+    hole = {key: v for key, v in params.items() if key not in ("centre", "position", "references")}
+    hole.update({"sketch": sketch, "points": ["c"]})
+    return [
+        {"command": "sketch.create", "params": {"plane": {"origin": origin, "x_dir": xd, "y_dir": yd}, "name": sketch}},
+        {"command": "sketch.project", "params": {"refs": [{"edge": ea["mid"], "body": body}, {"edge": eb["mid"], "body": body}]}},
+        {"command": "sketch.line", "params": {"points": [ma, mb], "ids": ["axis"]}},
+        {"command": "sketch.construction", "params": {"curves": ["axis"]}},
+        {"command": "sketch.constraint.midpoint", "params": {"point": "axis.start", "line": "l1"}},
+        {"command": "sketch.constraint.midpoint", "params": {"point": "axis.end", "line": "l2"}},
+        {"command": "sketch.point", "params": {"point": mid, "id": "c"}},
+        {"command": "sketch.constraint.midpoint", "params": {"point": "c", "line": "axis"}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.hole", "params": hole},
+    ]
+
+
 def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, edit: str | None = None) -> dict:
     """Run one dialog command in the open part. preview: run it, return the mesh, take it back
     (nothing saved). Otherwise run, save, and record the step for Undo. With edit (a feature name) the
@@ -415,6 +494,10 @@ def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, ed
     if doc.kind != PART:
         raise PermissionError("features are added in a part; open the part file")
     commands = [{"command": command, "params": params}]
+    if command == "solid.hole" and params.get("centre"):
+        if edit is not None:
+            raise PermissionError("a hole in the middle of a face is changed by deleting it and placing it again")
+        commands = centred_hole_commands(doc, params)
     if command == "mechvane.sketch":
         if preview or edit is not None:
             raise PermissionError("a sketch is drawn in the dialog and made with OK")
@@ -776,6 +859,9 @@ class UIServer(ThreadingHTTPServer):
             "current": self.file_path.name if self.file_path else None,
             "documents": self.list_documents(),
             "mode": "folder" if self.is_folder else "file",
+            # files File -> Import STEP... can make a part from
+            "step_files": sorted(p.name for p in self.folder_path.iterdir()
+                                 if p.is_file() and p.suffix.lower() in step_import.SUFFIXES) if self.is_folder else [],
         }
 
     def open_document(self, name: str) -> dict:
@@ -810,6 +896,27 @@ class UIServer(ThreadingHTTPServer):
         self.doc_name = doc.name
         self.mtime = target.stat().st_mtime
         return {"document": self.file_path.name, "files": sorted(self.files())}
+
+    def import_step_document(self, file: str) -> dict:
+        """File -> Import STEP...: a part file from a STEP file in the project folder, opened as the document."""
+        if not self.is_folder:
+            raise NotADirectoryError("importing is only supported in folder mode")
+        if file not in self.project()["step_files"]:
+            raise KeyError(file)
+        stem = Path(file).stem
+        _validate_name(stem)
+        if (self.folder_path / f"{stem}.solidcraft").exists():
+            raise FileExistsError(f"document {stem + '.solidcraft'!r} already exists")
+        res = step_import.import_step(self.ws, self.folder_path / file, name=stem)
+        doc = self.ws.get(res["name"], PART)
+        if self.doc_name and self.doc_name in self.ws.docs and self.doc_name != doc.name:
+            self.ws.close(self.doc_name)
+        self.file_path = Path(res["path"])
+        self.doc = doc
+        self.doc_name = doc.name
+        self.mtime = self.file_path.stat().st_mtime
+        return {"document": self.file_path.name, "files": sorted(self.files()), "bodies": res["bodies"],
+                "warnings": res["warnings"]}
 
     def server_close(self):
         try:
@@ -937,6 +1044,59 @@ class UIRequestHandler(BaseHTTPRequestHandler):
         else:
             self._send_json(404, {"error": f"not found: {path}"})
 
+    def _sketch_post(self, srv, action: str):
+        """The sketch environment (sketch_session.py): begin, cmd, undo, finish, cancel."""
+        try:
+            body = self._json_body() if action in ("begin", "cmd") else {}
+        except ValueError as e:
+            self._send_json(400, {"error": str(e)})
+            return
+        with srv.lock:
+            ss = getattr(srv, "sketch", None)
+            try:
+                if action == "begin":
+                    if ss is not None:
+                        raise sketch_session.SketchError(f"sketch {ss.name} is open: finish or cancel it first")
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        raise sketch_session.SketchError("no document open")
+                    if doc.kind != PART:
+                        raise PermissionError("sketches are drawn in a part; open the part file")
+                    srv.sketch = sketch_session.SketchSession.begin(doc, srv.agent, plane=body.get("plane"),
+                                                                    edit=body.get("edit"))
+                    self._send_json(200, srv.sketch.state())
+                    return
+                if ss is None:
+                    raise sketch_session.SketchError("no sketch is open")
+                if action == "cmd":
+                    out = ss.command(body.get("command"), body.get("params") or {})
+                elif action == "undo":
+                    out = ss.undo_last()
+                elif action in ("finish", "cancel"):
+                    srv.sketch = None
+                    out = ss.finish() if action == "finish" else ss.cancel()
+                    srv.mtime = ss.doc.path.stat().st_mtime
+                else:
+                    self._send_json(404, {"error": f"unknown sketch action: {action}"})
+                    return
+            except sketch_session.SketchError as e:
+                self._send_json(409, {"error": str(e)})
+                return
+            except agent_mod.Busy as e:
+                self._send_json(409, {"error": str(e)})
+                return
+            except PermissionError as e:
+                self._send_json(403, {"error": str(e)})
+                return
+            except Exception as e:  # SolidCraft refused it: the sketch is as it was
+                resp = {"error": modeling.short_error(e), "detail": str(e)}
+                exp = sc_errors.explain(e)
+                if exp is not None:
+                    resp.update(explanation=exp["message"], hint=exp["hint"])
+                self._send_json(400, resp)
+                return
+        self._send_json(200, out)
+
     def do_POST(self):
         path = urlparse(self.path).path
         srv: UIServer = self.server  # type: ignore[assignment]
@@ -996,7 +1156,10 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     self._send_json(200, {"selection": selection.resolve(srv.ws, doc, items)})
                 return
-            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/params", "/api/rules",
+            if path.startswith("/api/sketch/"):
+                self._sketch_post(srv, path[len("/api/sketch/"):])
+                return
+            if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/new", "/api/import_step", "/api/params", "/api/rules",
                                                      "/api/feature")):
                 self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})
                 return
@@ -1056,7 +1219,12 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(409, {"error": str(e)})
                         return
                     except Exception as e:  # SolidCraft refused it: the part is as it was
-                        self._send_json(400, {"error": modeling.short_error(e), "detail": str(e)})
+                        resp = {"error": modeling.short_error(e), "detail": str(e)}
+                        exp = sc_errors.explain(e)
+                        if exp is not None:
+                            resp["explanation"] = exp["message"]
+                            resp["hint"] = exp["hint"]
+                        self._send_json(400, resp)
                         return
                 self._send_json(200, result)
                 return
@@ -1124,6 +1292,29 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(200, result)
                 return
 
+            if path == "/api/import_step":
+                try:
+                    body = self._json_body()
+                except ValueError as e:
+                    self._send_json(400, {"error": str(e)})
+                    return
+                with srv.lock:
+                    try:
+                        result = srv.import_step_document(str((body or {}).get("file") or ""))
+                    except KeyError as e:
+                        self._send_json(404, {"error": f"no such STEP file in this folder: {e.args[0]}"})
+                        return
+                    except FileExistsError as e:
+                        self._send_json(409, {"error": str(e)})
+                        return
+                    except (NotADirectoryError, ValueError) as e:
+                        self._send_json(400, {"error": str(e)})
+                        return
+                    except Exception as e:  # SolidCraft could not read the file
+                        self._send_json(400, {"error": modeling.short_error(e), "detail": str(e)})
+                        return
+                self._send_json(200, result)
+                return
             if path == "/api/new":
                 if not srv.is_folder:
                     self._send_json(404, {"error": "new document only supported in folder mode"})
@@ -1207,6 +1398,9 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/features.js":
                 self._send_static("features.js", "application/javascript; charset=utf-8")
+                return
+            if path == "/sketcher.js":
+                self._send_static("sketcher.js", "application/javascript; charset=utf-8")
                 return
             if path == "/newpart.js":
                 self._send_static("newpart.js", "application/javascript; charset=utf-8")
@@ -1316,6 +1510,14 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(200, data)
                 return
 
+            if path == "/api/sketch/state":
+                with srv.lock:
+                    ss = getattr(srv, "sketch", None)
+                    if ss is None:
+                        self._send_json(200, {"active": False})
+                    else:
+                        self._send_json(200, {"active": True, **ss.state()})
+                return
             if path == "/api/sketches":
                 with srv.lock:
                     doc = srv.ensure_current()

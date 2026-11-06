@@ -9,13 +9,29 @@ Dieser Skill leitet den Konstruktions-Workflow für Bauteile und Baugruppen in M
 
 ## Leitprinzipien
 
-1. **Vor dem ersten Werkzeugaufruf rechnen:** Maße, Symmetrieebenen, Bohrungskoordinaten, Wandstärken und Soll-Volumen vorab analytisch festlegen.
+1. **Vor dem ersten Werkzeugaufruf rechnen:** Maße, Symmetrieebenen, Wandstärken und Soll-Volumen vorab analytisch festlegen.
+   Gerechnete Koordinaten dienen zum Prüfen, nicht als Lage im Modell (siehe 5).
 2. **Große Batches statt Einzelschritte:** Skizzen und Features in 2–4 zusammenhängenden `run()`-Aufrufen erzeugen (Parameter → Basiskörper → Rundungen/Fasen → Bohrungen/Ausschnitte).
 3. **Kosten- und Token-Bewusstsein:**
    - Antworten knapp und technisch präzise halten. Keine unnötigen Erklärungen bekannter CAD-Konzepte.
    - **`body_topology` vermeiden:** Verbraucht 25–45 KB pro Aufruf. Für Verifikation stattdessen `measure` und `check_design` nutzen.
    - `run()` filtert leere Felder und Timings automatisch heraus.
 4. **Skizzenregel von Mechvane:** Jede Skizze, die genau ein Feature verbraucht, wird automatisch direkt vor dieses Feature sortiert (`browser()` zeigt sie darunter).
+5. **Konstruktionsabsicht festhalten (Nutzerregel 2026-11-05):** Nennt ein Auftrag eine Beziehung, wird sie als
+   Abhängigkeit gebaut, nie als ausgerechnete Koordinate. Das Modell muss die Absicht behalten, wenn sich Maße ändern.
+
+   | Auftrag | Umsetzung |
+   |---|---|
+   | „mittig in dieser Fläche“ | Skizze auf der Fläche, zwei gegenüberliegende Kanten mit `sketch.project` holen, Konstruktionslinie zwischen ihren Mitten (`sketch.constraint.midpoint` je Ende), Punkt in deren Mitte, `solid.hole` mit `sketch` und `points` |
+   | „X mm vom Rand“ | Bemaßung vom Punkt zur projizierten Kante, oder `solid.hole` mit `references:[{edge, distance}]` |
+   | „bündig mit …“ | `coincident`/`collinear` zur projizierten Kante |
+   | „konzentrisch zu …“ | `concentric` zum projizierten Kreis |
+   | „gleich groß wie …“ | `equal`, oder ein gemeinsamer Parameter |
+   | „symmetrisch zu …“ | `symmetry` zur projizierten Linie oder Achse |
+
+   Die Skizze voll bestimmen (`dof: 0` in der Antwort). Danach einmal prüfen: Parameter des Grundkörpers ändern,
+   Lage mit `measure` kontrollieren, Parameter zurücksetzen. Vorbild: `design_intent_checks` in `tests/mechvane/check.py`.
+6. **Bauteilende bewusst nutzen:** Mit `part_end(document, before="<Feature>")` vor Problemfeatures zurückrollen, dort isoliert messen oder reparieren und danach mit `part_end(document)` ans Ende zurückkehren. Speichern geht auch zurückgerollt (wie Inventor), `run` warnt dann.
 
 ---
 
@@ -77,6 +93,11 @@ Mit `screenshot(document="lasche", view="iso")` (oder `view="top"`) ein Bild des
 - Bei Baugruppen: Zeigen montierte Teile nach `add_joint` in die richtige Ausrichtung (kein verdrehter Bolzen)?
 
 ### 6. Korrekturschleife & Abbruchkriterien
+- **Bauteilende zurückrollen (`part_end`) bei Fehlern oder zur isolierten Diagnose:**
+  - Schlägt ein Schritt fehl oder soll der Modellzustand vor einem Feature isoliert gemessen oder repariert werden: `part_end(document, before="<Feature>")` setzt den Marker vor dieses Feature (Folge-Features werden unterdrückt).
+  - An dieser Position isoliert nachmessen (`measure`) oder Geometrie anpassen.
+  - `run()` weist im zurückgerollten Zustand mit einer Warnung auf unterdrückte Folge-Features hin.
+  - **Wichtig:** Vor dem Speichern (`save_document`) muss der Marker immer mit `part_end(document)` (bzw. `before=None`) wieder ans Ende gerückt werden. `save_document` verweigert das Speichern im zurückgerollten Zustand, damit keine unvollständigen Modelle auf der Festplatte landen.
 - **Wenn `check_design` `fail` oder `warn` meldet:**
   - Fehlermeldung und Ort (`location.face`, `location.point`) analysieren.
   - Gezielt korrigieren: Parameter per `run(document, [{"command": "parameters.change", "params": {"name": ..., "expression": ...}}])` anpassen oder Feature per `delete_feature` ersetzen.

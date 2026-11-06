@@ -161,6 +161,33 @@ def validate(eintrag: Dict[str, Any]) -> bool:
         if not isinstance(b_ziel, str) or not b_ziel.strip():
             raise ValueError(f"Entry '{entry_id}': beziehungen[{i}] missing non-empty 'ziel'")
 
+    dickenbereiche = eintrag.get("dickenbereiche")
+    if dickenbereiche is not None:
+        if not isinstance(dickenbereiche, list):
+            raise ValueError(f"Entry '{entry_id}': 'dickenbereiche' must be a list")
+        for i, db in enumerate(dickenbereiche):
+            if not isinstance(db, dict):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] must be an object")
+            if "bis_mm" not in db:
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] missing required 'bis_mm'")
+            bis = db["bis_mm"]
+            if bis is not None and not isinstance(bis, (int, float)):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'bis_mm' must be number or null")
+            if not isinstance(db.get("norm"), str) or not db["norm"].strip():
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] missing non-empty 'norm'")
+            if not isinstance(db.get("quelle"), str) or not db["quelle"].strip():
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] missing non-empty 'quelle'")
+            if "form" in db and not isinstance(db["form"], str):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'form' must be a string")
+            if "R_eH_min" in db and not isinstance(db["R_eH_min"], (int, float)):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'R_eH_min' must be a number")
+            if "R_p02_min" in db and not isinstance(db["R_p02_min"], (int, float)):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'R_p02_min' must be a number")
+            if "R_m_min" in db and not isinstance(db["R_m_min"], (int, float)):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'R_m_min' must be a number")
+            if "R_m_max" in db and not isinstance(db["R_m_max"], (int, float)):
+                raise ValueError(f"Entry '{entry_id}': dickenbereiche[{i}] 'R_m_max' must be a number")
+
     return True
 
 
@@ -329,4 +356,47 @@ def get_entry(entry_id: str, eintraege: Optional[List[Dict[str, Any]]] = None) -
     for entry in eintraege:
         if entry.get("id") == entry_id:
             return entry
+    return None
+
+
+def mindestwerte(
+    werkstoff_id: str,
+    dicke_mm: Union[int, float],
+    form: Optional[str] = None,
+    eintraege: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Return the minimum strength property entry for a material at a given thickness.
+
+    Args:
+        werkstoff_id: Material catalog entry ID (e.g. '42crmo4_verguetet', 's235jr').
+        dicke_mm: Product thickness or diameter in mm.
+        form: Optional product form, matched exactly (e.g. 'blech', 'rund', 'rund_gezogen', 'profil').
+            Without it, or if no range has that form, the first listed range that covers the
+            thickness wins, whatever its form.
+        eintraege: Optional pre-loaded catalog entries list.
+
+    Returns:
+        The matching dickenbereich dictionary, or None if outside the valid range
+        or if no dickenbereiche are defined.
+    """
+    if dicke_mm <= 0:
+        return None
+    entry = get_entry(werkstoff_id, eintraege)
+    if entry is None:
+        return None
+    bereiche = entry.get("dickenbereiche")
+    if not bereiche or not isinstance(bereiche, list):
+        return None
+
+    if form is not None:
+        form_norm = form.strip().lower()
+        candidates = [b for b in bereiche if (b.get("form") or "").lower() == form_norm]
+        if candidates:
+            bereiche = candidates
+
+    for b in bereiche:
+        bis = b.get("bis_mm")
+        if bis is None or dicke_mm <= bis:
+            return b
+
     return None

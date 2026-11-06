@@ -174,6 +174,52 @@
           }
         }
       }
+    },
+    "dickenbereiche": {
+      "type": "array",
+      "description": "Mindestwerte mechanischer Festigkeitskennwerte je Erzeugnisdicke bzw. -durchmesser",
+      "items": {
+        "type": "object",
+        "required": [
+          "bis_mm",
+          "norm",
+          "quelle"
+        ],
+        "properties": {
+          "bis_mm": {
+            "type": ["number", "null"],
+            "description": "Obere Grenze der Erzeugnisdicke bzw. des -durchmessers in mm (einschließlich; null = offen)"
+          },
+          "form": {
+            "type": "string",
+            "description": "Erzeugnisform (z. B. blech, rund, profil, optional)"
+          },
+          "R_eH_min": {
+            "type": "number",
+            "description": "Mindeststreckgrenze ReH in MPa"
+          },
+          "R_p02_min": {
+            "type": "number",
+            "description": "Mindestdehngrenze Rp0,2 in MPa"
+          },
+          "R_m_min": {
+            "type": "number",
+            "description": "Mindestzugfestigkeit Rm in MPa"
+          },
+          "R_m_max": {
+            "type": "number",
+            "description": "Maximale Zugfestigkeit Rm in MPa"
+          },
+          "norm": {
+            "type": "string",
+            "description": "Gültige Norm"
+          },
+          "quelle": {
+            "type": "string",
+            "description": "Verweis auf den Beleg im Bericht"
+          }
+        }
+      }
     }
   }
 }

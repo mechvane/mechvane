@@ -1480,8 +1480,10 @@ def bolted_connection(
                         s.cmd("joint.edit", {"joint": screw_jname, "flip": needed_flip})
                         screw_jp["flip"] = needed_flip
 
-                # Verify screw shank orientation in world coordinates: shank extends along dir_k
-                occs_now = links._occurrences(s)
+                # Verify screw shank orientation in world coordinates: shank extends along dir_k. The flip from
+                # frame_a alone is not enough: which way a circle reference points depends on the kernel (truck
+                # and solidcore orient the screw's and the plate's circles differently)
+                occs_now = {o["name"]: o for o in links._occurrences(s).values()}
                 if inst_screw in occs_now:
                     shank_w = g.unit(g.apply_dir(occs_now[inst_screw]["transform"], [0.0, 0.0, -1.0]))
                     if g.dot(shank_w, dir_k) < 0.5:

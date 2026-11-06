@@ -7,8 +7,50 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a18] - 2026-11-06
+
+### Added
+
+- **Sketch environment** in the web UI, as in Inventor and Fusion: Create 2D Sketch (S) on an origin plane or a
+  flat face opens the Sketch tab and turns the view onto the plane. Draw lines (L, in a chain), rectangles (R) and
+  circles (C) with a rubber band; points snap to end points, midpoints, the origin, horizontal and vertical
+  (hold Ctrl to place freely). Type a length, angle, width, height or diameter in the boxes at the cursor (Tab moves
+  on, Enter places): it becomes a sketch dimension. Ctrl+Z undoes one step inside the sketch; Finish Sketch (or Enter)
+  makes the whole sketch one step on the Undo list. Double-click a sketch in the model browser to edit it.
+- **Dimension tool** (D) in the sketch: click a line, a circle or two points, then where the value goes, and type
+  it (or `name = expression` to make it a named parameter). Dimensions show on the geometry; double-click one to
+  change it. The status bar counts the degrees of freedom left, and fully defined geometry changes colour.
+- **Constraints and arcs** in the sketch: Horizontal, Vertical, Parallel, Perpendicular, Tangent and Equal from the
+  ribbon, shown as small symbols beside the geometry; three-point arcs (A). With no tool active, click curves,
+  points, symbols or dimensions to select them (Shift adds) and press Delete to remove them.
+- **Import STEP:** File → Import STEP… (and the `import_step` MCP tool for your agent) turns a STEP, IGES, FreeCAD
+  or Rhino file in the project folder into a part, a fixed body without history, to insert a bought-in part into an
+  assembly or to measure and check someone else's part.
+- **Trim, Extend, Offset and Project Geometry** in the sketch (T, O, P): trim the piece of a curve between crossings,
+  offset a chain by a typed distance, and bring model edges into the sketch so it follows the part. Coincident and
+  Fix join the constraint tools; fixed curves show an anchor, and conflicts show in the status bar.
+- The **live demo** sketches too: the same sketch environment runs on SolidCraft in your browser.
+- In the Hole dialog, holes can be positioned by distances from one or two straight edges of the face (Inventor style).
+- **Profile** in the Extrude and Revolve dialogs: when a sketch has several closed regions, extrude or revolve all
+  of them or just one, listed with its area and holes; editing the feature shows the choice again.
+- **Middle of face** in the Hole dialog: the hole sits in the middle of the clicked face and stays there when the
+  part gets longer, wider or thicker (a sketch tied to two opposite edges of the face).
+- **`part_end` MCP tool to roll back before a feature.** Your agent can move the end-of-part marker before a
+  failing or target feature to inspect volume and bounding box or make repairs, and return to the end of the history
+  afterwards (`part_end(document, before="<Feature>")` and `part_end(document)`). While rolled back, `run` says
+  which features are suppressed.
+
 ### Changed
 
+- Built and tested with **SolidCraft 0.30.1** (was 0.25.1); `mechvane setup` fetches it. Designs saved by
+  SolidCraft 0.30 use file format 47 and no longer open in SolidCraft 0.29 or older.
+- Create 2D Sketch no longer asks for rectangles and circles in a dialog and no longer jumps to Extrude; draw in the
+  sketch environment, then extrude as its own step.
+- Your agent keeps your design intent: when you ask for a hole in the middle of a face, 10 mm from an edge, flush,
+  concentric, equal or symmetric, it builds that as sketch constraints on the part's edges instead of fixed
+  coordinates, so the hole stays in the middle when the part gets wider.
+- Clear explanations and hints for SolidCraft errors are now returned across all MCP tools (such as add_joint,
+  edit_joint, insert_part, standard_part, bolted_connection) and in the feature dialogs of the web UI (/api/feature).
 - The session log also records which model your agent's session runs on, as a first step towards choosing the
   model by how demanding a request is.
 

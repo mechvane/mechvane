@@ -135,7 +135,7 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
         axis = g.unit(grp[0]["cylinder"]["axis"])
         p0 = grp[0]["cylinder"]["origin"]
         total_area = sum(f["area"] for f in grp)
-        length = total_area / (2.0 * math.pi * r) if len(grp) >= 2 else total_area / (math.pi * r)
+        length = g.cylinder_group_length(grp)
 
         # Center along axis
         weighted_t = sum(f["area"] * g.dot(g.sub(f["centroid"], p0), axis) for f in grp) / total_area

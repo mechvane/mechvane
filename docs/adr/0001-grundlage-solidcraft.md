@@ -107,3 +107,33 @@ Bauteiländerung still auf die falsche Fläche springen.
   das sechs Wochen liegen, wird neu entschieden. Dann bleibt entweder ein
   eigener Patch auf `doc`/`engine` (Teil-Fork) oder ein eigenes Baugruppenformat
   in Mechvane, das Bauteile selbst auswertet und die Namen behält.
+
+## Nachtrag 2026-11-05: Beiträge auch als PR
+
+Bis hierhin kamen von uns nur Issues (5), kein PR. Entscheidung (Nutzer 2026-11-05): Lücken, die jedes CAD
+braucht, beheben wir upstream auch selbst per PR, statt nur zu melden oder in Mechvane darum herum zu bauen.
+
+- **Was upstream gehört:** Kernel (Offset, Shell, STEP), Flächennamen, Befehle für die Direktbearbeitung,
+  Einbettung der Web-App, MCP-Server. **Was in Mechvane bleibt:** Inventor-Arbeitsweise, Dateimodell,
+  Prüfregeln, Wissenskatalog, Normteile, Agent im Chat. Kein Teil-Fork (unverändert gegenüber oben).
+- **Kernel-Pause (#3992):** Kernel-PRs werden zur Zeit auf Entwurf gesetzt, SolidCraft prüft den Kern
+  solidcore (Rust-Port von NVIDIA SMLib, öffentlich). Bis zur Entscheidung keine Kernel-PRs; unsere Fälle
+  (#745, #10884, Shell eines Lofts) als Tests bereithalten und, sobald solidcore Beiträge annimmt, dort
+  einbringen. Fällt die Entscheidung für solidcore, Offset dort angehen.
+- **Einstieg:** zuerst ein kleiner PR außerhalb des Kernels, den Mechvane selbst braucht, um den Ablauf zu
+  lernen (Issue beanspruchen, Claim verfällt nach 14 Tagen ohne Push; `cargo xtask ci` muss grün sein;
+  Agenten-Regeln in deren `AGENTS.md`/`skills/`). #8517 (Einbettung) ist schon von jemand anderem
+  beansprucht (#11273), Kandidat noch offen.
+- **Build-Maschine: Colab Pro** (Skill `colab-bridge`), nicht der Steuer-Container (2 Kerne). CPU-VM
+  `--high-mem` (8 Kerne, 55 GB) kostet ~0,26 CU/h, ein voller `cargo xtask ci` damit deutlich unter 1 CU.
+  Rust-Toolchain, `wasm32-unknown-unknown` und `trunk` je Lauf installieren; `target/` und `~/.cargo` als
+  Archiv zurückholen und beim nächsten Lauf hochladen, damit Builds inkrementell bleiben. Läufe über 20 CU
+  nur mit Nutzer-OK (unverändert).
+- **Regeln wie oben:** keinen GPL-Code lesen, keine Fusion-Werte als Referenz; öffentliche Issues,
+  Kommentare und PRs nur mit Nutzer-OK.
+
+*Nachtrag 2026-11-06:* SolidCraft hat sich praktisch für solidcore entschieden (v0.40.0-rc.1/rc.2 vom 2026-11-03
+ohne truck). Mechvane bleibt bis zum fertigen 0.40.0 auf 0.30.1 (truck, alle Tests grün). Mit rc.2 brechen eigene
+Annahmen: ein Zylinder ist eine Fläche (`side:0`) statt zwei Hälften und `#`-Stücken (Bohrungserkennung, Schraubenrichtung,
+Tests mit `side:1#`), Scharnier-Anschlag 179,76° statt 180°. Umstellung mit dem fertigen Release; Testbericht siehe
+`docs/research/2026-11-06-solidcore-testbericht-3992.md`.

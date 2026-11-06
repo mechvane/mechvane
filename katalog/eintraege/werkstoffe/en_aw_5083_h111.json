@@ -121,5 +121,74 @@
   "ausnahmen": "Nicht für Dauereinsatz über 65 °C geeignet, da bei Mg > 3 % interkristalline Korrosion durch Ausscheidung von beta-Phase (Al3Mg2) an den Korngrenzen auftritt.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 12.5,
+      "form": "blech",
+      "R_p02_min": 115,
+      "R_m_min": 270,
+      "R_m_max": 345,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 50.0,
+      "form": "blech",
+      "R_p02_min": 115,
+      "R_m_min": 270,
+      "R_m_max": 345,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 80.0,
+      "form": "blech",
+      "R_p02_min": 115,
+      "R_m_min": 270,
+      "R_m_max": 345,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 120.0,
+      "form": "blech",
+      "R_p02_min": 110,
+      "R_m_min": 260,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200.0,
+      "form": "blech",
+      "R_p02_min": 105,
+      "R_m_min": 255,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 250.0,
+      "form": "blech",
+      "R_p02_min": 95,
+      "R_m_min": 250,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 300.0,
+      "form": "blech",
+      "R_p02_min": 90,
+      "R_m_min": 245,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200.0,
+      "form": "rund",
+      "R_p02_min": 110,
+      "R_m_min": 270,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    }
+  ]
 }

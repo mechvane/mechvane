@@ -117,5 +117,127 @@
   "ausnahmen": "Nicht schweißbar im Schmelzschweißverfahren (Heißrissgefahr). Anfällig für Spannungsrisskorrosion im Zustand T6 bei Einwirkung von Feuchtigkeit und Zugspannungen (für korrosive Umgebungen Überalterungszustand T73 wählen). Geringe Bruchdehnung (3–7 %).",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 12.5,
+      "form": "blech",
+      "R_p02_min": 470,
+      "R_m_min": 540,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 25.0,
+      "form": "blech",
+      "R_p02_min": 470,
+      "R_m_min": 540,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 50.0,
+      "form": "blech",
+      "R_p02_min": 460,
+      "R_m_min": 530,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 60.0,
+      "form": "blech",
+      "R_p02_min": 440,
+      "R_m_min": 525,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 80.0,
+      "form": "blech",
+      "R_p02_min": 420,
+      "R_m_min": 495,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 90.0,
+      "form": "blech",
+      "R_p02_min": 390,
+      "R_m_min": 490,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 100.0,
+      "form": "blech",
+      "R_p02_min": 360,
+      "R_m_min": 460,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 120.0,
+      "form": "blech",
+      "R_p02_min": 300,
+      "R_m_min": 410,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 150.0,
+      "form": "blech",
+      "R_p02_min": 260,
+      "R_m_min": 360,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200.0,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 360,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 300.0,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 360,
+      "norm": "DIN EN 485-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 50,
+      "form": "rund",
+      "R_p02_min": 485,
+      "R_m_min": 560,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 100,
+      "form": "rund",
+      "R_p02_min": 460,
+      "R_m_min": 550,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 150,
+      "form": "rund",
+      "R_p02_min": 440,
+      "R_m_min": 550,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    },
+    {
+      "bis_mm": 200,
+      "form": "rund",
+      "R_p02_min": 400,
+      "R_m_min": 440,
+      "norm": "DIN EN 755-2",
+      "quelle": "thyssenkrupp Schweiz (Beleg 1)"
+    }
+  ]
 }

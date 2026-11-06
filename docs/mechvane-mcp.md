@@ -11,7 +11,7 @@ exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/p
 per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
-  (`mechvane/ui/webapp.py`) in der festen Version 0.25.1 (seit 2026-10-28) für die eigene Plattform in den Cache
+  (`mechvane/ui/webapp.py`) in der festen Version 0.30.1 (seit 2026-11-06) für die eigene Plattform in den Cache
   (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
   festgeschrieben, Entpacken mit Pfadprüfung.
 - `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
@@ -48,12 +48,14 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
 |---|---|
 | `new_part(name, path, overwrite)`, `new_assembly(name, path, overwrite)` | Leeres Bauteil bzw. leere Baugruppe im Workspace anlegen und speichern. Existiert die Zieldatei bereits auf Disk, wird ein Fehler geworfen, außer es wird ausdrücklich `overwrite=true` übergeben |
 | `open_document(path, name)` | Bauteil- oder Baugruppendatei öffnen (Pfad relativ zum Workspace). Ist dieselbe Datei bereits geöffnet, wird das vorhandene Dokument zurückgegeben statt einer Parallelsitzung; Namenskonflikte werden mit klarem Fehler abgewiesen |
-| `save_document(document)` | Offenes Dokument auf die Festplatte schreiben |
+| `save_document(document)` | Offenes Dokument auf die Festplatte schreiben. Speichert Bauteile nur, wenn das Bauteilende am Ende der Historie steht; im zurückgerollten Zustand bricht der Aufruf mit Fehler ab, damit keine unterdrückten Features auf Disk persistiert werden |
 | `close_document(document, discard)` | Dokument schließen. Hat das Dokument ungespeicherte Änderungen, wird ein Fehler mit Hinweis gemeldet, außer es wird ausdrücklich `discard=true` übergeben |
 | `list_documents()` | Liste aller aktuell im Workspace geöffneten Dokumente und Arbeitsordner-Pfad |
+| `import_step(source, name, path, overwrite, up)` | STEP/IGES/FreeCAD/Rhino als Bauteildatei mit festem Körper ohne Verlauf (Zukaufteil, fremdes Teil zum Messen und Prüfen); `up="y"` dreht Y-oben-Dateien. Weg: `file.insert_step` in einer Arbeitssitzung, `component.extract` in eine eigene Datei (Bauteile bleiben ohne Komponenten). STEP-Baugruppen: Teile bleiben Komponenten im Bauteil, Warnung |
 | `standard_part(norm, size, length, name, path)` | Parametrisches Normteil als eigene Bauteildatei erzeugen, speichern und offen halten (ISO 4762, ISO 10642, ISO 4032, ISO 7089, Ruthex, DIN 625) |
 | `list_standard_parts(norm)` | Verfügbare Normteile und Größen bzw. Maßtabelle einer Norm |
-| `run(document, commands, verbose)` | SolidCraft-Befehle als Batch (alles oder nichts). In Bauteilen danach die Skizzenregel; schlägt die Skizzenregel fehl, wird der Befehlsbatch per Checkpoint automatisch zurückgerollt. Liefert bei Bauteilen ein kompaktes `delta` (Hüllquader, Schwerpunkt, Volumen, Körperzahl und Warnungen bei wirkungslosen Schritten, Mehrkörperbildung oder großen Sprüngen). Antwort ohne leere Felder und Zeiten, außer mit `verbose` |
+| `part_end(document, before)` | Bauteilende-Marker versetzen: `before="<Feature>"` rollt vor dieses Feature zurück (Features dahinter werden unterdrückt), `before=None` rollt wieder ans Ende der Historie. Liefert Markerposition, Features dahinter sowie aktuellen Hüllquader und Volumen für isolierte Messungen oder Reparaturen |
+| `run(document, commands, verbose)` | SolidCraft-Befehle als Batch (alles oder nichts). In Bauteilen danach die Skizzenregel; schlägt die Skizzenregel fehl, wird der Befehlsbatch per Checkpoint automatisch zurückgerollt. Liefert bei Bauteilen ein kompaktes `delta` (Hüllquader, Schwerpunkt, Volumen, Körperzahl und Warnungen bei wirkungslosen Schritten, Mehrkörperbildung oder großen Sprüngen; steht das Bauteilende nicht am Ende, wird ein Hinweis mit den unterdrückten Features mitgeliefert). Antwort ohne leere Felder und Zeiten, außer mit `verbose` |
 | `browser(document, groups)` | Modellbrowser nach Inventor-Art, als Text und JSON; `groups` zeigt dieselben Einträge zusätzlich in Ordnern (siehe unten) |
 | `delete_feature(document, feature, keep_sketch)` | Feature löschen, die eigene Skizze geht mit |
 | `insert_part(assembly, part_path, name, translate, rotate, grounded)` | Bauteil oder Unterbaugruppe verknüpft einfügen (optional Drehung vor dem Fixieren; erstes Teil der Baugruppe wird automatisch fixiert (`grounded=True`), wenn `grounded` nicht angegeben ist; Folgekomponenten bleiben standardmäßig frei) |
@@ -112,6 +114,15 @@ Ordner nach Fusion-Art: **Skizzen** und **Arbeitselemente** im Bauteil,
 nennt seinen Besitzer (`→ Extrude1`) oder alle, die ihn teilen. So zeigt die
 Ordneransicht alles auf einen Blick, ohne dass zwei Ablagen auseinanderlaufen
 können.
+
+## Konstruktionsabsicht (seit 2026-11-05)
+
+Nennt ein Auftrag eine Beziehung („mittig in dieser Fläche“, „10 mm vom Rand“, „bündig“, „konzentrisch“, „gleich
+groß“, „symmetrisch“), baut der Agent sie als Skizzen-Abhängigkeit zu projizierten Kanten, nicht als ausgerechnete
+Koordinate. Die Anweisungen des MCP-Servers sagen das jedem Agenten, die Tabelle steht im Skill `konstrukteur`.
+Beispiel „Bohrung mittig“: Skizze auf der Fläche, zwei gegenüberliegende Kanten per `sketch.project`,
+Konstruktionslinie von Mitte zu Mitte, Punkt in deren Mitte, `solid.hole` am Skizzenpunkt. Getestet in
+`design_intent_checks` (Platte 80 × 50 → 120 × 70 → 200 × 20, Bohrung bleibt exakt mittig, SolidCraft 0.25.1).
 
 ## Gelenke über Dateigrenzen
 
@@ -419,7 +430,7 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 ### Modus „Modellieren“ (seit 2026-10-25)
 
-`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.25.1.zip`, beim ersten
+`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.30.1.zip`, beim ersten
 Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
 ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
 Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App

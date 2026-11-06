@@ -112,5 +112,16 @@
   "ausnahmen": "Wegen Heißrissgefahr ungeeignet für Schweißkonstruktionen. Eingeschränkte Korrosionsbeständigkeit gegenüber chlorid- und säurehaltigen Medien im Vergleich zu 1.4301.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 160,
+      "form": "rund",
+      "R_p02_min": 190,
+      "R_m_min": 500,
+      "R_m_max": 750,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 1)"
+    }
+  ]
 }

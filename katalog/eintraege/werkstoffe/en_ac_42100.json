@@ -119,5 +119,23 @@
   "ausnahmen": "Für rein dekoratives Eloxieren ungeeignet (Silizium führt zu dunkler/grauer Schicht). Wanddickenabhängigkeit der Festigkeit bei Abmessungen über 25 mm beachten.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 15,
+      "form": "sandguss",
+      "R_p02_min": 190,
+      "R_m_min": 230,
+      "norm": "DIN EN 1706",
+      "quelle": "GermannGuss AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 25,
+      "form": "sandguss",
+      "R_p02_min": 180,
+      "R_m_min": 230,
+      "norm": "DIN EN 1706",
+      "quelle": "GermannGuss AG (Beleg 1)"
+    }
+  ]
 }

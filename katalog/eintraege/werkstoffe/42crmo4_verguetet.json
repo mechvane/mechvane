@@ -121,5 +121,52 @@
   "ausnahmen": "Schweißen nur unter strikten Vorsichtsmaßnahmen (Vorwärmen auf 250–350 °C, Spannungsarmglühen). Bei Querschnitten d > 16 mm Abnahme der Mindestfestigkeit (z. B. Rp0,2 = 750 N/mm² für 16 < d <= 40 mm).",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 16,
+      "form": "rund",
+      "R_p02_min": 900,
+      "R_m_min": 1100,
+      "R_m_max": 1300,
+      "norm": "DIN EN 10083-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 40,
+      "form": "rund",
+      "R_p02_min": 750,
+      "R_m_min": 1000,
+      "R_m_max": 1200,
+      "norm": "DIN EN 10083-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 100,
+      "form": "rund",
+      "R_p02_min": 650,
+      "R_m_min": 900,
+      "R_m_max": 1100,
+      "norm": "DIN EN 10083-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 160,
+      "form": "rund",
+      "R_p02_min": 550,
+      "R_m_min": 800,
+      "R_m_max": 950,
+      "norm": "DIN EN 10083-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 500,
+      "R_m_min": 750,
+      "R_m_max": 900,
+      "norm": "DIN EN 10083-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    }
+  ]
 }

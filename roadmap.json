@@ -42,7 +42,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Clear error messages for your agent",
           "text": "When SolidCraft rejects a step, Mechvane names the feature and the spot and says in one sentence what touches what, with a suggestion, so your agent can fix it on the next try.",
           "milestone": "v0.1"
@@ -60,7 +60,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "Roll back to find a problem",
           "text": "Your agent can move the end of part before a failing feature, repair it there and step forward again, as you would in Inventor.",
           "milestone": "v0.1"
@@ -93,6 +93,11 @@
           "title": "Stable 0.1 release",
           "text": "Tested in practice on Linux and Windows, rough edges fixed, a release you can rely on.",
           "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Import STEP as a reference body",
+          "text": "Bring in STEP files from suppliers or other tools as solid bodies, using SolidCraft's STEP reader: place bought parts in an assembly, measure them and run the checks on them. In the workspace (File → Import STEP…) or through your agent."
         },
         {
           "status": "planned",
@@ -162,7 +167,23 @@
         {
           "status": "progress",
           "title": "Your own Mechvane workspace",
-          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. Sketches with rectangles and circles are in; lines, arcs and constraints come next.",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. A sketch environment with lines, rectangles and circles, snapping, arcs, constraints, a dimension tool and dimensions typed at the cursor is ready for the next release; projecting model edges, trim and offset are in too.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Switch project folders in the app",
+          "text": "Pick another project folder from inside Mechvane, with recently used folders at hand, instead of starting it again with a different folder. Opening a single file makes its folder the project, so assemblies keep finding their parts."
+        },
+        {
+          "status": "planned",
+          "title": "Direct editing",
+          "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
+        },
+        {
+          "status": "done",
+          "title": "Hole positioning by edge distances",
+          "text": "Place holes by distances from one or two straight edges in the Hole dialog (Inventor style), with interactive edge picking and live preview.",
           "milestone": "v0.1"
         },
         {

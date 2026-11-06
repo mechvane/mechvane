@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, query, sc_errors, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
+from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, modeling, query, sc_errors, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
 
 REL = 2e-4  # volume tolerance (tessellation, same as tests/reference/check.py)
@@ -1124,6 +1124,13 @@ def design_rule_checks(ws):
     ws.close("rule_probe_err")
 
 
+def screw_shank_down(asm, occ_name):
+    """The screw's shank (its part's -Z) points down in the assembly: joint frames on circle references may point
+    either way round (truck and solidcore orient circles differently), the occurrence's placement does not."""
+    occ = {o["name"]: o for o in links._occurrences(asm.session).values()}[occ_name]
+    return g.dot(g.unit(g.apply_dir(occ["transform"], [0.0, 0.0, -1.0])), [0.0, 0.0, -1.0]) > 0.999
+
+
 def bolted_connection_checks(ws):
     # Setup two plates 10 mm and 8 mm
     plate1 = ws.new(PART, "p1_through")
@@ -1181,7 +1188,7 @@ def bolted_connection_checks(ws):
     fa, fb = screw_j["frame_a"], screw_j["frame_b"]
     coaxial = (abs(fa["origin"][0] - fb["origin"][0]) < 1e-4
                and abs(fa["origin"][1] - fb["origin"][1]) < 1e-4
-               and abs(g.dot(fa["z"], fb["z"]) - 1.0) < 1e-4)
+               and abs(abs(g.dot(fa["z"], fb["z"])) - 1.0) < 1e-4)
     # Check actual occurrence placement in assembly world coordinates (not just joint frames)
     # Hole is at world x=0, y=0. Screw, washer and nut must be centered on the hole axis.
     asm_occs = {o["name"]: o for o in links._occurrences(asm.session).values()}
@@ -1193,7 +1200,8 @@ def bolted_connection_checks(ws):
     world_coaxial = all(abs(o[0]) < 1e-4 and abs(o[1]) < 1e-4 for o in origins)
     # Head bearing surface of screw sits flush on top plate at z = 10.0 (Befund 11)
     head_seated = abs(origins[0][2] - 10.0) < 1e-3
-    ok("bolted connection: screw sits coaxial to hole", coaxial and world_coaxial and head_seated,
+    ok("bolted connection: screw sits coaxial to hole", coaxial and world_coaxial and head_seated
+       and screw_shank_down(asm, res["screw"]),
        f"{fa} vs {fb}, origins={origins}")
 
     # Check interference (no collision screw/hole)
@@ -1248,9 +1256,9 @@ def bolted_connection_checks(ws):
     coaxial_cb = (abs(fa_cb["origin"][0] - fb_cb["origin"][0]) < 1e-4
                   and abs(fa_cb["origin"][1] - fb_cb["origin"][1]) < 1e-4
                   and abs(fa_cb["origin"][2] - 4.6) < 1e-4
-                  and abs(g.dot(fa_cb["z"], fb_cb["z"]) - 1.0) < 1e-4)
+                  and abs(abs(g.dot(fa_cb["z"], fb_cb["z"])) - 1.0) < 1e-4)
     ok("bolted connection with counterbore: screw sits coaxial and recessed at z = 4.6 mm",
-       coaxial_cb, f"{fa_cb} vs {fb_cb}")
+       coaxial_cb and screw_shank_down(asm_cb, res_cb["screw"]), f"{fa_cb} vs {fb_cb}")
 
     interf_cb = asm_cb.session.cmd("inspect.interference", {})
     ok("bolted connection with counterbore: no collision (inspect.interference count == 0)",
@@ -1316,9 +1324,14 @@ def bolted_connection_checks(ws):
     p2_b_edges = ws.docs["p2_blind"].session.cmd("model.edges", {"body": "AluBase"})["edges"]
     cyl_radii = [round(c["radius"], 2) for c in p2_b_cyls]
 
+    # from the geometry, not the face names: truck splits the bore into pieces (side:1#2), solidcore does not
     bore_edges = [e for e in p2_b_edges if "bore" in e["name"]]
-    cyl_bottom_z = min(e["start"][2] for e in bore_edges if "side:1#" in e["name"])
-    cone_tip_z = min(e["start"][2] for e in bore_edges if "side:2#" in e["name"])
+    bore_cyl_names = {f["name"] for f in p2_b_faces
+                      if "bore" in f["name"] and abs((f.get("cylinder") or {}).get("radius", 0) - 2.1) < 1e-3}
+    lowest = lambda e: min(e["start"][2], e["end"][2])
+    cyl_bottom_z = min(lowest(e) for e in bore_edges
+                       if {n.split("~")[0] for n in e["name"].split("|")} & bore_cyl_names)
+    cone_tip_z = min(lowest(e) for e in bore_edges)
     geom_cyl_depth = round(20.0 - cyl_bottom_z, 2)
     delta_z_tip = cyl_bottom_z - cone_tip_z
     tip_angle_deg = round(2.0 * math.degrees(math.atan(2.1 / delta_z_tip)), 1)
@@ -1338,10 +1351,11 @@ def bolted_connection_checks(ws):
     fa_bl, fb_bl = screw_blind_j["frame_a"], screw_blind_j["frame_b"]
     coaxial_blind = (abs(fa_bl["origin"][0] - fb_bl["origin"][0]) < 1e-4
                      and abs(fa_bl["origin"][1] - fb_bl["origin"][1]) < 1e-4
-                     and abs(g.dot(fa_bl["z"], fb_bl["z"]) - 1.0) < 1e-4)
+                     and abs(abs(g.dot(fa_bl["z"], fb_bl["z"])) - 1.0) < 1e-4)
     # Head bearing surface sits at top plate surface at z = 10.0 (Befund 11)
     head_seated_blind = abs(fa_bl["origin"][2] - 10.0) < 1e-4
-    ok("bolted connection blind: screw sits coaxial to hole", coaxial_blind and head_seated_blind, f"{fa_bl} vs {fb_bl}")
+    ok("bolted connection blind: screw sits coaxial to hole",
+       coaxial_blind and head_seated_blind and screw_shank_down(asm_blind, res_blind["screw"]), f"{fa_bl} vs {fb_bl}")
 
     chk_blind = links.check(ws, asm_blind)
     ok("bolted connection blind: check_joints is green (all ok)",
@@ -1432,7 +1446,7 @@ def bolted_connection_checks(ws):
                       and abs(fa_in["origin"][1] - fb_in["origin"][1]) < 1e-4
                       and abs(fa_in["origin"][2] - 0.0) < 1e-4
                       and abs(fb_in["origin"][2] - 0.0) < 1e-4
-                      and abs(g.dot(fa_in["z"], fb_in["z"]) - 1.0) < 1e-4)
+                      and abs(abs(g.dot(fa_in["z"], fb_in["z"])) - 1.0) < 1e-4)
     ok("bolted connection insert: Ruthex insert sits coaxial and flush at z = 0.0 mm",
        coaxial_insert, f"{fa_in} vs {fb_in}")
 
@@ -2165,6 +2179,77 @@ def bolted_pattern_and_edit_checks(ws):
     ws.close_all()
 
 
+def design_intent_checks(ws):
+    """Design intent rule: "a hole in the middle of this face" is a sketch tied to the face's projected
+    edges (midpoint constraints), so the hole stays centred when the face changes size."""
+    doc = ws.new(PART, "intent_centre")
+    s = doc.session
+    s.cmd("parameters.add", {"name": "L", "expression": "80 mm"})
+    s.cmd("parameters.add", {"name": "W", "expression": "50 mm"})
+    s.cmd("solid.box", {"corner": [0, 0, 0], "length": "L", "width": "W", "height": 6,
+                        "operation": "new", "body_name": "Plate"})
+    s.cmd("sketch.create", {"plane": "XY", "offset": 6, "name": "Centre"})
+    r = s.cmd("sketch.project", {"refs": [{"edge": [40, 0, 6], "body": "Plate"}, {"edge": [40, 50, 6], "body": "Plate"}]})
+    a, b = (lk["curves"][0] for lk in r["links"])
+    s.cmd("sketch.line", {"points": [[40, 0], [40, 50]], "ids": ["axis"]})
+    s.cmd("sketch.construction", {"curves": ["axis"]})
+    s.cmd("sketch.constraint.midpoint", {"point": "axis.start", "line": a})
+    s.cmd("sketch.constraint.midpoint", {"point": "axis.end", "line": b})
+    s.cmd("sketch.point", {"point": [40, 25], "id": "c"})
+    r = s.cmd("sketch.constraint.midpoint", {"point": "c", "line": "axis"})
+    ok("design intent: centred hole sketch is fully constrained", r["sketch"]["dof"] == 0, str(r["sketch"]))
+    s.cmd("sketch.finish")
+    s.cmd("solid.hole", {"sketch": "Centre", "diameter": 6, "name": "Hole"})
+
+    def axis():
+        fs = [f for f in s.cmd("model.faces", {"body": "Plate"})["faces"] if f.get("cylinder")]
+        return fs[0]["cylinder"]["origin"][:2] if fs else None
+
+    for L, W in ((80, 50), (120, 70), (200, 20)):
+        s.cmd("parameters.change", {"name": "L", "expression": f"{L} mm"})
+        s.cmd("parameters.change", {"name": "W", "expression": f"{W} mm"})
+        c = axis()
+        ok(f"design intent: hole stays centred at {L} x {W}",
+           c is not None and abs(c[0] - L / 2) < 1e-6 and abs(c[1] - W / 2) < 1e-6, str(c))
+    ws.close(doc.name)
+
+    # the Hole dialog's "Middle of face" (centred_hole_commands), here on a side face of a block
+    from mechvane.ui.server import centred_hole_commands
+    doc = ws.new(PART, "intent_dialog")
+    s = doc.session
+    for n, e in (("L", "80 mm"), ("W", "50 mm"), ("T", "20 mm")):
+        s.cmd("parameters.add", {"name": n, "expression": e})
+    s.cmd("solid.box", {"corner": [0, 0, 0], "length": "L", "width": "W", "height": "T", "operation": "new",
+                        "body_name": "Block"})
+    modeling.run_commands(doc, centred_hole_commands(
+        doc, {"centre": True, "position": [80, 10, 5], "direction": [-1, 0, 0], "diameter": 4, "depth": 8}))
+    for L, W, T in ((80, 50, 20), (120, 70, 30)):
+        for n, v in (("L", L), ("W", W), ("T", T)):
+            s.cmd("parameters.change", {"name": n, "expression": f"{v} mm"})
+        c = [f["cylinder"]["origin"] for f in s.cmd("model.faces", {"body": "Block"})["faces"] if f.get("cylinder")]
+        ok(f"design intent: dialog 'Middle of face' hole stays centred on the side face at {L} x {W} x {T}",
+           bool(c) and abs(c[0][1] - W / 2) < 1e-6 and abs(c[0][2] - T / 2) < 1e-6, str(c[:1]))
+    ws.close(doc.name)
+
+
+def profile_choice_checks(ws):
+    """Extrude/Revolve dialogs: /api/sketches lists each sketch's profiles, and one profile index extrudes only it."""
+    from mechvane.ui.server import sketches
+    doc = ws.new(PART, "profile_choice")
+    s = doc.session
+    s.cmd("sketch.create", {"plane": "XY", "name": "S"})
+    s.cmd("sketch.circle.center", {"center": [0, 0], "radius": 10})
+    s.cmd("sketch.circle.center", {"center": [40, 0], "radius": 5})
+    s.cmd("sketch.finish")
+    sk = next(x for x in sketches(doc)["sketches"] if x["name"] == "S")
+    ok("profiles: /api/sketches lists both circles", [p["curves"] for p in sk["profiles"]] == [["c1"], ["c2"]], str(sk))
+    small = next(p["index"] for p in sk["profiles"] if p["curves"] == ["c2"])
+    s.cmd("solid.extrude", {"sketch": "S", "distance": 4, "profiles": [small], "operation": "new", "name": "E"})
+    vol = s.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
+    ok("profiles: extruding one profile makes only that cylinder", abs(vol - 3.14159265 * 25 * 4) < 0.5, str(vol))
+    ws.close(doc.name)
+
+
 def semantic_queries(ws):
     plate = ws.new(PART, "query_plate")
     plate.session.batch([
@@ -2194,8 +2279,9 @@ def semantic_queries(ws):
 
     # 3. feature filter finds faces of a specific feature
     f_h1 = query.find(plate, "faces", {"feature": "Hole1"})
+    # truck splits the bore into two half faces, solidcore keeps one face
     ok("find: feature filter finds faces of a specific feature",
-       len(f_h1) == 2 and all(f["type"] == "cylinder" for f in f_h1) and all(abs(f["diameter"] - 6.0) < 0.1 for f in f_h1),
+       len(f_h1) in (1, 2) and all(f["type"] == "cylinder" for f in f_h1) and all(abs(f["diameter"] - 6.0) < 0.1 for f in f_h1),
        str(f_h1))
 
     # 4. A pick from find works in solid.fillet
@@ -3158,6 +3244,34 @@ def katalog_checks():
        "mindestbiegeradius_stahl_dc01_alu_5754" in ids7 and "mindestbiegeradius_alu_6061_t6" in ids7,
        str(ids7))
 
+    # Mindestwerte je Erzeugnisdicke (dickenbereiche)
+    crmo_50 = katalog.mindestwerte("42crmo4_verguetet", 50)
+    ok("katalog mindestwerte: 42CrMo4 +QT at d=50mm returns Rm_min 900, Rp02_min 650",
+       crmo_50 is not None and crmo_50.get("R_m_min") == 900 and crmo_50.get("R_p02_min") == 650,
+       str(crmo_50))
+
+    crmo_10 = katalog.mindestwerte("42crmo4_verguetet", 10)
+    ok("katalog mindestwerte: 42CrMo4 +QT at d=10mm returns Rm_min 1100, Rp02_min 900",
+       crmo_10 is not None and crmo_10.get("R_m_min") == 1100 and crmo_10.get("R_p02_min") == 900,
+       str(crmo_10))
+
+    crmo_300 = katalog.mindestwerte("42crmo4_verguetet", 300)
+    ok("katalog mindestwerte: 42CrMo4 +QT at d=300mm returns None",
+       crmo_300 is None, str(crmo_300))
+
+    s235_30 = katalog.mindestwerte("s235jr", 30)
+    ok("katalog mindestwerte: S235JR at t=30mm returns ReH_min 225",
+       s235_30 is not None and s235_30.get("R_eH_min") == 225,
+       str(s235_30))
+
+    ohne_db = katalog.mindestwerte("pom_c", 20)
+    ok("katalog mindestwerte: entry without dickenbereiche returns None without error",
+       ohne_db is None, str(ohne_db))
+
+    gezogen = katalog.mindestwerte("en_aw_2007", 25, form="rund_gezogen")
+    ok("katalog mindestwerte: form matches exactly (EN AW-2007 drawn bar d=25mm: Rp02_min 240, not the extruded 250)",
+       gezogen is not None and gezogen.get("R_p02_min") == 240, str(gezogen))
+
 
 def praxistest_3_fixes_checks(ws):
     # Befund 4: Bolt circle (circular pattern) and rectangular pattern with counterbore=True:
@@ -3587,7 +3701,9 @@ def praxistest_4_fixes_checks(ws):
     repaired_joints = [x["joint"] for x in rep_upd.get("repaired", [])]
 
     ok("praxistest 4 / finding 8: update_links with repair=True repairs origin_lost and reports result per joint",
-       b8_broken_status in ("origin_lost", "moved") and "StiftAufDom" in repaired_joints  # "moved" since 0.25
+       ((b8_broken_status in ("origin_lost", "moved") and "StiftAufDom" in repaired_joints)  # "moved" since 0.25
+        # solidcore (0.40) keeps the dome's top circle through the cut: the joint stays ok, nothing to repair
+        or (b8_broken_status == "ok" and not repaired_joints))
        and b8_rep_status == "ok",
        f"broken_status={b8_broken_status}, rep_upd={rep_upd}, rep_status={b8_rep_status}")
 
@@ -4971,6 +5087,87 @@ def agent_turns_checks(tmp):
         install.CACHE = old_cache
 
 
+def snapshot_prune_checks(tmp):
+    """Snapshot history retention in cache (issue #40): keep at most 50 steps per project hash,
+    remove copies older than 14 days, and leave active turn snapshots untouched."""
+    import hashlib
+    from datetime import datetime, timedelta
+    from mechvane import install
+    from mechvane.ui import agent as ag
+
+    old_cache = install.CACHE
+    install.CACHE = Path(tmp) / "cache"
+    try:
+        folder = Path(tmp) / "proj"
+        folder.mkdir(parents=True)
+        (folder / "part.solidcraft").write_text("{}", encoding="utf-8")
+        key = hashlib.sha1(str(folder.resolve()).encode()).hexdigest()[:12]
+        hist = install.CACHE / "history" / key
+        hist.mkdir(parents=True)
+
+        now = datetime.now()
+        # 60 recent snapshot folders and 10 folders older than 14 days
+        for i in range(60):
+            d = hist / f"{(now - timedelta(minutes=60 - i)):%Y%m%d-%H%M%S}-step{i:02d}"
+            d.mkdir(parents=True)
+            (d / "manifest.json").write_text("[]", encoding="utf-8")
+
+        for i in range(10):
+            d = hist / f"{(now - timedelta(days=20 + i)):%Y%m%d-%H%M%S}-stale{i:02d}"
+            d.mkdir(parents=True)
+            (d / "manifest.json").write_text("[]", encoding="utf-8")
+
+        # Creating AgentTurns prunes the history on init
+        turns = ag.AgentTurns(folder)
+
+        remaining = [p for p in hist.iterdir() if p.is_dir()]
+        stale_remaining = [p for p in remaining if "stale" in p.name]
+
+        # Running turn snapshots must never be pruned
+        active_snap = hist / f"{(now - timedelta(days=25)):%Y%m%d-%H%M%S}-active_snap"
+        active_snap.mkdir(parents=True)
+        (active_snap / "manifest.json").write_text("[]", encoding="utf-8")
+        active_redo = hist / f"{(now - timedelta(days=26)):%Y%m%d-%H%M%S}-active_redo"
+        active_redo.mkdir(parents=True)
+        (active_redo / "manifest.json").write_text("[]", encoding="utf-8")
+
+        turns.turns.append({
+            "id": 1,
+            "text": "active turn",
+            "snapshot": type("S", (), {"dir": active_snap})(),
+            "redo": type("R", (), {"dir": active_redo})()
+        })
+
+        unrelated_stale = hist / f"{(now - timedelta(days=27)):%Y%m%d-%H%M%S}-unrelated_stale"
+        unrelated_stale.mkdir(parents=True)
+        (unrelated_stale / "manifest.json").write_text("[]", encoding="utf-8")
+
+        turns.prune_history()
+
+        active_ok = active_snap.exists() and active_redo.exists() and not unrelated_stale.exists()
+
+        # Second project hash: pruning applies per project hash
+        hist2 = install.CACHE / "history" / "otherhash123"
+        hist2.mkdir(parents=True)
+        for i in range(60):
+            d = hist2 / f"{(now - timedelta(minutes=60 - i)):%Y%m%d-%H%M%S}-step{i:02d}"
+            d.mkdir(parents=True)
+            (d / "manifest.json").write_text("[]", encoding="utf-8")
+        stale2 = hist2 / f"{(now - timedelta(days=20)):%Y%m%d-%H%M%S}-stale"
+        stale2.mkdir(parents=True)
+        (stale2 / "manifest.json").write_text("[]", encoding="utf-8")
+
+        ag.prune_history()
+        remaining2 = [p for p in hist2.iterdir() if p.is_dir()]
+
+        ok("agent: snapshot history keeps at most 50 steps, prunes older than 14 days, active snapshots untouched",
+           len(remaining) == 50 and len(stale_remaining) == 0 and active_ok
+           and len(remaining2) == 50 and not stale2.exists(),
+           f"proj1: {len(remaining)}, stale1: {len(stale_remaining)}, active: {active_snap.exists()}/{active_redo.exists()}, proj2: {len(remaining2)}")
+    finally:
+        install.CACHE = old_cache
+
+
 def selection_checks(tmp):
     """/api/resolve_selection: the app's selection in Mechvane's names, for a part and an assembly."""
     import urllib.request
@@ -5316,7 +5513,7 @@ def feature_dialog_checks(tmp):
     land in the shared undo list with the agent's turns; a new step after an undo drops the redo."""
     import urllib.error
     import urllib.request
-    from mechvane import modeling
+    from mechvane import modeling, query
     from mechvane.ui import server as ui_server
 
     folder = Path(tmp) / "features"
@@ -5403,7 +5600,7 @@ def feature_dialog_checks(tmp):
         ok("feature dialog: opening Chamfer1 for editing gives its values and the model before it",
            st_e == 200 and ed.get("dialog") == "chamfer" and ed.get("definition", {}).get("edges") == [[20, 0, 10]]
            and str(ed.get("definition", {}).get("distance")) == "1" and before_bodies
-           and "Chamfer1" in features(), f"{st_e} {str(ed)[:300]}")
+           and "Chamfer1" in features(), f"{st_e} {str(ed)[:300]} features={features()}")
         mtime_e = path.stat().st_mtime_ns
         st_ep, _ = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1", "preview": True,
                                     "params": {"edges": [[20, 0, 10]], "distance": 2}})
@@ -5547,6 +5744,179 @@ def feature_dialog_checks(tmp):
         st_ex, _ = call("feature?name=Base")
         ok("feature dialog: unknown features are 404, features without a dialog (a sketch) cannot be opened for editing (403)",
            st_dx == 404 and st_ex == 403, f"{st_dx} {st_ex}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+    # Hole positioned by distances from two edges (issue #43)
+    p_refs = w.new(PART, "plate_refs")
+    p_refs.session.batch([
+        {"command": "parameters.add", "params": {"name": "len", "expression": "60 mm"}},
+        {"command": "parameters.add", "params": {"name": "wid", "expression": "40 mm"}},
+        {"command": "solid.box", "params": {"length": "len", "width": "wid", "height": 10, "corner": [0, 0, 0], "name": "Box"}},
+    ])
+    p_refs.save()
+    w.close_all()
+    srv_ref = ui_server.create_server(str(folder / "plate_refs.solidcraft"), port=0)
+    threading.Thread(target=srv_ref.serve_forever, daemon=True).start()
+    base_ref = f"http://127.0.0.1:{srv_ref.server_address[1]}/api/"
+
+    def call_ref(endpoint, body=None):
+        req = urllib.request.Request(base_ref + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    try:
+        st_hr, hr = call_ref("feature", {"command": "solid.hole", "params": {
+            "name": "RefHole", "position": [30, 20, 10], "diameter": 5,
+            "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [30, 0, 10], "distance": 12}]}})
+        with srv_ref.lock:
+            h1 = query.find(srv_ref.ensure_current(), "holes")
+        st_get, hget = call_ref("feature?name=RefHole")
+        st_he, he = call_ref("feature", {"command": "solid.hole", "edit": "RefHole", "params": {
+            "references": [{"edge": [0, 20, 10], "distance": 20}, {"edge": [30, 0, 10], "distance": 12}]}})
+        with srv_ref.lock:
+            h2 = query.find(srv_ref.ensure_current(), "holes")
+        st_hp, hp = call_ref("params", {"changes": {"len": "80 mm"}})
+        with srv_ref.lock:
+            h3 = query.find(srv_ref.ensure_current(), "holes")
+        st_bad, bad = call_ref("feature", {"command": "solid.hole", "params": {
+            "name": "BadHole", "position": [30, 20, 10], "diameter": 5,
+            "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [80, 20, 10], "distance": 15}]}})
+        ok("feature dialog: hole positioned by distances to two straight edges (15 and 12 mm), edited to 20 mm, "
+           "keeps distance when part length parameter changes; parallel edges rejected",
+           st_hr == 200 and h1 and h1[0].get("pick") == [15.0, 12.0, 10.0] and h1[0].get("center")[:2] == [15.0, 12.0]
+           and len(hget.get("definition", {}).get("references", [])) == 2
+           and st_he == 200 and h2 and h2[0].get("pick") == [20.0, 12.0, 10.0] and h2[0].get("center")[:2] == [20.0, 12.0]
+           and st_hp == 200 and h3 and h3[0].get("pick") == [20.0, 12.0, 10.0] and h3[0].get("center")[:2] == [20.0, 12.0]
+           and st_bad == 400 and "parallel" in bad.get("error", "").lower(),
+           f"{st_hr} {h1} {st_he} {h2} {st_hp} {h3} {st_bad} {bad.get('error')}")
+    finally:
+        srv_ref.shutdown()
+        srv_ref.server_close()
+
+
+def step_import_checks(tmp):
+    """import_step: a STEP file becomes a part file with one body and no components, insertable into an
+    assembly; the STEP file is made here (a box exported by SolidCraft), not taken from private test data."""
+    from mechvane import step_import
+    folder = Path(tmp) / "step_import"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        src = w.new(PART, "block_src")
+        src.session.cmd("solid.box", {"length": 40, "width": 30, "height": 12})
+        src.session.cmd("solid.hole", {"position": [20, 15, 12], "direction": [0, 0, -1], "diameter": 6})
+        vol_src = src.session.cmd("inspect.measure", {})["bodies"][0]["volume_mm3"]
+        src.session.cmd("file.export_step", {"path": str(folder / "block.step")})
+        w.close("block_src")
+        r = step_import.import_step(w, "block.step", name="Kaufteil")
+        doc = w.get("Kaufteil", PART)
+        comps = doc.session.cmd("component.list")["components"]
+        tl = [f["type"] for f in doc.session.cmd("document.inspect")["timeline"]]
+        ok("import_step: STEP becomes a part file with the same volume, one base feature, no components",
+           r["kind"] == "part" and len(r["bodies"]) == 1 and abs(r["bodies"][0]["volume_mm3"] - vol_src) < 1e-3 * vol_src
+           and len(comps) == 1 and tl == ["BaseFeature"] and Path(r["path"]).exists() and not r["warnings"],
+           f"{r} comps={len(comps)} tl={tl}")
+        asm = w.new(ASSEMBLY, "asm_kauf")
+        ins = links.insert(w, asm, Path(r["path"]), name="Kaufteil", grounded=True)
+        ok("import_step: the imported part goes into an assembly like any part", bool(ins.get("occurrence")), str(ins)[:200])
+        errs = []
+        for bad in ({"source": "nope.step"}, {"source": "block_src.solidcraft"}, {"source": "block.step", "name": "Kaufteil"}):
+            try:
+                step_import.import_step(w, **bad)
+            except (FileNotFoundError, ValueError, FileExistsError) as e:
+                errs.append(type(e).__name__)
+        ok("import_step: missing file, wrong type and an existing name are refused",
+           errs == ["FileNotFoundError", "ValueError", "ValueError"], str(errs))
+    finally:
+        w.close_all()
+
+
+def sketch_session_checks(tmp):
+    """Sketch environment (ADR 0005, addendum 2026-11-02): /api/sketch/begin opens a sketch, cmd draws one command
+    at a time, undo goes back one command, other edits and a second sketch are refused meanwhile, finish saves it as
+    one step of the shared undo list, cancel leaves nothing, edit opens an existing sketch again."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "sketching"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        w.new(PART, "plate").save()
+    finally:
+        w.close_all()
+    srv = ui_server.create_server(str(folder / "plate.solidcraft"), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def features():
+        with srv.lock:
+            doc = srv.ensure_current()
+            return [f["name"] for f in doc.session.cmd("document.inspect", {"measure": False})["timeline"]]
+
+    try:
+        st, b = call("sketch/begin", {"plane": "XY"})
+        ok("sketch env: begin on XY opens Sketch1", st == 200 and b.get("sketch") == "Sketch1", str(b)[:200])
+        st, b = call("sketch/cmd", {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}})
+        st2, b2 = call("sketch/cmd", {"command": "sketch.circle.center", "params": {"center": [60, 10], "radius": 5}})
+        ok("sketch env: rectangle and circle give two profiles",
+           st == 200 and st2 == 200 and len(b2["state"]["profiles"]) == 2, str(b2.get("state", b2))[:200])
+        st, b = call("sketch/undo", {})
+        ok("sketch env: undo takes the circle back", st == 200 and len(b["state"]["profiles"]) == 1, str(b)[:200])
+        st, b = call("sketch/cmd", {"command": "solid.extrude", "params": {"sketch": "Sketch1", "distance": 5}})
+        st2, _ = call("sketch/begin", {"plane": "XZ"})
+        st3, _ = call("feature", {"command": "solid.box", "params": {"length": 1, "width": 1, "height": 1}})
+        ok("sketch env: no solid command, no second sketch, no feature dialog while a sketch is open",
+           st == 403 and st2 == 409 and st3 == 409, f"{st} {st2} {st3}")
+        # a dimension, then its value changed through its parameter (double-click in the sketcher), then undone
+        st, b = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l1"], "type": "length"}})
+        param = b.get("result", {}).get("param")
+        st2, b2 = call("sketch/cmd", {"command": "parameters.change", "params": {"changes": {param: "55"}}})
+        widths = [round(c["value"], 3) for c in b2.get("state", {}).get("constraints", []) if c.get("param") == param]
+        st4, _ = call("sketch/cmd", {"command": "parameters.add", "params": {"name": "x", "expression": "1"}})
+        call("sketch/undo", {})
+        call("sketch/undo", {})
+        ok("sketch env: a dimension's value changes through parameters.change, other parameter commands stay out",
+           st == 200 and st2 == 200 and widths == [55.0] and st4 == 403, f"{st} {st2} {widths} {st4}")
+        st, b = call("sketch/state")
+        ok("sketch env: state names the open sketch", st == 200 and b.get("active") and b.get("sketch") == "Sketch1", str(b)[:120])
+        st, b = call("sketch/finish", {})
+        st_s, b_s = call("sketch/state")
+        ok("sketch env: finish keeps Sketch1 and closes the environment",
+           st == 200 and features() == ["Sketch1"] and b_s.get("active") is False, f"{b} {features()}")
+        call("sketch/begin", {"plane": "XZ"})
+        call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 0], [10, 10]]}})
+        st, _ = call("sketch/cancel", {})
+        ok("sketch env: cancel leaves nothing", st == 200 and features() == ["Sketch1"], str(features()))
+        st, b = call("sketch/begin", {"edit": "Sketch1"})
+        call("sketch/cmd", {"command": "sketch.circle.center", "params": {"center": [80, 10], "radius": 3}})
+        st2, _ = call("sketch/finish", {})
+        with srv.lock:
+            doc = srv.ensure_current()
+            profiles = doc.session.cmd("sketch.inspect", {"sketch": "Sketch1"})["profiles"]
+        ok("sketch env: edit opens Sketch1 again and keeps the new circle", st == 200 and st2 == 200 and len(profiles) == 2,
+           str(profiles)[:120])
+        st, _ = call("agent/undo", {})
+        with srv.lock:
+            doc = srv.ensure_current()
+            profiles = doc.session.cmd("sketch.inspect", {"sketch": "Sketch1"})["profiles"]
+        ok("sketch env: one undo takes the whole edit session back", st == 200 and len(profiles) == 1, str(profiles)[:120])
     finally:
         srv.shutdown()
         srv.server_close()
@@ -6390,6 +6760,138 @@ def sc_errors_checks(ws):
             ws.close("sc_err_hole")
     finally:
         server.ws = orig_ws
+
+
+def sc_errors_stage2_checks(ws):
+    """Stage 2 error translation (issue #42): translated errors for all MCP tools and /api/feature.
+    (a) add_joint with known error raises RuntimeError with explanation and hint in the error text;
+    (b) /api/feature with oversized fillet returns explanation and hint in both preview and apply;
+    (c) unknown errors remain unchanged without empty additions."""
+    import urllib.error
+    import urllib.request
+    from unittest.mock import patch
+    from mechvane.solidcraft import SolidCraftError
+    from mechvane.ui import server as ui_server
+
+    orig_ws = server.ws
+    server.ws = ws
+    try:
+        # (a) add_joint with an error known to explain() delivers explanation and hint in the error text
+        asm_doc = ws.new(ASSEMBLY, "sc2_err_asm")
+        asm_doc.save()
+        try:
+            caught_known = None
+            with patch.object(asm_doc.session, "cmd", side_effect=SolidCraftError("unknown body `PartGhost`")):
+                try:
+                    server.add_joint("sc2_err_asm", {"name": "J1", "a": {"point": [0, 0, 0]}, "b": {"point": [1, 0, 0]}})
+                except Exception as e:
+                    caught_known = e
+
+            exp_known = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "unknown_body")
+            ok("sc_errors stage 2 (a): add_joint known error re-raised as RuntimeError with explanation and hint",
+               type(caught_known) is RuntimeError
+               and exp_known["message"] in str(caught_known)
+               and exp_known["hint"] in str(caught_known)
+               and "unknown body `PartGhost`" in str(caught_known),
+               str(caught_known))
+
+            # (c-1) unknown error in add_joint remains unchanged
+            caught_unknown = None
+            orig_err = SolidCraftError("some unrecognized solidcraft failure 12345")
+            with patch.object(asm_doc.session, "cmd", side_effect=orig_err):
+                try:
+                    server.add_joint("sc2_err_asm", {"name": "J2", "a": {"point": [0, 0, 0]}, "b": {"point": [1, 0, 0]}})
+                except Exception as e:
+                    caught_unknown = e
+
+            ok("sc_errors stage 2 (c): unknown error in add_joint remains unchanged",
+               caught_unknown is orig_err
+               and type(caught_unknown) is SolidCraftError
+               and str(caught_unknown) == "some unrecognized solidcraft failure 12345",
+               str(caught_unknown))
+        finally:
+            ws.close("sc2_err_asm")
+
+        # (b) /api/feature with a fillet whose radius is too large returns explanation and hint
+        block_doc = ws.new(PART, "sc2_err_block")
+        block_doc.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [20, 20]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 10, "name": "Block"}}
+        ])
+        block_doc.save()
+        part_path = block_doc.path
+        srv = ui_server.create_server(str(part_path), port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+        try:
+            def call_feature(body):
+                req = urllib.request.Request(
+                    base + "feature",
+                    data=json.dumps(body).encode(),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                try:
+                    with urllib.request.urlopen(req) as resp:
+                        return resp.status, json.loads(resp.read())
+                except urllib.error.HTTPError as err:
+                    return err.code, json.loads(err.read())
+
+            exp_fillet = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "blend_too_large")
+
+            # Preview with radius too large
+            st_prev, data_prev = call_feature({
+                "command": "solid.fillet",
+                "params": {"edges": [[10, 20, 10]], "radius": 50},
+                "preview": True
+            })
+            ok("sc_errors stage 2 (b): /api/feature preview with oversized fillet returns explanation and hint",
+               st_prev == 400
+               and data_prev.get("explanation") == exp_fillet["message"]
+               and data_prev.get("hint") == exp_fillet["hint"]
+               and "SolidCraft:" in data_prev.get("error", ""),
+               f"st={st_prev} data={data_prev}")
+
+            # Apply with radius too large
+            st_apply, data_apply = call_feature({
+                "command": "solid.fillet",
+                "params": {"edges": [[10, 20, 10]], "radius": 50},
+                "preview": False
+            })
+            ok("sc_errors stage 2 (b): /api/feature apply with oversized fillet returns explanation and hint",
+               st_apply == 400
+               and data_apply.get("explanation") == exp_fillet["message"]
+               and data_apply.get("hint") == exp_fillet["hint"]
+               and "SolidCraft:" in data_apply.get("error", ""),
+               f"st={st_apply} data={data_apply}")
+
+            # (c-2) /api/feature with an unknown error has no explanation or hint fields
+            st_unk, data_unk = call_feature({"command": "solid.fillet", "params": {"edges": "invalid_type"}})
+            ok("sc_errors stage 2 (c): /api/feature with unknown error does not add empty explanation or hint",
+               st_unk == 400
+               and "explanation" not in data_unk
+               and "hint" not in data_unk
+               and "error" in data_unk,
+               f"st={st_unk} data={data_unk}")
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            ws.close("sc2_err_block")
+
+        # (c-3) sc_errors.reraise re-raises unknown exception unchanged
+        custom_err = ValueError("custom unknown error 99")
+        caught_custom = None
+        try:
+            sc_errors.reraise(custom_err)
+        except Exception as e:
+            caught_custom = e
+        ok("sc_errors stage 2 (c): reraise re-raises unknown exception unchanged",
+           caught_custom is custom_err and type(caught_custom) is ValueError and str(caught_custom) == "custom unknown error 99")
+    finally:
+        server.ws = orig_ws
 def praxistest_6_fixes_checks(ws):
     # Befund 3 (issue #34): Through hole drilled "through all" instead of fixed depth.
     # Increasing plate thickness via parameter keeps through hole; check_design remains green.
@@ -6507,6 +7009,63 @@ def praxistest_6_fixes_checks(ws):
         ws.close(name)
 
 
+def part_end_checks(ws):
+    """End-of-part marker tool (ROADMAP v0.1 #44): rollback before feature, isolated volume, run warning, saving
+    while rolled back is allowed (as in Inventor)."""
+    server.ws = ws
+    ws.new(PART, "part_end_test")
+    try:
+        server.run("part_end_test", [
+            {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 20, "name": "Quader"}},
+            {"command": "solid.hole", "params": {"position": [20, 20, 20], "direction": [0, 0, -1], "diameter": 10, "depth": 20, "name": "Bohrung"}},
+            {"command": "solid.fillet", "params": {"edges": [[20, 0, 20]], "radius": 2, "name": "Rundung"}}
+        ])
+        v_full = server.measure("part_end_test")["bodies"][0]["volume_mm3"]
+        server.save_document("part_end_test")
+
+        # Roll before Bohrung
+        r_rolled = server.part_end("part_end_test", before="Bohrung")
+        ok("part_end: roll before Bohrung gives box volume",
+           abs(r_rolled["volume_mm3"] - 32000.0) < 0.1 and r_rolled["position"] == 1
+           and r_rolled.get("rolled_back") == ["Bohrung", "Rundung"],
+           str(r_rolled))
+
+        # save_document while rolled back saves, as in Inventor
+        saved_rolled = server.save_document("part_end_test")
+        ok("part_end: save_document works while rolled back", saved_rolled.get("name") == "part_end_test",
+           str(saved_rolled))
+
+        # run while rolled back returns hint/warning
+        r_run = server.run("part_end_test", [
+            {"command": "parameters.add", "params": {"name": "p_check", "expression": "5 mm"}}
+        ])
+        warnings_found = any("part end" in w.lower() for w in r_run.get("warnings", [])) or any(
+            "part end" in w.lower() for w in r_run.get("delta", {}).get("warnings", [])
+        )
+        ok("part_end: run while rolled back includes part end hint", warnings_found, str(r_run))
+
+        # Roll back to end
+        r_end = server.part_end("part_end_test")
+        ok("part_end: roll to end restores previous volume and clears rolled_back list",
+           abs(r_end["volume_mm3"] - v_full) < 0.1 and r_end["position"] == 3 and r_end.get("rolled_back") == [],
+           str(r_end))
+
+        # save_document after rolling to end succeeds
+        saved_info = server.save_document("part_end_test")
+        ok("part_end: save_document succeeds after rolling to end",
+           saved_info.get("name") == "part_end_test", str(saved_info))
+
+        # Roll before unknown feature raises ValueError
+        unknown_err = False
+        try:
+            server.part_end("part_end_test", before="NonExistent")
+        except ValueError as e:
+            unknown_err = "not found" in str(e)
+        ok("part_end: unknown feature raises ValueError", unknown_err)
+    finally:
+        ws.close("part_end_test")
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="Mechvane-check-") as tmp:
         ws = Workspace(tmp)
@@ -6555,6 +7114,7 @@ def main():
             feature_request_checks(tmp, ws)
             demo_pyodide_checks(tmp)
             agent_turns_checks(tmp)
+            snapshot_prune_checks(tmp)
             selection_checks(tmp)
             speech_checks(tmp)
             speech_cases_checks()
@@ -6569,6 +7129,12 @@ def main():
             state_delta_checks(ws)
             scratch_dir_checks()
             sc_errors_checks(ws)
+            design_intent_checks(ws)
+            profile_choice_checks(ws)
+            sketch_session_checks(tmp)
+            step_import_checks(tmp)
+            sc_errors_stage2_checks(ws)
+            part_end_checks(ws)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

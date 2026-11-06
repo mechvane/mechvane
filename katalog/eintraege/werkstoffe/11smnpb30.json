@@ -127,5 +127,52 @@
   "ausnahmen": "Wegen des Bleigehaltes und Heißbruchgefahr grundsätzlich nicht schweißgeeignet. Nicht für Bauteile mit hohen dynamischen Zug- und Biegewechselbeanspruchungen empfohlen.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 10,
+      "form": "rund",
+      "R_p02_min": 440,
+      "R_m_min": 510,
+      "R_m_max": 810,
+      "norm": "DIN EN 10277-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 16,
+      "form": "rund",
+      "R_p02_min": 410,
+      "R_m_min": 490,
+      "R_m_max": 760,
+      "norm": "DIN EN 10277-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 40,
+      "form": "rund",
+      "R_p02_min": 375,
+      "R_m_min": 460,
+      "R_m_max": 710,
+      "norm": "DIN EN 10277-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 63,
+      "form": "rund",
+      "R_p02_min": 305,
+      "R_m_min": 400,
+      "R_m_max": 650,
+      "norm": "DIN EN 10277-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    },
+    {
+      "bis_mm": 100,
+      "form": "rund",
+      "R_p02_min": 245,
+      "R_m_min": 360,
+      "R_m_max": 630,
+      "norm": "DIN EN 10277-3",
+      "quelle": "Saarstahl AG (Beleg 1)"
+    }
+  ]
 }

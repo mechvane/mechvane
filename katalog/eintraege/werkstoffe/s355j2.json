@@ -114,5 +114,79 @@
   "ausnahmen": "Bei Dicken > 16 mm ist ReH stufenweise abzumindern (z. B. 345 MPa bis 40 mm). Bei größeren Wanddicken ist Vorwärmen beim Schweißen zu prüfen (CEV-Wert).",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 16,
+      "form": "blech",
+      "R_eH_min": 355,
+      "R_m_min": 470,
+      "R_m_max": 630,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 40,
+      "form": "blech",
+      "R_eH_min": 345,
+      "R_m_min": 470,
+      "R_m_max": 630,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 63,
+      "form": "blech",
+      "R_eH_min": 335,
+      "R_m_min": 470,
+      "R_m_max": 630,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 80,
+      "form": "blech",
+      "R_eH_min": 325,
+      "R_m_min": 470,
+      "R_m_max": 630,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 100,
+      "form": "blech",
+      "R_eH_min": 315,
+      "R_m_min": 470,
+      "R_m_max": 630,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 150,
+      "form": "blech",
+      "R_eH_min": 295,
+      "R_m_min": 450,
+      "R_m_max": 600,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 200,
+      "form": "blech",
+      "R_eH_min": 285,
+      "R_m_min": 450,
+      "R_m_max": 600,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "blech",
+      "R_eH_min": 275,
+      "R_m_min": 450,
+      "R_m_max": 600,
+      "norm": "DIN EN 10025-2",
+      "quelle": "thyssenkrupp Schulte (Beleg 1)"
+    }
+  ]
 }

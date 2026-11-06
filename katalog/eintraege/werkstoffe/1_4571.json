@@ -111,5 +111,52 @@
   "ausnahmen": "Beim Polieren kann die Titankarbidzeilung zu mikroskopisch unruhiger Oberfläche führen (orange peel); für Reinstraumanwendungen wird häufig 1.4404 bevorzugt.",
   "haerte": "hinweis",
   "pruefstatus": "automatisch",
-  "beziehungen": []
+  "beziehungen": [],
+  "dickenbereiche": [
+    {
+      "bis_mm": 6,
+      "form": "blech",
+      "R_p02_min": 240,
+      "R_m_min": 540,
+      "R_m_max": 690,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 12,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 540,
+      "R_m_max": 690,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 75,
+      "form": "blech",
+      "R_p02_min": 220,
+      "R_m_min": 520,
+      "R_m_max": 670,
+      "norm": "DIN EN 10088-2",
+      "quelle": "thyssenkrupp Materials Austria (Beleg 1)"
+    },
+    {
+      "bis_mm": 160,
+      "form": "rund",
+      "R_p02_min": 200,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    },
+    {
+      "bis_mm": 250,
+      "form": "rund",
+      "R_p02_min": 200,
+      "R_m_min": 500,
+      "R_m_max": 700,
+      "norm": "DIN EN 10088-3",
+      "quelle": "Swiss Steel Group (Beleg 2)"
+    }
+  ]
 }

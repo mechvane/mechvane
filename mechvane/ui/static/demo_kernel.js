@@ -136,6 +136,11 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
           catch (e) { if (i >= 30) throw e; await sleep(1000); }
         }
         await sc.request("ui.home", { open: false }).catch(() => {});
+        // the hidden app takes the keyboard focus when it starts: give it back to the page (shortcuts, sketcher)
+        if (document.activeElement === frame) {
+          frame.blur();
+          window.focus();
+        }
         app = sc;
         onStatus("Ready");
       })().catch((err) => { booting = null; throw err; });
@@ -346,7 +351,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     } finally {
       await exec("edit.restore_checkpoint", { checkpoint: cp });
     }
-    return { name, type: info.type, dialog: kind[0], definition: info.definition || {}, before,
+    return { name, type: tl[at].type, dialog: kind[0], definition: info.definition || {}, before,
              feature_names: Object.fromEntries(tl.map((f) => [String(f.id), f.name])) };
   }
 
@@ -380,10 +385,87 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   }
 
   // Each hand step here is one SolidCraft command, so one step of the app's own undo history
+  // The sketch environment as mechvane/ui/sketch_session.py has it on the server. SolidCraft keeps one undo
+  // entry per sketch command (sketch.create too, not sketch.edit or sketch.finish), so the session counts them:
+  // undo inside the sketch takes one back, the finished sketch is one hand step of n entries.
+  const SKETCH_NOT = new Set(["sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain"]);
+  let sk = null;           // {name, editing, n: SolidCraft undo entries of this session}
+  async function sketchState() {
+    return { sketch: sk.name, editing: sk.editing, can_undo: sk.n > (sk.editing ? 0 : 1), state: await exec("sketch.inspect", {}) };
+  }
+  async function sketchBegin(body) {
+    if (sk) throw new ApiError(409, `sketch ${sk.name} is open: finish or cancel it first`);
+    try {
+      if (body.edit) {
+        await exec("sketch.edit", { sketch: body.edit });
+        sk = { name: body.edit, editing: true, n: 0 };
+      } else {
+        const plane = body.plane;
+        if (!(["XY", "XZ", "YZ"].includes(plane) || (plane && Array.isArray(plane.face)))) {
+          throw new ApiError(400, "plane: XY, XZ, YZ or {face: [x, y, z]}");
+        }
+        const made = await exec("sketch.create", { plane });
+        sk = { name: made.name || (await exec("sketch.inspect", {})).name, editing: false, n: 1 };
+      }
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      throw new ApiError(400, shortError(err));
+    }
+    return sketchState();
+  }
+  async function sketchCmd(body) {
+    if (!sk) throw new ApiError(409, "no sketch is open");
+    const { command, params } = body || {};
+    if (typeof command !== "string" || SKETCH_NOT.has(command)
+        || !(command.startsWith("sketch.") || command === "parameters.change")) {
+      throw new ApiError(403, `not a drawing command in the sketch environment: ${command}`);
+    }
+    let result;
+    try {
+      result = await exec(command, params || {});
+    } catch (err) {
+      throw new ApiError(400, shortError(err));
+    }
+    sk.n++;
+    return { result, ...(await sketchState()) };
+  }
+  async function sketchUndo() {
+    if (!sk) throw new ApiError(409, "no sketch is open");
+    if (sk.n <= (sk.editing ? 0 : 1)) throw new ApiError(409, "nothing to undo in this sketch");
+    await exec("edit.undo");
+    sk.n--;
+    return sketchState();
+  }
+  async function sketchFinish() {
+    if (!sk) throw new ApiError(409, "no sketch is open");
+    await exec("sketch.finish", {});
+    const label = `${sk.editing ? "Edit sketch" : "Sketch"} ${sk.name}`;
+    if (sk.n > 0) {
+      done.push({ label, n: sk.n });
+      undone.length = 0;
+    }
+    const out = { done: label, sketch: sk.name };
+    sk = null;
+    version++;
+    stepped = true;
+    return out;
+  }
+  async function sketchCancel() {
+    if (!sk) throw new ApiError(409, "no sketch is open");
+    for (let i = 0; i < sk.n; i++) await exec("edit.undo");
+    // undoing Create Sketch leaves the sketch; an edited sketch is still open
+    await exec("sketch.finish", {}).catch(() => {});
+    const out = { cancelled: sk.name };
+    sk = null;
+    version++;
+    return out;
+  }
+
   async function undoRedo(which) {
     const from = which === "undo" ? done : undone, to = which === "undo" ? undone : done;
     if (!from.length) throw new ApiError(404, `nothing to ${which}`);
-    await exec(which === "undo" ? "edit.undo" : "edit.redo");
+    if (sk) throw new ApiError(409, `finish or cancel sketch ${sk.name} first`);
+    for (let i = 0; i < (from[from.length - 1].n || 1); i++) await exec(which === "undo" ? "edit.undo" : "edit.redo");
     to.push(from.pop());
     version++;
     stepped = true;
@@ -401,6 +483,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     if (route === "history") {
       return { busy: !app && !!booting, undo: done.at(-1)?.label ?? null, redo: undone.at(-1)?.label ?? null };
     }
+    if (route === "sketch/state" && !sk) return { active: false };  // no need to start SolidCraft for that
     if (!files) files = await (await fetch(`${base()}files.json`)).json();
     if (files.kind === "assembly" && /^feature|^sketch/.test(route)) {
       throw new ApiError(403, "features are added in a part: open one of the parts in Model by hand");
@@ -411,6 +494,15 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     if (route === "tree") return tree();
     if (route === "findings") return findings();
     if (route === "sketches") return sketches();
+    if (route === "sketch/state") return sk ? { active: true, ...(await sketchState()) } : { active: false };
+    if (route === "sketch/begin") return sketchBegin(body || {});
+    if (route === "sketch/cmd") return sketchCmd(body);
+    if (route === "sketch/undo") return sketchUndo();
+    if (route === "sketch/finish") return sketchFinish();
+    if (route === "sketch/cancel") return sketchCancel();
+    if (sk && (route === "feature" || route === "feature/delete") && method !== "GET") {
+      throw new ApiError(409, `finish or cancel sketch ${sk.name} first`);
+    }
     if (route === "sketch_plane") return sketchPlane(url);
     if (route === "feature" && method === "GET") return featureForEdit(url.searchParams.get("name") || "");
     if (route === "feature") return feature(body);
