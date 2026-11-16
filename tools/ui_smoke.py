@@ -333,7 +333,11 @@ try:
             page.keyboard.press("Control+z")
             page.wait_for_timeout(2000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2000)
+            try:  # #112: the second press must not be lost while the first undo still runs
+                page.wait_for_function("t => document.querySelector('#tree-content')?.innerText === t",
+                                       arg=tree_before_hole, timeout=15000)
+            except Exception:
+                pass
             undone_holes = page.locator("#tree-content").inner_text() == tree_before_hole
             hole = (f"hole1: {added_hole1}, centre status: {has_centre_status}, centre sketch: {added_centre}, "
                     f"ctrl+z twice: {undone_holes}")

@@ -2020,10 +2020,19 @@ function refreshHistory() {
   }).catch(() => {});
 }
 
-async function undoRedo(which) {
+async function undoRedo(which, { waitBusy = false } = {}) {
   if (featureDialogs && featureDialogs.isOpen()) featureDialogs.close();
   try {
-    await postJson(`api/agent/${which}`, {});
+    for (let tries = 0; ; tries++) {
+      try {
+        await postJson(`api/agent/${which}`, {});
+        break;
+      } catch (err) {
+        // the files are briefly busy right after a step: a key press waits for them (up to ~10 s), not dropped
+        if (!waitBusy || tries >= 40 || !/agent is working/.test(err.message || "")) throw err;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
     refreshHistory();  // the buttons follow at once, the model view may take a moment
     await loadAll(false);
     statusEl.textContent = which === "undo" ? "Undone" : "Redone";
@@ -2031,6 +2040,12 @@ async function undoRedo(which) {
     statusEl.textContent = `${which === "undo" ? "Undo" : "Redo"}: ${err.message}`;
     refreshHistory();
   }
+}
+
+// Ctrl+Z / Ctrl+Y go into a queue: a second press while the first still runs is not lost (#112)
+let undoQueue = Promise.resolve();
+function queueUndoRedo(which) {
+  undoQueue = undoQueue.then(() => undoRedo(which, { waitBusy: true })).catch(() => {});
 }
 
 {
@@ -2046,10 +2061,12 @@ async function undoRedo(which) {
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
       e.preventDefault();
-      if (!undoBtn.disabled) undoRedo("undo");
+      if (sketcher && sketcher.isActive()) return;  // the sketch environment has its own undo
+      queueUndoRedo("undo");
     } else if (mod && !e.altKey && (e.key === "y" || e.key === "Y" || ((e.key === "z" || e.key === "Z") && e.shiftKey))) {
       e.preventDefault();
-      if (!redoBtn.disabled) undoRedo("redo");
+      if (sketcher && sketcher.isActive()) return;
+      queueUndoRedo("redo");
     } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {
       e.preventDefault();
       featureDialogs.open("fillet");
