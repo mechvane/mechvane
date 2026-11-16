@@ -8652,6 +8652,13 @@ def argon_review_checks(tmp):
     long_lines = "diff --git a/big.json b/big.json\n" + "".join(f"+line {i}\n" for i in range(5000))
     wide = "diff --git a/wide.py b/wide.py\n" + "+" + "z" * 100_000 + "\n"
     trimmed, notes = ar.trim_diff(small + long_lines + wide)
+    # stand-in reviewer over claude -p (user 2026-11-16): prompt as text on stdin, run in an empty temp folder
+    echo = [sys.executable, "-c", "import os,sys; d=sys.stdin.read(); print('cwd-empty' if not os.listdir('.') else 'cwd-busy', len(d))"]
+    good = ar.run_claude(echo, "Bitte prüfen: " + small)
+    bad = ar.run_claude([sys.executable, "-c", "import sys; sys.exit(3)"], "x")
+    ok("argon_review: the Opus stand-in reads the prompt on stdin in an empty folder; a failed call says so",
+       good.startswith("cwd-empty ") and int(good.split()[1]) > 20 and bad.startswith("Opus-Review nicht möglich: rc=3"),
+       f"{good!r} {bad!r}")
     ok("argon_review: small file diff kept whole, 5000-line file only head and tail, 100 KB file cut to 60000 characters",
        small in trimmed and "+line 10\n" in trimmed and "+line 4999\n" in trimmed and "+line 2500\n" not in trimmed
        and len(trimmed) < 70_000 and len(notes) == 2 and "big.json" in notes[0] and "wide.py" in notes[1], notes)

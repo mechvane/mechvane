@@ -116,6 +116,9 @@ revolve_ok = True
 rename_status = "skipped"
 rename_ok = True
 sketch = "skipped (no sketch button or not a part)"
+# set before the browser block: an early exception must end as FAIL with its cause, not as NameError (#87)
+visibility_ok = False
+visibility = "not tested (an earlier step failed)"
 folder_mode = "skipped (server given)"
 folder_ok = True
 sketch_ok = True

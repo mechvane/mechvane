@@ -40,7 +40,7 @@ def main():
                                                     "name": "BasePlate", "body_name": "Bracket"}},
                 {"command": "solid.box", "params": {"length": 60, "width": 10, "height": 40, "corner": [0, 30, 8],
                                                     "operation": "join", "name": "Wall"}},
-                {"command": "solid.hole", "params": {"position": [18, 14, 8], "direction": [0, 0, -1],
+                {"command": "solid.hole", "params": {"position": [6, 14, 8], "direction": [0, 0, -1],
                                                      "clearance": "M6", "depth": 8, "name": "Hole"}},
                 {"command": "solid.hole", "params": {"position": [42, 23, 8], "direction": [0, 0, -1],
                                                      "clearance": "M6", "depth": 8, "type": "countersink",

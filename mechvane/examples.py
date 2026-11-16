@@ -10,14 +10,15 @@ DATA = Path(__file__).resolve().parent / "data"
 
 
 def bracket(ws):
-    """A bracket whose countersink notches the wall (practice test 5, finding 8)."""
+    """The demo bracket: 'Hole' sits 6 mm from the edge (ISO wants 1.5 d = 9.9 mm for M6), so the check shows a
+    finding with its face (#109; the countersink stopped notching the wall in SolidCraft 0.40)."""
     part = ws.new(PART, "bracket")
     part.session.batch([
         {"command": "solid.box", "params": {"length": 60, "width": 40, "height": 8, "corner": [0, 0, 0],
                                             "name": "BasePlate", "body_name": "Bracket"}},
         {"command": "solid.box", "params": {"length": 60, "width": 10, "height": 40, "corner": [0, 30, 8],
                                             "operation": "join", "name": "Wall"}},
-        {"command": "solid.hole", "params": {"position": [18, 14, 8], "direction": [0, 0, -1],
+        {"command": "solid.hole", "params": {"position": [6, 14, 8], "direction": [0, 0, -1],
                                              "clearance": "M6", "depth": 8, "name": "Hole"}},
         {"command": "solid.hole", "params": {"position": [42, 23, 8], "direction": [0, 0, -1],
                                              "clearance": "M6", "depth": 8, "type": "countersink",
