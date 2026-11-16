@@ -541,8 +541,20 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     return { [which === "undo" ? "undone" : "redone"]: to[to.length - 1].label };
   }
 
+  // One request at a time (as the server's lock does): a preview or an edit takes a checkpoint and restores it
+  // at the end, so an Undo arriving in between would be rolled back with it (#112, slow machines). Cheap reads
+  // that change nothing answer at once, so the buttons do not wait for a long computation.
+  let apiQueue = Promise.resolve();
+  function api(method, path, body) {
+    const route = new URL(path, "http://demo/").pathname.replace(/^\/api\//, "");
+    if (route === "history" || route === "hole_sizes" || route === "folders") return apiUnlocked(method, path, body);
+    const run = apiQueue.then(() => apiUnlocked(method, path, body));
+    apiQueue = run.catch(() => {});
+    return run;
+  }
+
   // The server's api/* endpoints the workspace calls, answered here
-  async function api(method, path, body) {
+  async function apiUnlocked(method, path, body) {
     const url = new URL(path, "http://demo/");
     const route = url.pathname.replace(/^\/api\//, "");
     if (route === "hole_sizes") {

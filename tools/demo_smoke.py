@@ -12,6 +12,8 @@ shells = glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium_headless_
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=shells[-1], args=["--use-gl=swiftshader","--enable-unsafe-swiftshader"])
     p = b.new_page(viewport={"width":1400,"height":850})
+    if os.environ.get("DEMO_SLOW"):  # emulate a slow CI runner: CPU throttled by this factor
+        p.context.new_cdp_session(p).send("Emulation.setCPUThrottlingRate", {"rate": float(os.environ["DEMO_SLOW"])})
     errs=[]
     p.on("pageerror", lambda e: errs.append("pageerror "+str(e)))
     p.on("console", lambda m: errs.append("console "+m.text[:200]) if m.type=="error" and "400" not in m.text else None)
@@ -38,7 +40,14 @@ with sync_playwright() as pw:
     p.dblclick('.tree-row[data-feature="Fillet1"]'); p.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=60000)
     print("edit:", p.locator(".feature-pick-count").inner_text(), p.input_value('input[name="radius"]'))
     p.keyboard.press("Escape"); p.wait_for_timeout(500)
-    p.keyboard.press("Control+z"); p.wait_for_function("!document.querySelector('#tree-content').innerText.includes('Fillet1')", timeout=60000)
+    p.keyboard.press("Control+z")
+    try:
+        p.wait_for_function("!document.querySelector('#tree-content').innerText.includes('Fillet1')", timeout=60000)
+    except Exception:
+        print("UNDO FAILED | status:", status(), "| focus:", p.evaluate("document.activeElement && (document.activeElement.tagName + ' ' + (document.activeElement.name || document.activeElement.id || document.activeElement.className))"),
+              "| props:", p.locator("#properties").inner_text()[:200].replace("\n", " / ") if p.locator("#properties").count() else "-",
+              "| undo:", p.locator("#btn-undo").get_attribute("title"), p.locator("#btn-undo").is_disabled())
+        raise
     print("undo ok |", p.locator("#btn-redo").get_attribute("title"))
     p.keyboard.press("Control+y"); p.wait_for_function("document.querySelector('#tree-content').innerText.includes('Fillet1')", timeout=60000)
     print("ctrl+y redo ok")
