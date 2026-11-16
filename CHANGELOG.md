@@ -7,6 +7,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a21] - 2026-11-16
+
+### Changed
+
+- Built and tested with **SolidCraft 0.43.0** (was 0.41.0); `mechvane setup` fetches it. The new release adds view tabs, configurations, expressions in moves and sketch origins and signed files; designs open in both directions between 0.41 and 0.43. (#113)
+
+### Fixed
+
+- Undo and Redo by keyboard: pressing Ctrl+Z (or Ctrl+Y) again while the previous undo is still loading no longer gets lost; the presses run in order, and a press right after a step waits briefly for it to finish. (#112)
+- Live demo: an Undo right after opening or previewing a feature dialog is no longer rolled back by that preview on slow computers; the in-browser kernel answers one request at a time, as the server does. (#112)
+- Windows: the 3D view no longer stays empty when the temp folder has a short 8.3 name (for user names longer than eight characters); Mechvane now uses the long path, which SolidCraft requires. (#114)
+
 ## [0.1.0a20] - 2026-11-16
 
 ### Added

@@ -106,7 +106,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Moves to SolidCraft 0.43",
           "text": "Mechvane follows SolidCraft to 0.43, with view tabs, new sketch and solid commands and file verification available to you and your agent.",
           "milestone": "v0.1"
