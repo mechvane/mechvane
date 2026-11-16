@@ -1800,3 +1800,13 @@ body.sketching #viewport canvas { cursor: crosshair; }
 .tree-row.tree-step-changed { box-shadow: inset 3px 0 0 var(--warn-border); }
 .step-marks-hidden .tree-row.tree-step-new,
 .step-marks-hidden .tree-row.tree-step-changed { box-shadow: none; }
+
+/* Parts list (BOM) dialog */
+dialog.request-dialog.bom-dialog { width: min(980px, 94vw); max-width: none; }
+.bom-flat { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.bom-table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+.bom-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bom-table th, .bom-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.bom-table th { position: sticky; top: 0; background: var(--panel-bg); color: var(--text-muted); font-weight: 600; }
+.bom-table td.bom-num { text-align: right; font-variant-numeric: tabular-nums; }
+.bom-table tr.bom-sub td { font-weight: 600; }

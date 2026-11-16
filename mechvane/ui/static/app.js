@@ -4,7 +4,7 @@ import { initViewTools } from "./viewtools.js";
 import { initAgentChat } from "./chat.js";
 import { openNewPartDialog, openImportStepDialog } from "./newpart.js";
 import { openFolderDialog } from "./folder.js";
-import { initFeatureDialogs, EDITABLE_TYPES, runUpdateLinks } from "./features.js";
+import { initFeatureDialogs, EDITABLE_TYPES, runUpdateLinks, showBom } from "./features.js";
 import { initSketcher } from "./sketcher.js";
 import { curvePoints, toWorld } from "./sketchgeom.js";
 
@@ -2131,6 +2131,13 @@ var viewBeforeEdit = null;
     btnUpdateLinks.addEventListener("click", () => {
       featureDialogs?.close();
       runUpdateLinks({ post: postJson, reload: () => loadAll(false), statusEl, log: clientLog });
+    });
+  }
+  const btnBom = document.getElementById("btn-bom");
+  if (btnBom) {
+    btnBom.addEventListener("click", () => {
+      featureDialogs?.close();
+      showBom({ get: (url) => fetchJson(url), statusEl, log: clientLog });
     });
   }
 }

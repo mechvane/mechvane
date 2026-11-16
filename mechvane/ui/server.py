@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
 from .. import geometry as g
-from .. import bolted, design_rules, hole_tables, install, step_import, links, modeling, query, sc_errors, sc_locate, sketch_rule, speech, standard_parts, tree
+from .. import bolted, bom, design_rules, hole_tables, install, step_import, links, modeling, query, sc_errors, sc_locate, sketch_rule, speech, standard_parts, tree
 from . import agent as agent_mod, selection, sessionlog, sketch_session, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
@@ -3386,6 +3386,30 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(400, {"error": "open an assembly, not a part"})
                         return
                     data = assembly_bolted_list(srv, doc)
+                self._send_json(200, data)
+                return
+
+            if path == "/api/assembly/bom":
+                q = parse_qs(url.query)
+                flat_raw = (q.get("flat") or [None])[0]
+                if flat_raw is None or flat_raw == "":
+                    flat = False
+                elif flat_raw.lower() in ("1", "true", "yes"):
+                    flat = True
+                elif flat_raw.lower() in ("0", "false", "no"):
+                    flat = False
+                else:
+                    self._send_json(400, {"error": f"invalid flat parameter {flat_raw!r}"})
+                    return
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(400, {"error": "open an assembly first"})
+                        return
+                    if doc.kind != ASSEMBLY:
+                        self._send_json(400, {"error": "open an assembly, not a part"})
+                        return
+                    data = bom.bill_of_materials(srv.ws, doc.name, flat=flat)
                 self._send_json(200, data)
                 return
 

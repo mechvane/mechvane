@@ -2479,3 +2479,96 @@ export async function runUpdateLinks({ post, reload, statusEl, log = () => {} })
   repairBtn.onclick = () => execute(true);
   await execute(false);
 }
+
+/** Parts list (BOM) of the open assembly: GET /api/assembly/bom (#49), as a table with subassemblies indented,
+ *  "Flat" counts the parts of subassemblies in, "Export CSV" downloads the same rows (semicolons, UTF-8). */
+export async function showBom({ get, statusEl, log = () => {} }) {
+  let dialog = document.getElementById("bom-dialog");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "bom-dialog";
+    dialog.className = "request-dialog bom-dialog";
+    dialog.innerHTML = `
+      <div class="request-form">
+        <div class="request-dialog-header">
+          <h3>Parts list</h3>
+          <button type="button" class="request-dialog-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="request-dialog-body">
+          <label class="bom-flat"><input type="checkbox" id="bom-flat"> Flat (count the parts of subassemblies in)</label>
+          <div id="bom-table-wrap" class="bom-table-wrap"></div>
+          <div id="bom-error" class="new-part-error" role="alert" hidden></div>
+        </div>
+        <div class="request-dialog-footer">
+          <button type="button" class="btn-submit" id="bom-csv">Export CSV</button>
+          <button type="button" class="btn-cancel" id="bom-close">Close</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".request-dialog-close").addEventListener("click", () => dialog.close());
+    dialog.querySelector("#bom-close").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  }
+  const wrap = dialog.querySelector("#bom-table-wrap");
+  const errorEl = dialog.querySelector("#bom-error");
+  const flatEl = dialog.querySelector("#bom-flat");
+  let data = null;
+
+  const cell = (v) => (v === null || v === undefined || v === "" ? "" : String(v));
+  const flatRows = (rows, depth = 0) => rows.flatMap((r) => [{ ...r, depth }, ...flatRows(r.children || [], depth + 1)]);
+  const normSize = (r) => [r.norm, r.size].filter(Boolean).join(" ");
+  const mass = (r) => (typeof r.mass === "number" && r.mass > 0 ? r.mass.toFixed(1) : "");
+
+  function render() {
+    const rows = flatRows(data.rows || []);
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state">No parts in this assembly yet</div>'; return; }
+    const table = document.createElement("table");
+    table.className = "bom-table";
+    table.innerHTML = "<thead><tr><th>Pos.</th><th>Designation</th><th>Qty</th><th>Standard</th><th>Material</th>"
+      + "<th>Mass g</th><th>File</th></tr></thead>";
+    const body = document.createElement("tbody");
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      if (r.children) tr.className = "bom-sub";
+      for (const [i, v] of [r.position, r.name, r.count, normSize(r), r.material, mass(r), r.file].entries()) {
+        const td = document.createElement("td");
+        td.textContent = cell(v);
+        if (i === 1) td.style.paddingLeft = `${6 + r.depth * 14}px`;
+        if (i === 2 || i === 5) td.className = "bom-num";
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+    table.appendChild(body);
+    wrap.replaceChildren(table);
+  }
+
+  async function load() {
+    errorEl.hidden = true;
+    statusEl.textContent = "Reading parts list…";
+    try {
+      data = await get(`api/assembly/bom?flat=${flatEl.checked ? 1 : 0}`);
+      log("assembly_bom", { flat: flatEl.checked, rows: (data.rows || []).length });
+      render();
+      statusEl.textContent = `Parts list: ${data.count ?? (data.rows || []).length} rows`;
+    } catch (err) {
+      errorEl.textContent = err.message || "Parts list failed";
+      errorEl.hidden = false;
+      statusEl.textContent = errorEl.textContent;
+    }
+  }
+
+  flatEl.onchange = load;
+  dialog.querySelector("#bom-csv").onclick = () => {
+    if (!data) return;
+    const q = (v) => { const s = cell(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const lines = [["Position", "Designation", "Qty", "File", "Material", "Mass g", "Standard", "Size"].join(";")];
+    for (const r of flatRows(data.rows || [])) lines.push([r.position, r.name, r.count, r.file, r.material, mass(r), r.norm, r.size].map(q).join(";"));
+    const url = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${data.assembly || "assembly"}_parts_list.csv` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  if (!dialog.open) dialog.showModal();
+  await load();
+}

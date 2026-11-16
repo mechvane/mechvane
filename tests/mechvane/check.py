@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, modeling, query, sc_errors, sc_locate, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
+from mechvane import bolted, bom, design_rules, geometry as g, hole_tables, inplace, katalog, links, modeling, query, sc_errors, sc_locate, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
 
 REL = 2e-4  # volume tolerance (tessellation, same as tests/reference/check.py)
@@ -8495,6 +8495,225 @@ def part_end_checks(ws):
         ws.close("part_end_test")
 
 
+def bill_of_materials_checks(ws):
+    import csv
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    orig_ws = server.ws
+    server.ws = ws
+
+    try:
+        # Part 1: Plate 1 with Steel
+        p1 = ws.new(PART, "bom_plate1")
+        p1.session.cmd("solid.box", {"length": 60, "width": 60, "height": 10, "body_name": "Plate1Body", "name": "Box1"})
+        p1.session.cmd("material.assign", {"bodies": ["Plate1Body"], "material": "Steel"})
+        p1.save()
+
+        # Part 2: Plate 2 without material
+        p2 = ws.new(PART, "bom_plate2")
+        p2.session.cmd("solid.box", {"length": 60, "width": 60, "height": 10, "body_name": "Plate2Body", "name": "Box2"})
+        p2.save()
+
+        # Part 3: Bracket with Aluminum (inserted twice -> 2 identical parts)
+        bracket = ws.new(PART, "bom_bracket")
+        bracket.session.cmd("solid.box", {"length": 15, "width": 15, "height": 5, "body_name": "BracketBody", "name": "BBox"})
+        bracket.session.cmd("material.assign", {"bodies": ["BracketBody"], "material": "Aluminum"})
+        bracket.save()
+
+        # Depth-2 nested subassembly: bom_sub_part -> bom_sub_asm -> bom_outer_sub
+        sub_part = ws.new(PART, "bom_sub_part")
+        sub_part.session.cmd("solid.box", {"length": 20, "width": 20, "height": 5, "body_name": "SubBody", "name": "SubBox"})
+        sub_part.session.cmd("material.assign", {"bodies": ["SubBody"], "material": "Steel"})
+        sub_part.save()
+
+        sub_asm = ws.new(ASSEMBLY, "bom_sub_asm")
+        links.insert(ws, sub_asm, sub_part.path, name="SubPart")
+        sub_asm.save()
+
+        outer_sub = ws.new(ASSEMBLY, "bom_outer_sub")
+        links.insert(ws, outer_sub, sub_asm.path, name="InnerSub")
+        links.insert(ws, outer_sub, sub_part.path, name="ExtraLeaf", translate=[30, 0, 0])
+        outer_sub.save()
+
+        # Main Assembly
+        asm = ws.new(ASSEMBLY, "bom_main_asm")
+        links.insert(ws, asm, p1.path, name="Plate1")
+        links.insert(ws, asm, p2.path, name="Plate2", translate=[0, 0, -10])
+        links.insert(ws, asm, bracket.path, name="Bracket1", translate=[20, 20, 10])
+        links.insert(ws, asm, bracket.path, name="Bracket2", translate=[-20, -20, 10])
+        links.insert(ws, asm, outer_sub.path, name="OuterSubInstance", translate=[0, 0, 20])
+        bolted.bolted_connection(
+            ws, "bom_main_asm",
+            placement={"position": [15, 15, 10], "direction": [0, 0, -1]},
+            size="M5",
+            counterbore=False,
+        )
+        asm.save()
+
+        # Place a standard part via UI endpoint POST /api/assembly/standard, then test GET /api/assembly/bom
+        ws.close_all()
+        srv = ui_server.create_server(ws.root, port=0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+        def call(endpoint, body=None):
+            headers = {"Content-Type": "application/json"} if body is not None else {}
+            req = urllib.request.Request(
+                base + endpoint,
+                method="POST" if body is not None else "GET",
+                data=json.dumps(body).encode() if body is not None else None,
+                headers=headers,
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return resp.status, json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read().decode("utf-8"))
+
+        try:
+            st_op_part, _ = call("open/bom_plate1.solidcraft", {})
+            st_bom_part, err_bom_part = call("assembly/bom")
+            ok("BOM HTTP: GET /api/assembly/bom returns 400 when a part is open",
+               st_op_part == 200 and st_bom_part == 400 and bool(err_bom_part.get("error")),
+               f"open={st_op_part} bom=({st_bom_part}, {err_bom_part})")
+
+            st_op_asm, _ = call("open/bom_main_asm.solidcraft", {})
+            st_std, res_std = call("assembly/standard", {"norm": "DIN 625", "size": "608", "translate": [40, 0, 10]})
+            ok("BOM setup: Place Standard Part via /api/assembly/standard succeeds",
+               st_op_asm == 200 and st_std == 200 and res_std.get("designation") == "DIN 625 608",
+               f"open={st_op_asm} std=({st_std}, {res_std})")
+
+            st_bom_s, http_s = call("assembly/bom")
+            st_bom_f, http_f = call("assembly/bom?flat=true")
+            st_bom_bad, err_bad = call("assembly/bom?flat=invalid")
+            ok("BOM HTTP: GET /api/assembly/bom returns structured and flat BOM JSON and rejects bad flat param",
+               st_bom_s == 200 and http_s.get("flat") is False and http_s.get("count") == 8
+               and st_bom_f == 200 and http_f.get("flat") is True and http_f.get("count") == 8
+               and st_bom_bad == 400 and bool(err_bad.get("error")),
+               f"s=({st_bom_s}, {http_s.get('count')}) f=({st_bom_f}, {http_f.get('count')}) bad={st_bom_bad}")
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
+        # Re-open main assembly in ws to verify MCP tool & CSV export on the same assembly
+        asm = ws.open("bom_main_asm.solidcraft")
+
+        # 1. Structured BOM
+        csv_struct_path = ws.root / "bom_struct.csv"
+        res_s = server.bill_of_materials("bom_main_asm", path=str(csv_struct_path), flat=False)
+        rows_s = res_s.get("rows", [])
+        ok("BOM structured: returns 8 top-level rows", len(rows_s) == 8, f"len={len(rows_s)}")
+
+        by_file_s = {r["datei"]: r for r in rows_s}
+        ok("BOM structured: two identical brackets aggregated to count 2",
+           by_file_s.get("bom_bracket.solidcraft", {}).get("anzahl") == 2, str(by_file_s.get("bom_bracket.solidcraft")))
+        ok("BOM structured: assigned material Steel present",
+           by_file_s.get("bom_plate1.solidcraft", {}).get("werkstoff") == "Steel")
+        ok("BOM structured: unassigned material is None",
+           by_file_s.get("bom_plate2.solidcraft", {}).get("werkstoff") is None)
+        ok("BOM structured: mass is positive float",
+           isinstance(by_file_s.get("bom_plate1.solidcraft", {}).get("masse"), float)
+           and by_file_s["bom_plate1.solidcraft"]["masse"] > 0)
+
+        # Standard parts in bolted connection and Place Standard Part
+        screw = next((r for r in rows_s if r.get("norm") == "ISO 4762"), None)
+        ok("BOM structured: ISO 4762 screw has norm and size",
+           screw is not None and screw.get("norm") == "ISO 4762" and screw.get("groesse") == "M5"
+           and screw.get("anzahl") == 1 and "ISO 4762" in screw.get("benennung", ""))
+        washer = next((r for r in rows_s if r.get("norm") == "ISO 7089"), None)
+        ok("BOM structured: ISO 7089 washer has norm and size",
+           washer is not None and washer.get("norm") == "ISO 7089" and washer.get("groesse") == "M5"
+           and washer.get("anzahl") == 1)
+        nut = next((r for r in rows_s if r.get("norm") == "ISO 4032"), None)
+        ok("BOM structured: ISO 4032 nut has norm and size",
+           nut is not None and nut.get("norm") == "ISO 4032" and nut.get("groesse") == "M5"
+           and nut.get("anzahl") == 1)
+        bearing = next((r for r in rows_s if r.get("norm") == "DIN 625"), None)
+        ok("BOM structured: Place Standard Part DIN 625 608 has norm and size",
+           bearing is not None and bearing.get("norm") == "DIN 625" and bearing.get("groesse") == "608"
+           and bearing.get("anzahl") == 1)
+
+        # Nested subassembly row (depth 2) and designation from subassembly file (not instance name)
+        outer_row = by_file_s.get("bom_outer_sub.solidcraft")
+        inner_child = next((ch for ch in (outer_row or {}).get("children", []) if ch.get("datei") == "bom_sub_asm.solidcraft"), None)
+        grandchild = (inner_child or {}).get("children", [None])[0]
+        ok("BOM structured: outer subassembly uses file designation and count 1",
+           outer_row is not None and outer_row.get("anzahl") == 1
+           and outer_row.get("benennung") == "bom_outer_sub"
+           and outer_row.get("masse", 0) > 0, str(outer_row))
+        ok("BOM structured: depth-2 nested subassembly and grandchild preserved with hierarchical positions",
+           inner_child is not None and inner_child.get("benennung") == "bom_sub_asm"
+           and inner_child.get("position") == "4.1"
+           and grandchild is not None and grandchild.get("datei") == "bom_sub_part.solidcraft"
+           and grandchild.get("position") == "4.1.1" and grandchild.get("anzahl") == 1,
+           str(outer_row))
+
+        # CSV readable (structured)
+        ok("BOM structured: CSV file created", csv_struct_path.is_file())
+        with open(csv_struct_path, "r", encoding="utf-8") as f:
+            reader_s = list(csv.reader(f, delimiter=";"))
+        ok("BOM structured: CSV has 12 lines (header + 8 rows + 2 children + 1 grandchild)",
+           len(reader_s) == 12, f"len={len(reader_s)}")
+        ok("BOM structured: CSV header matches expected columns",
+           reader_s[0] == ["Position", "Benennung", "Anzahl", "Datei", "Werkstoff", "Masse", "Norm", "Größe"])
+
+        # 2. Flat BOM
+        csv_flat_path = ws.root / "bom_flat.csv"
+        res_f = server.bill_of_materials("bom_main_asm", path=str(csv_flat_path), flat=True)
+        rows_f = res_f.get("rows", [])
+        ok("BOM flat: returns 8 leaf rows (subassemblies dissolved)", len(rows_f) == 8, f"len={len(rows_f)}")
+
+        by_file_f = {r["datei"]: r for r in rows_f}
+        ok("BOM flat: subassembly files are not in flat BOM",
+           "bom_outer_sub.solidcraft" not in by_file_f and "bom_sub_asm.solidcraft" not in by_file_f)
+        ok("BOM flat: dissolved sub_part summed across nested levels to count 2",
+           by_file_f.get("bom_sub_part.solidcraft", {}).get("anzahl") == 2,
+           str(by_file_f.get("bom_sub_part.solidcraft")))
+        ok("BOM flat: brackets still have count 2 and Place Standard Part DIN 625 present",
+           by_file_f.get("bom_bracket.solidcraft", {}).get("anzahl") == 2
+           and by_file_f.get("DIN_625_608.solidcraft", {}).get("norm") == "DIN 625")
+
+        # CSV readable (flat)
+        ok("BOM flat: CSV file created", csv_flat_path.is_file())
+        with open(csv_flat_path, "r", encoding="utf-8") as f:
+            reader_f = list(csv.reader(f, delimiter=";"))
+        ok("BOM flat: CSV has 9 lines (header + 8 leaf rows)", len(reader_f) == 9, f"len={len(reader_f)}")
+        ok("BOM flat: CSV header matches expected columns",
+           reader_f[0] == ["Position", "Benennung", "Anzahl", "Datei", "Werkstoff", "Masse", "Norm", "Größe"])
+
+        # Error cases: outside workspace path, non-.csv path, part document
+        outside_err = False
+        try:
+            server.bill_of_materials("bom_main_asm", path="../outside.csv")
+        except ValueError:
+            outside_err = True
+        non_csv_err = False
+        try:
+            server.bill_of_materials("bom_main_asm", path="bom_plate1.solidcraft")
+        except ValueError:
+            non_csv_err = True
+        ok("BOM CSV: rejects path outside workspace and non-.csv suffix with ValueError",
+           outside_err and non_csv_err, f"outside={outside_err} non_csv={non_csv_err}")
+
+        bad_doc_err = False
+        p1_reopen = ws.open("bom_plate1.solidcraft")
+        try:
+            server.bill_of_materials(p1_reopen.name)
+        except ValueError:
+            bad_doc_err = True
+        ok("BOM: rejects part document with ValueError", bad_doc_err)
+
+    finally:
+        server.ws = orig_ws
+        for name in ["bom_plate1", "bom_plate2", "bom_bracket", "bom_sub_part", "bom_sub_asm",
+                     "bom_outer_sub", "bom_main_asm", "DIN_625_608",
+                     "ISO_4762_M5x30", "ISO_7089_M5", "ISO_4032_M5"]:
+            if name in ws.docs:
+                ws.close(name)
+
+
 def orchester_figures_checks():
     """tools/status_collect.py (#104): K3 first-time yield, K5 Argon cost, K1 rest at the weekly reset, on fixtures."""
     import importlib.util, datetime as dt
@@ -10132,6 +10351,7 @@ def main():
             sc_errors_stage2_checks(ws)
             sc_locate_checks(ws)
             part_end_checks(ws)
+            bill_of_materials_checks(ws)
             verify_view_checks(ws)
             upstream_watch_checks()
             if _private_tool("argon_review.py"):

@@ -206,9 +206,9 @@
           "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
         },
         {
-          "status": "progress",
+          "status": "next",
           "title": "Assemble tab by hand",
-          "text": "Place parts, add joints, bolt them together and update links from the workspace, without an agent, as in classic mechanical CAD. Done: placing parts and standard parts from the norm tables, joints (rigid, revolute, slider, cylindrical, ball) and constraints (mate, flush, distance, concentric, angle and more) picked on faces in the view and editable from the browser, bolted connections with ISO screws, nuts and washers, preview, edit and delete, and Update Links. Next: a parts list (BOM).",
+          "text": "Place parts, add joints, bolt them together and update links from the workspace, without an agent, as in classic mechanical CAD. Done: placing parts and standard parts from the norm tables, joints (rigid, revolute, slider, cylindrical, ball) and constraints (mate, flush, distance, concentric, angle and more) picked on faces in the view and editable from the browser, bolted connections with ISO screws, nuts and washers, preview, edit and delete, Update Links, and a parts list (BOM) with CSV export.",
           "milestone": "v0.1"
         },
         {
@@ -429,7 +429,7 @@
           "text": "Find parts that overlap, at rest and along the range of each joint."
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "Exploded view and parts list",
           "text": "Exploded views from joint axes and bolted connections with an animated preview, and a parts list to export."
         },

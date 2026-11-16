@@ -11,7 +11,7 @@ import struct
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import bolted, design_rules, step_import, modeling, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
+from . import bom, bolted, design_rules, step_import, modeling, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
 from .documents import ASSEMBLY, PART, Workspace
 
 mcp = FastMCP(
@@ -384,6 +384,16 @@ def measure(document: str) -> dict:
                 b["bbox"] = {"min": [min(c[i] for c in corners) for i in range(3)],
                              "max": [max(c[i] for c in corners) for i in range(3)]}
     return {"bodies": out}
+
+
+@mcp.tool()
+@sc_errors.explained
+def bill_of_materials(assembly: str, path: str | None = None, flat: bool = False) -> dict:
+    """Bill of materials (BOM) for an assembly: position, designation, count, file, material (if assigned),
+    mass, standard and size for standard parts. With flat=True dissolves subassemblies into their parts;
+    with flat=False (default) lists subassemblies as their own rows with nested children.
+    If path is given, exports the BOM as a semicolon-separated UTF-8 CSV file."""
+    return bom.bill_of_materials(ws, assembly, path=path, flat=flat)
 
 
 @mcp.tool()

@@ -1134,6 +1134,21 @@ try:
                     and (saved_item.get("parameters", {}).get("fasteners") or {}).get("length_override") == 80.0
                 )
 
+                # Parts list (BOM, #49): the button opens a table with the parts and the M10 screw by its standard;
+                # "Flat" reloads it, Close shuts it
+                fpage.click("#btn-bom")
+                fpage.wait_for_selector("#bom-dialog[open] .bom-table tbody tr", timeout=30000)
+                bom_text = fpage.locator("#bom-dialog .bom-table").inner_text()
+                bom_rows = fpage.locator("#bom-dialog .bom-table tbody tr").count()
+                fpage.screenshot(path=os.path.join(out, "bom.png"))
+                fpage.check("#bom-flat")
+                fpage.wait_for_function("() => (document.getElementById('status-indicator')?.textContent || '').startsWith('Parts list:')",
+                                        timeout=30000)
+                fpage.wait_for_selector("#bom-dialog .bom-table tbody tr", timeout=30000)
+                fpage.click("#bom-close")
+                bom_ok = (bom_rows >= 2 and "smoke_part" in bom_text and "ISO" in bom_text and "M10" in bom_text
+                          and not fpage.locator("#bom-dialog[open]").count())
+
                 assemble_tab_ok = (
                     part_place_disabled and part_joint_disabled and part_bolted_disabled and part_upd_disabled
                     and part_place_title == "Open an assembly"
@@ -1153,13 +1168,15 @@ try:
                     and bolted_picked and bx_str != "" and by_str != "" and "×" in bolted_preview_text
                     and bolted_edit_ok
                     and "1 joint checked" in upd_summary
+                    and bom_ok
                 )
                 assemble_tab = (f"part disabled: {part_place_disabled and part_joint_disabled and part_bolted_disabled and part_upd_disabled}, "
                                 f"asm enabled: {asm_place_enabled and asm_joint_enabled and asm_bolted_enabled and asm_upd_enabled}, "
                                 f"3d pick: {face_pick_ok}, edit switch: {edit_switch_disabled and picked_face_3}, "
                                 f"rename: {joint_renamed_ok}, constrain: {constrain_ok} ({len(constrain_rules)} rules), applied+edited+deleted: {constrain_apply_ok}, standard part: {std_ok}, "
                                 f"bolted pick: {bolted_picked} ({bx_str},{by_str},{bz_str}) prev={bolted_preview_text!r}, "
-                                f"bolted edit: {bolted_edit_ok} ({edit_size_val}x{edit_len_val}), upd: {upd_summary!r}")
+                                f"bolted edit: {bolted_edit_ok} ({edit_size_val}x{edit_len_val}), upd: {upd_summary!r}, "
+                                f"bom: {bom_ok} ({bom_rows} rows)")
             except Exception as e:
                 folder_mode = f"error: {e}"[:200]
                 # an exception here must fail the run, not leave the later checks as "skipped"
