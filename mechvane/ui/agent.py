@@ -92,7 +92,7 @@ class AcpAgent:
 
     def __init__(self, command, workspace: Path, on_event, decide=decide, model=None):
         self.on_event, self.decide = on_event, decide
-        self.cwd = tempfile.mkdtemp(prefix="mechvane-agent-")
+        self.cwd = str(Path(tempfile.mkdtemp(prefix="mechvane-agent-")).resolve())  # no 8.3 short names
         self._next = 0
         self._replies = {}
         self._cond = threading.Condition()

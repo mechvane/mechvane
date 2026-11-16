@@ -76,7 +76,7 @@ def import_step(ws, source, name: str | None = None, path: str | None = None, ov
 
     # split=True: import into scratch session, extract bodies into individual part files, then create assembly
     with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_path = Path(tmp_dir)
+        tmp_path = Path(tmp_dir).resolve()  # long names: SolidCraft refuses Windows 8.3 short names
         temp_all = tmp_path / f"{name}_temp.solidcraft"
         scratch = Session(allow_paths=[ws.root, src.parent, target.parent, tmp_path])
         try:

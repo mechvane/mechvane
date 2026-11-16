@@ -2127,7 +2127,7 @@ class UIServer(ThreadingHTTPServer):
         self.path = Path(path).resolve()
         if not self.path.exists():
             raise FileNotFoundError(f"path not found: {self.path}")
-        self.tmp_dir = Path(tempfile.mkdtemp(prefix="ui1-"))  # the system temp folder (not /tmp on Windows)
+        self.tmp_dir = Path(tempfile.mkdtemp(prefix="ui1-")).resolve()  # system temp; resolve: SolidCraft refuses Windows 8.3 names (RUNNER~1)
         self._kind_cache = {}
         # True once an app window owns this server: closing it stops Mechvane (the UI says so)
         self.stops_with_window = False

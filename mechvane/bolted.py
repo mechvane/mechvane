@@ -55,7 +55,7 @@ def _find_live_doc(ws, doc, fpath: Path):
 
 def _backup_files(paths) -> tuple[Path, dict]:
     """Copy existing files into a fresh temp dir; return (dir, {original: copy})."""
-    backup_dir = Path(tempfile.mkdtemp(prefix="anker-bolted-"))
+    backup_dir = Path(tempfile.mkdtemp(prefix="anker-bolted-")).resolve()  # no 8.3 short names
     copies = {}
     for i, fpath in enumerate(dict.fromkeys(Path(x).resolve() for x in paths)):
         if fpath.exists():
