@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -241,6 +242,20 @@ def test_ui_server() -> None:
             raise RuntimeError(f"UI server finished with non-zero exit code {proc.returncode}:\n{out}\n{err}")
 
         print("  OK: UI server started, responded to API queries, and stopped cleanly.\n", flush=True)
+
+    except Exception as exc:
+        # show the server's answer and its own output, so a CI failure says why (Windows: HTTP 500 on /api/mesh)
+        if isinstance(exc, urllib.error.HTTPError):
+            print(f"  HTTP {exc.code} body: {exc.read()[:2000]!r}", file=sys.stderr, flush=True)
+        if proc.poll() is None:
+            proc.terminate()
+        try:
+            out, err = proc.communicate(timeout=10)
+        except Exception:
+            out, err = "", ""
+        print("---- UI server stdout (tail) ----\n" + "\n".join((out or "").splitlines()[-60:]), file=sys.stderr)
+        print("---- UI server stderr (tail) ----\n" + "\n".join((err or "").splitlines()[-60:]), file=sys.stderr, flush=True)
+        raise
 
     finally:
         if proc.poll() is None:

@@ -303,7 +303,8 @@ try:
             pick_face(0)
             added_hole1 = False
             if not page.locator(".feature-ok").is_enabled():
-                errors.append(f"Hole 1: OK button disabled (x={page.input_value('.feature-dialog input[name=\"x\"]')!r})")
+                x_val = page.input_value('.feature-dialog input[name="x"]')
+                errors.append(f"Hole 1: OK button disabled (x={x_val!r})")
             else:
                 page.click(".feature-ok")
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Hole1')", timeout=10000)
@@ -321,7 +322,8 @@ try:
 
             added_centre = False
             if not page.locator(".feature-ok").is_enabled():
-                errors.append(f"Hole 2: OK button disabled (x={page.input_value('.feature-dialog input[name=\"x\"]')!r})")
+                x_val = page.input_value('.feature-dialog input[name="x"]')
+                errors.append(f"Hole 2: OK button disabled (x={x_val!r})")
             else:
                 page.click(".feature-ok")
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Hole centre')", timeout=10000)
