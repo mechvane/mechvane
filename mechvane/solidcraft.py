@@ -215,7 +215,8 @@ class Session:
 
 def _remove_scratch_dirs(pid):
     """Remove the empty `<temp>/solidcraft-mcp-<pid>-<n>` folders the server makes at startup
-    and leaves behind on exit (SolidCraft 0.21.0); folders with content stay."""
+    and leaves behind on exit (SolidCraft 0.21.0); folders with content stay.
+    Fixed upstream (#7836): 0.41.0 leaves nothing behind (checked 2026-11-14); kept for older versions, e.g. 0.30.1."""
     prefix = f"solidcraft-mcp-{pid}-"
     try:
         entries = list(os.scandir(tempfile.gettempdir()))

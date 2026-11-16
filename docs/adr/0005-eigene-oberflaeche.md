@@ -221,3 +221,23 @@ hält per `sketch.constraint.midpoint`. Noch nicht in der Live-Demo (braucht `de
 Schritt (b) fertig: Bemaßen (D) über `sketch.dimension` (`type: length` für eine Linie, sonst `auto` mit `text_at`),
 Ändern per `parameters.change` (in der Skizzensitzung zusätzlich erlaubt), `name = Ausdruck` beim Setzen (ein Schritt
 zurück, dann neu mit Wert). Das erste Längenmaß skaliert die Skizze (SolidCraft `scale_sketch`, wie Inventor).
+
+## Nachtrag 2026-11-07: dünne Schicht, Neubewertung nach v0.1 (Nutzer)
+
+Befund: Seit 2026-10-31 rund 9 600 Zeilen Oberflächen-Code gegenüber ~1 200 Zeilen Fachlogik (`git log --numstat`).
+Vieles davon baut nach, was SolidCraft in `crates/ui-egui` schon gelöst und getestet hat (XZ-Ausrichtung,
+Stutzen loser Enden, Fensterauswahl, Blick auf die Skizze). Ursache ist diese Entscheidung selbst: SolidCraft
+liefert nur Kern oder ganze Oberfläche, nicht deren Bausteine (#8517 nicht eingeplant).
+
+Regeln ab jetzt:
+1. **Dünne Schicht:** Was die Engine kann (z. B. `flip`, `project_edges`, `sketch.trim`, Profile aus
+   `sketch.inspect`), wird aufgerufen, nicht in JS nachgebaut. Verhalten und Zahlen kommen aus `ui-egui` und dessen
+   Tests; Abweichungen nur begründet (Inventor-Bedienung).
+2. **Umfang bis v0.1:** Nur noch die Lückenliste `docs/research/2026-11-07-soll-ablaeufe-abgleich.md` (v0.1-Punkte)
+   und Fehler. Danach wird die Oberfläche eingefroren, neue Arbeit geht in die Fachlogik.
+3. **Prüfpunkt nach v0.1:** Diese ADR neu bewerten. Optionen: (A) eigene Oberfläche beibehalten; (B) Hybrid:
+   modellieren in der SolidCraft-Oberfläche (hat ein Inventor-Navigationsprofil, frei belegbare Kürzel), Mechvane
+   als Begleitpanel für Prüfung, Normteile, Baugruppen, Agent; (C) Bausteine upstream einbringen (#8517 o. Ä.,
+   nur mit Nutzer-OK); (D) eigener Build von `ui-egui` mit Mechvane-Panel (Rust-Build auf Colab oder in
+   GitHub Actions statt auf dem Steuer-Container). Maßstab: Pflegeaufwand gegenüber Upstream-Tempo
+   (0.30 → 0.40-rc in wenigen Tagen) und Wirkung als eigenes Produkt.

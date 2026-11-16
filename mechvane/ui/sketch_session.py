@@ -10,6 +10,17 @@ NOT_IN_SESSION = {"sketch.create", "sketch.edit", "sketch.finish", "sketch.finis
 ALSO_IN_SESSION = {"parameters.change"}
 
 
+def create_params(plane, project_edges: bool = True) -> dict:
+    """sketch.create parameters for a new sketch on plane. On XZ SolidCraft's sketch y points to world -Z
+    (seen from +Y); flipped, x is +X and y is +Z, seen from the front (-Y) as in Inventor, so world Z is up.
+    On a picked body face, project_edges controls Inventor's 'Autoproject edges for sketch creation' (default on)."""
+    if plane == "XZ":
+        return {"plane": plane, "flip": True}
+    if isinstance(plane, dict) and "face" in plane:
+        return {"plane": {"face": plane["face"]}, "project_edges": bool(project_edges)}
+    return {"plane": plane}
+
+
 class SketchError(Exception):
     """A request that does not fit the state of the sketch environment (HTTP 409)."""
 
@@ -40,13 +51,17 @@ class SketchSession:
         self.undo: list = []          # one checkpoint per command, newest last
 
     @classmethod
-    def begin(cls, doc, agent, plane=None, edit: str | None = None) -> "SketchSession":
+    def begin(cls, doc, agent, plane=None, edit: str | None = None,
+              project_edges: bool = True) -> "SketchSession":
         """Open the environment: a new sketch on plane (XY, XZ, YZ or {face: [x, y, z]}), or the sketch
         named edit. Raises if the agent works (Busy) or SolidCraft refuses the plane."""
         if (plane is None) == (edit is None):
             raise ValueError("give either plane or edit")
         if plane is not None:
-            plane = {"face": plane["face"]} if isinstance(plane, dict) and "face" in plane else plane
+            if isinstance(plane, dict) and "face" in plane:
+                if "project_edges" in plane and isinstance(plane["project_edges"], bool):
+                    project_edges = plane["project_edges"]
+                plane = {"face": plane["face"]}
             if plane not in ("XY", "XZ", "YZ") and not isinstance(plane, dict):
                 raise ValueError("plane: XY, XZ, YZ or {face: [x, y, z]}")
         snap = agent.begin_hand()
@@ -58,7 +73,7 @@ class SketchSession:
                     s.cmd("sketch.edit", {"sketch": edit})
                     name = edit
                 else:
-                    made = s.cmd("sketch.create", {"plane": plane})
+                    made = s.cmd("sketch.create", create_params(plane, project_edges=project_edges))
                     name = made.get("name") or _inspect(doc).get("name")
             except BaseException:
                 _restore(doc, cp)

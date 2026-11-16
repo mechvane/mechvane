@@ -3,7 +3,8 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { initViewTools } from "./viewtools.js";
 import { initAgentChat } from "./chat.js";
 import { openNewPartDialog, openImportStepDialog } from "./newpart.js";
-import { initFeatureDialogs, EDITABLE_TYPES } from "./features.js";
+import { openFolderDialog } from "./folder.js";
+import { initFeatureDialogs, EDITABLE_TYPES, runUpdateLinks } from "./features.js";
 import { initSketcher } from "./sketcher.js";
 import { curvePoints, toWorld } from "./sketchgeom.js";
 
@@ -32,9 +33,11 @@ const axesLabels = {
 };
 
 const scene = new THREE.Scene();
+if (typeof window !== "undefined") window.__scene = scene;
 // Parallel projection as in Inventor and every drawing: sizes do not shrink with depth (user 2026-11-06).
 // viewHalf is half the visible height in mm at zoom 1; OrbitControls zooms through camera.zoom.
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
+if (typeof window !== "undefined") window.__camera = camera;  // test hook, as window.__scene
 let viewHalf = 60;
 function setFrustum() {
   const w = viewportEl.clientWidth || 640, h = viewportEl.clientHeight || 480;
@@ -281,6 +284,30 @@ function buildBodyGeometryAndEdges(body) {
   return { geom, edgeGeom };
 }
 
+const hiddenBodies = new Set();
+const sketchVisibilityMap = new Map();
+const workFeatureVisibilityMap = new Map();
+let cachedSketches = [];
+
+function isBodyVisible(name, b) {
+  if (hiddenBodies.has(name)) return false;
+  if (b && b.visible !== undefined) return Boolean(b.visible);
+  return true;
+}
+
+function isSketchVisible(name, sk) {
+  if (sketchVisibilityMap.has(name)) return Boolean(sketchVisibilityMap.get(name));
+  if (sk && sk.visible !== undefined) return Boolean(sk.visible);
+  if (sk && Array.isArray(sk.used_by) && sk.used_by.length > 0) return false;
+  return true;
+}
+
+function isWorkFeatureVisible(name, node) {
+  if (workFeatureVisibilityMap.has(name)) return Boolean(workFeatureVisibilityMap.get(name));
+  if (node && node.visible !== undefined) return Boolean(node.visible);
+  return true;
+}
+
 function updateMeshView(meshData, fitCamera) {
   currentMeshData = meshData;
   clearGroup(modelGroup);
@@ -307,17 +334,25 @@ function updateMeshView(meshData, fitCamera) {
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     });
+    const isVis = isBodyVisible(b.name, b);
     const mesh = new THREE.Mesh(geom, mat);
     mesh.userData.bodyIndex = i;
+    mesh.userData.bodyName = b.name;
+    mesh.visible = isVis;
     modelGroup.add(mesh);
 
     if (edgeGeom.attributes.position.count > 0) {
       const lineMat = new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: 0.55 });
-      modelGroup.add(new THREE.LineSegments(edgeGeom, lineMat));
+      const edgeLine = new THREE.LineSegments(edgeGeom, lineMat);
+      edgeLine.userData.bodyName = b.name;
+      edgeLine.visible = isVis;
+      modelGroup.add(edgeLine);
     }
 
-    geom.computeBoundingBox();
-    if (geom.boundingBox) box.union(geom.boundingBox);
+    if (isVis) {
+      geom.computeBoundingBox();
+      if (geom.boundingBox) box.union(geom.boundingBox);
+    }
   });
 
   if (!box.isEmpty()) {
@@ -548,9 +583,28 @@ function renderFeatureNode(node) {
     err.textContent = `Error: ${node.error}`;
     row.appendChild(err);
   }
+
+  const isSketch = node.type === "Sketch";
+  const isWork = node.type && node.type.startsWith("Construction");
+  if (isSketch || isWork) {
+    const isVis = isSketch ? isSketchVisible(node.name, node) : isWorkFeatureVisible(node.name, node);
+    if (!isVis) {
+      row.classList.add("tree-hidden");
+      li.classList.add("tree-hidden");
+    }
+    const eye = makeEyeButton(`Show or hide ${node.name}`, () => {
+      if (isSketch) toggleSketchVisibility(node.name, row);
+      else toggleWorkFeatureVisibility(node.name, row);
+    });
+    row.appendChild(eye);
+  }
+
   li.appendChild(row);
 
   if (Array.isArray(node.children) && node.children.length > 0) {
+    if (node.children.some((c) => c.type === "Sketch")) {
+      row.dataset.consumesSketch = "true";
+    }
     const ul = document.createElement("ul");
     ul.className = "tree-children";
     node.children.forEach((ch) => ul.appendChild(renderFeatureNode(ch)));
@@ -599,6 +653,7 @@ function renderOccurrenceNode(occ) {
         jli.className = "tree-item";
         const jrow = document.createElement("div");
         jrow.className = "tree-row";
+        jrow.dataset.joint = j.name;
 
         const jname = document.createElement("span");
         jname.className = "tree-name";
@@ -630,15 +685,121 @@ function renderOccurrenceNode(occ) {
   return li;
 }
 
-function eyeButton(key, title) {
+async function setItemVisibility(name, visible) {
+  try {
+    await postJson("api/visibility", { items: [name], visible });
+  } catch (err) {
+    statusEl.textContent = `Visibility error: ${err.message}`;
+  }
+}
+
+function makeEyeButton(title, onClick) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "tree-eye";
   b.title = title;
   b.setAttribute("aria-label", title);
   b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>';
-  b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); toggleOrigin(key); });
+  b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
   return b;
+}
+
+function eyeButton(key, title) {
+  return makeEyeButton(title, () => toggleOrigin(key));
+}
+
+function toggleSketchVisibility(name, row) {
+  const current = isSketchVisible(name);
+  const next = !current;
+  sketchVisibilityMap.set(name, next);
+
+  if (row) {
+    row.classList.toggle("tree-hidden", !next);
+    const li = row.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  }
+  document.querySelectorAll(`.tree-row[data-feature="${name}"]`).forEach((r) => {
+    r.classList.toggle("tree-hidden", !next);
+    const li = r.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  });
+
+  applySketchOverlay();
+  setItemVisibility(name, next);
+}
+
+function toggleBodyVisibility(name, row) {
+  const current = isBodyVisible(name);
+  const next = !current;
+  if (next) hiddenBodies.delete(name);
+  else hiddenBodies.add(name);
+
+  if (row) {
+    row.classList.toggle("tree-hidden", !next);
+    const li = row.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  }
+  document.querySelectorAll(`.tree-row[data-body="${name}"]`).forEach((r) => {
+    r.classList.toggle("tree-hidden", !next);
+    const li = r.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  });
+
+  modelGroup.traverse((child) => {
+    if (child.userData && child.userData.bodyName === name) {
+      child.visible = next;
+    }
+  });
+  renderScene();
+  setItemVisibility(name, next);
+}
+
+function toggleWorkFeatureVisibility(name, row) {
+  const current = isWorkFeatureVisible(name);
+  const next = !current;
+  workFeatureVisibilityMap.set(name, next);
+
+  if (row) {
+    row.classList.toggle("tree-hidden", !next);
+    const li = row.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  }
+  document.querySelectorAll(`.tree-row[data-feature="${name}"]`).forEach((r) => {
+    r.classList.toggle("tree-hidden", !next);
+    const li = r.closest(".tree-item");
+    if (li) li.classList.toggle("tree-hidden", !next);
+  });
+
+  setItemVisibility(name, next);
+}
+
+function toggleRowVisibility(row) {
+  if (!row) return;
+  if (row.dataset.body) {
+    toggleBodyVisibility(row.dataset.body, row);
+  } else if (row.dataset.feature) {
+    if (row.dataset.type === "Sketch") {
+      toggleSketchVisibility(row.dataset.feature, row);
+    } else if (row.dataset.type && row.dataset.type.startsWith("Construction")) {
+      toggleWorkFeatureVisibility(row.dataset.feature, row);
+    }
+  } else if (row.dataset.originRow) {
+    toggleOrigin(row.dataset.originRow);
+  } else if (row.classList.contains("tree-origin-item")) {
+    toggleOrigin(row.dataset.originRow);
+  } else if (row.classList.contains("tree-folder-summary") && row.closest(".tree-origin")) {
+    toggleOrigin("folder");
+  }
+}
+
+function canToggleVisibility(row) {
+  if (!row) return false;
+  if (row.dataset.body) return true;
+  if (row.dataset.feature && (row.dataset.type === "Sketch" || (row.dataset.type && row.dataset.type.startsWith("Construction")))) return true;
+  if (row.dataset.originRow) return true;
+  if (row.classList.contains("tree-origin-item")) return true;
+  if (row.classList.contains("tree-folder-summary") && row.closest(".tree-origin")) return true;
+  return false;
 }
 
 function renderOriginFolder() {
@@ -687,12 +848,28 @@ function updateTreeView(treeData) {
   treeContentEl.appendChild(renderOriginFolder());
   loadOriginState();
 
+  if (treeData.hidden_bodies) {
+    hiddenBodies.clear();
+    treeData.hidden_bodies.forEach((b) => hiddenBodies.add(b));
+  }
+  const syncVisFromTree = (nodes) => {
+    for (const n of nodes || []) {
+      if (n.name && n.visible !== undefined) {
+        if (n.type === "Sketch" && !sketchVisibilityMap.has(n.name)) sketchVisibilityMap.set(n.name, n.visible);
+        if (n.type && n.type.startsWith("Construction") && !workFeatureVisibilityMap.has(n.name)) workFeatureVisibilityMap.set(n.name, n.visible);
+      }
+      if (n.children) syncVisFromTree(n.children);
+    }
+  };
+  syncVisFromTree(treeData.features);
+
   if (treeData.kind === "part") {
     const bodies = treeData.bodies || [];
     const features = treeData.features || [];
     if (bodies.length > 0) {
       const bDetails = document.createElement("details");
       bDetails.className = "tree-folder tree-bodies";
+      bDetails.open = true;
       const bSum = document.createElement("summary");
       bSum.className = "tree-row tree-folder-summary";
       const bName = document.createElement("span");
@@ -705,8 +882,25 @@ function updateTreeView(treeData) {
       bList.className = "tree-children";
       bodies.forEach((b) => {
         const li = document.createElement("li");
-        li.className = "tree-item tree-name";
-        li.textContent = b;
+        li.className = "tree-item";
+        const row = document.createElement("div");
+        row.className = "tree-row";
+        row.dataset.body = b;
+        row.tabIndex = -1;
+        const bSpan = document.createElement("span");
+        bSpan.className = "tree-name";
+        bSpan.textContent = b;
+        row.appendChild(bSpan);
+
+        const isVis = isBodyVisible(b);
+        if (!isVis) {
+          row.classList.add("tree-hidden");
+          li.classList.add("tree-hidden");
+        }
+        const eye = makeEyeButton(`Show or hide ${b}`, () => toggleBodyVisibility(b, row));
+        row.appendChild(eye);
+
+        li.appendChild(row);
         bList.appendChild(li);
       });
       bDetails.appendChild(bList);
@@ -723,7 +917,8 @@ function updateTreeView(treeData) {
   } else {
     const occs = treeData.occurrences || [];
     const asmFeats = treeData.assembly_features || [];
-    if (occs.length === 0 && asmFeats.length === 0) {
+    const boltedConns = treeData.bolted_connections || [];
+    if (occs.length === 0 && asmFeats.length === 0 && boltedConns.length === 0) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
       empty.textContent = "No components";
@@ -740,6 +935,37 @@ function updateTreeView(treeData) {
       oList.className = "tree-list";
       occs.forEach((o) => oList.appendChild(renderOccurrenceNode(o)));
       treeContentEl.appendChild(oList);
+    }
+    if (boltedConns.length > 0) {
+      const bTitle = document.createElement("div");
+      bTitle.className = "tree-section-title";
+      bTitle.textContent = `Bolted Connections (${boltedConns.length})`;
+      treeContentEl.appendChild(bTitle);
+
+      const bList = document.createElement("ul");
+      bList.className = "tree-list";
+      boltedConns.forEach((c) => {
+        const li = document.createElement("li");
+        li.className = "tree-item";
+        const row = document.createElement("div");
+        row.className = "tree-row";
+        row.dataset.boltedId = c.id;
+        row.dataset.boltedName = c.name || c.id;
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "tree-name";
+        nameSpan.textContent = c.name || c.id;
+        row.appendChild(nameSpan);
+
+        const typeSpan = document.createElement("span");
+        typeSpan.className = "tree-type";
+        typeSpan.textContent = `${c.size || ""}${c.screw_length ? `×${c.screw_length}` : ""}`;
+        row.appendChild(typeSpan);
+
+        li.appendChild(row);
+        bList.appendChild(li);
+      });
+      treeContentEl.appendChild(bList);
     }
     if (asmFeats.length > 0) {
       const afTitle = document.createElement("div");
@@ -867,15 +1093,15 @@ function clientLog(kind, data = {}) {
 function flushLog(beacon = false) {
   if (STATIC || !logBuffer.length) return;
   const body = JSON.stringify({ events: logBuffer.splice(0) });
-  if (beacon && navigator.sendBeacon) navigator.sendBeacon("api/log", body);
-  else fetch("api/log", { method: "POST", body }).catch(() => {});
+  if (beacon && navigator.sendBeacon) navigator.sendBeacon("api/log", new Blob([body], { type: "application/json" }));
+  else fetch("api/log", { method: "POST", headers: { "Content-Type": "application/json" }, body }).catch(() => {});
 }
 if (!STATIC) {
   setInterval(flushLog, 1500);
   window.addEventListener("pagehide", () => {
     flushLog(true);
     // a closed app window stops Mechvane (the server waits a few seconds: a reload comes back at once)
-    if (navigator.sendBeacon) navigator.sendBeacon("api/closing", "{}");
+    if (navigator.sendBeacon) navigator.sendBeacon("api/closing", new Blob(["{}"], { type: "application/json" }));
   });
   window.addEventListener("error", (e) => clientLog("js_error", { message: e.message, at: `${e.filename}:${e.lineno}:${e.colno}`,
                                                                  stack: e.error && e.error.stack }));
@@ -950,6 +1176,26 @@ async function changeRules() {
 ruleProfileEl.addEventListener("change", changeRules);
 ruleMaterialEl.addEventListener("change", changeRules);
 
+function updateAssembleButtons(kind) {
+  const isAsm = !STATIC && kind === "assembly";
+  document.querySelectorAll("[data-assembly]").forEach((b) => {
+    b.disabled = !isAsm;
+    b.title = isAsm ? (b.dataset.title || b.title) : "Open an assembly";
+  });
+}
+
+// a joint or constraint from the model browser (context menu or Delete); Ctrl+Z puts it back
+async function deleteJoint(name) {
+  try {
+    if (featureDialogs.isOpen()) featureDialogs.close();
+    const res = await postJson("api/assembly/joint/delete", { joint: name });
+    await loadAll(false);
+    statusEl.textContent = res.done || `Deleted ${name}`;
+  } catch (err) {
+    statusEl.textContent = `Delete ${name}: ${err.message}`;
+  }
+}
+
 async function loadAll(initial = false) {
   try {
     statusEl.textContent = "Computing…";
@@ -965,6 +1211,7 @@ async function loadAll(initial = false) {
     docKindEl.textContent = ver.kind === "assembly" ? "Assembly" : "Part";
     docKindEl.hidden = false;
     docPathEl.textContent = STATIC ? "" : (ver.path || "");
+    updateAssembleButtons(ver.kind);
 
     viewBeforeEdit = null;  // a dialog editing a feature showed an earlier state: the new model replaces it
     updateMeshView(mesh, initial);
@@ -975,27 +1222,27 @@ async function loadAll(initial = false) {
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;
     else fillRuleSetup(findings);
     if (!STATIC) await loadParams();
-    await refreshSketchOverlay(ver.kind, initial);
     refreshHistory();
     statusEl.textContent = "Ready";
+    // unused sketches come after: in the live demo /api/sketches takes seconds, Undo must not wait for it
+    refreshSketchOverlay(ver.kind, initial).catch(() => {});
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }
 }
 
-// Sketches nothing uses yet stay visible in the model, as in Inventor: drawn on their planes over the bodies.
+// Sketches visible in the model, drawn on their planes over the bodies.
 // Not in the precomputed live demo (that would start SolidCraft in the page); after a step there, yes.
 const sketchOverlay = new THREE.Group();
 sketchOverlay.renderOrder = 8;
 scene.add(sketchOverlay);
-async function refreshSketchOverlay(kind, fit = false) {
+
+function applySketchOverlay() {
   clearGroup(sketchOverlay);
-  if (kind === "assembly" || (STATIC && !(demoKernel && demoKernel.changed))) { renderScene(); return; }
-  let list = [];
-  try { list = (await fetchJson("api/sketches")).sketches || []; } catch (_) { return; }
+  if (STATIC && !(demoKernel && demoKernel.changed)) { renderScene(); return; }
   const isDark = document.documentElement.dataset.theme !== "light";
-  for (const sk of list) {
-    if ((sk.used_by || []).length || !sk.plane) continue;
+  for (const sk of cachedSketches) {
+    if (!sk.plane || !isSketchVisible(sk.name, sk)) continue;
     for (const c of sk.curves || []) {
       const pts = curvePoints(c);
       if (pts.length < 2) continue;
@@ -1010,6 +1257,28 @@ async function refreshSketchOverlay(kind, fit = false) {
     }
   }
   sketchOverlay.visible = !document.body.classList.contains("sketching");
+  renderScene();
+}
+
+async function refreshSketchOverlay(kind, fit = false) {
+  if (kind === "assembly" || (STATIC && !(demoKernel && demoKernel.changed))) {
+    clearGroup(sketchOverlay);
+    renderScene();
+    return;
+  }
+  try {
+    const data = await fetchJson("api/sketches");
+    cachedSketches = data.sketches || [];
+  } catch (_) {
+    return;
+  }
+  for (const sk of cachedSketches) {
+    if (!sketchVisibilityMap.has(sk.name)) {
+      if (sk.visible !== undefined) sketchVisibilityMap.set(sk.name, sk.visible);
+      else sketchVisibilityMap.set(sk.name, !(sk.used_by && sk.used_by.length));
+    }
+  }
+  applySketchOverlay();
   // zoom all and home take the unused sketches in, as in Inventor
   if (sketchOverlay.children.length) {
     const box = new THREE.Box3().setFromObject(modelGroup);
@@ -1021,7 +1290,6 @@ async function refreshSketchOverlay(kind, fit = false) {
       if (fit) fitCameraToModel(false);
     }
   }
-  renderScene();
 }
 
 // The Origin as SolidCraft draws it (crates/ui-egui/src/selection.rs origin_quads/origin_size): the three planes
@@ -1062,7 +1330,7 @@ for (const [name, [d, color]] of Object.entries(ORIGIN_AXES)) {
   originGroup.add(dot);
   originParts.O = dot;
 }
-var originState = { folder: true, hidden: new Set(), reveal: false, hover: null };
+var originState = { folder: true, hidden: new Set(), reveal: false, revealAxes: false, hover: null };
 const originKey = () => `mechvane-origin:${docNameEl?.textContent || "doc"}`;
 function loadOriginState() {
   try {
@@ -1078,8 +1346,10 @@ function saveOriginState() {
 function applyOrigin() {
   for (const [name, part] of Object.entries(originParts)) {
     const plane = part.userData.kind === "plane";
-    part.visible = (originState.reveal && plane) || (originState.folder && !originState.hidden.has(name));
+    const axis = part.userData.kind === "axis";
+    part.visible = (originState.reveal && plane) || (originState.revealAxes && axis) || (originState.folder && !originState.hidden.has(name));
     if (plane) part.userData.fill.material.opacity = originState.hover === name ? 0.35 : 0.12;
+    if (axis) part.material.depthTest = !originState.revealAxes;
   }
   document.querySelectorAll("[data-origin-row]").forEach((li) => {
     const off = !originState.folder || originState.hidden.has(li.dataset.originRow);
@@ -1123,6 +1393,34 @@ function hoverOriginPlane(name) {
   originState.hover = name;
   applyOrigin();
 }
+// the origin axis (X, Y, Z) under the pointer (shown ones only), for Revolve
+function originAxisAt(clientX, clientY) {
+  const r = renderer.domElement.getBoundingClientRect();
+  const x = clientX - r.left, y = clientY - r.top;
+  const screen = (p) => {
+    const s = p.clone().project(camera);
+    return new THREE.Vector2(((s.x + 1) / 2) * r.width, ((1 - s.y) / 2) * r.height);
+  };
+  const c = new THREE.Vector2(x, y);
+  const scale = originGroup.scale.x || 1;
+  const a = screen(new THREE.Vector3(0, 0, 0));
+  let best = null, bestD = 10;
+  for (const [name, [d]] of Object.entries(ORIGIN_AXES)) {
+    const part = originParts[name];
+    if (!part || !part.visible) continue;
+    const b = screen(new THREE.Vector3(...d).multiplyScalar(1.3 * scale));
+    const ab = new THREE.Vector2().subVectors(b, a);
+    const t = THREE.MathUtils.clamp(new THREE.Vector2().subVectors(c, a).dot(ab) / Math.max(ab.lengthSq(), 1e-9), 0, 1);
+    const dist = a.clone().addScaledVector(ab, t).distanceTo(c);
+    if (dist < bestD) { bestD = dist; best = { axis: name, dist }; }
+  }
+  return best;
+}
+function revealOriginAxes(on) {
+  if (originState.revealAxes === on) return;
+  originState.revealAxes = on;
+  applyOrigin();
+}
 
 // Parameter form: user parameters first, feature dimensions folded away. Changes go to SolidCraft
 // together (all or nothing); the saved file then reloads the view through pollVersion.
@@ -1134,7 +1432,7 @@ const paramsError = document.getElementById("params-error");
 function paramRow(p) {
   const row = document.createElement("label");
   row.className = "param-row";
-  row.title = p.feature ? `${p.feature} · ${p.input || ""}` : (p.comment || "");
+  row.title = p.sketch ? p.sketch : (p.feature ? `${p.feature} · ${p.input || ""}` : (p.comment || ""));
   const name = document.createElement("span");
   name.className = "param-name";
   name.textContent = p.name;
@@ -1156,20 +1454,50 @@ function paramRow(p) {
   return row;
 }
 
+function isNamedSketchDim(p) {
+  return !/^d\d+$/.test(p.name) || (p.uses && p.uses.length > 0) || (p.expression && /^[a-zA-Z_]\w*$/.test(String(p.expression)));
+}
+
 function updateParamsView(data) {
   const params = data.parameters || [];
   paramsForm.replaceChildren();
   paramsSection.hidden = params.length === 0;
-  const own = params.filter((p) => p.source === "user" || p.favorite);
-  const dims = params.filter((p) => !own.includes(p));
+
+  // 1. User parameters and favorites
+  const own = params.filter((p) => p.source === "user" || (p.favorite && p.source !== "sketch"));
   own.forEach((p) => paramsForm.appendChild(paramRow(p)));
-  if (dims.length) {
+
+  // 2. Sketch dimensions in their own group per sketch (sketch name as heading), named dimensions first
+  const sketchGroups = new Map();
+  for (const p of params) {
+    if (p.source === "sketch") {
+      const g = p.sketch || "Sketch";
+      if (!sketchGroups.has(g)) sketchGroups.set(g, []);
+      sketchGroups.get(g).push(p);
+    }
+  }
+
+  for (const [sketchName, skParams] of sketchGroups) {
+    const details = document.createElement("details");
+    details.className = "param-group";
+    details.open = true;
+    const summary = document.createElement("summary");
+    summary.textContent = `${sketchName} (${skParams.length})`;
+    details.appendChild(summary);
+    skParams.sort((a, b) => (isNamedSketchDim(b) ? 1 : 0) - (isNamedSketchDim(a) ? 1 : 0));
+    skParams.forEach((p) => details.appendChild(paramRow(p)));
+    paramsForm.appendChild(details);
+  }
+
+  // 3. Feature dimensions
+  const featureParams = params.filter((p) => p.source !== "user" && p.source !== "sketch");
+  if (featureParams.length) {
     const more = document.createElement("details");
-    more.open = own.length === 0;
+    more.open = own.length === 0 && sketchGroups.size === 0;
     const sum = document.createElement("summary");
-    sum.textContent = `Feature dimensions (${dims.length})`;
+    sum.textContent = `Feature dimensions (${featureParams.length})`;
     more.appendChild(sum);
-    dims.forEach((p) => more.appendChild(paramRow(p)));
+    featureParams.forEach((p) => more.appendChild(paramRow(p)));
     paramsForm.appendChild(more);
   }
   paramsApply.disabled = true;
@@ -1199,9 +1527,13 @@ async function applyParams(ev) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (data.errors && data.errors.length) {
+      paramsError.textContent = data.errors.map((e) => (e.feature ? `${e.feature}: ${e.error || e}` : (e.error || e))).join("; ");
+      paramsError.hidden = false;
+    }
     updateParamsView(data);
     await pollVersion();
-    statusEl.textContent = "Ready";
+    statusEl.textContent = (data.errors && data.errors.length) ? "Error" : "Ready";
   } catch (err) {
     paramsError.textContent = err.message;
     paramsError.hidden = false;
@@ -1426,6 +1758,17 @@ async function initStatic() {
 // documents in the selector and open the one asked for (?doc=), else the first assembly, else the first.
 async function initFolder() {
   const project = await fetchJson("api/project");
+  const openFolderBtn = document.getElementById("btn-open-folder");
+  if (openFolderBtn) {
+    openFolderBtn.hidden = false;
+    openFolderBtn.addEventListener("click", () => {
+      if (fileMenu) fileMenu.open = false;
+      openFolderDialog((data) => {
+        statusEl.textContent = "Loading folder…";
+        location.href = location.pathname;
+      });
+    });
+  }
   if (project.mode !== "folder") return;
   const newPartBtn = document.getElementById("btn-new-part");
   if (newPartBtn) {
@@ -1479,7 +1822,7 @@ async function initFolder() {
     .find((n) => n && docs.some((d) => d.name === n));
   select.value = pick;
   const open = async (fit) => {
-    const res = await fetch("api/open/" + encodeURIComponent(select.value), { method: "POST" });
+    const res = await fetch("api/open/" + encodeURIComponent(select.value), { method: "POST", headers: { "Content-Type": "application/json" } });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
     document.getElementById("mode-model").href = `model?doc=${encodeURIComponent(select.value)}`;
     populateFileDocList(items, select.value, (val) => {
@@ -1616,6 +1959,8 @@ var viewBeforeEdit = null;
       viewBeforeEdit = null;
     },
     lookAlong: lookAlongFrame,
+    originAxisAt,
+    revealOriginAxes,
   });
   initTreeActions();
   // the sketch environment (ADR 0005): not in the live demo yet, it needs the SolidCraft session on the server
@@ -1642,7 +1987,25 @@ var viewBeforeEdit = null;
     b.title = b.dataset.title || b.title;
     b.addEventListener("click", () => featureDialogs.open(b.dataset.feature));
   });
+  const btnPlace = document.getElementById("btn-place");
+  if (btnPlace) btnPlace.addEventListener("click", () => featureDialogs.open("place"));
+  const btnPlaceStd = document.getElementById("btn-place-standard");
+  if (btnPlaceStd) btnPlaceStd.addEventListener("click", () => featureDialogs.open("place_standard"));
+  const btnJoint = document.getElementById("btn-joint");
+  if (btnJoint) btnJoint.addEventListener("click", () => featureDialogs.open("joint"));
+  const btnConstrain = document.getElementById("btn-constrain");
+  if (btnConstrain) btnConstrain.addEventListener("click", () => featureDialogs.open("constrain"));
+  const btnBolted = document.getElementById("btn-bolted-connection");
+  if (btnBolted) btnBolted.addEventListener("click", () => featureDialogs.open("bolted"));
+  const btnUpdateLinks = document.getElementById("btn-update-links");
+  if (btnUpdateLinks) {
+    btnUpdateLinks.addEventListener("click", () => {
+      featureDialogs?.close();
+      runUpdateLinks({ post: postJson, reload: () => loadAll(false), statusEl, log: clientLog });
+    });
+  }
 }
+updateAssembleButtons(null);
 
 // Undo and Redo: one list for hand steps (dialogs, parameters) and the agent's turns (Grundsatz 6)
 const undoBtn = document.getElementById("btn-undo");
@@ -1696,6 +2059,9 @@ async function undoRedo(which) {
     } else if (!mod && !e.altKey && (e.key === "e" || e.key === "E")) {
       e.preventDefault();
       featureDialogs.open("extrude");
+    } else if (!mod && !e.altKey && (e.key === "r" || e.key === "R") && (!sketcher || !sketcher.isActive())) {
+      e.preventDefault();
+      featureDialogs.open("revolve");
     } else if (!mod && !e.altKey && (e.key === "h" || e.key === "H")) {
       e.preventDefault();
       featureDialogs.open("hole");
@@ -1703,10 +2069,13 @@ async function undoRedo(which) {
   });
 }
 
-// Model browser: double-click edits a feature in its dialog, right-click offers Edit and Delete,
-// Delete removes the selected feature (Ctrl+Z puts it back)
+// Model browser: double-click edits a feature in its dialog, right-click offers Edit, Visibility, Rename and Delete,
+// Delete removes the selected feature (Ctrl+Z puts it back), F2/slow double-click/Rename renames it, V toggles visibility
 function initTreeActions() {
   let selectedRow = null;
+  let renamingRow = null;
+  let lastClickTime = 0;
+
   const menu = document.createElement("div");
   menu.className = "context-menu";
   menu.hidden = true;
@@ -1718,26 +2087,127 @@ function initTreeActions() {
     selectedRow = row;
     if (row) row.classList.add("selected");
   }
-  const rowOf = (e) => e.target.closest && e.target.closest(".tree-row[data-feature]");
+  const rowOf = (e) => e.target.closest && (
+    e.target.closest(".tree-row[data-feature]") ||
+    e.target.closest(".tree-row[data-joint]") ||
+    e.target.closest(".tree-row[data-bolted-id]") ||
+    e.target.closest(".tree-row[data-body]") ||
+    e.target.closest("[data-origin-row]")
+  );
+
+  function startRename(row) {
+    const isJoint = Boolean(row && row.dataset.joint);
+    const oldName = row ? (row.dataset.feature || row.dataset.joint) : "";
+    if (!oldName || renamingRow) return;
+    hideMenu();
+    const nameSpan = row.querySelector(".tree-name");
+    if (!nameSpan) return;
+
+    renamingRow = row;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tree-rename-input";
+    input.value = oldName;
+    nameSpan.style.display = "none";
+    nameSpan.after(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      input.remove();
+      nameSpan.style.display = "";
+      renamingRow = null;
+    };
+
+    const commit = async () => {
+      if (done) return;
+      const newName = input.value.trim();
+      if (!newName) {
+        statusEl.textContent = "Rename: name cannot be empty";
+        cleanup();
+        return;
+      }
+      if (newName === oldName) {
+        cleanup();
+        return;
+      }
+      const selector = isJoint ? ".tree-row[data-joint]" : ".tree-row[data-feature]";
+      const attr = isJoint ? "joint" : "feature";
+      const existing = Array.from(treeContentEl.querySelectorAll(selector))
+        .map((r) => r.dataset[attr])
+        .filter((f) => f && f !== oldName);
+      if (existing.includes(newName)) {
+        statusEl.textContent = `Rename: another ${isJoint ? "joint" : "feature"} is called '${newName}'`;
+        cleanup();
+        return;
+      }
+      cleanup();
+      if (isJoint) await featureDialogs.renameJoint(oldName, newName);
+      else await featureDialogs.rename(oldName, newName);
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        commit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cleanup();
+        statusEl.textContent = "Rename cancelled";
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      commit();
+    });
+  }
 
   treeContentEl.addEventListener("click", (e) => {
     hideMenu();
+    if (renamingRow) return;
+    if (e.target.closest && e.target.closest(".tree-eye")) return;
+    const originRow = e.target.closest && e.target.closest("[data-origin-row]");
+    if (originRow && featureDialogs.pickOrigin?.(originRow.dataset.originRow)) return;
     const row = rowOf(e);
     // a pattern or mirror dialog is open: the click picks the feature for it
-    if (row && featureDialogs.pickFeature(row.dataset.feature, row.dataset.type)) return;
+    if (row && row.dataset.feature && featureDialogs.pickFeature(row.dataset.feature, row.dataset.type)) return;
+
+    const now = Date.now();
+    const isSameRow = (row && row === selectedRow);
+    const clickOnName = e.target.closest && e.target.closest(".tree-name");
+
+    // Slow double-click: clicking an already selected row's name after the double-click threshold (350..3000 ms) starts rename
+    if (isSameRow && clickOnName && (now - lastClickTime >= 350) && (now - lastClickTime <= 3000)) {
+      startRename(row);
+      lastClickTime = 0;
+      return;
+    }
+
+    lastClickTime = now;
     select(row);
   });
+
   treeContentEl.addEventListener("dblclick", (e) => {
+    if (renamingRow) return;
     if (featureDialogs.picksFeatures()) return;
     const row = rowOf(e);
-    if (row && row.dataset.type === "Sketch" && sketcher) sketcher.edit(row.dataset.feature);
-    else if (row && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
+    if (row && row.dataset.boltedId) featureDialogs.open("bolted", { boltedEditId: row.dataset.boltedId });
+    else if (row && row.dataset.joint) featureDialogs.editJoint(row.dataset.joint);
+    else if (row && row.dataset.type === "Sketch" && sketcher) sketcher.edit(row.dataset.feature);
+    else if (row && row.dataset.type && EDITABLE_TYPES[row.dataset.type]) featureDialogs.edit(row.dataset.feature);
   });
+
   treeContentEl.addEventListener("contextmenu", (e) => {
     const originRow = e.target.closest && e.target.closest("[data-origin-row]");
     if (originRow) {
-      // as SolidCraft's origin_plane_items: Create Sketch on a plane, Show/Hide on every item
+      // as SolidCraft's origin_plane_items: Create Sketch on a plane, Visibility on every item
       e.preventDefault();
+      select(originRow);
       const key = originRow.dataset.originRow;
       menu.innerHTML = "";
       const add = (label, fn) => {
@@ -1749,7 +2219,7 @@ function initTreeActions() {
         menu.append(b);
       };
       if (ORIGIN_PLANES[key] && sketcher) add(`Create Sketch on ${key}`, () => sketcher.startOn(key));
-      add(originState.folder && !originState.hidden.has(key) ? "Hide" : "Show", () => toggleOrigin(key));
+      add("Visibility", () => toggleOrigin(key));
       menu.style.left = `${e.clientX}px`;
       menu.style.top = `${e.clientY}px`;
       menu.hidden = false;
@@ -1759,7 +2229,6 @@ function initTreeActions() {
     if (!row) return;
     e.preventDefault();
     select(row);
-    const name = row.dataset.feature;
     menu.innerHTML = "";
     const item = (label, fn, disabled = false) => {
       const b = document.createElement("button");
@@ -1770,22 +2239,93 @@ function initTreeActions() {
       b.addEventListener("click", () => { hideMenu(); fn(); });
       menu.append(b);
     };
+
+    if (row.dataset.body) {
+      const bodyName = row.dataset.body;
+      item("Visibility", () => toggleBodyVisibility(bodyName, row));
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.hidden = false;
+      return;
+    }
+
+    if (row.dataset.joint) {
+      const jname = row.dataset.joint;
+      item(`Edit ${jname}`, () => featureDialogs.editJoint(jname));
+      item("Rename", () => startRename(row));
+      item(`Delete ${jname}`, () => deleteJoint(jname));
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.hidden = false;
+      return;
+    }
+
+    if (row.dataset.boltedId) {
+      const cid = row.dataset.boltedId;
+      const cname = row.dataset.boltedName || cid;
+      item(`Edit ${cname}`, () => featureDialogs.open("bolted", { boltedEditId: cid }));
+      item(`Delete ${cname}`, async () => {
+        try {
+          if (featureDialogs.isOpen()) featureDialogs.close();
+          const res = await postJson("api/assembly/bolted/delete", { id: cid });
+          await loadAll(false);
+          statusEl.textContent = res.done || `Deleted ${cname}`;
+        } catch (err) {
+          statusEl.textContent = `Delete ${cname}: ${err.message}`;
+        }
+      });
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.hidden = false;
+      return;
+    }
+
+    const name = row.dataset.feature;
     if (row.dataset.type === "Sketch" && sketcher) item(`Edit ${name}`, () => sketcher.edit(name), false);
-    else item(`Edit ${name}`, () => featureDialogs.edit(name), !EDITABLE_TYPES[row.dataset.type]);
+    else if (row.dataset.type) item(`Edit ${name}`, () => featureDialogs.edit(name), !EDITABLE_TYPES[row.dataset.type]);
+
+    if (canToggleVisibility(row)) {
+      item("Visibility", () => toggleRowVisibility(row));
+    }
+    item("Rename", () => startRename(row));
     item(`Delete ${name}`, () => featureDialogs.remove(name));
     menu.style.left = `${e.clientX}px`;
     menu.style.top = `${e.clientY}px`;
     menu.hidden = false;
   });
+
   document.addEventListener("click", (e) => { if (!menu.contains(e.target)) hideMenu(); });
+
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideMenu();
-    if (e.key !== "Delete" || !selectedRow || !selectedRow.isConnected) return;
     const t = e.target;
     if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
-    e.preventDefault();
-    featureDialogs.remove(selectedRow.dataset.feature);
-    select(null);
+
+    if (e.key === "F2" && selectedRow && selectedRow.isConnected && !renamingRow) {
+      e.preventDefault();
+      startRename(selectedRow);
+      return;
+    }
+
+    if ((e.key === "v" || e.key === "V") && selectedRow && selectedRow.isConnected) {
+      if (canToggleVisibility(selectedRow)) {
+        e.preventDefault();
+        toggleRowVisibility(selectedRow);
+      }
+      return;
+    }
+
+    if (e.key !== "Delete" || !selectedRow || !selectedRow.isConnected) return;
+    if (selectedRow.dataset.feature) {
+      e.preventDefault();
+      featureDialogs.remove(selectedRow.dataset.feature);
+      select(null);
+    }
+    else if (selectedRow.dataset.joint) {
+      e.preventDefault();
+      deleteJoint(selectedRow.dataset.joint);
+      select(null);
+    }
   });
 }
 

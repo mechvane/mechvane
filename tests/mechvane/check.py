@@ -6,7 +6,9 @@ Exit code 0 when every check passes, 1 otherwise."""
 
 import json
 import math
+import os
 import queue
+import shutil
 import sys
 import tempfile
 import threading
@@ -15,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, modeling, query, sc_errors, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
+from mechvane import bolted, design_rules, geometry as g, hole_tables, inplace, katalog, links, modeling, query, sc_errors, sc_locate, server, sketch_rule, standard_parts, state_delta, tree  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
 
 REL = 2e-4  # volume tolerance (tessellation, same as tests/reference/check.py)
@@ -23,8 +25,15 @@ ABS = 2e-3  # mm tolerance for bounding boxes
 failures = 0
 
 
+# Failure details are cut to this many characters (whole meshes otherwise flood the output); 0 = no limit
+DETAIL_MAX = int(os.environ.get("MECHVANE_CHECK_DETAIL", "600"))
+
+
 def ok(label, cond, detail=""):
     global failures
+    detail = str(detail)
+    if DETAIL_MAX and len(detail) > DETAIL_MAX:
+        detail = detail[:DETAIL_MAX] + f" … [{len(detail) - DETAIL_MAX} more chars, MECHVANE_CHECK_DETAIL=0 for all]"
     print(f"{'ok  ' if cond else 'FAIL'} {label}" + (f": {detail}" if detail and not cond else ""))
     failures += 0 if cond else 1
 
@@ -79,6 +88,29 @@ def sketch_rule_and_browser(ws):
     t_asm = tree.assembly_tree(asm_f.session)
     r_asm = tree.render(t_asm)
     ok("browser: assembly_features rendered in assembly", "AsmCyl [CylinderFeature]" in r_asm, r_asm)
+
+    # Visibility in part tree (issue #65)
+    t_vis = tree.part_tree(s)
+    f_map = {n["name"]: n for n in t_vis["features"] if n.get("name")}
+    s3_initial = f_map["S3"]["visible"]  # S3 is consumed by E2 and E3 -> False
+    e1_s1_list = [c for c in f_map["E1"].get("children", []) if c.get("name") == "S1"]
+    e1_s1 = e1_s1_list[0] if e1_s1_list else {}
+    # Show S3 (consumed sketch) and hide Body1
+    s.cmd("browser.visibility", {"items": ["S3"], "visible": True})
+    s.cmd("browser.visibility", {"items": ["Body1"], "visible": False})
+    t_shown = tree.part_tree(s)
+    f_map_s = {n["name"]: n for n in t_shown["features"] if n.get("name")}
+    # Hide S3 and restore Body1
+    s.cmd("browser.visibility", {"items": ["S3"], "visible": False})
+    s.cmd("browser.visibility", {"items": ["Body1"], "visible": True})
+    t_restored = tree.part_tree(s)
+    f_map_r = {n["name"]: n for n in t_restored["features"] if n.get("name")}
+    ok("browser: part_tree reflects sketch and body visibility",
+       s3_initial is False and e1_s1.get("visible") is False
+       and f_map_s["S3"]["visible"] is True and "Body1" in t_shown.get("hidden_bodies", [])
+       and f_map_r["S3"]["visible"] is False and "Body1" not in t_restored.get("hidden_bodies", []),
+       f"initial={s3_initial} s1={e1_s1} shown={t_shown} restored={t_restored}")
+
     ws.close("block")
 
 
@@ -1122,6 +1154,223 @@ def design_rule_checks(ws):
        and len(after_err["bodies"]) == 1,
        f"holes={err_holes} thread_depth={err_td} warnings={len(captured)} bodies={len(after_err['bodies'])}")
     ws.close("rule_probe_err")
+
+
+def verfahrensregeln_checks(ws):
+    # 1. FDM: horizontal_hole
+    p_hh_trig = ws.new(PART, "p_vr_hh_trig")
+    p_hh_trig.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 10, "height": 20, "base": [20, -5, 20], "axis": [0, 1, 0], "operation": "cut", "name": "H"}},
+    ])
+    r_hh_trig = design_rules.check(p_hh_trig.session, profile="fdm_0.4")
+    f_hh = r_hh_trig["rules"]["horizontal_hole"]["findings"]
+    ok("verfahrensregeln / fdm: horizontal hole > 6mm warns with teardrop/support suggestion",
+       r_hh_trig["rules"]["horizontal_hole"]["status"] == "warn"
+       and len(f_hh) == 1 and ("teardrop" in f_hh[0]["message"] or "support" in f_hh[0]["message"]),
+       str(r_hh_trig["rules"]["horizontal_hole"]))
+    ok("verfahrensregeln / fdm: horizontal hole finding contains source",
+       bool(f_hh[0].get("source")) and "hubs.com" in f_hh[0]["source"],
+       str(f_hh[0]))
+    r_hh_cnc = design_rules.check(p_hh_trig.session, profile="cnc_alu")
+    ok("verfahrensregeln / cnc: horizontal hole does not trigger in cnc_alu profile",
+       r_hh_cnc["rules"]["horizontal_hole"]["status"] == "ok"
+       and len(r_hh_cnc["rules"]["horizontal_hole"]["findings"]) == 0,
+       str(r_hh_cnc["rules"]["horizontal_hole"]))
+
+    p_hh_pass = ws.new(PART, "p_vr_hh_pass")
+    p_hh_pass.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 5, "height": 20, "base": [20, -5, 20], "axis": [0, 1, 0], "operation": "cut", "name": "H"}},
+    ])
+    r_hh_pass = design_rules.check(p_hh_pass.session, profile="fdm_0.4")
+    ok("verfahrensregeln / fdm: horizontal hole <= 6mm passes",
+       r_hh_pass["rules"]["horizontal_hole"]["status"] == "ok"
+       and len(r_hh_pass["rules"]["horizontal_hole"]["findings"]) == 0,
+       str(r_hh_pass["rules"]["horizontal_hole"]))
+
+    # 2. FDM: heat_set_insert
+    p_hsi_trig = ws.new(PART, "p_vr_hsi_trig")
+    p_hsi_trig.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 4.0, "height": 5.0, "base": [20, 20, 40], "axis": [0, 0, -1], "operation": "cut", "name": "M3_Insert"}},
+    ])
+    r_hsi_trig = design_rules.check(p_hsi_trig.session, profile="fdm_0.4")
+    f_hsi = r_hsi_trig["rules"]["heat_set_insert"]["findings"]
+    ok("verfahrensregeln / fdm: heat-set insert shallow blind hole fails min_depth",
+       r_hsi_trig["rules"]["heat_set_insert"]["status"] == "fail"
+       and len(f_hsi) == 1 and "6.7" in f_hsi[0]["message"],
+       str(r_hsi_trig["rules"]["heat_set_insert"]))
+    ok("verfahrensregeln / fdm: heat-set insert finding contains source",
+       bool(f_hsi[0].get("source")) and ("ruthex" in f_hsi[0]["source"] or "cnckitchen" in f_hsi[0]["source"]),
+       str(f_hsi[0]))
+
+    p_hsi_pass = ws.new(PART, "p_vr_hsi_pass")
+    p_hsi_pass.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 4.0, "height": 8.0, "base": [20, 20, 40], "axis": [0, 0, -1], "operation": "cut", "name": "M3_Insert"}},
+    ])
+    r_hsi_pass = design_rules.check(p_hsi_pass.session, profile="fdm_0.4")
+    ok("verfahrensregeln / fdm: heat-set insert with sufficient Vorloch depth passes",
+       r_hsi_pass["rules"]["heat_set_insert"]["status"] == "ok"
+       and len(r_hsi_pass["rules"]["heat_set_insert"]["findings"]) == 0,
+       str(r_hsi_pass["rules"]["heat_set_insert"]))
+
+    # Test false alarm: direct M3 screw into plastic (Kernloch 2.5 mm) must not fail heat_set_insert
+    p_hsi_direct = ws.new(PART, "p_vr_hsi_direct")
+    p_hsi_direct.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 2.5, "height": 8.0, "base": [20, 20, 40], "axis": [0, 0, -1], "operation": "cut", "name": "M3_Direct"}},
+    ])
+    r_hsi_direct = design_rules.check(p_hsi_direct.session, profile="fdm_0.4")
+    ok("verfahrensregeln / fdm: direct M3 thread (Kernloch 2.5) without insert marker does not fail heat_set_insert",
+       r_hsi_direct["rules"]["heat_set_insert"]["status"] == "ok"
+       and len(r_hsi_direct["rules"]["heat_set_insert"]["findings"]) == 0,
+       str(r_hsi_direct["rules"]["heat_set_insert"]))
+
+    # 3. CNC: pocket_corner_radius
+    p_pcr_trig = ws.new(PART, "p_vr_pcr_trig")
+    p_pcr_trig.session.batch([
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "S1"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [-20, -20], "p1": [20, 20]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S1", "distance": 20, "name": "E1"}},
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "S2"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [-10, -10], "p1": [10, 10]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S2", "distance": 10, "operation": "cut", "name": "Cut1"}},
+    ])
+    r_pcr_trig = design_rules.check(p_pcr_trig.session, profile="cnc_alu")
+    f_pcr = r_pcr_trig["rules"]["pocket_corner_radius"]["findings"]
+    ok("verfahrensregeln / cnc: sharp 90° inside pocket corner fails pocket_corner_radius",
+       r_pcr_trig["rules"]["pocket_corner_radius"]["status"] == "fail"
+       and len(f_pcr) >= 1 and "radius 0 mm" in f_pcr[0]["message"],
+       str(r_pcr_trig["rules"]["pocket_corner_radius"]))
+    r_pcr_fdm = design_rules.check(p_pcr_trig.session, profile="fdm_0.4")
+    ok("verfahrensregeln / fdm: sharp 90° inside pocket corner does not trigger pocket_corner_radius in fdm_0.4",
+       r_pcr_fdm["rules"]["pocket_corner_radius"]["status"] == "ok"
+       and len(r_pcr_fdm["rules"]["pocket_corner_radius"]["findings"]) == 0,
+       str(r_pcr_fdm["rules"]["pocket_corner_radius"]))
+
+    # Test outer fillet R1: outside corner fillet must NOT report pocket_corner_radius
+    p_pcr_outer_r1 = ws.new(PART, "p_vr_pcr_outer_r1")
+    p_pcr_outer_r1.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 20, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.fillet", "params": {"edges": [[0, 0, 10]], "radius": 1.0, "name": "OuterFillet"}},
+    ])
+    r_pcr_outer = design_rules.check(p_pcr_outer_r1.session, profile="cnc_alu")
+    ok("verfahrensregeln / cnc: outer fillet R1 does not trigger pocket_corner_radius",
+       r_pcr_outer["rules"]["pocket_corner_radius"]["status"] == "ok"
+       and len(r_pcr_outer["rules"]["pocket_corner_radius"]["findings"]) == 0,
+       str(r_pcr_outer["rules"]["pocket_corner_radius"]))
+
+    # Test inside pocket corner fillet R1: pocket corner with R1 must fail (< 1.5 mm cutter radius)
+    p_pcr_inner_r1 = ws.new(PART, "p_vr_pcr_inner_r1")
+    p_pcr_inner_r1.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 20, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "S"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [10, 10], "p1": [30, 30]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S", "distance": 10, "operation": "cut", "name": "Pocket"}},
+        {"command": "solid.fillet", "params": {"edges": [[10, 10, 5]], "radius": 1.0, "name": "InnerFillet"}},
+    ])
+    r_pcr_inner = design_rules.check(p_pcr_inner_r1.session, profile="cnc_alu")
+    f_pcr_inner = r_pcr_inner["rules"]["pocket_corner_radius"]["findings"]
+    ok("geometry.blend_parts: the faces of a blend are read from the name in both SolidCraft spellings, others give None",
+       g.blend_parts("F4:blend:F3:side:l1|F3:side:l4") == ["F3:side:l1", "F3:side:l4"]
+       and g.blend_parts("F4:blend(F3:side:l1|F3:side:l4)") == ["F3:side:l1", "F3:side:l4"]
+       and g.blend_parts("F1:+z") is None and g.blend_parts("F2:bore:side:0") is None and g.blend_parts("") is None)
+    ok("verfahrensregeln / cnc: inside pocket corner R1 fails pocket_corner_radius",
+       r_pcr_inner["rules"]["pocket_corner_radius"]["status"] == "fail"
+       and len(f_pcr_inner) >= 1 and any("1.00" in f["message"] for f in f_pcr_inner),  # the R1 corner among the sharp ones, in the kernel's order
+       str(r_pcr_inner["rules"]["pocket_corner_radius"]))
+    ok("verfahrensregeln / cnc: pocket corner radius finding contains source",
+       bool(f_pcr_inner[0].get("source")) and "hubs.com" in f_pcr_inner[0]["source"],
+       str(f_pcr_inner[0]))
+
+    p_pcr_pass = ws.new(PART, "p_vr_pcr_pass")
+    p_pcr_pass.session.batch([
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "S1"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [-20, -20], "p1": [20, 20]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S1", "distance": 20, "name": "E1"}},
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "S2"}},
+        {"command": "sketch.rectangle.two_point", "params": {"p0": [-10, -10], "p1": [10, 10]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S2", "distance": 10, "operation": "cut", "name": "Cut1"}},
+        {"command": "solid.fillet", "params": {"edges": [[-10, -10, 5], [-10, 10, 5], [10, -10, 5], [10, 10, 5]], "radius": 2.0}},
+    ])
+    r_pcr_pass = design_rules.check(p_pcr_pass.session, profile="cnc_alu")
+    ok("verfahrensregeln / cnc: filleted pocket inside corners pass pocket_corner_radius",
+       r_pcr_pass["rules"]["pocket_corner_radius"]["status"] == "ok"
+       and len(r_pcr_pass["rules"]["pocket_corner_radius"]["findings"]) == 0,
+       str(r_pcr_pass["rules"]["pocket_corner_radius"]))
+
+    # 4. CNC: hole_depth_ratio
+    p_hdr_trig = ws.new(PART, "p_vr_hdr_trig")
+    p_hdr_trig.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 60, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 4.0, "height": 50.0, "base": [20, 20, 60], "axis": [0, 0, -1], "operation": "cut", "name": "H"}},
+    ])
+    r_hdr_trig = design_rules.check(p_hdr_trig.session, profile="cnc_alu")
+    f_hdr = r_hdr_trig["rules"]["hole_depth_ratio"]["findings"]
+    ok("verfahrensregeln / cnc: hole depth ratio > 10x warns on twist drill limit",
+       r_hdr_trig["rules"]["hole_depth_ratio"]["status"] == "warn"
+       and len(f_hdr) == 1 and "10" in f_hdr[0]["message"],
+       str(r_hdr_trig["rules"]["hole_depth_ratio"]))
+    ok("verfahrensregeln / cnc: hole depth ratio finding contains source",
+       bool(f_hdr[0].get("source")) and "hubs.com" in f_hdr[0]["source"],
+       str(f_hdr[0]))
+
+    p_hdr_pass = ws.new(PART, "p_vr_hdr_pass")
+    p_hdr_pass.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 60, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 4.0, "height": 20.0, "base": [20, 20, 60], "axis": [0, 0, -1], "operation": "cut", "name": "H"}},
+    ])
+    r_hdr_pass = design_rules.check(p_hdr_pass.session, profile="cnc_alu")
+    ok("verfahrensregeln / cnc: hole depth ratio <= 10x passes hole_depth_ratio",
+       r_hdr_pass["rules"]["hole_depth_ratio"]["status"] == "ok"
+       and len(r_hdr_pass["rules"]["hole_depth_ratio"]["findings"]) == 0,
+       str(r_hdr_pass["rules"]["hole_depth_ratio"]))
+
+    # 5. CNC: undercut
+    p_uc_trig = ws.new(PART, "p_vr_uc_trig")
+    p_uc_trig.session.batch([
+        {"command": "sketch.create", "params": {"plane": "XZ", "name": "S1"}},
+        {"command": "sketch.line", "params": {"points": [[0, 0], [30, 0]]}},
+        {"command": "sketch.line", "params": {"points": [[30, 0], [30, 30]]}},
+        {"command": "sketch.line", "params": {"points": [[30, 30], [10, 30]]}},
+        {"command": "sketch.line", "params": {"points": [[10, 30], [10, 15]]}},
+        {"command": "sketch.line", "params": {"points": [[10, 15], [0, 15]]}},
+        {"command": "sketch.line", "params": {"points": [[0, 15], [0, 0]]}},
+        {"command": "sketch.finish", "params": {}},
+        {"command": "solid.extrude", "params": {"sketch": "S1", "distance": 20, "name": "E1"}},
+    ])
+    r_uc_trig = design_rules.check(p_uc_trig.session, profile="cnc_alu")
+    f_uc = r_uc_trig["rules"]["undercut"]["findings"]
+    ok("verfahrensregeln / cnc: downward ceiling above base warns on undercut",
+       r_uc_trig["rules"]["undercut"]["status"] == "warn"
+       and len(f_uc) >= 1 and "undercut" in f_uc[0]["message"].lower(),
+       str(r_uc_trig["rules"]["undercut"]))
+    ok("verfahrensregeln / cnc: undercut finding contains source",
+       bool(f_uc[0].get("source")) and "hubs.com" in f_uc[0]["source"],
+       str(f_uc[0]))
+
+    p_uc_pass = ws.new(PART, "p_vr_uc_pass")
+    p_uc_pass.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 20, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 10.0, "height": 10.0, "base": [20, 20, 20], "axis": [0, 0, -1], "operation": "cut", "name": "H"}},
+    ])
+    r_uc_pass = design_rules.check(p_uc_pass.session, profile="cnc_alu")
+    ok("verfahrensregeln / cnc: top-machined pocket without downward ceilings passes undercut",
+       r_uc_pass["rules"]["undercut"]["status"] == "ok"
+       and len(r_uc_pass["rules"]["undercut"]["findings"]) == 0,
+       str(r_uc_pass["rules"]["undercut"]))
+
+    for name in ("p_vr_hh_trig", "p_vr_hh_pass", "p_vr_hsi_trig", "p_vr_hsi_pass", "p_vr_hsi_direct",
+                 "p_vr_pcr_trig", "p_vr_pcr_pass", "p_vr_pcr_outer_r1", "p_vr_pcr_inner_r1",
+                 "p_vr_hdr_trig", "p_vr_hdr_pass", "p_vr_uc_trig", "p_vr_uc_pass"):
+        ws.close(name)
 
 
 def screw_shank_down(asm, occ_name):
@@ -2232,6 +2481,75 @@ def design_intent_checks(ws):
     ws.close(doc.name)
 
 
+def concentric_hole_checks(ws):
+    """Design intent rule: a centred hole on a circular planar face (cylinder, flange, ring)
+    is concentric to the largest circular edge, staying on the cylinder axis when D changes."""
+    from mechvane.ui.server import centred_hole_commands
+
+    doc = ws.new(PART, "intent_concentric")
+    s = doc.session
+    s.cmd("parameters.add", {"name": "D", "expression": "40 mm"})
+    s.cmd("solid.cylinder", {"base": [15, -7, 0], "diameter": "D", "height": 10, "operation": "new",
+                             "body_name": "Cyl"})
+
+    # Click off-centre on the top face (face at z = 10, normal [0, 0, 1])
+    cmds = centred_hole_commands(doc, {"centre": True, "position": [25, -2, 10], "direction": [0, 0, -1],
+                                       "diameter": 6, "depth": 5})
+    modeling.run_commands(doc, cmds)
+
+    def hole_cyl(body):
+        cyls = [f["cylinder"] for f in s.tool("body_topology", {"body": body})["faces"] if f.get("cylinder")]
+        holes = [c for c in cyls if abs(c["radius"] - 3.0) < 1e-4]
+        return holes[0] if holes else None
+
+    ha = hole_cyl("Cyl")
+    ok("design intent: concentric hole axis on cylinder lies on cylinder axis",
+       ha is not None and abs(ha["origin"][0] - 15) < 1e-5 and abs(ha["origin"][1] - (-7)) < 1e-5
+       and g.parallel(ha["axis"], [0, 0, 1]), str(ha))
+
+    # Changing parameter D from 40 mm to 60 mm keeps the hole on the cylinder axis
+    s.cmd("parameters.change", {"name": "D", "expression": "60 mm"})
+    ha_after = hole_cyl("Cyl")
+    ok("design intent: concentric hole stays on cylinder axis after D change to 60 mm",
+       ha_after is not None and abs(ha_after["origin"][0] - 15) < 1e-5 and abs(ha_after["origin"][1] - (-7)) < 1e-5
+       and g.parallel(ha_after["axis"], [0, 0, 1]), str(ha_after))
+    ws.close(doc.name)
+
+    # Second case: Ring (cylinder with a hole), hole concentric to the outer circular edge
+    doc = ws.new(PART, "intent_ring")
+    s = doc.session
+    s.cmd("parameters.add", {"name": "D_outer", "expression": "50 mm"})
+    s.cmd("solid.cylinder", {"base": [10, 20, 0], "diameter": "D_outer", "height": 15, "operation": "new",
+                             "body_name": "Ring"})
+    s.cmd("solid.hole", {"position": [10, 20, 15], "direction": [0, 0, -1], "diameter": 12, "depth": 15})
+
+    cmds = centred_hole_commands(doc, {"centre": True, "position": [22, 28, 15], "direction": [0, 0, -1],
+                                       "diameter": 20, "depth": 5})
+    modeling.run_commands(doc, cmds)
+    cyls = [f["cylinder"] for f in s.tool("body_topology", {"body": "Ring"})["faces"] if f.get("cylinder")]
+    c_new = [c for c in cyls if abs(c["radius"] - 10.0) < 1e-4]
+    ok("design intent: hole on ring is concentric to outer circular edge",
+       bool(c_new) and abs(c_new[0]["origin"][0] - 10) < 1e-5 and abs(c_new[0]["origin"][1] - 20) < 1e-5
+       and g.parallel(c_new[0]["axis"], [0, 0, 1]), str(c_new[:1]))
+
+    # Face without two opposite straight edges or a circular edge raises ValueError with extended message
+    s.cmd("sketch.create", {"plane": "XY", "name": "STri"})
+    s.cmd("sketch.line", {"points": [[0, 0], [20, 0]]})
+    s.cmd("sketch.line", {"points": [[20, 0], [10, 20]]})
+    s.cmd("sketch.line", {"points": [[10, 20], [0, 0]]})
+    s.cmd("sketch.finish")
+    s.cmd("solid.extrude", {"sketch": "STri", "distance": 10, "body_name": "Tri"})
+    tri_err = None
+    try:
+        centred_hole_commands(doc, {"centre": True, "position": [10, 7, 10], "direction": [0, 0, -1],
+                                    "diameter": 3, "depth": 3})
+    except ValueError as e:
+        tri_err = str(e)
+    ok("design intent: face without parallel or circular edges explains both choices",
+       tri_err == "the middle of this face needs two opposite straight edges or a circular edge", str(tri_err))
+    ws.close(doc.name)
+
+
 def profile_choice_checks(ws):
     """Extrude/Revolve dialogs: /api/sketches lists each sketch's profiles, and one profile index extrudes only it."""
     from mechvane.ui.server import sketches
@@ -2840,14 +3158,17 @@ def server_fixes_checks(tmp, ws):
            _check_not_zombie(pid6_to))
 
         # Finding 7: Session._rpc timeout support
-        s7 = Session()
         err_f7 = False
-        try:
-            s7.cmd("document.inspect", timeout=0.000001)
-        except SolidCraftError as e:
-            err_f7 = "timeout" in str(e).lower()
-        finally:
-            s7.close()
+        for _attempt in range(5):  # a 1 microsecond limit races the answer; under load the answer can win once
+            s7 = Session()
+            try:
+                s7.cmd("document.inspect", timeout=0.000001)
+            except SolidCraftError as e:
+                err_f7 = "timeout" in str(e).lower()
+            finally:
+                s7.close()
+            if err_f7:
+                break
         ok("finding 7: Session timeout raises SolidCraftError and closes session", err_f7)
 
         # UTF-8 chunk boundary: Session reader buffers bytes so multi-byte UTF-8 across chunks is not corrupted
@@ -3034,7 +3355,7 @@ def mcp_server(tmp):
                                  "delete_bolted_connection", "delete_joint", "edit_bolted_connection",
                                  "edit_in_place", "edit_joint", "find", "finish_edit",
                                  "list_bolted_connections", "list_commands", "list_standard_parts", "measure", "new_part",
-                                 "preview_bolted_connection", "run", "standard_part", "to_part_coords",
+                                 "preview_bolted_connection", "rename_feature", "run", "standard_part", "to_part_coords",
                                  "update_links"} <= tools, str(sorted(tools)))
         err, _ = call("new_part", {"name": "bracket"})
         err2, r = call("run", {"document": "bracket", "commands":
@@ -3094,6 +3415,16 @@ def mcp_server(tmp):
         shot_content = shot_raw.get("content", [])
         ok("mcp: screenshot without path returns inline image",
            len(shot_content) == 1 and shot_content[0].get("type") == "image" and len(shot_content[0].get("data", "")) > 1000)
+        err_vv, res_vv = call("verify_view", {"document": "bracket", "path": "bracket_verify.png"})
+        vv_file = Path(tmp) / "mcp" / "bracket_verify.png"
+        ok("mcp: verify_view with path saves file and replies with metadata",
+           not err_vv and vv_file.is_file() and res_vv.get("size") == vv_file.stat().st_size
+           and res_vv.get("width", 0) > 0 and res_vv.get("height", 0) > 0,
+           str(res_vv)[:300])
+        vv_raw = rpc("tools/call", {"name": "verify_view", "arguments": {"document": "bracket"}})["result"]
+        vv_content = vv_raw.get("content", [])
+        ok("mcp: verify_view without path returns inline image",
+           len(vv_content) == 1 and vv_content[0].get("type") == "image" and len(vv_content[0].get("data", "")) > 1000)
         call("new_assembly", {"name": "rot_unit"})
         err_rot, ins_rot = call("insert_part", {"assembly": "rot_unit", "part_path": "bracket.solidcraft",
                                                "name": "BracketRot", "rotate": {"axis": [1, 0, 0], "angle": 90},
@@ -3125,6 +3456,38 @@ def mcp_server(tmp):
         ok("mcp: close_document with discard=true closes dirty document", not err_close_discard and res_discard.get("closed") == "bracket")
 
         call("open_document", {"path": "bracket.solidcraft"})
+
+        # Joint check before rename: insert nut into unit and add a joint to Bracket:1
+        call("insert_part", {"assembly": "unit", "part_path": "nut6.solidcraft", "name": "Nut"})
+        err_aj, aj = call("add_joint", {"assembly": "unit", "params": {
+            "name": "NutOnPlate", "type": "rigid",
+            "a": {"occurrence": "Bracket:1", "point": [15, 10, 4], "z": [0, 0, 1]},
+            "b": {"occurrence": "Nut:1", "point": [0, 0, 0], "z": [0, 0, 1]}
+        }})
+        err_cj1, cj1 = call("check_joints", {"assembly": "unit"})
+
+        # MCP rename_feature: validation, browser tree with sketch ownership, and joint integrity
+        err_rn_empty, _ = call("rename_feature", {"document": "bracket", "feature": "Plate", "name": ""})
+        err_rn_dup, _ = call("rename_feature", {"document": "bracket", "feature": "Plate", "name": "Base"})
+        err_rn, res_rn = call("rename_feature", {"document": "bracket", "feature": "Plate", "name": "MainPlate"})
+        err_b_rn, b_rn = call("browser", {"document": "bracket"})
+        err_rn_sk, res_rn_sk = call("rename_feature", {"document": "bracket", "feature": "Base", "name": "BaseSketch"})
+        err_b_rn_sk, b_rn_sk = call("browser", {"document": "bracket"})
+        call("save_document", {"document": "bracket"})
+        err_cj2, cj2 = call("check_joints", {"assembly": "unit"})
+
+        ok("mcp: rename_feature rejects invalid/duplicate names, renames features and sketches, preserving sketch ownership and assembly joints",
+           err_rn_empty and err_rn_dup and not err_rn and not err_rn_sk and not err_aj and not err_cj1 and not err_cj2
+           and all(j.get("status") == "ok" for j in cj2.get("joints", []))
+           and "MainPlate [ExtrudeFeature]" in b_rn.get("text", "") and "Base" in b_rn.get("text", "")
+           and "MainPlate [ExtrudeFeature]" in b_rn_sk.get("text", "") and "BaseSketch" in b_rn_sk.get("text", ""),
+           f"{err_rn_empty} {err_rn_dup} {res_rn} {res_rn_sk} {b_rn_sk} {cj2}")
+
+        # Rename back to original names so delete_feature and following checks work as before
+        call("rename_feature", {"document": "bracket", "feature": "MainPlate", "name": "Plate"})
+        call("rename_feature", {"document": "bracket", "feature": "BaseSketch", "name": "Base"})
+        call("save_document", {"document": "bracket"})
+
         err_df, res_df = call("delete_feature", {"document": "bracket", "feature": "Plate"})
         ok("mcp: delete_feature deletes feature and its owned sketch",
            not err_df and "Plate" in res_df.get("deleted", []), str(res_df))
@@ -3498,8 +3861,11 @@ def praxistest_5_fixes_checks(ws):
        holes == [] and r["verdict"] != "fail", f"holes={holes} verdict={r['verdict']}")
     ws.close("p5_shaft")
 
-    # Finding 8: a countersink that notches a neighbouring wall fails countersink_clearance
-    for name, y, expect in (("p5_cs_wall", 23.0, "fail"), ("p5_cs_free", 10.0, "ok")):
+    # Finding 8: a countersink that notches a neighbouring wall fails countersink_clearance. SolidCraft 0.30 cut the
+    # cone past the entry face (volume lower than with a free countersink), 0.40 no longer does. So the rule must
+    # fire exactly when the wall was notched, whichever SolidCraft runs.
+    cs_volume, cs_status = {}, {}
+    for name, y in (("p5_cs_wall", 23.0), ("p5_cs_free", 10.0)):
         cs = ws.new(PART, name)
         cs.session.batch([
             {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 8, "corner": [0, 0, 0], "name": "Plate"}},
@@ -3510,10 +3876,13 @@ def praxistest_5_fixes_checks(ws):
                                                  "cs_angle": 90, "name": "CS"}},
         ])
         r = design_rules.check(cs.session, profile="fdm_0.4")
-        st = r["rules"]["countersink_clearance"]["status"]
-        ok(f"praxistest 5 / finding 8: countersink at y={y} gives countersink_clearance {expect}",
-           st == expect, f"status={st}")
+        cs_status[name] = r["rules"]["countersink_clearance"]["status"]
+        cs_volume[name] = cs.session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
         ws.close(name)
+    notched = cs_volume["p5_cs_wall"] < cs_volume["p5_cs_free"] - 0.1
+    ok("praxistest 5 / finding 8: countersink_clearance fails exactly when the countersink notched the wall",
+       (cs_status["p5_cs_wall"] == "fail") == notched and cs_status["p5_cs_free"] == "ok",
+       f"notched={notched}, volumes={cs_volume}, status={cs_status}")
 
     # Finding 4: measure on an assembly reports world coordinates
     blk = ws.new(PART, "p5_block")
@@ -3863,6 +4232,16 @@ def bolted_anchor_associativity_checks(ws):
         ok("bolted connection: anchor lost reports anchor_lost without guessing or changing",
            b_lost.get("status") == "anchor_lost",
            str(b_lost))
+        # SolidCraft 0.40 refuses to read a part with a failing feature again; Mechvane then updates the other
+        # links and names the part (0.30 links it anyway, so no warning).
+        blocked_w = [w for w in r_lost.get("warnings", []) if w.get("status") == "link_blocked"]
+        ok("update_links with a failing part reports link_blocked with the failing feature (SolidCraft 0.40) or links it",
+           not blocked_w or any(w.get("feature") == "Hole_Ruthex_M3" for w in blocked_w), str(blocked_w)[:300])
+        from mechvane.ui.server import _format_update_links_message
+        msg_blocked = _format_update_links_message(
+            [], [], [], [], [{"joint": None, "status": "link_blocked", "component": "Gehaeuse", "feature": "Hole_Ruthex_M3"}])
+        ok("update links message names a part that was not updated",
+           "not updated: Gehaeuse (Hole_Ruthex_M3 fails)" in msg_blocked, msg_blocked)
 
     finally:
         server.ws = old_server_ws
@@ -4015,7 +4394,7 @@ def web_ui_stage1_checks(ws):
     n_tris = len(b_fl["indices"]) // 3
     face_idx_set = {f["index"] for f in b_fl["faces"]}
     ok("web ui mesh.py: flange face count matches model.faces, valid triangle face_ids and face names present",
-       len(b_fl["faces"]) == len(raw_faces) == 18
+       len(b_fl["faces"]) == len(raw_faces) >= 14  # 18 on SolidCraft 0.30 (hole faces in two halves), 14 on 0.40
        and n_tris == len(b_fl["face_ids"]) > 0
        and all(0 <= vi < n_verts for vi in b_fl["indices"])
        and all(fid in face_idx_set for fid in b_fl["face_ids"])
@@ -4042,6 +4421,33 @@ def web_ui_stage1_checks(ws):
            and st_t == 200 and d_tree.get("kind") == "part" and len(d_tree.get("features", [])) > 0
            and st_f == 200 and "findings" in d_find and "verdict" in d_find,
            f"ver={d_ver} tree_kind={d_tree.get('kind')} find_keys={list(d_find.keys())}")
+
+        # Test /api/visibility endpoint (issue #65)
+        fl_body_name = b_fl["name"]
+        req_hide = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/visibility",
+            data=json.dumps({"items": [fl_body_name], "visible": False}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req_hide, timeout=10) as resp:
+            st_vis, d_vis = resp.status, json.loads(resp.read().decode("utf-8"))
+        _, d_tree_hidden = _get_json("/api/tree")
+
+        req_show = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/visibility",
+            data=json.dumps({"items": [fl_body_name], "visible": True}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req_show, timeout=10) as resp:
+            st_vis2, d_vis2 = resp.status, json.loads(resp.read().decode("utf-8"))
+        _, d_tree_restored = _get_json("/api/tree")
+
+        ok("web ui server: /api/visibility toggles body visibility and updates tree",
+           st_vis == 200 and d_vis.get("ok") is True and fl_body_name in d_tree_hidden.get("hidden_bodies", [])
+           and st_vis2 == 200 and d_vis2.get("ok") is True and fl_body_name not in d_tree_restored.get("hidden_bodies", []),
+           f"d_vis={d_vis} hidden={d_tree_hidden.get('hidden_bodies')} restored={d_tree_restored.get('hidden_bodies')}")
 
         import re
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=10) as resp:
@@ -4132,12 +4538,14 @@ def web_ui_stage1_checks(ws):
         p_a.path.write_bytes(original)
         with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", timeout=10) as resp:
             served = resp.read()
-        req = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", data=edited, method="POST")
+        req = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", data=edited,
+                                     headers={"Content-Type": "application/octet-stream"}, method="POST")
         with urllib.request.urlopen(req, timeout=60) as resp:
             saved = json.loads(resp.read().decode("utf-8"))
         try:
             urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/other.solidcraft",
-                                                          data=b"x", method="POST"), timeout=10)
+                                                          data=b"x", headers={"Content-Type": "application/octet-stream"},
+                                                          method="POST"), timeout=10)
             foreign = 200
         except urllib.error.HTTPError as e:
             foreign = e.code
@@ -4184,14 +4592,16 @@ def web_ui_stage1_checks(ws):
 
         # /api/open/../../etc -> 404
         try:
-            req_bad_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/../../etc", data=b"", method="POST")
+            req_bad_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/../../etc", data=b"",
+                                                  headers={"Content-Type": "application/json"}, method="POST")
             with urllib.request.urlopen(req_bad_open, timeout=10) as resp:
                 bad_open_code = resp.status
         except urllib.error.HTTPError as e:
             bad_open_code = e.code
 
         # /api/open switches (then /api/files lists the linked parts for the assembly)
-        req_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/ui_asm.solidcraft", data=b"", method="POST")
+        req_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/ui_asm.solidcraft", data=b"",
+                                          headers={"Content-Type": "application/json"}, method="POST")
         with urllib.request.urlopen(req_open, timeout=10) as resp:
             opened_asm = json.loads(resp.read().decode("utf-8"))
         with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/files", timeout=10) as resp:
@@ -4269,20 +4679,106 @@ def web_ui_stage1_checks(ws):
            and "ui_part_b.solidcraft" in c_docs
            and ("kaputt.solidcraft" not in c_docs or c_docs.get("kaputt.solidcraft") == PART),
            f"code={corrupt_code} docs={c_docs}")
+
+        # /api/folders lists roots, recent folders, subfolders with counts, and STEP files
+        sub_dir = ws.root / "ui_subfolder"
+        sub_dir.mkdir(exist_ok=True)
+        sub_part = ws.new(PART, "sub_part", path=str(sub_dir / "sub_part.solidcraft"))
+        sub_part.save()
+        ws.close("sub_part")
+        flansch_step = Path(__file__).resolve().parents[2] / "docs/research/2026-10-phase0-solidcraft/flansch.step"
+        if flansch_step.exists():
+            shutil.copyfile(flansch_step, sub_dir / "flansch.step")
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/folders?path={urllib.parse.quote(str(ws.root))}", timeout=10) as resp:
+            folders_data = json.loads(resp.read().decode("utf-8"))
+
+        sub_entry = next((f for f in folders_data.get("folders", []) if f["name"] == "ui_subfolder"), None)
+        ok("web ui /api/folders: lists subfolders with .solidcraft and STEP counts, roots and recent folders",
+           folders_data.get("current") == str(ws.root.resolve())
+           and len(folders_data.get("roots", [])) >= 1
+           and sub_entry is not None
+           and sub_entry.get("solidcraft_count") == 1
+           and sub_entry.get("step_count") == 1
+           and any(r.get("path") == str(ws.root.resolve()) for r in folders_data.get("recent", [])),
+           f"folders_data={folders_data}")
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/folders?path={urllib.parse.quote(str(sub_dir))}", timeout=10) as resp:
+            sub_folder_data = json.loads(resp.read().decode("utf-8"))
+        ok("web ui /api/folders: lists STEP files in current folder",
+           any(sf["name"] == "flansch.step" for sf in sub_folder_data.get("step_files", [])),
+           f"step_files={sub_folder_data.get('step_files')}")
+
+        # /api/project/open switches project folder, closes old docs, updates recent
+        new_proj_dir = ws.root.parent / "ui_switched_proj"
+        shutil.rmtree(new_proj_dir, ignore_errors=True)
+        new_proj_dir.mkdir(exist_ok=True)
+        new_ws = Workspace(new_proj_dir)
+        try:
+            p_switch = new_ws.new(PART, "switched_part", overwrite=True)
+            p_switch.save()
+        finally:
+            new_ws.close_all()
+
+        req_switch = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/project/open",
+                                            data=json.dumps({"folder": str(new_proj_dir)}).encode("utf-8"),
+                                            headers={"Content-Type": "application/json"},
+                                            method="POST")
+        with urllib.request.urlopen(req_switch, timeout=10) as resp:
+            switch_res = json.loads(resp.read().decode("utf-8"))
+
+        ok("web ui /api/project/open: switches project folder and returns new project data",
+           switch_res.get("folder") == "ui_switched_proj"
+           and switch_res.get("mode") == "folder"
+           and any(d["name"] == "switched_part.solidcraft" for d in switch_res.get("documents", []))
+           and srv_fld.folder_path == new_proj_dir.resolve(),
+           f"switch_res={switch_res}")
+
+        # /api/project/open with invalid folder returns 404
+        try:
+            req_bad_switch = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/project/open",
+                                                    data=json.dumps({"folder": str(ws.root.parent / "nonexistent_dir")}).encode("utf-8"),
+                                                    headers={"Content-Type": "application/json"},
+                                                    method="POST")
+            with urllib.request.urlopen(req_bad_switch, timeout=10) as resp:
+                bad_switch_code = resp.status
+        except urllib.error.HTTPError as e:
+            bad_switch_code = e.code
+        ok("web ui /api/project/open: invalid folder returns 404", bad_switch_code == 404, str(bad_switch_code))
+
+        # /api/import_step with file from outside the project folder
+        ext_step_dir = ws.root.parent / "ui_ext_step_dir"
+        shutil.rmtree(ext_step_dir, ignore_errors=True)
+        ext_step_dir.mkdir(exist_ok=True)
+        if flansch_step.exists():
+            ext_step_file = ext_step_dir / "ext_bought_part.step"
+            shutil.copyfile(flansch_step, ext_step_file)
+            req_ext_import = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/import_step",
+                                                    data=json.dumps({"file": str(ext_step_file)}).encode("utf-8"),
+                                                    headers={"Content-Type": "application/json"},
+                                                    method="POST")
+            with urllib.request.urlopen(req_ext_import, timeout=15) as resp:
+                ext_import_res = json.loads(resp.read().decode("utf-8"))
+            ok("web ui /api/import_step: imports external STEP file into current project folder",
+               ext_import_res.get("document") == "ext_bought_part.solidcraft"
+               and (new_proj_dir / "ext_bought_part.solidcraft").exists()
+               and ext_step_file.exists(),
+               f"ext_import_res={ext_import_res}")
     finally:
         srv_fld.shutdown()
         srv_fld.server_close()
+        shutil.rmtree(new_proj_dir, ignore_errors=True)
+        shutil.rmtree(ext_step_dir, ignore_errors=True)
+        shutil.rmtree(sub_dir, ignore_errors=True)
 
     # 4. Part with intentional finding (countersink too close to wall as in Befund 8):
-    # finding arrives in /api/findings with a face name that exists in /api/mesh
+    # finding arrives in /api/findings with a face name that exists in /api/mesh. A hole too close to the edge gives
+    # a finding with a face on every SolidCraft (the countersink notch used before is gone since SolidCraft 0.40).
     cs_doc = ws.new(PART, "ui_cs_wall")
     cs_doc.session.batch([
         {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 8, "corner": [0, 0, 0], "name": "Plate"}},
-        {"command": "solid.box", "params": {"length": 40, "width": 10, "height": 30, "corner": [0, 30, 8],
-                                            "operation": "join", "name": "Wall"}},
-        {"command": "solid.hole", "params": {"position": [20, 23.0, 8], "direction": [0, 0, -1], "clearance": "M6",
-                                             "depth": 8, "type": "countersink", "cs_diameter": 13.7,
-                                             "cs_angle": 90, "name": "CS"}},
+        {"command": "solid.hole", "params": {"position": [20, 2.5, 8], "direction": [0, 0, -1], "clearance": "M6",
+                                             "depth": 8, "name": "NearEdge"}},
     ])
     cs_doc.save()
 
@@ -4300,15 +4796,15 @@ def web_ui_stage1_checks(ws):
         mesh_fids = {fid for b in cs_mesh.get("bodies", []) for fid in b.get("face_ids", [])}
         cs_fail = next(
             (f for f in cs_findings.get("findings", [])
-             if f.get("rule") == "countersink_clearance" and f.get("status") == "fail"),
+             if f.get("rule") == "hole_edge_distance" and f.get("status") == "fail"),
             None,
         )
         cs_face = cs_fail.get("face") if cs_fail else None
-        ok("web ui findings: countersink wall finding arrives in /api/findings with a face name present in /api/mesh",
+        ok("web ui findings: a finding with a face arrives in /api/findings with a face name present in /api/mesh",
            cs_fail is not None and cs_face in mesh_face_map and mesh_face_map[cs_face] in mesh_fids,
            f"cs_fail={cs_fail} mesh_faces={list(mesh_face_map.keys())}")
         cs_sel = (cs_fail or {}).get("select") or {}
-        ok("web ui model mode: the countersink finding carries a select.set item for its face (index as in /api/mesh)",
+        ok("web ui model mode: the finding carries a select.set item for its face (index as in /api/mesh)",
            cs_sel.get("type") == "face" and cs_sel.get("index") == mesh_face_map.get(cs_face)
            and cs_sel.get("body") in {b["name"] for b in cs_mesh.get("bodies", [])} and len(cs_sel.get("point") or []) == 3,
            f"select={cs_sel} face={cs_face}")
@@ -4329,6 +4825,94 @@ def web_ui_stage1_checks(ws):
     finally:
         srv_cs.shutdown()
         srv_cs.server_close()
+
+    # 5. UI server security checks (issue #62): Host and Origin headers, Content-Type
+    srv_sec = create_server(fl_doc.path, port=0)
+    port_sec = srv_sec.server_address[1]
+    th_sec = threading.Thread(target=srv_sec.serve_forever, daemon=True)
+    th_sec.start()
+    try:
+        def _sec_req(path, method="GET", host=f"127.0.0.1:{port_sec}", origin=None, content_type=None, data=None):
+            headers = {}
+            if host is not None:
+                headers["Host"] = host
+            if origin is not None:
+                headers["Origin"] = origin
+            if content_type is not None:
+                headers["Content-Type"] = content_type
+            body = data.encode("utf-8") if isinstance(data, str) else data
+            req = urllib.request.Request(f"http://127.0.0.1:{port_sec}{path}", data=body, headers=headers, method=method)
+            try:
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    return resp.status, resp.read()
+            except urllib.error.HTTPError as e:
+                return e.code, e.read()
+
+        # 1. Fremder Host -> 403 on GET and POST
+        st_get_evil_host, _ = _sec_req("/api/version", method="GET", host="evil.com")
+        st_post_evil_host, _ = _sec_req("/api/speech", method="POST", host="evil.com",
+                                        content_type="application/json", data='{"text": "hi"}')
+        st_rebinding_host, _ = _sec_req("/api/folders", method="GET", host=f"attacker.com:{port_sec}")
+        st_wrong_port_host, _ = _sec_req("/api/version", method="GET", host="127.0.0.1:9999")
+        st_ipv6_host, _ = _sec_req("/api/version", method="GET", host=f"[::1]:{port_sec}")
+        st_lh_host, _ = _sec_req("/api/version", method="GET", host=f"localhost:{port_sec}")
+        ok("web ui security: foreign Host header returns 403, local loopback (127.0.0.1, localhost, [::1]) returns 200",
+           st_get_evil_host == 403 and st_post_evil_host == 403
+           and st_rebinding_host == 403 and st_wrong_port_host == 403
+           and st_ipv6_host == 200 and st_lh_host == 200,
+           f"get={st_get_evil_host} post={st_post_evil_host} rebind={st_rebinding_host} wrong_port={st_wrong_port_host} ipv6={st_ipv6_host} lh={st_lh_host}")
+
+        # 2. Fremder Origin bei POST -> 403
+        st_evil_origin, _ = _sec_req("/api/speech", method="POST", origin="http://evil.com",
+                                     content_type="application/json", data='{"text": "hi"}')
+        st_evil_origin_port, _ = _sec_req("/api/speech", method="POST", origin=f"http://evil.com:{port_sec}",
+                                          content_type="application/json", data='{"text": "hi"}')
+        st_null_origin, _ = _sec_req("/api/speech", method="POST", origin="null",
+                                     content_type="application/json", data='{"text": "hi"}')
+        st_wrong_port_origin, _ = _sec_req("/api/speech", method="POST", origin="http://127.0.0.1:9999",
+                                           content_type="application/json", data='{"text": "hi"}')
+        ok("web ui security: foreign Origin header on POST returns 403",
+           st_evil_origin == 403 and st_evil_origin_port == 403
+           and st_null_origin == 403 and st_wrong_port_origin == 403,
+           f"evil={st_evil_origin} port={st_evil_origin_port} null={st_null_origin} wrong_port={st_wrong_port_origin}")
+
+        # 3. Eigener Origin und fehlender Origin -> OK
+        st_own_origin_ip, _ = _sec_req("/api/speech", method="POST", origin=f"http://127.0.0.1:{port_sec}",
+                                       content_type="application/json", data='{"text": "M6"}')
+        st_own_origin_lh, _ = _sec_req("/api/speech", method="POST", origin=f"http://localhost:{port_sec}",
+                                       content_type="application/json", data='{"text": "M6"}')
+        st_own_origin_ipv6, _ = _sec_req("/api/speech", method="POST", origin=f"http://[::1]:{port_sec}",
+                                         content_type="application/json", data='{"text": "M6"}')
+        st_no_origin, _ = _sec_req("/api/speech", method="POST", origin=None,
+                                   content_type="application/json", data='{"text": "M6"}')
+        ok("web ui security: own Origin and missing Origin on POST succeed",
+           st_own_origin_ip == 200 and st_own_origin_lh == 200 and st_own_origin_ipv6 == 200 and st_no_origin == 200,
+           f"own_ip={st_own_origin_ip} own_lh={st_own_origin_lh} own_ipv6={st_own_origin_ipv6} no_origin={st_no_origin}")
+
+        # 4. Form-Content-Type -> 403
+        st_form_url, _ = _sec_req("/api/speech", method="POST",
+                                  content_type="application/x-www-form-urlencoded", data="text=hello")
+        st_form_multi, _ = _sec_req("/api/speech", method="POST",
+                                    content_type="multipart/form-data; boundary=xyz", data="--xyz\r\n")
+        st_form_text, _ = _sec_req("/api/speech", method="POST",
+                                   content_type="text/plain", data="text=hello")
+        st_no_ct, _ = _sec_req("/api/speech", method="POST",
+                               content_type=None, data='{"text": "hello"}')
+        ok("web ui security: form Content-Types and missing Content-Type on POST return 403",
+           st_form_url == 403 and st_form_multi == 403 and st_form_text == 403 and st_no_ct == 403,
+           f"urlencoded={st_form_url} multipart={st_form_multi} text={st_form_text} no_ct={st_no_ct}")
+
+        # 5. PUT/DELETE security checks
+        st_put_evil_host, _ = _sec_req("/api/version", method="PUT", host="evil.com", content_type="application/json", data='{}')
+        st_put_evil_origin, _ = _sec_req("/api/version", method="PUT", origin="http://evil.com", content_type="application/json", data='{}')
+        st_put_form_ct, _ = _sec_req("/api/version", method="PUT", content_type="text/plain", data='hello')
+        st_put_ok_sec, _ = _sec_req("/api/version", method="PUT", content_type="application/json", data='{}')
+        ok("web ui security: PUT/DELETE check Host, Origin and Content-Type (403), valid headers return 405",
+           st_put_evil_host == 403 and st_put_evil_origin == 403 and st_put_form_ct == 403 and st_put_ok_sec == 405,
+           f"evil_host={st_put_evil_host} evil_origin={st_put_evil_origin} form_ct={st_put_form_ct} ok_sec={st_put_ok_sec}")
+    finally:
+        srv_sec.shutdown()
+        srv_sec.server_close()
 
     ws.close_all()
 
@@ -5020,7 +5604,8 @@ def agent_turns_checks(tmp):
         base = f"http://127.0.0.1:{srv.server_address[1]}"
 
         def post(path, body=b"{}"):
-            req = urllib.request.Request(base + path, data=body, method="POST")
+            ct = "application/octet-stream" if path.startswith("/api/file/") else "application/json"
+            req = urllib.request.Request(base + path, data=body, headers={"Content-Type": ct}, method="POST")
             try:
                 with urllib.request.urlopen(req) as r:
                     return r.status, json.loads(r.read())
@@ -5185,11 +5770,11 @@ def selection_checks(tmp):
     w = Workspace(folder)
     try:
         br = w.open("bracket.solidcraft")
-        face = next(f for f in br.session.cmd("model.faces", {"body": "Bracket"})["faces"] if f["name"] == "F4:csink:base")
+        face = next(f for f in br.session.cmd("model.faces", {"body": "Bracket"})["faces"] if f["name"] == "F1:+z")
         r = selection.resolve(w, br, [{"type": "face", "body": "Bracket", "index": face["index"], "point": [42.2, 30.4, 8.9]},
                                       {"type": "edge", "body": "Bracket", "index": 0, "point": [0, 0, 0]}])
         ok("selection: a part face gets its Mechvane name, feature, normal, click and centroid",
-           r[0]["name"] == "F4:csink:base" and r[0]["feature"] == "CountersinkNearWall" and r[0]["normal"] == [0.0, 0.0, -1.0]
+           r[0]["name"] == "F1:+z" and r[0]["feature"] == "BasePlate" and r[0]["normal"] == [0.0, 0.0, 1.0]
            and r[0]["click"] == [42.2, 30.4, 8.9] and "centroid" in r[0] and r[1]["kind"] == "edge" and r[1].get("length"), str(r))
         asm = w.open("bolted_plates.solidcraft")
         f = next(f for f in asm.session.cmd("model.faces", {"body": "TopPlate"})["faces"]
@@ -5205,12 +5790,13 @@ def selection_checks(tmp):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/resolve_selection", method="POST",
+                                     headers={"Content-Type": "application/json"},
                                      data=json.dumps({"items": [{"type": "face", "body": "Bracket", "index": face["index"],
                                                                  "point": [42.2, 30.4, 8.9]}]}).encode())
         with urllib.request.urlopen(req) as resp:
             got = json.loads(resp.read())
         ok("selection: /api/resolve_selection answers with the resolved items",
-           got["selection"][0]["name"] == "F4:csink:base", str(got))
+           got["selection"][0]["name"] == "F1:+z", str(got))
     finally:
         srv.shutdown()
         srv.server_close()
@@ -5248,6 +5834,7 @@ def speech_checks(tmp):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/speech", method="POST",
+                                     headers={"Content-Type": "application/json"},
                                      data=json.dumps({"text": "an countersink near wall eine Phase eins mal fünfundvierzig Grad"}).encode())
         with urllib.request.urlopen(req) as resp:
             got = json.loads(resp.read())
@@ -5310,7 +5897,8 @@ def params_checks(tmp):
     base = f"http://127.0.0.1:{srv.server_address[1]}/api/params"
 
     def post(changes):
-        req = urllib.request.Request(base, method="POST", data=json.dumps({"changes": changes}).encode())
+        req = urllib.request.Request(base, method="POST", data=json.dumps({"changes": changes}).encode(),
+                                     headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req) as resp:
                 return resp.status, json.loads(resp.read())
@@ -5346,6 +5934,7 @@ def params_checks(tmp):
         # profile and material chosen on the Check page are saved in the part file, not only in the browser
         def post_rules(body):
             req = urllib.request.Request(base.replace("/api/params", "/api/rules"), method="POST",
+                                         headers={"Content-Type": "application/json"},
                                          data=json.dumps(body).encode())
             try:
                 with urllib.request.urlopen(req) as resp:
@@ -5401,13 +5990,58 @@ def params_checks(tmp):
         ok("ui: New part uses the app's own dialog (newpart.js served), no browser prompt()",
            "export function openNewPartDialog" in newpart_js and "prompt(" not in app_js
            and 'from "./newpart.js"' in app_js)
+
+        # Issue #73: Sketch dimensions in parameter panel
+        sketch_part = w.new(PART, "sketch_params_test")
+        try:
+            sp = sketch_part.session
+            sp.cmd("sketch.create", {"plane": "XY", "name": "Sketch1"})
+            sp.cmd("sketch.rectangle.two_point", {"p0": [0, 0], "p1": [40, 20]})
+            sp.cmd("sketch.dimension", {"entities": ["l1"], "type": "length", "value": "b = 40"})
+            sp.cmd("sketch.dimension", {"entities": ["l2"], "type": "length", "value": "20"})
+            sp.cmd("sketch.finish", {})
+            sp.cmd("solid.extrude", {"sketch": "Sketch1", "distance": 10, "name": "Extrude1"})
+            sketch_part.save()
+        finally:
+            w.close("sketch_params_test")
+
+        sketch_path = folder / "sketch_params_test.solidcraft"
+        srv_sk = ui_server.create_server(str(sketch_path), port=0)
+        threading.Thread(target=srv_sk.serve_forever, daemon=True).start()
+        base_sk = f"http://127.0.0.1:{srv_sk.server_address[1]}/api/params"
+        try:
+            with urllib.request.urlopen(base_sk) as resp:
+                sk_listed = json.loads(resp.read())["parameters"]
+            names = [p["name"] for p in sk_listed]
+            by_name = {p["name"]: p for p in sk_listed}
+            sk_dims = [p for p in sk_listed if p.get("sketch") == "Sketch1"]
+            named_first = [p["name"] for p in sk_dims] == ["d1", "d2"]
+            req_sk = urllib.request.Request(base_sk, method="POST",
+                                            data=json.dumps({"changes": {"b": "50"}}).encode(),
+                                            headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req_sk) as resp:
+                sk_changed = json.loads(resp.read())
+            with srv_sk.lock:
+                doc_sk = srv_sk.ensure_current()
+                bodies = doc_sk.session.cmd("document.inspect", {"measure": True})["bodies"]
+                bbox = bodies[0]["bbox"]
+                b_width = bbox["max"][0] - bbox["min"][0]
+            ok("ui: /api/params lists sketch dimensions by sketch with named first; setting b=50 widens bbox to 50",
+               "b" in names and "d2" in names and by_name["b"]["value"] == 40.0 and by_name["d2"]["value"] == 20.0
+               and by_name["d2"].get("sketch") == "Sketch1" and named_first and b_width == 50.0,
+               f"{sk_listed} width={b_width}")
+        finally:
+            srv_sk.shutdown()
+            srv_sk.server_close()
     finally:
         srv.shutdown()
         srv.server_close()
 
 
 VIEWTOOLS_TEST = r"""
+import * as THREE from "three";
 import { faceInfo, bodyEdges, edgeInfo, pointOnEdge, edgeKey } from "./viewtools.js";
+import { loopPoints, profileShapes, profileAt, sketchLineAt, boxFromDrag, boxTakesPolyline, boxTakesLine, boxTakesCircle, boxTakesArc, boxTakesCurve } from "./sketchgeom.js";
 // a cylinder r 8 around (30, 20) along Z, split into two half faces like SolidCraft's seam, and a flat face
 const positions = [], indices = [], face_ids = [];
 const n = 48;
@@ -5462,6 +6096,68 @@ console.log(JSON.stringify({
   chordR: Math.hypot(chordMid.x - 30, chordMid.y - 20), pickR: Math.hypot(onHole[0] - 30, onHole[1] - 20), pickZ: onHole[2],
   seamZ: onSeam[2], seamLen: seam.length, sameKey: edgeKey(hole) === edgeKey(otherHalf), seamKey: edgeKey(seam) !== edgeKey(hole),
 }));
+const curves = {
+  l1: { type: "line", start_at: [10, 10], end_at: [10, 50] },
+  l2: { type: "line", start_at: [70, 50], end_at: [10, 50] },
+  l4: { type: "line", start_at: [10, 10], end_at: [70, 10] },
+  l3: { type: "line", start_at: [70, 10], end_at: [70, 50] },
+};
+const loop = loopPoints(["l1", "l2", "l4", "l3"], curves);
+const shape = new THREE.Shape(loop.map(([u, v]) => new THREE.Vector2(u, v)));
+const geom = new THREE.ShapeGeometry(shape);
+console.log(JSON.stringify({
+  loopLen: loop.length,
+  triangles: geom.index ? geom.index.count / 3 : 0,
+  firstPt: loop[0],
+  lastPt: loop[loop.length - 1],
+}));
+const sk = {
+  plane: { origin: [0, 0, 0], x_dir: [1, 0, 0], y_dir: [0, 1, 0] },
+  curves: [
+    { id: "c1", type: "circle", center_at: [20, 0], radius: 4, construction: false },
+    { id: "l1", type: "line", start_at: [10, -15], end_at: [10, 15], construction: true },
+    { id: "l2", type: "line", start_at: [0, 0], end_at: [30, 0], construction: false },
+  ],
+  profiles: [{ index: 0, area: 50.265, curves: ["c1"], holes: 0, hole_loops: [] }],
+};
+const shapes = profileShapes(sk);
+const profHit = profileAt(shapes, [21, 1]);
+const lineHit1 = sketchLineAt(sk, [10.4, 5], 1.0);
+const lineHit2 = sketchLineAt(sk, [25, -0.3], 1.0);
+const lineMiss = sketchLineAt(sk, [10, 25], 2.0);
+console.log(JSON.stringify({
+  profIndex: profHit?.index ?? null,
+  line1: lineHit1?.id ?? null, line1Const: lineHit1?.construction ?? null,
+  line2: lineHit2?.id ?? null, line2Const: lineHit2?.construction ?? null,
+  lineMiss: lineMiss ?? null,
+}));
+const inside = [[20, 20], [40, 30]];
+const partly = [[20, 20], [140, 30]];
+const through = [[-10, 50], [200, 50]];
+const away = [[300, 300], [320, 330]];
+const w = boxFromDrag([0, 0], [100, 100]);
+const c = boxFromDrag([100, 100], [0, 0]);
+const l1 = { type: "line", start_at: [10, 10], end_at: [40, 40] };
+const l2 = { type: "line", start_at: [10, 10], end_at: [140, 40] };
+const l3 = { type: "line", start_at: [300, 300], end_at: [350, 350] };
+const c1 = { type: "circle", center_at: [50, 50], radius: 10 };
+const c2 = { type: "circle", center_at: [95, 50], radius: 10 };
+const c3 = { type: "circle", center_at: [200, 200], radius: 10 };
+const a1 = { type: "arc", center_at: [50, 50], radius: 10, start_at: [50, 60], end_at: [60, 50] };
+const a2 = { type: "arc", center_at: [95, 50], radius: 10, start_at: [95, 60], end_at: [105, 50] };
+console.log(JSON.stringify({
+  wCrossing: w.crossing, cCrossing: c.crossing,
+  wInside: boxTakesPolyline(w, inside), wPartly: boxTakesPolyline(w, partly),
+  wThrough: boxTakesPolyline(w, through), wAway: boxTakesPolyline(w, away),
+  cInside: boxTakesPolyline(c, inside), cPartly: boxTakesPolyline(c, partly),
+  cThrough: boxTakesPolyline(c, through), cAway: boxTakesPolyline(c, away),
+  wL1: boxTakesCurve(w, l1), wL2: boxTakesCurve(w, l2), wL3: boxTakesCurve(w, l3),
+  cL1: boxTakesCurve(c, l1), cL2: boxTakesCurve(c, l2), cL3: boxTakesCurve(c, l3),
+  wC1: boxTakesCurve(w, c1), wC2: boxTakesCurve(w, c2), wC3: boxTakesCurve(w, c3),
+  cC1: boxTakesCurve(c, c1), cC2: boxTakesCurve(c, c2), cC3: boxTakesCurve(c, c3),
+  wA1: boxTakesCurve(w, a1), wA2: boxTakesCurve(w, a2),
+  cA1: boxTakesCurve(c, a1), cA2: boxTakesCurve(c, a2),
+}));
 """
 
 
@@ -5479,13 +6175,14 @@ def viewtools_checks(tmp):
     (three / "package.json").write_text('{"name": "three", "type": "module", "main": "three.module.js"}')
     shutil.copyfile(ui_server.STATIC_DIR / "vendor/three/build/three.module.js", three / "three.module.js")
     shutil.copyfile(ui_server.STATIC_DIR / "viewtools.js", d / "viewtools.js")
+    shutil.copyfile(ui_server.STATIC_DIR / "sketchgeom.js", d / "sketchgeom.js")
     (d / "package.json").write_text('{"type": "module"}')
     (d / "t.js").write_text(VIEWTOOLS_TEST)
     run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
     try:
-        r, e, pk = (json.loads(line) for line in run.stdout.splitlines()[:3])
+        r, e, pk, lp, sg, bx = (json.loads(line) for line in run.stdout.splitlines()[:6])
     except ValueError:
-        r, e, pk = {}, {}, {}
+        r, e, pk, lp, sg, bx = {}, {}, {}, {}, {}, {}
     ok("viewtools: edges, half circle as arc R 8 / 180°, two half faces as one circle, seam as straight edge 20 mm, "
        "closed circle over a repeated seam",
        e.get("holeKind") == "circle" and abs(e.get("holeR", 0) - 8) < 1e-3 and e.get("arcKind") == "arc" and abs(e.get("arcR", 0) - 8) < 1e-3 and abs(e.get("arcAngle", 0) - 180) < 0.5
@@ -5499,6 +6196,24 @@ def viewtools_checks(tmp):
        f"{r} {run.stderr[-300:]}")
     ok("viewtools: a dialog's edge pick lies on the true circle (not the chord), inside a straight edge, "
        "and both halves of a hole give one edge key", _viewtools_pick_ok(pk), f"{pk} {run.stderr[-300:]}")
+    ok("sketchgeom: loopPoints chains curves topologically into simple polygon without self-intersection or diagonal line",
+       lp.get("loopLen") == 4 and lp.get("triangles") == 2 and lp.get("firstPt") == [10, 10] and lp.get("lastPt") == [70, 10],
+       f"{lp} {run.stderr[-300:]}")
+    ok("sketchgeom: profileAt and sketchLineAt pick profiles and sketch/construction lines within tolerance",
+       sg.get("profIndex") == 0 and sg.get("line1") == "l1" and sg.get("line1Const") is True
+       and sg.get("line2") == "l2" and sg.get("line2Const") is False and sg.get("lineMiss") is None,
+       f"{sg} {run.stderr[-300:]}")
+    ok("sketchgeom: box selection (window and crossing) for polyline, line, circle and arc matches SolidCraft BoxSel",
+       bx.get("wCrossing") is False and bx.get("cCrossing") is True
+       and bx.get("wInside") is True and bx.get("wPartly") is False and bx.get("wThrough") is False and bx.get("wAway") is False
+       and bx.get("cInside") is True and bx.get("cPartly") is True and bx.get("cThrough") is True and bx.get("cAway") is False
+       and bx.get("wL1") is True and bx.get("wL2") is False and bx.get("wL3") is False
+       and bx.get("cL1") is True and bx.get("cL2") is True and bx.get("cL3") is False
+       and bx.get("wC1") is True and bx.get("wC2") is False and bx.get("wC3") is False
+       and bx.get("cC1") is True and bx.get("cC2") is True and bx.get("cC3") is False
+       and bx.get("wA1") is True and bx.get("wA2") is False
+       and bx.get("cA1") is True and bx.get("cA2") is True,
+       f"{bx} {run.stderr[-300:]}")
 
 
 def _viewtools_pick_ok(pk):
@@ -5535,8 +6250,10 @@ def feature_dialog_checks(tmp):
     base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
 
     def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
         req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None)
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
         try:
             with urllib.request.urlopen(req) as resp:
                 return resp.status, json.loads(resp.read())
@@ -5625,6 +6342,29 @@ def feature_dialog_checks(tmp):
         ok("feature dialog: Delete removes a feature as one undo step, Undo brings it back",
            st_d == 200 and gone and "Chamfer1" in features() and dele.get("deleted") == ["Chamfer1"],
            f"{st_d} {dele} {features()}")
+
+        # Rename via /api/feature/rename and via /api/feature command routing
+        st_rn_empty, _ = call("feature/rename", {"feature": "Chamfer1", "name": ""})
+        st_rn_dup, _ = call("feature/rename", {"feature": "Chamfer1", "name": "Block"})
+        st_rn, rn = call("feature/rename", {"feature": "Chamfer1", "name": "ChamferSpecial"})
+        _, hist_rn = call("history")
+        with srv.lock:
+            doc_rn = srv.ensure_current()
+            params_rn = doc_rn.session.cmd("parameters.list", {})["parameters"]
+            p_chamfer = [p for p in params_rn if p.get("feature") == "ChamferSpecial"]
+        ok("feature dialog: Rename rejects empty and duplicate names, updates feature and parameters as one undo step",
+           st_rn_empty == 400 and st_rn_dup == 400 and st_rn == 200
+           and "ChamferSpecial" in features() and "Chamfer1" not in features()
+           and len(p_chamfer) > 0
+           and hist_rn.get("undo", "").startswith("Rename Chamfer1 to ChamferSpecial"),
+           f"{st_rn_empty} {st_rn_dup} {st_rn} {rn} {features()} {hist_rn} {p_chamfer}")
+        st_rnu, _ = call("agent/undo", {})
+        ok("feature dialog: Undo reverts rename",
+           st_rnu == 200 and "Chamfer1" in features() and "ChamferSpecial" not in features())
+        st_cmd_rn, _ = call("feature", {"command": "timeline.rename", "params": {"feature": "Chamfer1", "name": "ChamferCmd"}})
+        ok("feature dialog: timeline.rename routes to rename",
+           st_cmd_rn == 200 and "ChamferCmd" in features())
+        call("agent/undo", {})
         # Hole dialog: tables from Mechvane (ISO 273, DIN 336, DIN 974-1), a counterbored clearance hole, then
         # edited in place into a blind tapped hole (null removes "through all"'s missing depth the other way round)
         _, sizes = call("hole_sizes")
@@ -5650,6 +6390,18 @@ def feature_dialog_checks(tmp):
            and hdef.get("hole", {}).get("type") == "simple"
            and st_ht == 200 and "depth" not in hdef2 and "thread" not in hdef2,
            f"{m5} {st_h} {hole.get('done')} {st_he} {hdef} {st_ht} {hdef2}")
+        # #111: the dialog's edit set sends "references": null for a hole placed without edge references;
+        # SolidCraft rejects null there ("invalid type: integer 8, expected a string" with a numeric depth),
+        # so the edit has to go through as "no references" (an empty list)
+        st_hr, hr = call("feature", {"command": "solid.hole", "edit": hname, "params": {
+            "position": [30, 10, 10], "diameter": 6.6, "depth": 8, "thread": None, "hole": {"type": "simple"},
+            "references": None}})
+        with srv.lock:
+            hdef3 = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
+        ok("feature dialog: editing a hole without edge references (references: null from the dialog) works (#111)",
+           st_hr == 200 and str(hdef3.get("depth")) == "8" and not hdef3.get("references")
+           and str(hdef3.get("diameter", "")).startswith("6.6"),
+           f"{st_hr} {hr} {hdef3}")
         # patterns and mirror: a small through hole near x = 5, copied in a row, around it, and mirrored at x = 20
         def volume():
             with srv.lock:
@@ -5710,6 +6462,52 @@ def feature_dialog_checks(tmp):
            and abs((v_boss - v_before_ex) - 5 * 3.14159265 * 9) < 0.5 and st_xe == 200
            and abs((v_before_ex - v_cut) - 3 * 3.14159265 * 9) < 0.5,
            f"{by_name} {st_ex} {ex.get('done')} {v_before_ex} {v_boss} {st_xe} {v_cut}")
+        # Delete feature with keep_sketch over server endpoint (issue #66)
+        st_del_keep, del_keep = call("feature/delete", {"name": xname, "keep_sketch": True})
+        feats_after_keep = features()
+        _, tr_keep = call("tree")
+        sk_in_tree = any(f.get("name") == "BossSketch" for f in tr_keep.get("features", []))
+        call("agent/undo", {})
+        feats_after_undo = features()
+        ok("feature/delete: keep_sketch=true deletes feature, keeps sketch as unconsumed in tree; undo restores it",
+           st_del_keep == 200 and xname not in feats_after_keep and "BossSketch" in feats_after_keep
+           and sk_in_tree and xname in feats_after_undo and del_keep.get("deleted") == [xname],
+           f"{st_del_keep} {del_keep} {feats_after_keep} {tr_keep}")
+        # Revolve dialog (issue #59): profile index and axis (sketch line, model edge, world axis) and editing
+        with srv.lock:
+            d0 = srv.ensure_current()
+            modeling.run_commands(d0, [
+                {"command": "sketch.create", "params": {"plane": "XY", "name": "RevSketch"}},
+                {"command": "sketch.circle.center", "params": {"center": [60, 10], "radius": 3}},
+                {"command": "sketch.circle.center", "params": {"center": [75, 10], "radius": 2}},
+                {"command": "sketch.line", "params": {"points": [[50, 0], [50, 20]], "construction": True}},
+                {"command": "sketch.finish", "params": {}}])
+            d0.save()
+            srv.mtime = d0.path.stat().st_mtime
+        _, rev_sks = call("sketches")
+        rev_sk = next((x for x in rev_sks.get("sketches", []) if x["name"] == "RevSketch"), {})
+        rev_p0 = next((p["index"] for p in rev_sk.get("profiles", []) if p.get("curves") == ["c1"]), 0)
+        st_rv, rv = call("feature", {"command": "solid.revolve", "params": {
+            "sketch": "RevSketch", "profiles": [rev_p0], "axis": "l1", "angle": "360 deg", "operation": "new"}})
+        rv_name = (rv.get("results") or [{}])[0].get("name")
+        st_rvi, rvi = call(f"feature?name={rv_name}") if rv_name else (500, {})
+        st_rve_edge, rve_edge = call("feature", {"command": "solid.revolve", "edit": rv_name, "preview": True, "params": {
+            "sketch": "RevSketch", "profiles": [rev_p0], "angle": "360 deg", "operation": "new_body",
+            "axis": {"type": "model", "geo": {"type": "edge", "at": [40, 10, 0]}}}})
+        st_rve_world, _ = call("feature", {"command": "solid.revolve", "edit": rv_name, "params": {
+            "sketch": "RevSketch", "profiles": [rev_p0], "angle": "180 deg", "operation": "new_body",
+            "axis": {"type": "world", "axis": "Y"}}})
+        _, rvi2 = call(f"feature?name={rv_name}") if rv_name else (500, {})
+        torus_r10 = 2 * (3.14159265 ** 2) * 10 * 9
+        ok("feature dialog: Revolve takes selected profile and sketch-line axis, inspects both for editing, "
+           "and edits to a model-edge or origin axis",
+           st_rv == 200 and abs(rv.get("delta", {}).get("volume_change_mm3", 0) - torus_r10) < 5.0
+           and st_rvi == 200 and rvi.get("dialog") == "revolve"
+           and rvi.get("definition", {}).get("axis") == {"type": "sketch_line", "curve": "l1"}
+           and rvi.get("definition", {}).get("profiles", {}).get("loops") == [["c1"]]
+           and st_rve_edge == 200 and st_rve_world == 200
+           and rvi2.get("definition", {}).get("axis") == {"type": "world", "axis": "Y"},
+           f"{st_rv} {rv.get('delta')} {rvi.get('definition')} {st_rve_edge} {st_rve_world} {rvi2.get('definition')}")
         # Sketch dialog: the plane's frame without leaving a sketch, then a fully dimensioned rectangle and
         # circle on the XZ plane (sizes as parameters), extruded symmetric into a new body
         st_sp, frame = call("sketch_plane?plane=XZ")
@@ -5725,9 +6523,9 @@ def feature_dialog_checks(tmp):
             bodies_sk = srv.ensure_current().session.cmd("document.inspect", {"measure": True})["bodies"]
         new_body = [b for b in bodies_sk if abs(b["volume_mm3"] - (20 * 10 - 3.14159265 * 4) * 6) < 0.5]
         _, hist_sk = call("history")
-        ok("feature dialog: sketch plane frame (XZ: y along -Z) leaves nothing behind; a sketch with a rectangle and a "
+        ok("feature dialog: sketch plane frame (XZ: y along +Z, Z up as in Inventor) leaves nothing behind; a sketch with a rectangle and a "
            "circle is fully defined, one undo step, and extrudes into the expected body",
-           st_sp == 200 and frame.get("y_dir") == [0.0, 0.0, -1.0] and st_sk == 200 and skname
+           st_sp == 200 and [round(v) for v in frame.get("y_dir", [])] == [0, 0, 1] and st_sk == 200 and skname
            and skins.get("fully_constrained") is True and len(features()) == n_before + 2 and st_ske == 200
            and len(new_body) == 1 and hist_sk.get("undo", "").startswith("Solid") is False,
            f"{st_sp} {frame} {st_sk} {sk_res} {skins.get('dof')} {st_ske} {[b['volume_mm3'] for b in bodies_sk]} {hist_sk}")
@@ -5762,8 +6560,10 @@ def feature_dialog_checks(tmp):
     base_ref = f"http://127.0.0.1:{srv_ref.server_address[1]}/api/"
 
     def call_ref(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
         req = urllib.request.Request(base_ref + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None)
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
         try:
             with urllib.request.urlopen(req) as resp:
                 return resp.status, json.loads(resp.read())
@@ -5800,6 +6600,131 @@ def feature_dialog_checks(tmp):
         srv_ref.server_close()
 
 
+def centred_hole_dialog_checks(tmp):
+    """Bohrungsdialog: mittig gesetzte Bohrung bearbeiten (issue #72).
+    A hole placed with 'Middle of face' (centred on rectangular face or concentric on circular face)
+    is recognized as centred in /api/feature, can be edited via /api/feature (e.g. diameter 6 to 8),
+    and stays centred when the parent geometry is resized."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "centred_hole_edit"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        part = w.new(PART, "plate")
+        part.session.cmd("parameters.add", {"name": "L", "expression": "60 mm"})
+        part.session.cmd("solid.box", {
+            "corner": [0, 0, 0], "length": "L", "width": 40, "height": 10,
+            "operation": "new", "body_name": "Plate", "name": "Box1"
+        })
+        part.save()
+    finally:
+        w.close_all()
+
+    path = folder / "plate.solidcraft"
+    srv = ui_server.create_server(str(path), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    try:
+        # 1. Place centred hole Ø 6 on top face (60x40 plate)
+        st, res = call("feature", {"command": "solid.hole", "params": {
+            "centre": True, "position": [30, 20, 10], "direction": [0, 0, -1], "diameter": 6, "depth": None
+        }})
+        hname = next(r["name"] for r in res.get("results", []) if "name" in r and not r["name"].startswith("Hole centre"))
+        ok("centred hole dialog: hole placed in middle of plate face", st == 200 and hname == "Hole1", f"{st} {res}")
+
+        # 2. Inspect Hole1 via /api/feature?name=Hole1
+        st_i, insp = call(f"feature?name={urllib.parse.quote(hname)}")
+        ok("centred hole dialog: /api/feature recognizes hole as centred",
+           st_i == 200 and insp.get("dialog") == "hole" and insp.get("definition", {}).get("centre") is True,
+           f"{st_i} {insp}")
+
+        # 3. Preview edit to Ø 8
+        st_p, prev = call("feature", {"command": "solid.hole", "edit": hname, "preview": True, "params": {
+            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
+        }})
+        ok("centred hole dialog: preview edit to dia 8 succeeds",
+           st_p == 200 and prev.get("delta", {}).get("volume_change_mm3", 0) < 0, f"{st_p} {prev}")
+
+        # 4. Apply edit to Ø 8
+        st_e, ed = call("feature", {"command": "solid.hole", "edit": hname, "params": {
+            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
+        }})
+        ok("centred hole dialog: edit applied", st_e == 200, f"{st_e} {ed}")
+
+        # 5. Change plate length from 60 to 80 mm via /api/params
+        st_par, _ = call("params", {"changes": {"L": "80 mm"}})
+        ok("centred hole dialog: parameter L changed to 80 mm", st_par == 200)
+
+        # 6. Verify hole diameter is 8 and axis is at x = 40
+        with srv.lock:
+            doc = srv.ensure_current()
+            topo = doc.session.tool("body_topology", {"body": "Plate"})
+            cyls = [f["cylinder"] for f in topo.get("faces", []) if f.get("cylinder")]
+        ok("centred hole dialog: after resize to 80 mm, hole diameter is 8 and axis is at x = 40",
+           len(cyls) > 0 and all(abs(c["radius"] - 4.0) < 1e-4 and abs(c["origin"][0] - 40.0) < 1e-4
+                                and abs(c["origin"][1] - 20.0) < 1e-4 for c in cyls), f"cyls={cyls}")
+
+        # 7. Concentric hole on cylinder (dia D=40 mm, height 30 mm)
+        with srv.lock:
+            doc = srv.ensure_current()
+            doc.session.cmd("parameters.add", {"name": "D", "expression": "40 mm"})
+            doc.session.cmd("solid.cylinder", {
+                "base": [100, 0, 0], "diameter": "D", "height": 30,
+                "operation": "new", "body_name": "Cyl", "name": "Cyl1"
+            })
+            doc.save()
+            srv.mtime = doc.path.stat().st_mtime
+
+        st_ch, ch_res = call("feature", {"command": "solid.hole", "params": {
+            "centre": True, "position": [105, 5, 30], "direction": [0, 0, -1], "diameter": 6, "depth": None
+        }})
+        ch_name = next(r["name"] for r in ch_res.get("results", []) if "name" in r and not r["name"].startswith("Hole centre"))
+        ok("centred hole dialog: concentric hole placed on cylinder", st_ch == 200 and ch_name == "Hole2", f"{st_ch} {ch_res}")
+
+        # Inspect Hole2
+        st_ci, cinsp = call(f"feature?name={urllib.parse.quote(ch_name)}")
+        ok("centred hole dialog: /api/feature recognizes concentric hole as centred",
+           st_ci == 200 and cinsp.get("definition", {}).get("centre") is True, f"{st_ci} {cinsp}")
+
+        # Edit Hole2 to Ø 8
+        st_ce, _ = call("feature", {"command": "solid.hole", "edit": ch_name, "params": {
+            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
+        }})
+        ok("centred hole dialog: concentric edit applied", st_ce == 200)
+
+        # Resize cylinder: change D from 40 to 60 mm
+        st_cd, _ = call("params", {"changes": {"D": "60 mm"}})
+        ok("centred hole dialog: parameter D changed to 60 mm", st_cd == 200)
+
+        # Verify hole axis is at x = 100, y = 0 with diameter 8
+        with srv.lock:
+            doc = srv.ensure_current()
+            cyl_topo = doc.session.tool("body_topology", {"body": "Cyl"})
+            hole_cyls = [f["cylinder"] for f in cyl_topo.get("faces", []) if f.get("cylinder") and abs(f["cylinder"]["radius"] - 4.0) < 1e-4]
+        ok("centred hole dialog: after resize to D=60, concentric hole diameter is 8 and axis stays at (100, 0)",
+           len(hole_cyls) > 0 and all(abs(c["radius"] - 4.0) < 1e-4 and abs(c["origin"][0] - 100.0) < 1e-4
+                                     and abs(c["origin"][1] - 0.0) < 1e-4 for c in hole_cyls), f"hole_cyls={hole_cyls}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 def step_import_checks(tmp):
     """import_step: a STEP file becomes a part file with one body and no components, insertable into an
     assembly; the STEP file is made here (a box exported by SolidCraft), not taken from private test data."""
@@ -5833,6 +6758,64 @@ def step_import_checks(tmp):
                 errs.append(type(e).__name__)
         ok("import_step: missing file, wrong type and an existing name are refused",
            errs == ["FileNotFoundError", "ValueError", "ValueError"], str(errs))
+
+        # split=True check (#74): two bodies (plate and cylinder with distance) built in one part,
+        # exported to STEP, imported with split=True: two part files, one assembly,
+        # volumes match originals within +-0.1%, assembly bounding box matches original.
+        two_body_part = w.new(PART, "two_body_part")
+        s2 = two_body_part.session
+        s2.cmd("sketch.create", {"plane": "XY", "name": "S_Plate"})
+        s2.cmd("sketch.rectangle.two_point", {"p0": [0, 0], "p1": [100, 100]})
+        s2.cmd("sketch.finish", {})
+        s2.cmd("solid.extrude", {"sketch": "S_Plate", "distance": 10, "body_name": "Plate"})
+
+        s2.cmd("sketch.create", {"plane": "XY", "offset": 30, "name": "S_Cyl"})
+        s2.cmd("sketch.circle.center", {"center": [50, 50], "radius": 15})
+        s2.cmd("sketch.finish", {})
+        s2.cmd("solid.extrude", {"sketch": "S_Cyl", "distance": 20, "operation": "new", "body_name": "Cylinder"})
+        two_body_part.save()
+
+        orig_measure = s2.cmd("inspect.measure", {})
+        orig_bodies = orig_measure["bodies"]
+        orig_vols = {b["name"]: b["volume_mm3"] for b in orig_bodies}
+        orig_min = [min(b["bbox"]["min"][i] for b in orig_bodies) for i in range(3)]
+        orig_max = [max(b["bbox"]["max"][i] for b in orig_bodies) for i in range(3)]
+
+        step_split_file = folder / "two_bodies.step"
+        s2.cmd("file.export_step", {"path": str(step_split_file)})
+        w.close("two_body_part")
+
+        r_split = step_import.import_step(w, str(step_split_file), name="two_bodies_asm", split=True)
+        asm_doc = w.get("two_bodies_asm", ASSEMBLY)
+        asm_measure = asm_doc.session.cmd("inspect.measure", {})
+        asm_bodies = asm_measure["bodies"]
+        asm_min = [min(b["bbox"]["min"][i] for b in asm_bodies) for i in range(3)]
+        asm_max = [max(b["bbox"]["max"][i] for b in asm_bodies) for i in range(3)]
+
+        part_files = [folder / "two_bodies_asm_Plate.solidcraft", folder / "two_bodies_asm_Cylinder.solidcraft"]
+        asm_file = folder / "two_bodies_asm.solidcraft"
+
+        files_exist = all(p.exists() for p in part_files) and asm_file.exists()
+        vols_ok = True
+        for p in r_split["parts"]:
+            matched_orig = next((orig_vols[k] for k in orig_vols if k in p["name"]), None)
+            if matched_orig is None or abs(p["volume_mm3"] - matched_orig) / matched_orig >= 0.001:
+                vols_ok = False
+                break
+
+        bbox_ok = (all(abs(orig_min[i] - asm_min[i]) < 1e-3 for i in range(3))
+                   and all(abs(orig_max[i] - asm_max[i]) < 1e-3 for i in range(3)))
+
+        comps_asm = asm_doc.session.cmd("component.list")["components"]
+        children = comps_asm[0]["children"]
+        grounded_ok = len(children) == 2 and children[0]["grounded"] is True and children[1]["grounded"] is False
+        joints_asm = asm_doc.session.cmd("joint.list").get("joints", [])
+        no_joints = len(joints_asm) == 0
+
+        ok("import_step: split=True imports multi-body STEP as assembly with individual parts",
+           r_split["kind"] == "assembly" and len(r_split["parts"]) == 2 and files_exist and vols_ok
+           and bbox_ok and grounded_ok and no_joints,
+           f"r_split={r_split} vols_ok={vols_ok} bbox_ok={bbox_ok} grounded_ok={grounded_ok} no_joints={no_joints}")
     finally:
         w.close_all()
 
@@ -5857,8 +6840,10 @@ def sketch_session_checks(tmp):
     base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
 
     def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
         req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None)
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
         try:
             with urllib.request.urlopen(req) as resp:
                 return resp.status, json.loads(resp.read())
@@ -5917,6 +6902,63 @@ def sketch_session_checks(tmp):
             doc = srv.ensure_current()
             profiles = doc.session.cmd("sketch.inspect", {"sketch": "Sketch1"})["profiles"]
         ok("sketch env: one undo takes the whole edit session back", st == 200 and len(profiles) == 1, str(profiles)[:120])
+
+        # Issue #68: sketch on a planar body face automatically projects outer edges and inner hole loops,
+        # allows snapping/dimensioning to projected corners, follows model changes, undoes in one step,
+        # and can be disabled via project_edges=False or /api/sketch/auto_project
+        call("sketch/begin", {"edit": "Sketch1"})
+        _, dim_b = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l1"], "type": "length", "value": 40}})
+        w_param = dim_b.get("result", {}).get("param")
+        call("sketch/finish", {})
+        st_ex, _ = call("feature", {"command": "solid.extrude", "params": {"sketch": "Sketch1", "distance": 10}})
+        st_fb, fb = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
+        fb_state = fb.get("state", {})
+        fb_lines = [c for c in fb_state.get("curves", []) if c.get("type") == "line" and c.get("link") and c.get("fixed")]
+        st_ln, ln_b = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 0], [10, 5]], "connect": True}})
+        st_dm, _ = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l5"], "type": "length", "value": 12}})
+        coinc = [k for k in ln_b.get("state", {}).get("constraints", []) if k.get("type") == "coincident"]
+        st_ff, ff_b = call("sketch/finish", {})
+        face_sk = ff_b.get("sketch")
+        ok("sketch env (#68): sketch on face auto-projects 4 outer lines, line snaps with coincident to corner and dimensions",
+           st_ex == 200 and st_fb == 200 and fb.get("can_undo") is False and len(fb_lines) == 4
+           and st_ln == 200 and st_dm == 200 and st_ff == 200 and len(coinc) >= 1 and face_sk in features(),
+           f"{st_fb} lines={len(fb_lines)} can_undo={fb.get('can_undo')} coinc={coinc} features={features()}")
+        # Model change updates projected face edges in the sketch (width 40 -> 50)
+        st_pc, _ = call("params", {"changes": {w_param: "50"}})
+        with srv.lock:
+            doc = srv.ensure_current()
+            insp_after = doc.session.cmd("sketch.inspect", {"sketch": face_sk})
+        max_x = max((max(c["start_at"][0], c["end_at"][0]) for c in insp_after.get("curves", [])
+                     if c.get("type") == "line" and c.get("link")), default=0)
+        ok("sketch env (#68): projected face edges follow upstream model changes (width 40 -> 50)",
+           st_pc == 200 and abs(max_x - 50.0) < 1e-3, f"{st_pc} max_x={max_x}")
+        call("agent/undo", {})  # undo parameter change
+        st_u_sk, _ = call("agent/undo", {})  # undo face sketch + auto-projection in one step
+        ok("sketch env (#68): undo reverts face sketch and projected edges as one step",
+           st_u_sk == 200 and face_sk not in features(), f"{st_u_sk} {features()}")
+        # Face with a hole: inner boundary edges are projected too
+        st_hl, _ = call("feature", {"command": "solid.hole", "params": {
+            "position": [20, 10, 10], "direction": [0, 0, -1], "diameter": 6}})
+        st_fh, fh = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
+        fh_curves = fh.get("state", {}).get("curves", [])
+        fh_lines = [c for c in fh_curves if c.get("type") == "line" and c.get("link")]
+        fh_arcs = [c for c in fh_curves if c.get("type") == "arc" and c.get("link") and abs(c.get("radius", 0) - 3.0) < 1e-3]
+        call("sketch/cancel", {})
+        ok("sketch env (#68): sketch on face with hole auto-projects outer lines and inner hole arcs",
+           st_hl == 200 and st_fh == 200 and len(fh_lines) == 4 and len(fh_arcs) == 2,
+           f"{st_hl} {st_fh} lines={len(fh_lines)} arcs={len(fh_arcs)}")
+        # Disable via project_edges=False and via /api/sketch/auto_project
+        st_np1, np1 = call("sketch/begin", {"plane": {"face": [5, 5, 10]}, "project_edges": False})
+        call("sketch/cancel", {})
+        st_ap, ap_b = call("sketch/auto_project", {"value": False})
+        st_np2, np2 = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
+        call("sketch/cancel", {})
+        call("sketch/auto_project", {"value": True})
+        ok("sketch env (#68): auto-projection can be disabled per begin or via /api/sketch/auto_project",
+           st_np1 == 200 and len(np1.get("state", {}).get("curves", [])) == 0
+           and st_ap == 200 and ap_b.get("auto_project") is False
+           and st_np2 == 200 and len(np2.get("state", {}).get("curves", [])) == 0,
+           f"{st_np1} {np1.get('state', {}).get('curves')} {st_ap} {ap_b} {st_np2} {np2.get('state', {}).get('curves')}")
     finally:
         srv.shutdown()
         srv.server_close()
@@ -5950,11 +6992,12 @@ def sessionlog_checks(tmp):
         base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
         try:
             urllib.request.urlopen(base + "version").read()
-            req = urllib.request.Request(base + "log", method="POST", data=json.dumps({"events": [
+            req = urllib.request.Request(base + "log", method="POST", headers={"Content-Type": "application/json"},
+                                         data=json.dumps({"events": [
                 {"kind": "click", "what": "btn-fillet"}, {"kind": "js_error", "message": "x" * 5000}]}).encode())
             urllib.request.urlopen(req).read()
-            req = urllib.request.Request(base + "feature", method="POST", data=json.dumps(
-                {"command": "solid.shell", "params": {}}).encode())
+            req = urllib.request.Request(base + "feature", method="POST", headers={"Content-Type": "application/json"},
+                                         data=json.dumps({"command": "solid.shell", "params": {}}).encode())
             try:
                 urllib.request.urlopen(req)
             except urllib.error.HTTPError:
@@ -6005,7 +7048,8 @@ def window_close_checks(tmp):
             watcher = threading.Thread(target=ui_server._watch_closing, args=(srv,), daemon=True)
             watcher.start()
             base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-            urllib.request.urlopen(urllib.request.Request(base + "closing", method="POST", data=b"{}")).read()
+            urllib.request.urlopen(urllib.request.Request(base + "closing", method="POST", data=b"{}",
+                                                          headers={"Content-Type": "application/json"})).read()
             if reload_after:
                 time.sleep(0.2)
                 urllib.request.urlopen(base + "version").read()
@@ -6272,7 +7316,7 @@ def quit_check(tmp):
     try:
         with urllib.request.urlopen(url + "api/about", timeout=5) as r:
             about = json.loads(r.read())
-        req = urllib.request.Request(url + "api/quit", data=b"{}", method="POST")
+        req = urllib.request.Request(url + "api/quit", data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
         with urllib.request.urlopen(req, timeout=5) as r:
             stopped = json.loads(r.read())
     except OSError as e:
@@ -6654,6 +7698,41 @@ def sc_errors_checks(ws):
         "boolean_unreliable": "the cut could not be computed reliably: faces touch along a zero-thickness edge",
         "intersect_empty": "the intersection is empty: nothing of Body 1 would remain",
         "profile_no_area": "profile has no area",
+        "offset_unsupported_surface": "offset: only bodies with planes, cylinders, cones, spheres and tori (a face at [-7.07, -7.07, 0.00])",
+        "offset_faces_cross": "offset: not supported yet: the move is larger than a wall or step is thick (faces would cross)",
+        "offset_rim_too_narrow": "offset: not supported yet: the move is larger than a rim or ledge near [12.0, 5.0, 0.0] is wide (a face would turn inside out)",
+        "offset_edge_vanishes": "offset: an edge vanishes (the offset is too large)",
+        "draft_pull_parallel": "offset: the neutral plane is parallel to the pull direction",
+        "extrude_curves_missing": "invalid parameters for `solid.extrude`: a thin extrude needs 1…1000 sketch curves (`curves`)",
+        "curve_not_in_sketch": "invalid parameters for `solid.extrude`: no curve `c1` in the sketch",
+        "thin_two_sides_missing_thickness": "invalid parameters for `solid.extrude`: `side: two_sides` needs `thickness2` (the thickness outside)",
+        "sketch_no_closed_profiles": "Sketch1 has no closed profiles",
+        "profile_loop_not_closed": "invalid input: profile loop is not closed",
+        "curves_not_connected": "invalid input: the curves are not connected end to end",
+        "revolve_axis_no_direction": "invalid input: revolve axis has no direction",
+        "revolve_axis_param_invalid": "invalid parameters for `solid.revolve`: `axis` must be a sketch line id, x, y (sketch axes), X, Y, Z, a construction axis, {origin, dir} or {edge|face: [x,y,z]}",
+        "loft_holes_count_mismatch": "invalid input: every loft section must have the same number of holes",
+        "loft_same_plane": "invalid input: loft sections 1 and 2 lie in the same plane (no volume between them)",
+        "sweep_path_no_direction": "invalid input: a path segment has no direction",
+        "primitive_box_dimensions": "invalid input: box needs a positive size in x, y and z",
+        "primitive_radius_non_positive": "invalid input: radius must be positive",
+        "primitive_torus_radii": "invalid input: torus needs major > minor > 0",
+        "hole_type_unknown": "invalid parameters for `solid.hole`: unknown hole type `tapered`",
+        "hole_reference_edges_parallel": "invalid parameters for `solid.hole`: the reference edges are parallel: pick edges that cross",
+        "hole_reference_off_face": "invalid parameters for `solid.hole`: the reference distances put the hole's centre off its face",
+        "chamfer_angle_past_face": "invalid input: that chamfer angle runs past the other face",
+        "pattern_features_missing": "invalid parameters for `solid.pattern.rectangular`: `features` must list features to copy",
+        "pattern_feature_not_found": "invalid parameters for `solid.pattern.rectangular`: no feature `CutExtrude1`",
+        "plane_name_reserved": "invalid parameters for `construct.plane`: `Top` is reserved for an origin plane (XY, XZ, YZ, Top, Front, Right); give the construction plane another name",
+        "param_already_exists": "invalid parameters for `parameters.add`: there is already a parameter `length`: type `length` to use it, or change it in Parameters",
+        "param_circular_reference": "expression: circular reference: a → b → a",
+        "expr_division_by_zero": "expression: division by zero",
+        "expr_incompatible_units": "expression: cannot add a length and an angle",
+        "sketch_too_large": "sketch is too large (at most 20000 points or curves); simplify the drawing or split it across sketches — changing scale does not reduce how many curves it has",
+        "sketch_unknown_entity": "invalid parameters for `sketch.delete`: unknown sketch entity `pt_invalid`",
+        "step_shell_not_closed": "the operation failed: shell is not closed",
+        "step_shell_not_manifold": "the operation failed: shell is not manifold",
+        "step_no_bodies": "the operation failed: STEP import: no bodies (no shells)",
     }
     table_codes = {entry["code"] for entry in sc_errors.ERROR_TABLE}
     ok("sc_errors: all table codes covered by recorded errors", table_codes == set(recorded_errors.keys()))
@@ -6671,6 +7750,14 @@ def sc_errors_checks(ws):
     ok("sc_errors: JSON batch format unwraps inner error",
        sc_errors.explain('{"failed": {"command": "solid.extrude", "error": "extrude distance is zero", "index": 0}}') is not None
        and sc_errors.explain('{"failed": {"command": "solid.extrude", "error": "extrude distance is zero", "index": 0}}')["code"] == "extrude_zero_distance")
+
+    exp_off = sc_errors.explain("offset: only bodies with planes, cylinders, cones, spheres and tori (a face at [-7.07, -7.07, 0.00])")
+    ok("sc_errors: offset unsupported surface formats face coordinate and references #745/#10884",
+       exp_off is not None and "[-7.07, -7.07, 0.00]" in exp_off["message"] and "#745" in exp_off["hint"] and "#10884" in exp_off["hint"])
+
+    exp_loft_plane = sc_errors.explain("invalid input: loft sections 1 and 2 lie in the same plane (no volume between them)")
+    ok("sc_errors: loft same plane formats section numbers",
+       exp_loft_plane is not None and "sections 1 and 2 lie" in exp_loft_plane["message"])
 
     orig_ws = server.ws
     server.ws = ws
@@ -6726,14 +7813,16 @@ def sc_errors_checks(ws):
             ])
             caught_c = None
             try:
-                server.run("sc_err_fillet", [
-                    {"command": "solid.fillet", "params": {"edges": [[5, 0, 0]], "radius": "15 mm"}},
+                server.run("sc_err_fillet", [  # 15 mm still failed on SolidCraft 0.30, 0.40 takes it and even 50 mm; 1000 mm fails on both
+                    {"command": "solid.fillet", "params": {"edges": [[5, 0, 0]], "radius": "1000 mm"}},
                 ])
             except Exception as e:
                 caught_c = str(e)
             exp_c = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "blend_too_large")
             ok("sc_errors run live 3: fillet too large re-raised with explanation and hint",
-               caught_c is not None and exp_c["message"] in caught_c and exp_c["hint"] in caught_c and "blend is larger" in caught_c)
+               caught_c is not None and exp_c["message"] in caught_c and exp_c["hint"] in caught_c
+               and ("blend is larger" in caught_c or "larger than the faces beside" in caught_c
+                    or "would cut through the material behind it" in caught_c))  # words of 0.30 / 0.40
         finally:
             ws.close("sc_err_fillet")
 
@@ -6758,8 +7847,305 @@ def sc_errors_checks(ws):
                caught_d is not None and exp_d["message"] in caught_d and exp_d["hint"] in caught_d and "not on a face of a body" in caught_d)
         finally:
             ws.close("sc_err_hole")
+
+        # Live case 5: offset unsupported surface (loft + shell)
+        doc_e = ws.new(PART, "sc_err_loft_shell")
+        try:
+            server.run("sc_err_loft_shell", [
+                {"command": "sketch.create", "params": {"plane": "xy", "name": "sk1"}},
+                {"command": "sketch.circle.center", "params": {"center": [0, 0], "radius": "10 mm"}},
+                {"command": "sketch.finish", "params": {}},
+                {"command": "construct.plane.offset", "params": {"base": "XY", "offset": "20 mm", "name": "wp1"}},
+                {"command": "sketch.create", "params": {"plane": "wp1", "name": "sk2"}},
+                {"command": "sketch.rectangle.two_point", "params": {"p0": [-5, -5], "p1": [5, 5]}},
+                {"command": "sketch.finish", "params": {}},
+                {"command": "solid.loft", "params": {"sections": [{"sketch": "sk1"}, {"sketch": "sk2"}]}},
+            ])
+            caught_e = None
+            try:
+                server.run("sc_err_loft_shell", [
+                    {"command": "solid.shell", "params": {"faces": [[0, 0, 20]], "thickness": "1 mm"}},
+                ])
+            except Exception as e:
+                caught_e = str(e)
+            if caught_e is None:
+                # SolidCraft 0.40 shells a lofted body (#745 fixed): the step works and the body is hollow
+                bodies_e = doc_e.session.cmd("document.inspect", {"measure": True}).get("bodies", [])
+                ok("sc_errors run live 5: shell on a lofted body works since SolidCraft 0.40 (#745 fixed), no offset hint needed",
+                   bool(bodies_e) and bodies_e[0].get("volume_mm3", 0) > 0, str(bodies_e)[:200])
+            else:
+                ok("sc_errors run live 5: offset unsupported surface re-raised with explanation and hint",
+                   "#745" in caught_e and "#10884" in caught_e and "only bodies with planes" in caught_e)
+        finally:
+            ws.close("sc_err_loft_shell")
+
+        # Live case 6: box zero dimension
+        doc_f = ws.new(PART, "sc_err_box")
+        try:
+            caught_f = None
+            try:
+                server.run("sc_err_box", [
+                    {"command": "solid.box", "params": {"length": "0 mm", "width": "10 mm", "height": "10 mm"}},
+                ])
+            except Exception as e:
+                caught_f = str(e)
+            exp_f = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "primitive_box_dimensions")
+            ok("sc_errors run live 6: box zero dimension re-raised with explanation and hint",
+               caught_f is not None and exp_f["message"] in caught_f and exp_f["hint"] in caught_f and "box needs a positive size" in caught_f)
+        finally:
+            ws.close("sc_err_box")
+
+        # Live case 7: cylinder non-positive radius
+        doc_g = ws.new(PART, "sc_err_cyl")
+        try:
+            caught_g = None
+            try:
+                server.run("sc_err_cyl", [
+                    {"command": "solid.cylinder", "params": {"radius": "0 mm", "height": "10 mm"}},
+                ])
+            except Exception as e:
+                caught_g = str(e)
+            exp_g = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "primitive_radius_non_positive")
+            ok("sc_errors run live 7: cylinder non-positive radius re-raised with explanation and hint",
+               caught_g is not None and exp_g["message"] in caught_g and exp_g["hint"] in caught_g and "radius must be positive" in caught_g)
+        finally:
+            ws.close("sc_err_cyl")
+
+        # Live case 8: plane name reserved
+        doc_h = ws.new(PART, "sc_err_plane")
+        try:
+            caught_h = None
+            try:
+                server.run("sc_err_plane", [
+                    {"command": "construct.plane.offset", "params": {"base": "XY", "offset": "10 mm", "name": "Top"}},
+                ])
+            except Exception as e:
+                caught_h = str(e)
+            exp_h = sc_errors.explain("invalid parameters for `construct.plane`: `Top` is reserved for an origin plane (XY, XZ, YZ, Top, Front, Right); give the construction plane another name")
+            ok("sc_errors run live 8: plane name reserved re-raised with explanation and hint",
+               caught_h is not None and exp_h["message"] in caught_h and exp_h["hint"] in caught_h and "reserved for an origin plane" in caught_h)
+        finally:
+            ws.close("sc_err_plane")
+
+        # Live case 9: duplicate parameter
+        doc_i = ws.new(PART, "sc_err_param")
+        try:
+            caught_i = None
+            try:
+                server.run("sc_err_param", [
+                    {"command": "parameters.add", "params": {"name": "p_dup", "expression": "10 mm"}},
+                    {"command": "parameters.add", "params": {"name": "p_dup", "expression": "20 mm"}},
+                ])
+            except Exception as e:
+                caught_i = str(e)
+            exp_i = sc_errors.explain("there is already a parameter `p_dup`")
+            ok("sc_errors run live 9: duplicate parameter re-raised with explanation and hint",
+               caught_i is not None and exp_i["message"] in caught_i and exp_i["hint"] in caught_i and "already a parameter" in caught_i)
+        finally:
+            ws.close("sc_err_param")
+
+        # Live case 10: sketch has no closed profiles
+        doc_j = ws.new(PART, "sc_err_no_prof")
+        try:
+            caught_j = None
+            try:
+                server.run("sc_err_no_prof", [
+                    {"command": "sketch.create", "params": {"plane": "xy", "name": "sk_open"}},
+                    {"command": "sketch.line", "params": {"points": [[0, 0], [10, 0]]}},
+                    {"command": "sketch.finish", "params": {}},
+                    {"command": "solid.extrude", "params": {"sketch": "sk_open", "distance": "10 mm"}},
+                ])
+            except Exception as e:
+                caught_j = str(e)
+            exp_j = sc_errors.explain("sk_open has no closed profiles")
+            ok("sc_errors run live 10: sketch without closed profiles re-raised with explanation and hint",
+               caught_j is not None and exp_j["message"] in caught_j and exp_j["hint"] in caught_j and "has no closed profiles" in caught_j)
+        finally:
+            ws.close("sc_err_no_prof")
     finally:
         server.ws = orig_ws
+
+
+def sc_locate_checks(ws):
+    """Error translation stage 3: a failed step names the edge or face it was aimed at, the features these
+    belong to and what is in the way; an edit that makes a later feature fail reports that feature."""
+    import math as m
+
+    ok("sc_locate: an edge name is split at the right bar when a blend face has one in its own name",
+       sc_locate.edge_faces("F2:start|F4:blend:F2:side:l1|F2:side:l4", {"F2:start", "F4:blend:F2:side:l1|F2:side:l4", "F2:side:l1"})
+       == ("F2:start", "F4:blend:F2:side:l1|F2:side:l4")
+       and sc_locate.edge_faces("F3:side#1|F3:side#2~2", {"F3:side#1", "F3:side#2"}) == ("F3:side#1", "F3:side#2")
+       and sc_locate.edge_faces("F1:+x|F9:gone", {"F1:+x"}) is None)
+    cs = sc_locate._critical_size
+    ok("sc_locate: a chamfer reaches a point at alpha + beta, a fillet a point on a face at its distance and "
+       "a point on the bisector of a square corner at a·(2 + √2)",
+       abs(cs("chamfer", 3, 2, 0.0) - 5) < 1e-9 and abs(cs("fillet", 7, 0, 0.0) - 7) < 1e-6
+       and abs(cs("fillet", 5, 5, 0.0) - 5 * (2 + m.sqrt(2))) < 1e-6
+       # 60° between the faces: the tangent points lie r·cot(30°) from the edge
+       and abs(cs("fillet", 6, 0, 0.5) - 6 * m.tan(m.radians(30))) < 1e-6,
+       f"{cs('chamfer', 3, 2, 0.0)} {cs('fillet', 7, 0, 0.0)} {cs('fillet', 5, 5, 0.0)} {cs('fillet', 6, 0, 0.5)}")
+    pts, radius = sc_locate.edge_points({"start": [3, 0, 0], "mid": [0, 3, 0], "end": [-3, 0, 0], "length": m.pi * 3})
+    ring, ring_r = sc_locate.edge_points({"start": [3, 0, 0], "mid": [-3, 0, 0], "end": [3, 0, 0], "length": 2 * m.pi * 3},
+                                         normal=[0, 0, 1])
+    ok("sc_locate: a circle that closes in itself (hole rim since SolidCraft 0.40) is rebuilt from the normal of its plane",
+       ring_r is not None and abs(ring_r - 3) < 1e-9 and len(ring) > 20 and all(abs(g.norm(q) - 3) < 1e-9 for q in ring)
+       and all(abs(q[2]) < 1e-9 for q in ring), f"{ring_r} {len(ring)}")
+    line, no_radius = sc_locate.edge_points({"start": [0, 0, 0], "mid": [5, 0, 0], "end": [10, 0, 0], "length": 10})
+    ok("sc_locate: an arc is rebuilt from start, mid, end and length; a straight edge stays two points",
+       abs(radius - 3) < 1e-9 and all(abs(g.norm(q) - 3) < 1e-9 for q in pts) and len(pts) > 20
+       and line == [[0, 0, 0], [10, 0, 0]] and no_radius is None, f"{radius} {len(pts)} {line}")
+
+    plate = [{"command": "solid.box", "params": {"name": "Plate", "length": 60, "width": 40, "height": 10}},
+             {"command": "solid.hole", "params": {"name": "Hole1", "position": [8, 8, 10], "diameter": 6}}]
+
+    def fails(doc, command, params, before=()):
+        try:
+            modeling.run_commands(doc, list(before) + [{"command": command, "params": params}])
+        except Exception as e:
+            return e
+        return None
+
+    def state(doc):
+        i = doc.session.cmd("document.inspect", {"measure": False})
+        return len(i["timeline"]), i["undo"], i["redo"]
+
+    doc = ws.new(PART, "loc_plate")
+    try:
+        # the failed step is the third of its batch: the place is found on the model the step saw
+        empty = state(doc)
+        e = fails(doc, "solid.chamfer", {"name": "C1", "edges": [[30, 0, 10]], "distance": 5.5}, before=plate)
+        chamfer_through_hole = e is None
+        if chamfer_through_hole:
+            # SolidCraft 0.40 chamfers through a hole: the step succeeded, so start again on an empty document
+            ws.close("loc_plate")
+            doc = ws.new(PART, "loc_plate", overwrite=True)
+            empty = state(doc)
+        loc = modeling.error_place(e) or {}
+        obstacle = loc.get("obstacle") or {}
+        ok("sc_locate: a chamfer that runs into a hole names the edge, the hole, its distance and the size that fits"
+           " (SolidCraft 0.30; 0.40 chamfers through the hole, nothing to locate)",
+           chamfer_through_hole or isinstance(e, sc_errors.ExplainedError) and "\nWhere: Chamfer C1 (5.5 mm) on the edge of Plate between +z and -y" in str(e)
+           and obstacle.get("feature") == "Hole1" and obstacle.get("foreign") is True
+           and abs(obstacle.get("distance", 0) - 5.0) < 0.01 and abs(obstacle["at"][1] - 5.0) < 0.01
+           and loc.get("fits") == 4.913 and loc.get("at") == [30.0, 0.0, 10.0] and loc.get("features") == ["Plate", "Hole1"]
+           and "move Hole1" in loc.get("text", ""), f"{str(e)[:300]} {loc}")
+        if chamfer_through_hole:
+            # the same two properties on a step that fails on every SolidCraft: a fillet far too large
+            e_big = fails(doc, "solid.fillet", {"name": "RBig", "edges": [[30, 0, 10]], "radius": 1000}, before=plate)
+            ok("sc_locate: looking at the model of a failed batch leaves the document and its undo list as they were",
+               e_big is not None and state(doc) == empty, f"{empty} {state(doc)}")
+            ok("sc_locate: the dialog line keeps the explanation and SolidCraft's words",
+               e_big is not None and "Where" not in modeling.short_error(e_big).split("\n")[0]
+               and len(modeling.short_error(e_big)) > 20, modeling.short_error(e_big) if e_big else "no error")
+        else:
+            ok("sc_locate: looking at the model of a failed batch leaves the document and its undo list as they were",
+               state(doc) == empty, f"{empty} {state(doc)}")
+            ok("sc_locate: the dialog line keeps the explanation and SolidCraft's words",
+               modeling.short_error(e).startswith("The chamfer distance is too large") and "SolidCraft: 5.5 mm is too large" in modeling.short_error(e),
+               modeling.short_error(e))
+
+        modeling.run_commands(doc, plate)
+        e = fails(doc, "solid.fillet", {"name": "R1", "edges": [[0, 0, 5]], "radius": 25})
+        loc = modeling.error_place(e) or {}
+        obstacle = loc.get("obstacle") or {}
+        ok("sc_locate: a corner fillet that reaches a hole on the end face names it, and the radius from which "
+           "it is reached agrees with the largest radius SolidCraft gives (within 3 %)",
+           obstacle.get("feature") == "Hole1" and loc.get("fits")
+           and abs(obstacle.get("reached_from", 0) / loc["fits"] - 1) < 0.03, f"{loc}")
+
+        wide = 100 if chamfer_through_hole else 12  # SolidCraft 0.40 takes a 12 mm chamfer on a 10 mm plate
+        e = fails(doc, "solid.chamfer", {"edges": [[30, 40, 10]], "distance": f"{wide} mm"})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a chamfer wider than the plate is thick names the face that is too narrow, not a far hole",
+           "Plate (+y) is only 10 mm wide there" in loc.get("text", "") and loc.get("requested") == float(wide)
+           and (chamfer_through_hole or (loc.get("obstacle", {}).get("foreign") is False and "also_near" not in loc)),
+           f"{loc.get('text')}")
+
+        e = fails(doc, "solid.fillet", {"name": "R3", "edges": [[11, 8, 10]], "radius": 100 if chamfer_through_hole else 6})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a fillet larger than the hole rim it sits on names the radius of that edge"
+           " (SolidCraft 0.40 takes 6 mm, so it gets 100 mm there)",
+           "the edge between Plate (+z) and Hole1 (bore)" in loc.get("text", "") and "arc of radius 3 mm" in loc.get("text", "")
+           and loc.get("features") == ["Plate", "Hole1"], f"{str(e)[:200]} {loc.get('text')}")
+
+        e = fails(doc, "solid.hole", {"name": "H2", "position": [100, 8, 10], "diameter": 6})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a hole position off the body names the nearest face, its distance and the nearest point",
+           loc.get("kind") == "hole" and loc.get("nearest", {}).get("label") in ("Plate (+x)", "Plate (+z)")  # equally near: the edge between them
+           and loc["nearest"]["distance"] == 40.0 and loc["nearest"]["nearest_point"] == [60.0, 8.0, 10.0], f"{loc}")
+        e = fails(doc, "solid.hole", {"name": "H2", "position": [8, 8, 12], "diameter": 2})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: above an existing hole the nearest face is not the top face (the hole is no part of it)",
+           loc.get("nearest", {}).get("label") in ("Hole1 (bore)", "Plate (+z)") and loc["nearest"]["distance"] > 2.5, f"{loc}")
+
+        e = fails(doc, "solid.fillet", {"name": "R4", "edges": [[30, 20, 5]], "radius": 1})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a pick with no edge near it names the nearest edge and its midpoint to pick",
+           loc.get("nearest", {}).get("distance") == 20.616 and loc["nearest"]["mid"] in ([30.0, 40.0, 0.0], [30.0, 0.0, 0.0], [30.0, 40.0, 10.0], [30.0, 0.0, 10.0])
+           and "pick it at its midpoint" in loc.get("text", ""), f"{loc}")
+        e = fails(doc, "solid.fillet", {"name": "R5", "edges": [[0, 0, 0]], "radius": 1})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a pick on a corner lists the three edges that meet there with their midpoints",
+           sorted(x["mid"] for x in loc.get("edges", [])) == [[0.0, 0.0, 5.0], [0.0, 20.0, 0.0], [30.0, 0.0, 0.0]], f"{loc}")
+
+        # SolidCraft's words for a pick it finds equally near to two edges (seen 4 mm from both on a bracket)
+        loc = sc_locate.locate(doc.session, "solid.chamfer", {"name": "C0", "edges": [[0, 20, 5]], "distance": 1},
+                               "invalid parameters for `solid.chamfer`: [0, 20, 5] is where 2 edges meet: give a point "
+                               "along one edge, such as its midpoint") or {}
+        ok("sc_locate: a pick in the middle of a narrow face names the two edges that are equally near",
+           sorted(x["mid"] for x in loc.get("edges", [])) == [[0.0, 20.0, 0.0], [0.0, 20.0, 10.0]]
+           and "as near to one edge as to the other (5 mm)" in loc.get("text", ""), f"{loc}")
+        loc = sc_locate.locate(doc.session, "solid.hole", {"name": "H3", "position": [58, 20, 10], "diameter": 6},
+                               "boolean Cut: the operation failed: no result") or {}
+        ok("sc_locate: a hole whose cut fails near the rim of its face names the edge it cuts through",
+           "its centre is 2 mm from the edge of Plate between +x and +z" in loc.get("text", "")
+           and loc.get("obstacle", {}).get("label") == "Plate (+x)", f"{loc}")
+
+        e = fails(doc, "solid.shell", {"name": "S1", "faces": [[30, 20, 10]], "thickness": 20 if chamfer_through_hole else 6})
+        loc = modeling.error_place(e)
+        ok("sc_locate: an error without explanation still tells which face the step was aimed at, and the "
+           "dialog line stays SolidCraft's words",
+           e is not None and (loc is None or (loc.get("kind") == "picks" and "face Plate (+z)" in loc["text"]
+                                               and str(e).startswith("Where: ") and not modeling.short_error(e).startswith("Where"))),
+           f"{str(e)[:200]} {loc}")
+
+        # an edit that takes away what a later feature needs: the batch succeeds, the feature fails
+        modeling.run_commands(doc, [{"command": "solid.chamfer", "params": {"name": "C1", "edges": [[30, 0, 10]], "distance": 4}}])
+        out = modeling.run_commands(doc, [{"command": "timeline.edit", "params": {"feature": "Hole1", "set": {"at": [8, 3.5, 10]}}}])
+        broken = (out.get("feature_errors") or [{}])[0]
+        if chamfer_through_hole:
+            # SolidCraft 0.40: the chamfer survives a hole moved under it, no feature fails (TODO: another trigger)
+            ok("sc_locate: moving a hole under a chamfer reports the chamfer as failing, with the hole as the reason"
+               " (SolidCraft 0.30; on 0.40 the chamfer survives, so no feature fails)",
+               not out.get("feature_errors"), f"{out}")
+            out = modeling.run_commands(doc, [{"command": "solid.hole", "params": {"name": "H9", "position": [50, 30, 10], "diameter": 4}}])
+            ok("sc_locate: a later step reminds of the feature that still fails, without reporting it as new"
+               " (SolidCraft 0.30; on 0.40 nothing fails)",
+               "feature_errors" not in out and not any("Still failing" in w for w in out.get("warnings", [])), f"{out}")
+        else:
+            ok("sc_locate: moving a hole under a chamfer reports the chamfer as failing, with the hole as the reason",
+               broken.get("feature") == "C1" and "Hole1 (bore) 0.5" in broken.get("where", "")
+               and broken.get("location", {}).get("obstacle", {}).get("feature") == "Hole1"
+               and broken.get("message") and any("C1 fail" in w for w in out.get("warnings", [])), f"{out}")
+            out = modeling.run_commands(doc, [{"command": "solid.hole", "params": {"name": "H9", "position": [50, 30, 10], "diameter": 4}}])
+            ok("sc_locate: a later step reminds of the feature that still fails, without reporting it as new",
+               "feature_errors" not in out and any("Still failing from before: C1" in w for w in out.get("warnings", [])), f"{out}")
+    finally:
+        ws.close("loc_plate")
+
+    doc = ws.new(PART, "loc_round")
+    try:
+        modeling.run_commands(doc, rect("sk", "xy", [0, 0], [60, 40]) + [
+            {"command": "solid.extrude", "params": {"sketch": "sk", "distance": "10 mm", "name": "Base"}},
+            {"command": "solid.fillet", "params": {"name": "R1", "edges": [[0, 0, 5]], "radius": 4}}])
+        e = fails(doc, "solid.fillet", {"name": "R2", "edges": [[0, 40, 5]], "radius": 38})
+        loc = modeling.error_place(e) or {}
+        ok("sc_locate: a fillet that reaches the round at the other end of a face names that round (a face "
+           "name with a bar in it)",
+           loc.get("obstacle", {}).get("feature") == "R1" and loc["obstacle"]["label"].startswith("R1 (blend")
+           and abs(loc["obstacle"]["distance"] - 36) < 0.01 and "move R1" in loc.get("text", ""), f"{str(e)[:200]} {loc}")
+    finally:
+        ws.close("loc_round")
 
 
 def sc_errors_stage2_checks(ws):
@@ -6789,7 +8175,7 @@ def sc_errors_stage2_checks(ws):
 
             exp_known = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "unknown_body")
             ok("sc_errors stage 2 (a): add_joint known error re-raised as RuntimeError with explanation and hint",
-               type(caught_known) is RuntimeError
+               isinstance(caught_known, sc_errors.ExplainedError) and isinstance(caught_known, RuntimeError)
                and exp_known["message"] in str(caught_known)
                and exp_known["hint"] in str(caught_known)
                and "unknown body `PartGhost`" in str(caught_known),
@@ -6854,6 +8240,11 @@ def sc_errors_stage2_checks(ws):
                and data_prev.get("hint") == exp_fillet["hint"]
                and "SolidCraft:" in data_prev.get("error", ""),
                f"st={st_prev} data={data_prev}")
+            ok("sc_locate: /api/feature names the edge and the face that is too narrow for the fillet",
+               "the edge of Block" in data_prev.get("where", "") and "only 10 mm wide" in data_prev.get("where", "")
+               and data_prev.get("location", {}).get("kind") == "blend"
+               and data_prev.get("location", {}).get("at") == [10.0, 20.0, 10.0],
+               f"{data_prev.get('where')} {data_prev.get('location')}")
 
             # Apply with radius too large
             st_apply, data_apply = call_feature({
@@ -7066,6 +8457,1456 @@ def part_end_checks(ws):
         ws.close("part_end_test")
 
 
+def orchester_figures_checks():
+    """tools/status_collect.py (#104): K3 first-time yield, K5 Argon cost, K1 rest at the weekly reset, on fixtures."""
+    import importlib.util, datetime as dt
+    path = Path(__file__).resolve().parents[2] / "tools" / "status_collect.py"
+    if not path.exists():  # private tool, not in the public export
+        return
+    spec = importlib.util.spec_from_file_location("status_collect", path)
+    sc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sc)
+    now = dt.datetime(2026, 11, 15, 12, tzinfo=dt.timezone.utc)
+    t = lambda d, h=0: f"2026-11-{d:02d}T{h:02d}:00:00+00:00"
+    ev = [
+        {"at": t(10), "kind": "queue", "step": "agy_done", "issue": 1, "model": "gemini-4-hydrogen-high"},  # rework: run again
+        {"at": t(11), "kind": "queue", "step": "agy_done", "issue": 1, "model": "gemini-4-argon-high"},     # closed: success
+        {"at": t(12), "kind": "queue", "step": "agy_done", "issue": 2, "model": "gemini-4-hydrogen-high"},  # closed: success
+        {"at": t(13), "kind": "queue", "step": "agy_done", "issue": 3, "model": "gemini-4-hydrogen-high"},  # open: undecided
+        {"at": t(1), "kind": "queue", "step": "agy_done", "issue": 4, "model": "gemini-4-hydrogen-high"},   # older than 28 days? no: Nov 1
+        {"at": "2026-10-01T00:00:00+00:00", "kind": "queue", "step": "agy_done", "issue": 5, "model": "gemini-4-hydrogen-high"},
+        {"at": t(14), "kind": "queue", "step": "agy_done", "issue": 6, "model": "gemini-3.8-flash-high"},   # not a known model
+        {"at": t(11, 1), "kind": "queue", "step": "argon", "model": "gemini-4-argon-high",
+         "argon_before": "60", "argon_mid": "40", "argon_after": "39", "reviewed": "1"},
+        {"at": t(12, 1), "kind": "queue", "step": "argon", "model": "gemini-4-hydrogen-high",
+         "argon_before": "39", "argon_mid": "39", "argon_after": "36", "reviewed": "1"},
+        {"at": t(13, 1), "kind": "queue", "step": "argon", "model": "gemini-4-argon-high",   # weekly reset in between
+         "argon_before": "5", "argon_mid": "100", "argon_after": "99", "reviewed": "1"},
+        {"at": t(13, 2), "kind": "queue", "step": "argon", "model": "gemini-4-hydrogen-high",  # review skipped
+         "argon_before": "9", "argon_mid": "9", "argon_after": "9", "reviewed": "0"},
+        {"at": t(13, 3), "kind": "gate", "issue": 2, "verdict": "green"},
+    ]
+    k = sc.orchester_kennzahlen(ev, {1, 2, 4}, now)
+    by = {m["model"]: m for m in k["modelle"]}
+    ok("orchester figures: the five agreed model slugs, numbers only, 28 days, stand in Unix seconds",
+       [m["model"] for m in k["modelle"]] == list(sc.MODELS) and k["zeitraum_tage"] == 28 and k["stand"] == int(now.timestamp())
+       and all(set(m) == {"model", "auftraege", "erstausbeute", "treffer", "review_kosten_argon", "umsetzung_kosten_argon",
+                          "review_n", "umsetzung_n"} for m in k["modelle"]), k)
+    h, a = by["gemini-4-hydrogen"], by["gemini-4-argon"]
+    ok("orchester figures K3: rework (a later run) counts against, closed counts for, open is undecided, older runs and unknown models out",
+       h["auftraege"] == 4 and h["erstausbeute"] == round(2 / 3, 3) and a["auftraege"] == 1 and a["erstausbeute"] == 1.0, (h, a))
+    ok("orchester figures K5: Argon cost per implementation (before - mid on Argon runs) and per review (mid - after); a reset in between and skipped reviews are left out",
+       a["umsetzung_kosten_argon"] == 20.0 and a["umsetzung_n"] == 1 and a["review_n"] == 3
+       and a["review_kosten_argon"] == round((1 + 3 + 1) / 3, 2) and h["review_kosten_argon"] is None and h["review_n"] == 0, a)
+    ok("orchester figures: no runs give null, not zero", by["claude"]["erstausbeute"] is None and by["claude"]["auftraege"] == 0)
+
+    def reading(at, pots):
+        return {"at": at, "pots": [{"pot": p, "window": "Weekly Limit Remaining", "rest_pct": r, "reset": z} for p, r, z in pots]}
+    hist = [
+        reading("2026-11-13T23:00:00+00:00", [("A", 100.0, "2026-11-20T23:00:00Z"), ("B", 50.0, "2026-11-14T23:09:00Z")]),
+        reading("2026-11-13T23:05:00+00:00", [("A", 100.0, "2026-11-20T23:05:00Z"), ("B", 20.0, "2026-11-14T23:09:00Z")]),  # A drifts while unused
+        reading("2026-11-14T22:00:00+00:00", [("A", 80.0, "2026-11-20T23:10:00Z"), ("B", 3.0, "2026-11-14T23:09:00Z")]),
+        reading("2026-11-15T00:00:00+00:00", [("A", 70.0, "2026-11-20T23:10:00Z"), ("B", 100.0, "2026-11-21T23:09:00Z")]),
+        {"at": "2026-11-15T00:01:00+00:00", "pots": [{"pot": "B", "window": "Five Hour Limit Remaining", "rest_pct": 1.0,
+                                                    "reset": "2026-11-30T00:00:00Z"}]},  # 5-hour window ignored
+    ]
+    r = sc.rest_at_reset(hist)
+    ok("orchester figures K1: rest at the weekly reset per pot; a drifting reset of an unused pot is no new week, the open week and 5-hour windows are not listed",
+       r == [{"pot": "B", "reset": "2026-11-14T23:09+00:00", "rest_pct": 3.0, "read_at": "2026-11-14T22:00+00:00"}], r)
+
+
+def agent_clone_checks(tmp):
+    """tools/agent_clone.sh (#102): a full clone per agent run, no hard links, origin = the main repo's remote, its
+    origin refs from the main repo, rework from the pushed branch, sync after main moved, push from the clone."""
+    import subprocess as sp
+    script = Path(__file__).resolve().parents[2] / "tools" / "agent_clone.sh"
+    root = Path(tmp) / "agent_clone"
+    root.mkdir()
+    g = lambda d, *a: sp.run(["git", "-C", str(d), *a], capture_output=True, text=True, check=True).stdout.strip()
+    env = dict(os.environ, MECHVANE_REPO=str(root / "main"), GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+    run = lambda *a: sp.run([str(script), *a], capture_output=True, text=True, env=env)
+    sp.run(["git", "init", "-q", "--bare", "-b", "main", str(root / "hub.git")], check=True)
+    seed = root / "seed"
+    sp.run(["git", "clone", "-q", str(root / "hub.git"), str(seed)], check=True, capture_output=True)
+    (seed / "a.txt").write_text("a\n")
+    g(seed, "add", "."); g(seed, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "a"); g(seed, "push", "-q", "origin", "main")
+    sp.run(["git", "clone", "-q", str(root / "hub.git"), str(root / "main")], check=True, capture_output=True)
+    main = root / "main"
+    g(main, "branch", "-q", "stale-local")  # a local branch of the main repo must not reach the clone
+
+    wt = root / "_wt" / "gemini-1"
+    r = run("new", str(wt), "gemini/1", "origin/main")
+    links = sp.run(["find", str(wt / ".git" / "objects"), "-type", "f", "-links", "+1"], capture_output=True, text=True).stdout
+    ok("agent_clone new: own .git (no worktree), no hard links, origin = the main repo's remote, on gemini/1 from origin/main, only that branch",
+       r.returncode == 0 and (wt / ".git").is_dir() and not links.strip()
+       and g(wt, "remote", "get-url", "origin") == g(main, "remote", "get-url", "origin")
+       and g(wt, "rev-parse", "HEAD") == g(main, "rev-parse", "origin/main")
+       and g(wt, "branch", "--format=%(refname:short)") == "gemini/1", (r.stderr, links, g(wt, "branch", "-a")))
+
+    (wt / "b.txt").write_text("b\n")
+    g(wt, "add", "."); g(wt, "commit", "-qm", "b")
+    rp = sp.run(["git", "-C", str(wt), "push", "-q", "-u", "origin", "gemini/1"], capture_output=True, text=True, env=env)
+    ok("agent_clone: the branch is pushed from the clone to the remote", rp.returncode == 0
+       and g(root / "hub.git", "rev-parse", "gemini/1") == g(wt, "rev-parse", "HEAD"), rp.stderr)
+
+    (seed / "c.txt").write_text("c\n")
+    g(seed, "add", "."); g(seed, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c"); g(seed, "push", "-q", "origin", "main")
+    g(main, "fetch", "-q", "origin")
+    rs = run("sync", str(wt))
+    ok("agent_clone sync: the clone's origin/main follows the main repo after main moved (no network from the clone)",
+       rs.returncode == 0 and g(wt, "rev-parse", "origin/main") == g(main, "rev-parse", "origin/main"), rs.stderr)
+
+    wt2 = root / "_wt" / "gemini-1b"
+    r2 = run("new", str(wt2), "gemini/1", "origin/gemini/1")
+    ok("agent_clone new for rework: starts from the pushed branch, origin/main is there to merge",
+       r2.returncode == 0 and (wt2 / "b.txt").exists()
+       and g(wt2, "rev-parse", "origin/main") == g(main, "rev-parse", "origin/main"), r2.stderr)
+    r3 = run("new", str(wt2), "gemini/2", "origin/gemini/nope")
+    ok("agent_clone new: a base that does not exist fails (the queue skips the issue)", r3.returncode != 0, r3.stderr)
+
+
+def review_score_checks(tmp):
+    """tools/review_score.py (#105 phase 3): findings of both reviewers, marks, hit rate and recommendation match."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("review_score", Path(__file__).resolve().parents[2] / "tools" / "review_score.py")
+    rs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rs)
+    groq = """## Review
+### High Severity
+#### `mechvane/a.py:12`
+- **Befund:** off by one
+### Low Severity
+#### `tools/b.sh`
+- **Befund:** quoting
+"""
+    argon = """### 1. Umfang
+- Der Diff macht, was verlangt ist.
+### 2. Abgleich des Berichts
+- **Bericht abgeschnitten:** endet mitten im Satz.
+### 3. Echte Bugs
+- **`features.js`** zwei Stellen:
+  1. `features.js:10` setzt die Länge zu früh.
+  2. `features.js:20` verliert die Norm.
+- `server.py:5` prüft die Eingabe nicht.
+
+Empfehlung: nacharbeiten, weil zwei Fehler.
+"""
+    g = rs.groq_findings(groq)
+    a = rs.argon_findings(argon)
+    ok("review_score: Groq findings with file, line and severity",
+       [(f["file"], f["line"], f["severity"]) for f in g] == [("mechvane/a.py", 12, "High"), ("tools/b.sh", None, "Low")], g)
+    ok("review_score: Argon findings only from sections 2 and 3, sub-items instead of their parent, no recommendation line",
+       len(a) == 4 and a[0]["text"].startswith("**Bericht") and (a[1]["file"], a[1]["line"]) == ("features.js", 10)
+       and (a[3]["file"], a[3]["line"]) == ("server.py", 5) and rs.recommendation(argon) == "nacharbeiten", a)
+
+    rs.REVIEWS = Path(tmp) / "reviews"
+    rs.SCORES = Path(tmp) / "scores.jsonl"
+    rs.REVIEWS.mkdir()
+    (rs.REVIEWS / "7-20261115T000000Z-argon.md").write_text(argon)
+    (rs.REVIEWS / "7-20261115T000000Z-groq.md").write_text(groq)
+    r1 = rs.main(["score", "7", "argon", "1=ja", "2=ja", "3=nein", "4=offen", "--outcome", "returned"])
+    r2 = rs.main(["score", "7", "groq", "1=ja", "2=nein"])
+    r3 = rs.main(["score", "7", "groq", "2=ja"])  # a later mark of the same finding wins
+    bad = rs.main(["score", "7", "groq", "9=ja"])
+    summ = rs.summarize(rs.read_scores())
+    ok("review_score: marks recorded, the newest per finding counts, hit rate ja/(ja+nein), recommendation 'nacharbeiten' matches a returned branch, out-of-range marks refused",
+       (r1, r2, r3, bad) == (0, 0, 0, 2) and summ["argon"]["treffer"] == round(2 / 3, 3) and summ["argon"]["offen"] == 1
+       and summ["groq"]["treffer"] == 1.0 and summ["argon"]["empfehlung_passt"] == 1.0
+       and summ["groq"]["model"] == "gpt-oss" and summ["argon"]["model"] == "gemini-4-argon", summ)
+
+
+def review_seeded_checks():
+    """tools/review_seeded.py (#105 phase 2): the mutation operators and how a review is judged."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("review_seeded", Path(__file__).resolve().parents[2] / "tools" / "review_seeded.py")
+    rsd = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rsd)
+    cases = {
+        "    if a and b:": ("invert_if", "    if not (a and b):"),
+        "    elif x > 3:  # note": ("invert_if", "    elif not (x > 3):"),
+        "    ok = n <= 5": ("le_to_lt", "    ok = n < 5"),
+        "    same = a == b": ("eq_to_ne", "    same = a != b"),
+        "        raise ValueError('x')": ("swallow_raise", "        pass"),
+        "    return True": ("return_flip", "    return False"),
+        "    # if this: comment": None,
+        "    total = a + b": None,
+    }
+    got = {k: rsd.mutate(k) for k in cases}
+    ok("review_seeded: each operator changes one added line, comments and plain lines stay", got == cases,
+       {k: v for k, v in got.items() if v != cases[k]})
+    f = [{"file": "mechvane/a.py", "line": 12, "severity": "High"}, {"file": "tools/b.py", "line": None, "severity": "Low"}]
+    ok("review_seeded: found within 3 lines, file only, missed, control",
+       (rsd.judge(f, "mechvane/a.py", 15), rsd.judge(f, "tools/b.py", 40), rsd.judge(f, "mechvane/c.py", 1), rsd.judge(f, None, None))
+       == ("found", "file_only", "missed", "control"))
+
+
+def argon_review_checks(tmp):
+    """tools/argon_review.py (#107): prompt on standard input, diff shortening, failed calls reported as such."""
+    import importlib.util, subprocess as sp
+    spec = importlib.util.spec_from_file_location("argon_review", Path(__file__).resolve().parents[2] / "tools" / "argon_review.py")
+    ar = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ar)
+
+    small = "diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-x\n+y\n"
+    long_lines = "diff --git a/big.json b/big.json\n" + "".join(f"+line {i}\n" for i in range(5000))
+    wide = "diff --git a/wide.py b/wide.py\n" + "+" + "z" * 100_000 + "\n"
+    trimmed, notes = ar.trim_diff(small + long_lines + wide)
+    ok("argon_review: small file diff kept whole, 5000-line file only head and tail, 100 KB file cut to 60000 characters",
+       small in trimmed and "+line 10\n" in trimmed and "+line 4999\n" in trimmed and "+line 2500\n" not in trimmed
+       and len(trimmed) < 70_000 and len(notes) == 2 and "big.json" in notes[0] and "wide.py" in notes[1], notes)
+    many = "".join(f"diff --git a/f{i}.py b/f{i}.py\n" + "+" + "q" * 50_000 + "\n" for i in range(10))
+    trimmed, notes = ar.trim_diff(many)
+    ok("argon_review: whole diff capped at 300000 characters, the files left out are named",
+       len(trimmed) <= ar.TOTAL_CHARS and any("left out" in n for n in notes) and "f9.py" in notes[-1], (len(trimmed), notes[-1:]))
+    prompt = ar.build_prompt("Aufgabe", "Bericht", "Checks", small + long_lines)
+    ok("argon_review: the prompt tells the reviewer the diff is shortened", "is shortened" in prompt and "big.json" in prompt)
+    ok("argon_review: an unshortened prompt has no shortening note", "shortened" not in ar.build_prompt("A", "B", "C", small))
+
+    # stub agy: reads the stream-json message from standard input, as agy does
+    stub = Path(tmp) / "agy_stub.py"
+    stub.write_text("""import json, sys
+args = sys.argv[1:]
+assert args[-1] == "-p=" and "stream-json" in args, args
+msg = json.loads(sys.stdin.readline())
+text = msg["message"]["content"]
+mode = args[0]
+print(json.dumps({"event": "init"}))
+if mode == "ok":
+    print(json.dumps({"event": "result", "result": {"status": "SUCCESS", "response": "Empfehlung: mergen (%d)" % len(text)}}))
+elif mode == "err":
+    print("agy: quota exhausted", file=sys.stderr)
+    print(json.dumps({"event": "result", "result": {"status": "ERROR", "response": "", "error": "quota exhausted"}}))
+    sys.exit(1)
+""")
+    big = "x" * 300_000  # far over the ~128 KB a single argument may have
+    out = ar.run([sys.executable, str(stub), "ok"], big)
+    ok("argon_review: a 300 KB prompt reaches agy through standard input", out == f"Empfehlung: mergen ({len(big)})", out[:200])
+    out = ar.run([sys.executable, str(stub), "err"], "p")
+    ok("argon_review: a failed call reads 'Argon-Review nicht möglich: <reason>', not the raw error output",
+       out.startswith("Argon-Review nicht möglich: quota exhausted") and "rc=1" in out, out)
+    out = ar.run([sys.executable, "-c", "print('crash')"], "p")
+    ok("argon_review: no result event also reads 'Argon-Review nicht möglich'",
+       out.startswith("Argon-Review nicht möglich: keine Antwort"), out)
+    out = ar.run(["/nonexistent/agy"], "p")
+    ok("argon_review: a missing agy reads 'Argon-Review nicht möglich'", out.startswith("Argon-Review nicht möglich:"), out)
+
+    # end to end over the command line on a real git diff
+    repo = Path(tmp) / "ar_repo"
+    repo.mkdir()
+    g = lambda *a: sp.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True)
+    g("init", "-q", "-b", "main"); g("config", "user.email", "t@t"); g("config", "user.name", "t")
+    (repo / "a.txt").write_text("a\n"); g("add", "."); g("commit", "-q", "-m", "a")
+    g("branch", "base")
+    (repo / "a.txt").write_text("a\nb\n"); g("commit", "-q", "-am", "b")
+    for name in ("issue", "report", "checks"):
+        (Path(tmp) / f"ar_{name}").write_text(name)
+    cli = sp.run([sys.executable, str(Path(__file__).resolve().parents[2] / "tools" / "argon_review.py"), "--repo", str(repo),
+                  "--base", "base", "--issue", str(Path(tmp) / "ar_issue"), "--report", str(Path(tmp) / "ar_report"),
+                  "--checks", str(Path(tmp) / "ar_checks"), "--", sys.executable, str(stub), "ok"],
+                 capture_output=True, text=True)
+    ok("argon_review: command line builds the prompt from files and the branch diff and prints the review",
+       cli.returncode == 0 and cli.stdout.startswith("Empfehlung: mergen ("), cli.stdout[-300:] + cli.stderr[-300:])
+
+
+def upstream_watch_checks():
+    """tools/upstream_watch.py (#90): command difference, watched issues, new releases and the report, on fixtures."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("upstream_watch", Path(__file__).resolve().parents[2] / "tools" / "upstream_watch.py")
+    uw = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(uw)
+
+    old = uw.snapshot_from_list([
+        {"id": "solid.box", "label": "Box", "enabled": True, "params": "length, width, height"},
+        {"id": "solid.fillet", "label": "Fillet", "enabled": True, "params": "edges, radius"},
+        {"id": "surface.fillet", "label": "Surface Fillet", "enabled": False, "planned": "769", "params": "planned: a, b"},
+        {"id": "old.command", "label": "Old", "enabled": True, "params": "x"},
+        {"id": "sheet.flange", "label": "Flange", "enabled": True, "params": "edge"},
+    ])
+    new = uw.snapshot_from_list([
+        {"id": "solid.box", "label": "Box", "enabled": True, "params": "length, width, height"},
+        {"id": "solid.fillet", "label": "Fillet", "enabled": True, "params": "edges, radius, variable?"},
+        {"id": "surface.fillet", "label": "Surface Fillet", "enabled": True, "params": "a, b: {body, point}"},
+        {"id": "plugin.run", "label": "Run plugin", "enabled": True, "params": "plugin"},
+        {"id": "future.thing", "label": "Future", "enabled": False, "planned": "4242", "params": "planned: x"},
+        {"id": "sheet.flange", "label": "Flange", "enabled": False, "params": "edge"},
+    ])
+    d = uw.diff_commands(old, new)
+    ok("upstream_watch: new, removed, changed and now-available commands are told apart",
+       d["new_available"] == ["plugin.run"] and d["new_planned"] == ["future.thing"] and d["removed"] == ["old.command"]
+       and d["ready"] == ["surface.fillet"]
+       and {(c["id"], c["what"]) for c in d["changed"]} == {("solid.fillet", "parameters"), ("sheet.flange", "availability")},
+       str(d))
+    same = uw.diff_commands(old, old)
+    ok("upstream_watch: identical command lists give an empty difference",
+       not (same["added"] or same["removed"] or same["changed"] or same["ready"]), str(same))
+
+    cov = uw.mentioned_in_mechvane(["solid.fillet", "no.such.command.anywhere"],
+                                   files=[Path(__file__).resolve().parents[2] / "mechvane" / "sc_locate.py",
+                                          Path(__file__).resolve().parents[2] / "mechvane" / "tree.py"])
+    ok("upstream_watch: a command named in Mechvane's code counts as covered, an unknown one does not",
+       cov["solid.fillet"] is True and cov["no.such.command.anywhere"] is False, str(cov))
+
+    watched = [{"number": 1, "follow_up": "a"}, {"number": 2, "follow_up": "b"}, {"number": 3, "follow_up": "c"}]
+    news = uw.issue_news(watched, {"1": "closed", "2": "open", "3": "closed"}, {"1": "open", "3": "closed"})
+    ok("upstream_watch: closed watched issues are listed, those closed since the last run marked as new",
+       [(n["number"], n["newly"]) for n in news] == [(1, True), (3, False)], str(news))
+
+    rels = [{"tag_name": "v0.41.0", "published_at": "2026-11-13T10:00:00Z"},
+            {"tag_name": "v0.40.1", "published_at": "2026-11-10T10:00:00Z"},
+            {"tag_name": "v0.42.0-rc.1", "published_at": "2026-11-14T10:00:00Z", "prerelease": True}]
+    fresh = uw.new_releases(rels, ["v0.40.1"])
+    ok("upstream_watch: releases not seen before are returned oldest first",
+       [r["tag_name"] for r in fresh] == ["v0.41.0", "v0.42.0-rc.1"], str(fresh))
+
+    report = uw.render_report("2026-11-14", "0.40.1", fresh, {"0.40.1 → 0.41.0": d}, {"plugin.run": False, "surface.fillet": True}, news)
+    ok("upstream_watch: the report names new releases, commands with and without Mechvane code, and closed issues",
+       "v0.41.0" in report and "✘ `plugin.run`" in report and "✔ `surface.fillet`" in report and "#1 **neu geschlossen**" in report
+       and "#3 geschlossen" in report, report[:400])
+    msg = uw.ntfy_text(fresh, {"x": d}, {"plugin.run": False, "surface.fillet": True}, news)
+    ok("upstream_watch: the short message counts new commands, those without Mechvane code and closed issues",
+       "2 neue Befehle (1 ohne Mechvane-Code)" in msg and "#1" in msg and "v0.42.0-rc.1" in msg, msg)
+    ok("upstream_watch: nothing new gives a plain message", uw.ntfy_text([], {}, {}, []) == "Nichts Neues bei SolidCraft.")
+
+
+def command_matrix_checks():
+    """tools/command_matrix.py (#77): schema-first classification, error handling, counts, and live CLI command list."""
+    import importlib.util
+    from mechvane import solidcraft
+    spec = importlib.util.spec_from_file_location("command_matrix", Path(__file__).resolve().parents[2] / "tools" / "command_matrix.py")
+    cm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cm)
+
+    fixture_cmds = [
+        {"id": "doc.recover", "label": "Recover"},
+        {"id": "config.row", "label": "Config Row"},
+        {"id": "surface.patch", "label": "Patch"},
+        {"id": "sketch.construction_line", "label": "Construction Line"},
+        {"id": "broken.cmd", "label": "Broken"},
+        {"id": "legacy.noparams", "label": "Legacy"},
+    ]
+    point3_def = {
+        "anyOf": [
+            {"items": {"type": "number"}, "maxItems": 3, "minItems": 3, "type": "array"},
+            {"properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "required": ["x", "y", "z"], "type": "object"},
+        ],
+        "description": "A point in mm: [x, y, z] or {x, y, z}.",
+    }
+    fixture_schemas = {
+        "doc.recover": {
+            "input": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "dir": {"type": ["string", "null"], "description": "The recovery folder."},
+                    "discard": {"type": ["boolean", "null"], "description": "Delete after open."},
+                    "id": {"type": "string", "description": "Entry id."},
+                },
+            }
+        },
+        "config.row": {
+            "input": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {"anyOf": [{"type": "string"}, {"type": "integer"}], "description": "The row, by name or by id."},
+                },
+            }
+        },
+        "surface.patch": {
+            "input": {
+                "type": "object",
+                "$defs": {
+                    "Point3": point3_def,
+                    "BendTableFormat": {"type": "string", "pattern": "^([Cc][Ss][Vv]|[Jj][Ss][Oo][Nn])$"},
+                    "ToolFace": {"type": "object", "properties": {"body": {"type": "string"}, "point": {"$ref": "#/$defs/Point3"}}},
+                },
+                "properties": {
+                    "edges": {"items": {"$ref": "#/$defs/Point3"}, "type": ["array", "null"], "description": "Points on a loop."},
+                    "from": {"$ref": "#/$defs/Point3", "description": "Start point."},
+                    "format": {"$ref": "#/$defs/BendTableFormat"},
+                    "tool": {"$ref": "#/$defs/ToolFace", "description": "A face to pick."},
+                },
+            }
+        },
+        "sketch.construction_line": {
+            "input": {
+                "type": "object",
+                "properties": {
+                    "at": {"description": "Untyped Value point."},
+                },
+            }
+        },
+        "legacy.noparams": {"params": "plain text"},
+    }
+
+    class FakeSession:
+        def tool(self, name, args=None, timeout=None):
+            if name == "list_commands":
+                return fixture_cmds
+            if name == "describe_command":
+                cid = args["id"]
+                if cid == "broken.cmd":
+                    raise RuntimeError("simulated timeout")
+                return fixture_schemas[cid]
+            raise AssertionError(f"unexpected tool call: {name}")
+
+    res = cm.analyze_catalog(FakeSession())
+    by_id = {c["id"]: c for c in res["commands"]}
+    params = {f"{c['id']}.{p['name']}": p for c in res["commands"] for p in c["parameters"]}
+
+    ok("command_matrix: type-first keeps string `dir` as Text and boolean `discard` as Schalter",
+       params["doc.recover.dir"]["einstufung"] == "Text"
+       and params["doc.recover.discard"]["einstufung"] == "Schalter",
+       str(params["doc.recover.dir"]))
+    ok("command_matrix: `config.row.name` (string|integer) is Text, not Feature selection",
+       params["config.row.name"]["einstufung"] == "Text", str(params["config.row.name"]))
+    ok("command_matrix: Point3 parameters (`edges`, `from`) follow one uniform rule",
+       params["surface.patch.edges"]["einstufung"] == "Zahl/Ausdruck"
+       and params["solid.extrude.from" if "solid.extrude.from" in params else "surface.patch.from"]["einstufung"] == "Zahl/Ausdruck",
+       str(params["surface.patch.edges"]))
+    ok("command_matrix: schema-derived choice pattern (`BendTableFormat`) and CAD object (`ToolFace`) classify accurately",
+       params["surface.patch.format"]["einstufung"] == "Auswahlliste (enum)"
+       and params["surface.patch.tool"]["einstufung"] == "Auswahl in der Ansicht (Flächen)",
+       str(params["surface.patch.tool"]))
+    ok("command_matrix: untyped `Value` (`at`) is unklar and errors per command are collected without aborting",
+       params["sketch.construction_line.at"]["einstufung"] == "unklar"
+       and res["summary"]["anzahl_fehler"] == 1
+       and res["summary"]["fehler"][0]["command"] == "broken.cmd"
+       and by_id["broken.cmd"]["has_schema"] is False,
+       str(res["summary"]))
+    ok("command_matrix: summary totals and percentages match fixture counts",
+       res["summary"]["befehle_gesamt"] == 6
+       and res["summary"]["befehle_mit_schema"] == 4
+       and res["summary"]["befehle_ohne_schema"] == 2
+       and res["summary"]["parameter_gesamt"] == 9
+       and res["summary"]["anzahl_unklar"] == 1
+       and res["summary"]["anteil_unklar_prozent"] == 11.1,
+       str(res["summary"]))
+
+    with solidcraft.Session() as live:
+        live_cmds = live.tool("list_commands")
+        if not isinstance(live_cmds, list):
+            live_cmds = live_cmds.get("commands", [])
+        live_ids = [c["id"] for c in live_cmds if isinstance(c, dict) and "id" in c]
+        ok("command_matrix: installed solidcraft-cli list_commands matches expected catalog structure",
+           len(live_ids) > 500 and len(live_ids) == len(set(live_ids))
+           and all("." in cid for cid in live_ids)
+           and {"doc.recover", "config.row", "surface.patch", "solid.extrude"}.issubset(set(live_ids)),
+           f"count={len(live_ids)}")
+        live_recover = live.tool("describe_command", {"id": "doc.recover"})["input"]
+        live_row = live.tool("describe_command", {"id": "config.row"})["input"]
+        ok("command_matrix: live CLI schemas for doc.recover.dir and config.row.name classify as Text",
+           cm.classify_parameter("doc.recover", "dir", live_recover["properties"]["dir"], live_recover.get("$defs", {})) == ("Text", None)
+           and cm.classify_parameter("config.row", "name", live_row["properties"]["name"], live_row.get("$defs", {})) == ("Text", None))
+
+
+def tester_tasks_checks():
+    """tests/tasks (#86): every task's grader is tested on its reference, a wrong solution and an empty folder."""
+    import subprocess
+    out = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "tasks" / "selftest.py")],
+                         capture_output=True, text=True, timeout=900)
+    lines = [ln for ln in out.stdout.splitlines() if ln.startswith(("ok  ", "FAIL"))]
+    ok("tester tasks: the graders pass their self-test (reference, wrong solution, empty folder)",
+       out.returncode == 0 and len(lines) >= 3 and not any(ln.startswith("FAIL") for ln in lines),
+       out.stdout[-400:] + out.stderr[-300:])
+
+
+def gate_class_checks():
+    """tools/gate.py: what reaches class A (merges by itself) is data only; pipeline files are class C."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gate", Path(__file__).resolve().parents[2] / "tools" / "gate.py")
+    gt = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gt)
+    cls = lambda *paths: gt.classify([(10, 0, p) for p in paths])[0]
+    ok("gate: research, catalog entries, gallery and changelog snippets are class A",
+       cls("docs/research/x.md", "katalog/eintraege/a/b.json", "changelog.d/1.md", "docs/galerie/a.png") == "A")
+    ok("gate: tests are no longer class A (the branch's own check.py runs in the review)",
+       cls("tests/mechvane/check.py") != "A" and cls("tests/reference/check.py") != "A")
+    ok("gate: docs/*.md and docs/uebergabe.md are no longer class A (read at the start of every session)",
+       cls("docs/uebergabe.md") != "A" and cls("docs/gemini-queue.md") != "A" and cls("CHANGELOG.md") != "A")
+    ok("gate: a script inside docs/research is no data", cls("docs/research/2026/run.py") != "A")
+    ok("gate: pipeline scripts, the sandbox, the upstream watch and the task graders are class C",
+       all(cls(p) == "C" for p in ("tools/agent_clone.sh", "tools/gemini_queue.sh", "tools/upstream_watch.py",
+                                   "tests/tasks/scharnier/grade.py", "tools/status_collect.py", "tools/systemd/x.timer")))
+    ok("gate: a count of ok( calls is read from a revision", gt.count_checks("HEAD") > 500, str(gt.count_checks("HEAD")))
+
+
+def check_sources_gzip_check():
+    """tools/check_sources.py unpacks a page a host sends gzipped although the request did not ask for it (jules.google)."""
+    import gzip
+    import http.server
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("check_sources", Path(__file__).resolve().parents[2] / "tools" / "check_sources.py")
+    cs = importlib.util.module_from_spec(spec)
+    sys.modules["check_sources"] = cs  # the dataclasses in the module need to find themselves
+    spec.loader.exec_module(cs)
+    page = "<html><body><p>Jules will wind down on December 31, 2026.</p></body></html>".encode("utf-8")
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = gzip.compress(page)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Encoding", "gzip")  # sent whatever Accept-Encoding says
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with tempfile.TemporaryDirectory() as cache:
+            r = cs.SourceFetcher(cache_dir=Path(cache), use_cache=False).fetch(f"http://127.0.0.1:{srv.server_address[1]}/changelog")
+        ok("check_sources: a gzip page is unpacked, so the quote is found in it",
+           r.get("status_code") == 200 and "wind down on December 31, 2026" in (r.get("text") or ""), str(r)[:200])
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def verify_view_checks(ws):
+    import io
+    from PIL import Image as PILImage, ImageStat, ImageChops
+    prev_ws = server.ws
+    server.ws = ws
+    plate = ws.new(PART, "verify_plate")
+    try:
+        # Build plate with hole
+        plate.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [60, 40]}},
+            {"command": "sketch.finish"},
+            {"command": "solid.extrude", "params": {"distance": 10}},
+            {"command": "sketch.create", "params": {"plane": "XY"}},
+            {"command": "sketch.circle.center", "params": {"center": [30, 20], "radius": 5}},
+            {"command": "sketch.finish"},
+            {"command": "solid.extrude", "params": {"distance": 10, "operation": "cut"}},
+        ])
+
+        ok("verify_view: the size label shows the real bounding box of the plate",
+           server._bounding_box_str(plate) == "60 × 40 × 10 mm", str(server._bounding_box_str(plate)))
+
+        # Single screenshot for baseline size
+        shot = server.screenshot("verify_plate", view="iso")
+        single_img = PILImage.open(io.BytesIO(shot.data))
+        sw, sh = single_img.size
+
+        # verify_view with path
+        res_path = server.verify_view("verify_plate", path="verify_grid.png")
+        grid_file = ws.root / "verify_grid.png"
+        ok("verify_view: with path saves file and replies with metadata",
+           grid_file.is_file() and res_path.get("width", 0) > 0 and res_path.get("height", 0) > 0,
+           str(res_path))
+
+        # Check image is PNG and roughly twice as wide and high as single image
+        with PILImage.open(grid_file) as im:
+            img_format = im.format
+            grid_img = im.convert("RGB")
+        gw, gh = grid_img.size
+        ok("verify_view: image is PNG roughly twice as wide and high as a single image",
+           img_format == "PNG" and abs(gw - 2 * sw) <= 10 and abs(gh - 2 * sh) <= 10,
+           f"format={img_format}, grid={(gw, gh)}, single={(sw, sh)}")
+
+        # Check that the four quadrants are not empty (pixel variance > 0)
+        w_half, h_half = gw // 2, gh // 2
+        quadrants = [
+            grid_img.crop((0, 0, w_half, h_half)),
+            grid_img.crop((w_half, 0, gw, h_half)),
+            grid_img.crop((0, h_half, w_half, gh)),
+            grid_img.crop((w_half, h_half, gw, gh)),
+        ]
+        variances = [sum(ImageStat.Stat(q).var) for q in quadrants]
+        ok("verify_view: four quadrants are not empty (pixel variance > 0)",
+           all(v > 0 for v in variances),
+           f"variances={variances}")
+
+        # Check that the section quadrant differs from plain right view (hole cut is visible)
+        shot_right = server.screenshot("verify_plate", view="right")
+        right_img = PILImage.open(io.BytesIO(shot_right.data)).convert("RGB")
+        sec_crop = quadrants[3].crop((100, 80, w_half - 100, h_half - 60))
+        right_crop = right_img.crop((100, 80, w_half - 100, h_half - 60))
+        diff_stat = ImageStat.Stat(ImageChops.difference(sec_crop, right_crop))
+        ok("verify_view: section quadrant differs from plain right view",
+           sum(diff_stat.mean) > 0.5,
+           f"diff_stat={diff_stat.mean}")
+
+        # verify_view without path returns an image
+        res_no_path = server.verify_view("verify_plate")
+        ok("verify_view: call without path returns an image",
+           hasattr(res_no_path, "data") and len(res_no_path.data) > 1000 and getattr(res_no_path, "_format", "") == "png",
+           str(type(res_no_path)))
+    finally:
+        ws.close("verify_plate")
+        server.ws = prev_ws
+
+
+def assemble_dialog_checks(tmp):
+    """Assemble tab stage 1a: /api/assembly/insert places parts with transform/grounded on the shared undo
+    list, /api/assembly/update_links checks joints and supports repair=True, and both return 400 on a part."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "assemble_ui"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        plate = w.new(PART, "BasePlate")
+        plate.session.batch([
+            {"command": "parameters.change", "params": {"name": "h", "expression": "10 mm"}},
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPlate"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 40]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "SkPlate", "distance": "h", "name": "PlateBody"}},
+        ])
+        plate.save()
+
+        pin = w.new(PART, "Pin")
+        pin.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPin"}},
+            {"command": "sketch.circle.center", "params": {"center": [0, 0], "radius": 5}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "SkPin", "distance": 20, "name": "PinBody"}},
+        ])
+        pin.save()
+
+        asm = w.new(ASSEMBLY, "Gearbox")
+        links.insert(w, asm, plate.path, name="Plate", grounded=True)
+        asm.save()
+    finally:
+        w.close_all()
+
+    srv = ui_server.create_server(folder, port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    try:
+        # With a part open, /api/assembly/* must fail with 400
+        st_op, _ = call("open/BasePlate.solidcraft", {})
+        st_p_ins, p_ins = call("assembly/insert", {"file": "Pin.solidcraft"})
+        st_p_upd, p_upd = call("assembly/update_links", {})
+        ok("assemble UI endpoints: return HTTP 400 when a part is open",
+           st_op == 200 and st_p_ins == 400 and st_p_upd == 400 and p_ins.get("error") and p_upd.get("error"),
+           f"open={st_op} ins=({st_p_ins}, {p_ins}) upd=({st_p_upd}, {p_upd})")
+
+        # Open the assembly and verify /api/files lists folder parts excluding the assembly itself
+        st_oa, _ = call("open/Gearbox.solidcraft", {})
+        st_fl, fl = call("files")
+        parts_list = fl.get("parts") or []
+        ok("assemble /api/files: lists folder parts excluding the assembly itself",
+           st_oa == 200 and st_fl == 200 and "BasePlate.solidcraft" in parts_list and "Pin.solidcraft" in parts_list
+           and "Gearbox.solidcraft" not in parts_list,
+           f"open={st_oa} files={fl}")
+
+        # Insert the second part via POST /api/assembly/insert with name, translate, rotate, grounded=False
+        st_ins, ins = call("assembly/insert", {
+            "file": "Pin.solidcraft",
+            "name": "DrivePin",
+            "translate": [20, 20, 10],
+            "rotate": [0, 0, 90],
+            "grounded": False,
+        })
+        st_tr, tr = call("tree")
+        occ_names = [o.get("name", "") for o in tr.get("occurrences", [])]
+        ok("assemble /api/assembly/insert: inserts second part, returns component name and /api/tree shows it",
+           st_ins == 200 and ins.get("name") == "DrivePin"
+           and any("DrivePin" in n for n in occ_names),
+           f"ins=({st_ins}, {ins}) occs={occ_names}")
+
+        # Shared Undo / Redo reverts and re-applies the placement
+        st_un, _ = call("agent/undo", {})
+        _, tr_un = call("tree")
+        occ_un = [o.get("name", "") for o in tr_un.get("occurrences", [])]
+        st_re, _ = call("agent/redo", {})
+        _, tr_re = call("tree")
+        occ_re = [o.get("name", "") for o in tr_re.get("occurrences", [])]
+        ok("assemble /api/assembly/insert: undo and redo on shared history",
+           st_un == 200 and not any("DrivePin" in n for n in occ_un)
+           and st_re == 200 and any("DrivePin" in n for n in occ_re),
+           f"undo=({st_un}, {occ_un}) redo=({st_re}, {occ_re})")
+
+        # Record a rigid joint between Plate and DrivePin and verify POST /api/assembly/update_links reports joint count
+        with srv.lock:
+            doc = srv.ensure_current()
+            jparams = {
+                "type": "rigid",
+                "name": "PinOnPlate",
+                "a": {"occurrence": "Plate:1", "face": [20, 20, 10]},
+                "b": {"occurrence": "DrivePin:1", "face": [20, 20, 10]},
+            }
+            doc.session.cmd("joint.create", jparams)
+            links.record(srv.ws, doc, "PinOnPlate", create_params=jparams)
+            doc.save()
+            srv.mtime = doc.path.stat().st_mtime
+
+        st_upd, upd = call("assembly/update_links", {"repair": False})
+        st_rep, rep = call("assembly/update_links", {"repair": True})
+        ok("assemble /api/assembly/update_links: reports checked joint count and supports repair=True",
+           st_upd == 200 and upd.get("joint_count") == 1 and "PinOnPlate" in (upd.get("checked_joints") or [])
+           and st_rep == 200 and rep.get("joint_count") == 1,
+           f"upd=({st_upd}, {upd}) rep=({st_rep}, {rep})")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def assemble_constraint_checks(tmp):
+    """Assemble tab step 3 (#88): POST /api/assembly/constraint adds SolidCraft assembly constraints via
+    modeling.add_constraint (recorded like joints, so check_joints and update_links follow them), /edit changes
+    rule, gap and name, links.repair recreates a constraint by its rule, and the browser shows the rule."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "assemble_constraint_ui"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        for name, h in (("Base", 10), ("Lid", 5)):
+            d = w.new(PART, name)
+            d.session.cmd("solid.box", {"length": 40, "width": 30, "height": h, "corner": [0, 0, 0],
+                                        "body_name": "Body1", "name": "Box1"})
+            d.save()
+        pin = w.new(PART, "Pin")
+        pin.session.cmd("solid.cylinder", {"radius": 5, "height": 20, "center": [0, 0, 0], "body_name": "Body1", "name": "Cyl"})
+        pin.save()
+        asm = w.new(ASSEMBLY, "ConstrainAsm")
+        links.insert(w, asm, folder / "Base.solidcraft", grounded=True)
+        links.insert(w, asm, folder / "Lid.solidcraft", translate=[60, 0, 0], grounded=False)
+        links.insert(w, asm, folder / "Pin.solidcraft", name="PinA", translate=[0, 60, 0], grounded=True)
+        links.insert(w, asm, folder / "Pin.solidcraft", name="PinB", translate=[30, 60, 0], grounded=False)
+        asm.save()
+    finally:
+        w.close_all()
+
+    srv = ui_server.create_server(folder, port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers={"Content-Type": "application/json"} if body is not None else {})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    try:
+        call("open/Base.solidcraft", {})
+        st_part, res_part = call("assembly/constraint", {"type": "mate", "a": {"occurrence": "Base:1", "face": [20, 15, 10]},
+                                                         "b": {"occurrence": "Lid:1", "face": [80, 15, 0]}})
+        ok("assemble constraint: HTTP 400 with a part open", st_part == 400 and res_part.get("error"), res_part)
+        call("open/ConstrainAsm.solidcraft", {})
+        a_top = {"occurrence": "Base:1", "face": [20, 15, 10]}
+        b_bottom = {"occurrence": "Lid:1", "face": [80, 15, 0]}
+        bad = {
+            "unknown rule": call("assembly/constraint", {"type": "glue", "a": a_top, "b": b_bottom}),
+            "distance without offset": call("assembly/constraint", {"type": "distance", "a": a_top, "b": b_bottom}),
+            "angle without angle": call("assembly/constraint", {"type": "angle", "a": a_top, "b": b_bottom}),
+            "same component": call("assembly/constraint", {"type": "mate", "a": a_top, "b": {"occurrence": "Base:1", "face": [0, 15, 5]}}),
+            "text offset": call("assembly/constraint", {"type": "mate", "a": a_top, "b": b_bottom, "offset": "zwei"}),
+        }
+        ok("assemble constraint: unknown rule, missing gap or angle, one component twice, a bad offset give HTTP 400 with a message",
+           all(st == 400 and r.get("error") for st, r in bad.values()), {k: v for k, v in bad.items() if v[0] != 400})
+        _, hist0 = call("history")
+        st, res = call("assembly/constraint", {"type": "mate", "a": a_top, "b": b_bottom, "offset": 2})
+        _, ctx = call("assembly/context")
+        mate = next((j for j in ctx.get("joints", []) if j["name"] == "Mate1"), {})
+        _, hist1 = call("history")
+        ok("assemble constraint: a mate with gap 2 puts the lid on the base top at z=12, named Mate1, on the shared Undo list",
+           st == 200 and res.get("name") == "Mate1" and mate.get("constraint") == "mate"
+           and abs((mate.get("frame_b") or {}).get("origin", [0, 0, 0])[2] - 12) < 1e-6
+           and (hist1.get("undo") or "").startswith("Constraint mate") and hist0.get("undo") != hist1.get("undo"),
+           (st, res, mate, hist1))
+        st_c, res_c = call("assembly/constraint", {"type": "concentric", "a": {"occurrence": "PinA:1", "circle": [5, 60, 10]},
+                                                   "b": {"occurrence": "PinB:1", "circle": [35, 60, 10]}})
+        _, ctx = call("assembly/context")
+        conc = next((j for j in ctx.get("joints", []) if j["name"] == res_c.get("name")), {})
+        oa, ob = (conc.get("frame_a") or {}).get("origin", [9, 9, 9]), (conc.get("frame_b") or {}).get("origin", [0, 0, 0])
+        ok("assemble constraint: concentric on two round faces (circle picks) puts both pins on one axis",
+           st_c == 200 and conc.get("constraint") == "concentric" and abs(oa[0] - ob[0]) < 1e-6 and abs(oa[1] - ob[1]) < 1e-6,
+           (st_c, res_c, conc))
+        meta = json.loads(json.dumps(srv.doc.metadata()))
+        ok("assemble constraint: recorded like a joint (part faces on both sides, create marked as a constraint)",
+           (meta.get("joints", {}).get("Mate1", {}).get("sides", {}).get("a", {}).get("face") == "F1:+z")
+           and meta["joints"]["Mate1"]["sides"]["b"]["face"] == "F1:-z" and meta["joints"]["Mate1"]["create"].get("constraint") is True,
+           meta.get("joints", {}).get("Mate1"))
+        st_e, res_e = call("assembly/constraint/edit", {"constraint": "Mate1", "type": "mate", "offset": 4, "name": "LidOnBase"})
+        _, ctx = call("assembly/context")
+        ed = next((j for j in ctx.get("joints", []) if j["name"] == "LidOnBase"), {})
+        st_ea, res_ea = call("assembly/constraint/edit", {"constraint": "LidOnBase", "a": a_top})
+        st_eu, res_eu = call("assembly/constraint/edit", {"constraint": "NoSuch", "offset": 1})
+        st_ej, res_ej = call("assembly/constraint/edit", {"constraint": "LidOnBase", "type": "distance"})
+        st_en, res_en = call("assembly/constraint/edit", {"constraint": "LidOnBase", "name": "LidOnBase"})
+        ok("assemble constraint edit: gap 4 and a new name (lid at z=14, record renamed); new references, an unknown name and nothing to change give 400",
+           st_e == 200 and ed.get("constraint") == "mate" and abs(ed["frame_b"]["origin"][2] - 14) < 1e-6
+           and "LidOnBase" in srv.doc.metadata()["joints"] and "Mate1" not in srv.doc.metadata()["joints"]
+           and st_ea == 400 and "delete it" in res_ea.get("error", "") and st_eu == 400
+           and st_en == 400 and "nothing to change" in res_en.get("error", ""),
+           (st_e, res_e, ed, st_ea, res_ea, st_eu, res_eu, st_en, res_en))
+        _, ctx = call("assembly/context")
+        ej = next((j for j in ctx.get("joints", []) if j["name"] == "LidOnBase"), {})
+        ok("assemble constraint edit: a change to distance keeps the gap (as SolidCraft does)",
+           st_ej == 200 and ej.get("constraint") == "distance" and abs(ej["frame_b"]["origin"][2] - 14) < 1e-6, (st_ej, res_ej, ej))
+        call("assembly/constraint/edit", {"constraint": "LidOnBase", "type": "mate"})
+        st_chk, chk = call("assembly/update_links", {})
+        ok("assemble constraint: Update Links checks constraints like joints (all sides ok)",
+           st_chk == 200 and all(r.get("status") == "ok" for r in chk.get("joints", []) if r.get("joint") in ("LidOnBase", res_c.get("name")))
+           and any(r.get("joint") == "LidOnBase" for r in chk.get("joints", [])), chk)
+        _, tree = call("tree")
+        ok("assemble constraint: the model browser names the rule, not the joint kind", '"mate"' in json.dumps(tree), json.dumps(tree)[:400])
+
+        # links.repair recreates a constraint by its rule, keeps gap and the joint's facing
+        doc = srv.doc
+        with srv.lock:
+            before = next(j for j in doc.session.cmd("joint.list")["joints"] if j["name"] == "LidOnBase")
+            links.repair(srv.ws, doc, "LidOnBase")
+            after = next(j for j in doc.session.cmd("joint.list")["joints"] if j["name"] == "LidOnBase")
+        ok("assemble constraint: links.repair recreates it through assembly.constraint.create (rule, gap, flip and position kept)",
+           after.get("constraint") == "mate" and after["offset"] == before["offset"] and after["flip"] == before["flip"]
+           and all(abs(x - y) < 1e-6 for x, y in zip(after["frame_b"]["origin"], before["frame_b"]["origin"])), (before, after))
+        # every rule the dialog offers, with the picks it makes (face for a plane, circle for a round face): add,
+        # repair (recreated by its rule, same place, facing and rule), delete through the browser's endpoint
+        st_dm, _ = call("assembly/joint/delete", {"joint": "LidOnBase"})
+        st_dc, _ = call("assembly/joint/delete", {"joint": res_c.get("name")})
+        # PinB moves with each round rule: its circle picks are given in its own coordinates ("local") and placed
+        # where PinB is before each rule
+        rules = {
+            "mate": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "Lid:1", "face": [80, 15, 0]}, {"offset": 2}),
+            "flush": ({"occurrence": "Base:1", "face": [0, 15, 5]}, {"occurrence": "Lid:1", "face": [60, 15, 2]}, {"offset": 3, "flip": True}),
+            "distance": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "Lid:1", "face": [80, 15, 0]}, {"offset": 7}),
+            "concentric": ({"occurrence": "PinA:1", "circle": [5, 60, 10]}, {"occurrence": "PinB:1", "local": [5, 0, 10]}, {}),
+            "insert": ({"occurrence": "PinA:1", "circle": [5, 60, 20]}, {"occurrence": "PinB:1", "local": [5, 0, 0]}, {}),
+            "parallel": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "Lid:1", "face": [80, 15, 0]}, {}),
+            "perpendicular": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "Lid:1", "face": [60, 15, 2]}, {}),
+            "angle": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "Lid:1", "face": [80, 15, 0]}, {"angle": 30, "flip": True}),
+            "tangent": ({"occurrence": "Base:1", "face": [20, 15, 10]}, {"occurrence": "PinB:1", "local": [5, 0, 10]}, {}),
+        }
+        rule_res = {}
+        for rule, (ra, rb, extra) in rules.items():
+            if "local" in rb:
+                with srv.lock:
+                    pb = next(o for o in links._occurrences(srv.doc.session).values() if o["name"] == "PinB:1")["transform"]
+                rb = {"occurrence": "PinB:1", "circle": links.g.apply_point(pb, rb["local"])}
+            st_r, res_r = call("assembly/constraint", dict({"type": rule, "a": ra, "b": rb}, **extra))
+            nm = res_r.get("name")
+            if st_r != 200:
+                rule_res[rule] = ("add", st_r, res_r)
+                continue
+            with srv.lock:
+                bj = next(j for j in srv.doc.session.cmd("joint.list")["joints"] if j["name"] == nm)
+                try:
+                    links.repair(srv.ws, srv.doc, nm)
+                    aj = next(j for j in srv.doc.session.cmd("joint.list")["joints"] if j["name"] == nm)
+                    same = (aj.get("constraint") == rule and aj["flip"] == bj["flip"]
+                            and all(abs(x - y) < 1e-6 for x, y in zip(aj["frame_b"]["origin"] + aj["frame_b"]["z"],
+                                                                      bj["frame_b"]["origin"] + bj["frame_b"]["z"])))
+                except Exception as e:
+                    same = f"repair: {e}"
+            st_d, res_d = call("assembly/joint/delete", {"joint": nm})
+            with srv.lock:
+                gone = (all(j["name"] != nm for j in srv.doc.session.cmd("joint.list")["joints"])
+                        and nm not in srv.doc.metadata().get("joints", {}))
+            if same is not True or st_d != 200 or not gone:
+                rule_res[rule] = (same, st_d, res_d, gone)
+        ok("assemble constraint: all nine dialog rules are made from face/circle picks, links.repair keeps rule, place, facing "
+           "(flipped flush and angle included) and gap, and Delete removes joint and record",
+           st_dm == 200 and st_dc == 200 and not rule_res, rule_res)
+        st_dx, res_dx = call("assembly/joint/delete", {"joint": "NoSuchJoint"})
+        ok("assemble joint delete: an unknown name gives HTTP 400", st_dx == 400 and res_dx.get("error"), res_dx)
+
+        # a create SolidCraft refuses during repair leaves the constraint where it was
+        st_g, res_g = call("assembly/constraint", {"type": "angle", "a": rules["angle"][0], "b": rules["angle"][1], "angle": 30})
+        with srv.lock:
+            d = srv.doc
+            meta = d.metadata()
+            meta["joints"][res_g["name"]]["create"].pop("angle", None)  # repair then has no angle for the rule
+            d.set_metadata(meta)
+            try:
+                links.repair(srv.ws, d, res_g["name"])
+                refused = False
+            except Exception:
+                refused = True
+            still = any(j["name"] == res_g["name"] and j.get("constraint") == "angle"
+                        for j in d.session.cmd("joint.list")["joints"])
+        ok("assemble constraint: a refused re-create during repair leaves the constraint in place (checkpoint)",
+           st_g == 200 and refused and still, (st_g, res_g, refused, still))
+        call("assembly/joint/delete", {"joint": res_g.get("name")})
+
+        # Place Standard Part (#88 step 3)
+        files_before = sorted(p.name for p in folder.glob("*.solidcraft"))
+        st_s, res_s = call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": 30, "translate": [0, 0, 40]})
+        st_s2, res_s2 = call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": 30})
+        st_n, res_n = call("assembly/standard", {"norm": "ISO 4032", "size": "M6"})
+        _, ctx = call("assembly/context")
+        occs = [o["path"] for o in ctx.get("occurrences", [])]
+        new_files = sorted(set(p.name for p in folder.glob("*.solidcraft")) - set(files_before))
+        ok("place standard part: makes ISO_4762_M6x30 once in the folder and places it twice, a nut without a length",
+           st_s == 200 and res_s.get("created") is True and res_s.get("file") == "ISO_4762_M6x30.solidcraft"
+           and st_s2 == 200 and res_s2.get("created") is False and st_n == 200 and res_n.get("designation") == "ISO 4032 M6"
+           and new_files == ["ISO_4032_M6.solidcraft", "ISO_4762_M6x30.solidcraft"]
+           and sum(1 for o in occs if o.startswith("ISO_4762_M6x30")) == 2, (st_s, res_s, st_s2, res_s2, st_n, res_n, new_files, occs))
+        bad_std = {
+            "unknown norm": call("assembly/standard", {"norm": "DIN 0", "size": "M6"}),
+            "unknown size": call("assembly/standard", {"norm": "ISO 4762", "size": "M99", "length": 30}),
+            "missing length": call("assembly/standard", {"norm": "ISO 4762", "size": "M6"}),
+            "text length": call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": "lang"}),
+        }
+        ok("place standard part: unknown norm or size, a screw without length and a text length give HTTP 400",
+           all(st == 400 and r.get("error") for st, r in bad_std.values()), bad_std)
+        _, hist = call("history")
+        ok("place standard part: one step on the shared Undo list", (hist.get("undo") or "").startswith("Place ISO 4032 M6"), hist)
+        _, std_cat = call("standard_parts")
+        ok("place standard part: the catalog lists every norm's sizes and preferred lengths for the dialog",
+           set(std_cat.get("details", {})) == {n["norm"] for n in std_cat.get("norms", [])}
+           and 30 in std_cat["details"]["ISO 4762"]["sizes"]["M6"]["preferred_lengths"], list(std_cat.get("details", {})))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def assemble_joint_dialog_checks(tmp):
+    """Assemble tab stage 1b: POST /api/assembly/joint creates joints via Mechvane add_joint (with
+    links.record), POST /api/assembly/joint/edit edits them, check_joints reports no warning, and
+    part documents reject /api/assembly/* joint endpoints with HTTP 400."""
+    import urllib.error
+    import urllib.request
+    from mechvane import server as mcp_server
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "assemble_joint_ui"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        plate = w.new(PART, "BasePlate")
+        plate.session.batch([
+            {"command": "parameters.change", "params": {"name": "h", "expression": "10 mm"}},
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPlate"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 40]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "SkPlate", "distance": "h", "name": "PlateBody"}},
+        ])
+        plate.save()
+
+        pin = w.new(PART, "Pin")
+        pin.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPin"}},
+            {"command": "sketch.circle.center", "params": {"center": [0, 0], "radius": 5}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "SkPin", "distance": 20, "name": "PinBody"}},
+        ])
+        pin.save()
+
+        asm_single = w.new(ASSEMBLY, "SinglePartAsm")
+        links.insert(w, asm_single, plate.path, name="OnlyPlate", grounded=True)
+        asm_single.save()
+
+        asm = w.new(ASSEMBLY, "GearboxJoints")
+        links.insert(w, asm, plate.path, name="Plate", grounded=True)
+        links.insert(w, asm, pin.path, name="DrivePin", translate=[30, 0, 0], grounded=False)
+        links.insert(w, asm, pin.path, name="SecondPin", translate=[0, 30, 0], grounded=False)
+        asm.save()
+    finally:
+        w.close_all()
+
+    srv = ui_server.create_server(folder, port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    try:
+        # With a part open, joint endpoints fail with HTTP 400
+        st_op, _ = call("open/BasePlate.solidcraft", {})
+        st_gc, gc = call("assembly/context")
+        st_pj, pj = call("assembly/joint", {"type": "rigid", "a": {"occurrence": "Plate:1", "plane": "XY"},
+                                            "b": {"occurrence": "DrivePin:1", "plane": "XY"}})
+        st_pe, pe = call("assembly/joint/edit", {"joint": "J1", "flip": True})
+        ok("assemble joint endpoints: return HTTP 400 when a part is open",
+           st_op == 200 and st_gc == 400 and st_pj == 400 and st_pe == 400
+           and bool(gc.get("error") and pj.get("error") and pe.get("error")),
+           f"open={st_op} ctx=({st_gc}, {gc}) add=({st_pj}, {pj}) edit=({st_pe}, {pe})")
+
+        # Assembly with fewer than 2 components rejects joint creation with HTTP 400
+        st_os, _ = call("open/SinglePartAsm.solidcraft", {})
+        st_single, res_single = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "OnlyPlate:1", "plane": "XY"},
+            "b": {"occurrence": "OnlyPlate:1", "plane": "YZ"},
+        })
+        ok("assemble POST /api/assembly/joint: rejects assembly with fewer than two components",
+           st_os == 200 and st_single == 400 and "two components" in (res_single.get("error") or ""),
+           f"single=({st_single}, {res_single})")
+
+        # Open assembly and check GET /api/assembly/context
+        st_oa, _ = call("open/GearboxJoints.solidcraft", {})
+        st_ctx, ctx = call("assembly/context")
+        occ_paths = [o.get("path") for o in (ctx.get("occurrences") or [])]
+        body_occ = ctx.get("body_occurrences") or {}
+        ok("assemble /api/assembly/context: lists occurrences and body_occurrences map",
+           st_oa == 200 and st_ctx == 200 and "Plate:1" in occ_paths and "DrivePin:1" in occ_paths
+           and "SecondPin:1" in occ_paths
+           and body_occ.get("BasePlate") == "Plate:1" and body_occ.get("Pin") == "DrivePin:1",
+           f"ctx=({st_ctx}, {ctx})")
+
+        # Input validation: same component on both sides (including base name vs :1), unknown occurrence,
+        # malformed face/point/frame, and non-numeric offset/angle strings all return HTTP 400
+        st_same, res_same = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate", "plane": "XY"},
+            "b": {"occurrence": "Plate:1", "plane": "YZ"},
+        })
+        st_unk, res_unk = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Ghost:1", "plane": "XY"},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+        })
+        st_face, res_face = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate:1", "face": [10, 20]},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+        })
+        st_pt, res_pt = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate:1", "point": ["bad", 0, 0]},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+        })
+        st_frm, res_frm = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate:1", "frame": {"origin": [1, 2]}},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+        })
+        st_off, res_off = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate:1", "plane": "XY"},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+            "offset": "not_a_number",
+        })
+        st_ang, res_ang = call("assembly/joint", {
+            "type": "rigid",
+            "a": {"occurrence": "Plate:1", "plane": "XY"},
+            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+            "angle": "forty_five",
+        })
+        ok("assemble POST /api/assembly/joint: validates distinct occurrences, known occurrence, face/point/frame, and numeric offset/angle",
+           st_same == 400 and "different component" in (res_same.get("error") or "")
+           and st_unk == 400 and "unknown component occurrence" in (res_unk.get("error") or "").lower()
+           and st_face == 400 and "face" in (res_face.get("error") or "")
+           and st_pt == 400 and "point" in (res_pt.get("error") or "")
+           and st_frm == 400 and "frame" in (res_frm.get("error") or "")
+           and st_off == 400 and "offset" in (res_off.get("error") or "")
+           and st_ang == 400 and "angle" in (res_ang.get("error") or ""),
+           f"same=({st_same},{res_same}) unk=({st_unk},{res_unk}) face=({st_face},{res_face}) "
+           f"pt=({st_pt},{res_pt}) frm=({st_frm},{res_frm}) off=({st_off},{res_off}) ang=({st_ang},{res_ang})")
+
+        # Create a revolute joint via POST /api/assembly/joint using picked face points
+        st_add, add_res = call("assembly/joint", {
+            "type": "revolute",
+            "name": "PinPivot",
+            "a": {"occurrence": "Plate:1", "face": [20, 20, 10]},
+            "b": {"occurrence": "DrivePin:1", "face": [34, 3, 12]},
+            "offset": 1.5,
+        })
+        st_tr, tr = call("tree")
+        st_fd, fd = call("findings")
+        joint_warnings = [f for f in (fd.get("findings") or []) if f.get("severity") in ("warn", "fail")]
+        _, ctx_after_add = call("assembly/context")
+        added_j = next((j for j in (ctx_after_add.get("joints") or []) if j.get("name") == "PinPivot"), {})
+        # Verify check_joints via Mechvane's links.check & MCP check_joints reports it with zero warnings
+        with srv.lock:
+            cur = srv.ensure_current()
+            chk_entries = links.check(srv.ws, cur)
+        prev_ws = mcp_server.ws
+        try:
+            mcp_server.ws = Workspace(folder)
+            mcp_server.ws.open(folder / "GearboxJoints.solidcraft")
+            mcp_chk = mcp_server.check_joints("GearboxJoints")
+        finally:
+            mcp_server.ws.close_all()
+            mcp_server.ws = prev_ws
+
+        ok("assemble POST /api/assembly/joint: creates recorded joint with occurrence_a/occurrence_b and check_joints reports no warning",
+           st_add == 200 and add_res.get("name") == "PinPivot"
+           and added_j.get("occurrence_a") == "Plate:1" and added_j.get("occurrence_b") == "DrivePin:1"
+           and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" and j.get("status") == "ok"
+                   for j in (tr.get("joints") or []))
+           and len(chk_entries) == 2 and all(e.get("status") == "ok" for e in chk_entries)
+           and not joint_warnings and not mcp_chk.get("warnings")
+           and len(mcp_chk.get("joints") or []) == 2 and all(e.get("status") == "ok" for e in mcp_chk["joints"]),
+           f"add=({st_add}, {add_res}) added_j={added_j} chk={chk_entries} mcp={mcp_chk} findings={joint_warnings}")
+
+        # Edit joint validation: setting one side to match the other side's occurrence is rejected with HTTP 400
+        st_ed_same, res_ed_same = call("assembly/joint/edit", {
+            "joint": "PinPivot",
+            "b": {"occurrence": "Plate:1", "face": [20, 20, 10]},
+        })
+        ok("assemble POST /api/assembly/joint/edit: rejects setting both sides to the same component",
+           st_ed_same == 400 and "different component" in (res_ed_same.get("error") or ""),
+           f"ed_same=({st_ed_same}, {res_ed_same})")
+
+        # Edit the joint via POST /api/assembly/joint/edit (including angle)
+        st_ed, ed_res = call("assembly/joint/edit", {
+            "joint": "PinPivot",
+            "type": "cylindrical",
+            "flip": True,
+            "offset": 3.0,
+            "angle": 45.0,
+        })
+        _, ctx_ed = call("assembly/context")
+        ed_entry = next((j for j in (ctx_ed.get("joints") or []) if j.get("name") == "PinPivot"), {})
+        with srv.lock:
+            chk_ed = links.check(srv.ws, srv.ensure_current())
+        ok("assemble POST /api/assembly/joint/edit: updates type/flip/offset/angle and keeps joint anchors ok",
+           st_ed == 200 and ed_res.get("name") == "PinPivot"
+           and ed_entry.get("type") == "cylindrical" and ed_entry.get("flip") is True
+           and ed_entry.get("offset") == 3.0 and ed_entry.get("angle") == 45.0
+           and ed_entry.get("occurrence_a") == "Plate:1" and ed_entry.get("occurrence_b") == "DrivePin:1"
+           and len(chk_ed) == 2 and all(e.get("status") == "ok" for e in chk_ed),
+           f"edit=({st_ed}, {ed_res}) ctx={ed_entry} chk={chk_ed}")
+
+        # Shared Undo / Redo reverts and restores the joint and its recorded anchors
+        st_un, _ = call("agent/undo", {})
+        _, tr_un = call("tree")
+        st_un2, _ = call("agent/undo", {})
+        _, tr_un2 = call("tree")
+        st_re, _ = call("agent/redo", {})
+        _, tr_re = call("tree")
+        st_re2, _ = call("agent/redo", {})
+        _, tr_re2 = call("tree")
+        ok("assemble /api/assembly/joint: undo and redo on shared history",
+           st_un == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" for j in (tr_un.get("joints") or []))
+           and st_un2 == 200 and not any(j.get("name") == "PinPivot" for j in (tr_un2.get("joints") or []))
+           and st_re == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" for j in (tr_re.get("joints") or []))
+           and st_re2 == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "cylindrical" for j in (tr_re2.get("joints") or [])),
+           f"un={tr_un.get('joints')} un2={tr_un2.get('joints')} re={tr_re.get('joints')} re2={tr_re2.get('joints')}")
+
+        # Edit joint with changed component (switching b from DrivePin:1 to SecondPin:1 and a to point pick)
+        st_ed_comp, res_ed_comp = call("assembly/joint/edit", {
+            "joint": "PinPivot",
+            "a": {"occurrence": "Plate:1", "point": [20, 20, 10], "z": [0, 0, 1]},
+            "b": {"occurrence": "SecondPin:1", "face": [4, 33, 12]},
+        })
+        _, ctx_comp = call("assembly/context")
+        comp_entry = next((j for j in (ctx_comp.get("joints") or []) if j.get("name") == "PinPivot"), {})
+        with srv.lock:
+            chk_comp = links.check(srv.ws, srv.ensure_current())
+        ok("assemble POST /api/assembly/joint/edit: switches component b to SecondPin:1 and records new anchor",
+           st_ed_comp == 200 and comp_entry.get("occurrence_a") == "Plate:1"
+           and comp_entry.get("occurrence_b") == "SecondPin:1"
+           and comp_entry.get("angle") == 45.0
+           and len(chk_comp) == 2 and all(e.get("status") == "ok" for e in chk_comp)
+           and {e.get("occurrence") for e in chk_comp} == {"Plate:1", "SecondPin:1"},
+           f"ed_comp=({st_ed_comp}, {res_ed_comp}) entry={comp_entry} chk={chk_comp}")
+
+        # Rename joint via POST /api/assembly/joint/edit
+        st_ren, res_ren = call("assembly/joint/edit", {
+            "joint": "PinPivot",
+            "name": "MainShaftJoint",
+        })
+        _, tr_ren = call("tree")
+        _, ctx_ren = call("assembly/context")
+        ren_entry = next((j for j in (ctx_ren.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
+        with srv.lock:
+            chk_ren = links.check(srv.ws, srv.ensure_current())
+        ok("assemble POST /api/assembly/joint/edit: renames joint across session, tree, and recorded anchors",
+           st_ren == 200 and res_ren.get("name") == "MainShaftJoint"
+           and any(j.get("name") == "MainShaftJoint" for j in (tr_ren.get("joints") or []))
+           and not any(j.get("name") == "PinPivot" for j in (tr_ren.get("joints") or []))
+           and ren_entry.get("occurrence_a") == "Plate:1" and ren_entry.get("occurrence_b") == "SecondPin:1"
+           and len(chk_ren) == 2 and all(e.get("joint") == "MainShaftJoint" and e.get("status") == "ok" for e in chk_ren),
+           f"ren=({st_ren}, {res_ren}) tree={tr_ren.get('joints')} ctx={ren_entry} chk={chk_ren}")
+
+        # Check 6(a): update_links(repair=True) after edit_joint:
+        # 1) When parts have not moved, update_links(repair=True) does not invoke links.repair, so
+        #    edited type/flip/offset/angle remain unchanged.
+        # 2) When BasePlate's thickness changes (h: 10 mm -> 14 mm) so links.repair runs,
+        #    modeling.edit_joint's updated entry["create"] ensures links.repair preserves the
+        #    edited type ("cylindrical"), flip (True), offset (3.0), and angle (45.0).
+        st_rep_nomove, rep_nomove = call("assembly/update_links", {"repair": True})
+        _, ctx_nomove = call("assembly/context")
+        nomove_entry = next((j for j in (ctx_nomove.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
+        ok("assemble edit_joint + update_links(repair=True) without part move: keeps edited type, flip, offset, and angle",
+           st_rep_nomove == 200 and rep_nomove.get("repaired") == []
+           and nomove_entry.get("type") == "cylindrical" and nomove_entry.get("flip") is True
+           and nomove_entry.get("offset") == 3.0 and nomove_entry.get("angle") == 45.0,
+           f"rep_nomove=({st_rep_nomove}, {rep_nomove}) entry={nomove_entry}")
+
+        with srv.lock:
+            plate_doc = srv.ws.open(folder / "BasePlate.solidcraft")
+            plate_doc.session.cmd("parameters.change", {"name": "h", "expression": "14 mm"})
+            plate_doc.save()
+        st_rep_move, rep_move = call("assembly/update_links", {"repair": True})
+        _, ctx_move = call("assembly/context")
+        move_entry = next((j for j in (ctx_move.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
+        ok("assemble edit_joint + links.repair on moved part: repairs joint and preserves edited type, flip, offset, and angle",
+           st_rep_move == 200
+           and any(r.get("joint") == "MainShaftJoint" and r.get("status") == "ok" for r in (rep_move.get("repaired") or []))
+           and move_entry.get("flip") is True and move_entry.get("offset") == 3.0
+           and move_entry.get("type") == "cylindrical" and move_entry.get("angle") == 45.0,
+           f"rep_move=({st_rep_move}, {rep_move}) move_entry={move_entry}")
+
+        # Check 6(b): Forced error in the middle of apply() after joint.create:
+        # Verify assembly_add_joint rolls back doc.session via edit.checkpoint, whereas raw hand_step
+        # only drops the disk Snapshot without rolling back doc.session.
+        orig_record = links.record
+        def boom_record(*args, **kwargs):
+            raise RuntimeError("simulated error after joint.create")
+        links.record = boom_record
+        try:
+            st_boom, res_boom = call("assembly/joint", {
+                "type": "rigid",
+                "name": "GhostOnError",
+                "a": {"occurrence": "Plate:1", "plane": "XY"},
+                "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+            })
+        finally:
+            links.record = orig_record
+        with srv.lock:
+            cur_after_boom = srv.ensure_current()
+            live_after_boom = [j.get("name") for j in cur_after_boom.session.cmd("joint.list", {}).get("joints", [])]
+
+        # Also demonstrate raw hand_step behavior without assembly_add_joint's checkpoint rollback:
+        raw_hand_leaked = False
+        with srv.lock:
+            cur_doc = srv.ensure_current()
+            cp_raw = cur_doc.session.cmd("edit.checkpoint", {}).get("checkpoint")
+            try:
+                def raw_failing_apply():
+                    cur_doc.session.cmd("joint.create", {
+                        "type": "rigid",
+                        "name": "RawHandStepLeak",
+                        "a": {"occurrence": "Plate:1", "plane": "XY"},
+                        "b": {"occurrence": "DrivePin:1", "plane": "XY"},
+                    })
+                    raise RuntimeError("simulated mid-hand_step failure")
+                try:
+                    srv.agent.hand_step("raw test", raw_failing_apply)
+                except RuntimeError:
+                    pass
+                raw_names = [j.get("name") for j in cur_doc.session.cmd("joint.list", {}).get("joints", [])]
+                raw_hand_leaked = "RawHandStepLeak" in raw_names
+            finally:
+                modeling._restore(cur_doc.session, cp_raw, forget=False)
+
+        ok("assemble POST /api/assembly/joint: rolls back session checkpoint when apply() fails after joint.create",
+           st_boom == 400 and "simulated error after joint.create" in (res_boom.get("error") or "")
+           and "GhostOnError" not in live_after_boom and raw_hand_leaked is True,
+           f"boom=({st_boom}, {res_boom}) live_after_boom={live_after_boom} raw_hand_leaked={raw_hand_leaked}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def bolted_dialog_checks(tmp):
+    """Assemble tab stage 1c: /api/standard_parts and /api/assembly/bolted/{preview,create,edit,delete}."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "bolted_ui"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        for pname, thick in (("BottomPlate", 20), ("TopPlate", 10)):
+            p = w.new(PART, pname)
+            p.session.batch([
+                {"command": "sketch.create", "params": {"plane": "XY", "name": f"Sk_{pname}"}},
+                {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [60, 60]}},
+                {"command": "sketch.finish", "params": {}},
+                {"command": "solid.extrude", "params": {"sketch": f"Sk_{pname}", "distance": thick, "name": f"{pname}Body"}},
+            ])
+            p.save()
+
+        asm = w.new(ASSEMBLY, "Flange")
+        links.insert(w, asm, folder / "BottomPlate.solidcraft", name="BottomPlate", grounded=True)
+        links.insert(w, asm, folder / "TopPlate.solidcraft", name="TopPlate", translate=[0, 0, 20], grounded=True)
+        asm.save()
+    finally:
+        w.close_all()
+
+    srv = ui_server.create_server(folder, port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    try:
+        st_sp, sp = call("standard_parts")
+        ok("bolted UI /api/standard_parts: exposes ISO 4762 and ISO 10642 details",
+           st_sp == 200 and "ISO 4762" in (sp.get("bolted_norms") or [])
+           and "ISO 10642" in (sp.get("bolted_norms") or [])
+           and "M6" in (sp.get("bolted_details", {}).get("ISO 4762", {}).get("sizes") or {}),
+           f"st={st_sp} keys={list(sp.keys())}")
+
+        # Open a part: assembly bolted endpoints must return HTTP 400
+        call("open/TopPlate.solidcraft", {})
+        st_pl, _ = call("assembly/bolted")
+        st_pp, _ = call("assembly/bolted/preview", {"x": 30, "y": 30, "z": 10, "size": "M6"})
+        st_pc, _ = call("assembly/bolted/create", {"x": 30, "y": 30, "z": 10, "size": "M6"})
+        ok("bolted UI endpoints: return HTTP 400 when a part is open",
+           st_pl == 400 and st_pp == 400 and st_pc == 400,
+           f"list={st_pl} prev={st_pp} create={st_pc}")
+
+        # Open the two-plate assembly
+        st_oa, _ = call("open/Flange.solidcraft", {})
+        placement = {"type": "point", "position": [30, 30, 30], "direction": [0, 0, -1]}
+        st_pr, pr = call("assembly/bolted/preview", {
+            "placement": placement,
+            "screw_norm": "ISO 4762",
+            "size": "M6",
+            "connection_type": "through",
+            "fit": "normal",
+            "counterbore": True,
+            "washer_head": True,
+            "washer_nut": True,
+        })
+        pr_occs = [p.get("occurrence") for p in pr.get("parts") or []]
+        ok("bolted UI preview: returns fastener length, dims and both plates",
+           st_oa == 200 and st_pr == 200 and pr.get("selected_screw_length", 0) > 20
+           and "TopPlate:1" in pr_occs and "BottomPlate:1" in pr_occs
+           and isinstance(pr.get("dims"), dict),
+           f"prev=({st_pr}, {pr})")
+
+        # Invalid inputs (size='M99', length='abc', x='abc'): HTTP 400 with readable message, undo history unchanged
+        _, hist_before = call("agent/history")
+        turns_before = len(srv.agent.turns)
+        st_bad_sz, err_sz = call("assembly/bolted/create", {"placement": placement, "size": "M99"})
+        st_bad_ln, err_ln = call("assembly/bolted/create", {"placement": placement, "size": "M6", "length": "abc"})
+        st_bad_x, err_x = call("assembly/bolted/create", {"x": "abc", "y": 30, "z": 22, "size": "M6"})
+        _, hist_after = call("agent/history")
+        turns_after = len(srv.agent.turns)
+        ok("bolted UI validation: size='M99', length='abc', x='abc' return HTTP 400 and leave undo history unchanged",
+           st_bad_sz == 400 and "M99" in (err_sz.get("error") or "")
+           and st_bad_ln == 400 and "length" in (err_ln.get("error") or "").lower()
+           and st_bad_x == 400 and "x must be a number" in (err_x.get("error") or "")
+           and hist_after == hist_before and turns_after == turns_before,
+           f"sz=({st_bad_sz}, {err_sz}) ln=({st_bad_ln}, {err_ln}) x=({st_bad_x}, {err_x}) hist=({hist_before}, {hist_after})")
+
+        st_cr, cr = call("assembly/bolted/create", {
+            "placement": placement,
+            "screw_norm": "ISO 4762",
+            "size": "M6",
+            "connection_type": "through",
+            "fit": "normal",
+            "counterbore": True,
+            "washer_head": True,
+            "washer_nut": True,
+            "length_override": 50,
+            "name": "FlangeBolt",
+        })
+        conn_id = cr.get("id")
+        st_ls, ls = call("assembly/bolted")
+        st_tr, tr = call("tree")
+        tree_ids = [c.get("id") for c in tr.get("bolted_connections") or []]
+        ok("bolted UI create: connection is listed in /api/assembly/bolted and /api/tree with fixed length_override",
+           st_cr == 200 and conn_id and st_ls == 200 and ls.get("count") == 1
+           and conn_id in (ls.get("connections") or {}) and conn_id in tree_ids
+           and cr.get("screw_length") == 50.0,
+           f"create=({st_cr}, {cr}) list={ls} tree_ids={tree_ids}")
+
+        # Preview while editing an existing connection must ignore old fasteners and reset washer_head on countersunk
+        st_ep, ep = call("assembly/bolted/preview", {
+            "edit_id": conn_id,
+            "size": "M8",
+            "screw_norm": "ISO 10642",
+            "connection_type": "through",
+        })
+        ok("bolted UI edit preview: evaluates updated size on plates without hitting old fasteners",
+           st_ep == 200 and ep.get("size") == "M8" and ep.get("screw_norm") == "ISO 10642"
+           and ep.get("washer_head") is False and ep.get("washer_nut") is True,
+           f"edit_prev=({st_ep}, {ep})")
+
+        # Edit cap -> countersunk without explicit washer_head: washer_head must reset to False, fixed length preserved
+        st_ed, ed = call("assembly/bolted/edit", {
+            "id": conn_id,
+            "size": "M8",
+            "screw_norm": "ISO 10642",
+        })
+        _, ls_ed = call("assembly/bolted")
+        ed_conn = (ls_ed.get("connections") or {}).get(conn_id, {})
+        ed_fast = (ed_conn.get("parameters") or {}).get("fasteners") or {}
+        ok("bolted UI edit (cap -> countersunk): resets washer_head to False and preserves fixed length_override",
+           st_ed == 200 and ed_conn.get("size") == "M8" and ed_conn.get("screw_norm") == "ISO 10642"
+           and ed_conn.get("washer_head") is False and ed_fast.get("washer_head") is False
+           and ed_conn.get("washer_nut") is True and ed_fast.get("washer_nut") is True
+           and ed_conn.get("screw_length") == 50.0 and ed_fast.get("length_override") == 50.0,
+           f"edit=({st_ed}, {ed}) conn={ed_conn}")
+
+        # Edit through -> blind without explicit washer_nut: washer_nut must reset to False
+        st_eb, eb = call("assembly/bolted/edit", {
+            "id": conn_id,
+            "connection_type": "blind",
+            "length_override": None,
+        })
+        _, ls_eb = call("assembly/bolted")
+        eb_conn = (ls_eb.get("connections") or {}).get(conn_id, {})
+        eb_fast = (eb_conn.get("parameters") or {}).get("fasteners") or {}
+        ok("bolted UI edit (through -> blind): resets washer_nut to False in connection and stored parameters",
+           st_eb == 200 and eb_conn.get("type") == "blind"
+           and eb_conn.get("washer_nut") is False and eb_fast.get("washer_nut") is False
+           and eb_conn.get("washer_head") is False and eb_fast.get("washer_head") is False,
+           f"edit_blind=({st_eb}, {eb}) conn={eb_conn}")
+
+        st_del, dl = call("assembly/bolted/delete", {"id": conn_id})
+        _, ls_del = call("assembly/bolted")
+        st_miss, _ = call("assembly/bolted/delete", {"id": "nonexistent"})
+        ok("bolted UI delete: removes connection from list and returns 404 on unknown id",
+           st_del == 200 and dl.get("deleted") == conn_id and ls_del.get("count") == 0
+           and not (ls_del.get("connections") or {}) and st_miss == 404,
+           f"del=({st_del}, {dl}) after={ls_del} miss={st_miss}")
+
+        st_un, _ = call("agent/undo", {})
+        _, ls_un = call("assembly/bolted")
+        st_re, _ = call("agent/redo", {})
+        _, ls_re = call("assembly/bolted")
+        ok("bolted UI undo/redo: restores and re-deletes bolted connection on shared history",
+           st_un == 200 and ls_un.get("count") == 1 and st_re == 200 and ls_re.get("count") == 0,
+           f"undo={ls_un} redo={ls_re}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def _private_tool(name: str) -> bool:
+    """Pipeline tools stay private (tools/export_public.sh): their checks run only where the file exists."""
+    return (Path(__file__).resolve().parents[2] / "tools" / name).exists()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="Mechvane-check-") as tmp:
         ws = Workspace(tmp)
@@ -7077,6 +9918,7 @@ def main():
             work_features(ws)
             semantic_queries(ws)
             design_rule_checks(ws)
+            verfahrensregeln_checks(ws)
             joints_across_files(ws)
             standard_parts_checks(ws)
             subassemblies(ws)
@@ -7120,6 +9962,11 @@ def main():
             speech_cases_checks()
             params_checks(tmp)
             feature_dialog_checks(tmp)
+            assemble_dialog_checks(tmp)
+            assemble_joint_dialog_checks(tmp)
+            assemble_constraint_checks(tmp)
+            bolted_dialog_checks(tmp)
+            centred_hole_dialog_checks(tmp)
             sessionlog_checks(tmp)
             window_close_checks(tmp)
             viewtools_checks(tmp)
@@ -7130,11 +9977,30 @@ def main():
             scratch_dir_checks()
             sc_errors_checks(ws)
             design_intent_checks(ws)
+            concentric_hole_checks(ws)
             profile_choice_checks(ws)
             sketch_session_checks(tmp)
             step_import_checks(tmp)
             sc_errors_stage2_checks(ws)
+            sc_locate_checks(ws)
             part_end_checks(ws)
+            verify_view_checks(ws)
+            upstream_watch_checks()
+            if _private_tool("argon_review.py"):
+                argon_review_checks(tmp)
+            if _private_tool("agent_clone.sh"):
+                agent_clone_checks(tmp)
+            if _private_tool("review_score.py"):
+                review_score_checks(tmp)
+            if _private_tool("review_seeded.py"):
+                review_seeded_checks()
+            orchester_figures_checks()
+            command_matrix_checks()
+            if (Path(__file__).resolve().parents[1] / "tasks").exists():  # private, not in the public export
+                tester_tasks_checks()
+            if _private_tool("gate.py"):
+                gate_class_checks()
+            check_sources_gzip_check()
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

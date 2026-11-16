@@ -7,3 +7,4 @@ site/
 /build/
 *.egg-info/
 .cloudflare/
+/*.png

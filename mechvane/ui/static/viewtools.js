@@ -38,7 +38,7 @@ export function faceInfo(body, fid) {
     verts.push(a, b, c);
   }
   if (!tris.length) return { area };
-  if (tris.every((t) => t.n.dot(tris[0].n) > 0.9999)) return { area, normal: tris[0].n };
+  if (tris.every((t) => t.n.dot(tris[0].n) > 0.9999)) return { area, normal: tris[0].n, verts };
 
   // two facet normals as near a right angle as there are span the plane at right angles to a
   // cylinder's axis (not the most opposite: on a half cylinder those are parallel)
@@ -218,6 +218,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let mode = null; // "measure" | "section" | "select" | null
   let edgePick = null; // a feature dialog picking edges: called with {key, point, edge}
   let facePick = null; // a feature dialog picking a point on a face: called with {point, normal, body, face}
+  let facePickHoles = false; // also pick circular holes / cylindrical bores (for bolted connections)
   let planePick = null; // the sketch dialog: {frame: {origin, x_dir, y_dir}, cb([u, v], worldPoint)}
   let picks = [];
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
@@ -256,6 +257,46 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   const selectGroup = new THREE.Group();
   scene.add(selectGroup);
   let selection = [];
+
+  // Planar face hover highlight (matching origin planes: 0xd29922, 0.35 opacity fill, 0.7 opacity edge)
+  const faceHoverGroup = new THREE.Group();
+  faceHoverGroup.renderOrder = 9;
+  scene.add(faceHoverGroup);
+  let hoveredFace = null; // { bodyIndex, fid }
+
+  function clearFaceHover() {
+    if (!faceHoverGroup.children.length && !hoveredFace) return;
+    while (faceHoverGroup.children.length) {
+      const c = faceHoverGroup.children.pop();
+      c.geometry?.dispose();
+      c.material?.dispose();
+    }
+    hoveredFace = null;
+    renderScene();
+  }
+
+  function highlightHoverFace(bi, body, fid, info) {
+    clearFaceHover();
+    hoveredFace = { bodyIndex: bi, fid };
+    if (!edgeCache.has(bi)) edgeCache.set(bi, bodyEdges(body));
+    const edges = edgeCache.get(bi);
+    const faceEdges = edges.filter((e) => e.faces.includes(fid));
+    if (faceEdges.length) {
+      const edgeGeom = new THREE.BufferGeometry().setFromPoints(faceEdges.flatMap((e) => [e.a, e.b]));
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0xd29922, transparent: true, opacity: 0.7, depthTest: false });
+      const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
+      edgeLines.renderOrder = 9;
+      faceHoverGroup.add(edgeLines);
+    }
+    if (info.verts && info.verts.length) {
+      const fillGeom = new THREE.BufferGeometry().setFromPoints(info.verts);
+      const fillMat = new THREE.MeshBasicMaterial({ color: 0xd29922, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+      const fillMesh = new THREE.Mesh(fillGeom, fillMat);
+      fillMesh.renderOrder = 9;
+      faceHoverGroup.add(fillMesh);
+    }
+    renderScene();
+  }
   const selectBtn = bar.querySelector('[data-tool="select"]');
   if (selectBtn) {
     if (selectable) {
@@ -280,7 +321,9 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       m.renderOrder = 11;
       selectGroup.add(m);
     }
-    if (mode === "select") {
+    // the readout for the Select tool; with no tool on, a selection still shows it (selecting is the default)
+    if (!mode && !selection.length && !readout.hidden && !measureActive()) readout.hidden = true;
+    if (mode === "select" || (!mode && selection.length)) {
       readout.innerHTML = selection.length
         ? `<strong>${selection.length} selected</strong><br>${selection.map((s) => s.name || `face ${s.index}`).join("<br>")}`
           + "<br>Now tell the agent what to do"
@@ -338,6 +381,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     caps.forEach((c) => modelGroup.add(c));
   }
 
+  const measureActive = () => mode === "measure" || mode === "section";
   function clearMeasure() {
     picks = [];
     while (measureGroup.children.length) {
@@ -440,7 +484,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
 
   // An edge of the clicked face within a few pixels of the click, as edgeInfo, or null
   let edgeCache = new Map();
-  function nearEdge(bi, body, fid, x, y, rect, pointerType) {
+  function nearEdge(bi, body, fid, x, y, rect, pointerType, maxRayDist = Infinity) {
     if (!edgeCache.has(bi)) edgeCache.set(bi, bodyEdges(body));
     const edges = edgeCache.get(bi);
     const screen = (p) => {
@@ -448,16 +492,45 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       return new THREE.Vector2((s.x + 1) / 2 * rect.width, (1 - s.y) / 2 * rect.height);
     };
     const c = new THREE.Vector2(x, y);
-    let best = null, bestD = EDGE_PICK_PX[pointerType] ?? EDGE_PICK_PX.mouse;
+    let best = null, bestD = EDGE_PICK_PX[pointerType] ?? EDGE_PICK_PX.mouse, bestPt = null;
     for (const e of edges) {
-      if (!e.faces.includes(fid)) continue;
+      if (fid !== null && !e.faces.includes(fid)) continue;
       const a = screen(e.a), b = screen(e.b);
       const ab = new THREE.Vector2().subVectors(b, a);
       const t = THREE.MathUtils.clamp(new THREE.Vector2().subVectors(c, a).dot(ab) / Math.max(ab.lengthSq(), 1e-9), 0, 1);
       const d = a.clone().addScaledVector(ab, t).distanceTo(c);
-      if (d < bestD) { bestD = d; best = e; }
+      if (d < bestD) {
+        const pt = e.a.clone().lerp(e.b, t);
+        if (camera.position.distanceTo(pt) > maxRayDist) continue;
+        bestD = d; best = e; bestPt = pt;
+      }
     }
-    return best && edgeInfo(edges, best);
+    return best && { ...edgeInfo(edges, best), distPx: bestD, hitPoint: bestPt };
+  }
+
+  function pickEdgeAt(ev, ray, rect) {
+    const meshes = modelGroup.children.filter((o) => o.isMesh && !o.userData.sectionCap);
+    let hits = ray.intersectObjects(meshes, false);
+    if (renderer.clippingPlanes.length) hits = hits.filter((h) => plane.distanceToPoint(h.point) >= 0);
+    const hit = hits[0];
+    const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+    if (hit) {
+      const bi = hit.object.userData.bodyIndex;
+      const body = meshData.bodies[bi];
+      const fid = (body.face_ids || [])[hit.faceIndex] ?? 0;
+      const edge = nearEdge(bi, body, fid, x, y, rect, ev.pointerType);
+      if (edge) return { key: edgeKey(edge), point: pointOnEdge(edge, hit.point), edge, body: body.name, dist: edge.distPx };
+    }
+    const maxDist = hit ? hit.distance + 1.0 : Infinity;
+    let best = null;
+    for (let bi = 0; bi < (meshData?.bodies || []).length; bi++) {
+      const body = meshData.bodies[bi];
+      const edge = nearEdge(bi, body, null, x, y, rect, ev.pointerType, maxDist);
+      if (edge && (!best || edge.distPx < best.dist)) {
+        best = { key: edgeKey(edge), point: pointOnEdge(edge, edge.hitPoint), edge, body: body.name, dist: edge.distPx };
+      }
+    }
+    return best;
   }
 
   function pick(ev) {
@@ -470,12 +543,21 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       // the sketch plane, not the model: a click anywhere on it, also beside the part
       const { origin, x_dir: xd, y_dir: yd } = planePick.frame;
       const o = new THREE.Vector3(...origin), x = new THREE.Vector3(...xd), y = new THREE.Vector3(...yd);
-      const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3().crossVectors(x, y).normalize(), o);
+      const n = new THREE.Vector3().crossVectors(x, y).normalize();
+      const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(n, o);
       const at = ray.ray.intersectPlane(pl, new THREE.Vector3());
-      if (at) {
-        const d = at.clone().sub(o);
-        planePick.cb([d.dot(x), d.dot(y)], at);
+      const uv = at ? [at.clone().sub(o).dot(x), at.clone().sub(o).dot(y)] : null;
+      const px = EDGE_PICK_PX[ev.pointerType] ?? EDGE_PICK_PX.mouse;
+      const mmPerPx = (camera.top - camera.bottom) / Math.max((camera.zoom || 1) * rect.height, 1);
+      const planeTol = (px * mmPerPx) / Math.max(Math.abs(n.dot(ray.ray.direction)), 0.2);
+      if (uv || planePick.cb.length >= 3) {
+        planePick.cb(uv, at, { clientX: ev.clientX, clientY: ev.clientY, planeTol, edge: () => pickEdgeAt(ev, ray, rect) });
       }
+      return;
+    }
+    if (edgePick) {
+      const picked = pickEdgeAt(ev, ray, rect);
+      if (picked) edgePick(picked);
       return;
     }
     const meshes = modelGroup.children.filter((o) => o.isMesh && !o.userData.sectionCap);
@@ -484,23 +566,59 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       hits = hits.filter((h) => plane.distanceToPoint(h.point) >= 0);
     }
     const hit = hits[0];
-    if (!hit) return;
+    if (!hit) {
+      // a click beside the part clears the selection, as in Inventor
+      if ((!mode || mode === "select") && !edgePick && !facePick && selection.length) {
+        selection = [];
+        showSelection();
+        if (!mode) readout.hidden = true;
+      }
+      return;
+    }
     const body = meshData.bodies[hit.object.userData.bodyIndex];
     const fid = (body.face_ids || [])[hit.faceIndex] ?? 0;
     if (facePick) {
+      clearFaceHover();
       const info = faceInfo(body, fid);
       // the face normal from the mesh, facing the camera side the user clicked
       let n = info.normal ? info.normal.clone() : hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
       if (n.dot(ray.ray.direction) > 0) n.negate();
-      facePick({ point: hit.point.clone(), normal: n, body: body.name, face: fid, planar: !!info.normal, info });
+      const faceName = (body.faces || []).find((f) => f.index === fid)?.name || null;
+      const bodyIndex = hit.object.userData.bodyIndex;
+      if (facePickHoles) {
+        const bi = hit.object.userData.bodyIndex;
+        const edge = nearEdge(bi, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect, ev.pointerType);
+        if (edge && edge.kind === "circle") {
+          let dir = n.clone().negate();
+          if (!info.normal && info.axis && info.verts && info.verts.length) {
+            const ax = info.axis.clone().normalize();
+            let lo = Infinity, hi = -Infinity;
+            for (const v of info.verts) { const t = v.dot(ax); if (t < lo) lo = t; if (t > hi) hi = t; }
+            const ct = edge.center.dot(ax);
+            dir = Math.abs(ct - lo) <= Math.abs(ct - hi) ? ax.clone() : ax.clone().negate();
+            n = dir.clone().negate();
+          }
+          facePick({ point: edge.center.clone(), normal: n, direction: dir, hole: true, radius: edge.radius, body: body.name, bodyIndex, face: fid, faceName, planar: !!info.normal, info });
+          return;
+        }
+        if (!info.normal && info.axis && info.center && info.verts && info.verts.length) {
+          const ax = info.axis.clone().normalize();
+          let lo = Infinity, hi = -Infinity;
+          for (const v of info.verts) { const t = v.dot(ax); if (t < lo) lo = t; if (t > hi) hi = t; }
+          const cProj = info.center.dot(ax);
+          const endAtMax = ax.dot(ray.ray.direction) < 0;
+          const entryProj = endAtMax ? hi : lo;
+          const entry = info.center.clone().addScaledVector(ax, entryProj - cProj);
+          const dir = endAtMax ? ax.clone().negate() : ax.clone();
+          n = dir.clone().negate();
+          facePick({ point: entry, normal: n, direction: dir, hole: true, radius: info.radius, body: body.name, bodyIndex, face: fid, faceName, planar: false, info });
+          return;
+        }
+      }
+      facePick({ point: hit.point.clone(), normal: n, direction: n.clone().negate(), hole: false, body: body.name, bodyIndex, face: fid, faceName, planar: !!info.normal, info });
       return;
     }
-    if (edgePick) {
-      const edge = nearEdge(hit.object.userData.bodyIndex, body, fid, ev.clientX - rect.left, ev.clientY - rect.top, rect, ev.pointerType);
-      if (edge) edgePick({ key: edgeKey(edge), point: pointOnEdge(edge, hit.point), edge, body: body.name });
-      return;
-    }
-    if (mode === "select") {
+    if (mode === "select" || !mode) {
       const at = selection.findIndex((s) => s.body === body.name && s.index === fid);
       if (at >= 0) selection.splice(at, 1);
       else if (selection.length < 16) {
@@ -545,8 +663,48 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   let down = null;
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if ((mode !== "measure" && mode !== "select" && !edgePick && !facePick && !planePick) || !down || e.button !== 0) return;
+    // A click selects with no tool on, as in SolidCraft and Inventor (drag still turns the view); not while
+    // sketching, where the sketcher takes the clicks
+    if (!mode && !edgePick && !facePick && !planePick && document.body.classList.contains("sketching")) return;
+    if (!down || e.button !== 0) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) < (TAP_PX[e.pointerType] ?? TAP_PX.mouse)) pick(e);
+  });
+  renderer.domElement.addEventListener("pointermove", (ev) => {
+    if (!facePick || !meshData) {
+      if (hoveredFace) clearFaceHover();
+      return;
+    }
+    const rect = renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, camera);
+    const meshes = modelGroup.children.filter((o) => o.isMesh && !o.userData.sectionCap);
+    let hits = ray.intersectObjects(meshes, false);
+    if (renderer.clippingPlanes.length) {
+      hits = hits.filter((h) => plane.distanceToPoint(h.point) >= 0);
+    }
+    const hit = hits[0];
+    if (!hit) {
+      if (hoveredFace) clearFaceHover();
+      return;
+    }
+    const bi = hit.object.userData.bodyIndex;
+    const body = meshData.bodies[bi];
+    if (!body) {
+      if (hoveredFace) clearFaceHover();
+      return;
+    }
+    const fid = (body.face_ids || [])[hit.faceIndex] ?? 0;
+    if (hoveredFace && hoveredFace.bodyIndex === bi && hoveredFace.fid === fid) return;
+    const info = faceInfo(body, fid);
+    if (!info.normal && !(facePickHoles && info.axis)) {
+      if (hoveredFace) clearFaceHover();
+      return;
+    }
+    highlightHoverFace(bi, body, fid, info);
+  });
+  renderer.domElement.addEventListener("pointerleave", () => {
+    if (hoveredFace) clearFaceHover();
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -569,6 +727,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   return {
     // Called after the view was rebuilt from new mesh data (each mesh carries userData.bodyIndex)
     meshUpdated(data) {
+      clearFaceHover();
       meshData = data;
       edgeCache = new Map();
       modelBox = new THREE.Box3().setFromObject(modelGroup);
@@ -580,12 +739,14 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       showSelection();
     },
     setMode(next) {
+      clearFaceHover();
       setMode(next);
     },
     getMode() {
       return mode;
     },
     clear() {
+      clearFaceHover();
       if (selection.length) {
         selection = [];
         showSelection();
@@ -594,30 +755,49 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     },
     // A feature dialog picks edges until stopEdgePick(); measuring and selecting pause meanwhile
     startEdgePick(onPick) {
+      clearFaceHover();
       if (mode) setMode(mode);
+      facePick = null;
+      planePick = null;
       edgePick = onPick;
       if (controls) controls.touches.ONE = null;
     },
     stopEdgePick() {
       edgePick = null;
       facePick = null;
+      facePickHoles = false;
       planePick = null;
+      clearFaceHover();
       if (controls) controls.touches.ONE = THREE.TOUCH.ROTATE;
     },
     // The sketch dialog picks points on its plane ([u, v] in sketch coordinates) until stopEdgePick();
     // a face click first (to choose the plane) still goes to startFacePick
     startPlanePick(frame, onPick) {
+      clearFaceHover();
       if (mode) setMode(mode);
       edgePick = null;
       facePick = null;
+      facePickHoles = false;
       planePick = { frame, cb: onPick };
       if (controls) controls.touches.ONE = null;
     },
     // A feature dialog picks a point on a face (a hole's position) until stopEdgePick()
     startFacePick(onPick) {
+      clearFaceHover();
       if (mode) setMode(mode);
       edgePick = null;
       planePick = null;
+      facePickHoles = false;
+      facePick = onPick;
+      if (controls) controls.touches.ONE = null;
+    },
+    // Bolted connection dialog picks either a planar face point or an existing circular hole/rim
+    startHoleOrFacePick(onPick) {
+      clearFaceHover();
+      if (mode) setMode(mode);
+      edgePick = null;
+      planePick = null;
+      facePickHoles = true;
       facePick = onPick;
       if (controls) controls.touches.ONE = null;
     },

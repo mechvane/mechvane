@@ -3,11 +3,16 @@
 // cancel. The server keeps the sketch open in the part's SolidCraft session (/api/sketch/*, sketch_session.py);
 // this module only draws what `sketch.inspect` returns and turns clicks into SolidCraft sketch commands.
 import * as THREE from "three";
+import { boxFromDrag, boxTakesCurve } from "./sketchgeom.js";
 
 // Snap radii in screen pixels (SolidCraft's viewport uses 8 for points, 7 for inference; research #53)
 const SNAP_POINT_PX = 8;
 const SNAP_ALIGN_PX = 7;
 const AXIS_SNAP_DEG = 2.5;
+
+// Threshold in screen pixels to distinguish a click from a window/crossing box drag
+// (SolidCraft crates/ui-egui/src/panel_runtime/tests.rs: 6 logical points)
+const DRAG_THRESHOLD_PX = 6;
 
 // What each tool asks for at the cursor: [role for sketch.draw.dimensioned, label, unit]
 const HUD_FIELDS = {
@@ -20,6 +25,7 @@ const HUD_FIELDS = {
 const COLORS = {
   free: 0x58a6ff,       // under-constrained, as SolidCraft and Inventor show it
   fixed: 0xe6edf3,      // fully constrained (dark theme), see colorFixed()
+  projected: 0xa371f7,  // projected geometry (SolidCraft SKETCH_PROJECTED RGB(130, 60, 200)), see colorProjected()
   preview: 0xf0b429,
   axisX: 0xe5534b,
   axisY: 0x57ab5a,
@@ -49,12 +55,18 @@ export function initSketcher(h) {
   let savedButtons = null;
   let savedHint = null;
   let choosing = null;    // the plane chooser bar while a new sketch waits for its plane
+  let autoProject = true; // Inventor's "Autoproject edges for sketch creation" (default on)
 
   const canvas = h.renderer.domElement;
   const snapEl = document.createElement("div");
   snapEl.className = "sketch-snap";
   snapEl.hidden = true;
   h.viewportEl.appendChild(snapEl);
+  // Box selection marquee (window: solid blue, crossing: dashed green)
+  const boxEl = document.createElement("div");
+  boxEl.className = "sketch-box-select";
+  boxEl.hidden = true;
+  h.viewportEl.appendChild(boxEl);
   // dimension texts on the geometry (HTML over the view); double-click one to change its value
   const dimLayer = document.createElement("div");
   dimLayer.className = "sketch-dims";
@@ -65,6 +77,8 @@ export function initSketcher(h) {
   let lastDim = null;
   let conSel = [];        // a constraint tool's picked entities
   let picked = [];        // with no tool: selected curves, points, constraints or dimensions (Delete removes them)     // params of the dimension just placed (to place it again as `name = expression`)
+  let boxDrag = null;     // { startScreen, startClient, shift, ctrl, raw, active, pointerId }
+  window.mechvaneSketchPicked = () => picked;
 
   // --- plane geometry ---------------------------------------------------------------------------------------
   const vec = (a) => new THREE.Vector3(...a);
@@ -196,6 +210,7 @@ export function initSketcher(h) {
     return circlePts([ux, uy], Math.hypot(ax - ux, ay - uy), a0, a0 + sweep);
   }
   const colorFixed = () => (h.isDark() ? COLORS.fixed : 0x1f2328);
+  const colorProjected = () => (h.isDark() ? COLORS.projected : 0x823cc8);
 
   function shapePreview() {
     if (!tool || !clicks.length || !cursor) return null;
@@ -243,6 +258,12 @@ export function initSketcher(h) {
       if (d <= SNAP_POINT_PX && d < bestD) { best = { kind: "point", id: p.id, at: p.at }; bestD = d; }
     }
     if (best) return best;
+    return pickCurve(scr, 6);
+  }
+  // the curve (tol px) under the cursor, ignoring points (for trim, extend, offset)
+  function pickCurve(scr, tol = 8) {
+    const st = active.state || {};
+    let best = null, bestD = Infinity;
     for (const c of st.curves || []) {
       let d = Infinity;
       if (c.type === "line") d = segDist(scr, screenOf(c.start_at), screenOf(c.end_at));
@@ -250,7 +271,7 @@ export function initSketcher(h) {
         const cs = screenOf(c.center_at), e = screenOf([c.center_at[0] + c.radius, c.center_at[1]]);
         d = Math.abs(Math.hypot(scr[0] - cs[0], scr[1] - cs[1]) - Math.hypot(e[0] - cs[0], e[1] - cs[1]));
       }
-      if (d <= 6 && d < bestD) { best = { kind: "curve", id: c.id, curve: c }; bestD = d; }
+      if (d <= tol && d < bestD) { best = { kind: "curve", id: c.id, curve: c }; bestD = d; }
     }
     return best;
   }
@@ -401,17 +422,101 @@ export function initSketcher(h) {
     status();
     draw();
   }
-  // with no tool: a click selects a curve or point (Shift adds), Delete removes the selection
+  // with no tool: a click selects a curve or point (Shift adds, Ctrl removes), Delete removes the selection
   function selectClick(raw, ev) {
     const ent = pickEntity(raw.screen);
     const item = ent ? { kind: ent.kind, id: ent.id, ent } : null;
-    if (!ev.shiftKey) picked = picked.filter((p) => item && p.id === item.id);
+    const isShift = ev.shiftKey;
+    const isCtrl = ev.ctrlKey || ev.metaKey;
+    if (!isShift && !isCtrl) picked = picked.filter((p) => item && p.id === item.id);
     if (item) {
       const i = picked.findIndex((p) => p.id === item.id);
-      if (i >= 0 && ev.shiftKey) picked.splice(i, 1); else if (i < 0) picked.push(item);
+      if (i >= 0 && (isShift || isCtrl)) picked.splice(i, 1);
+      else if (i < 0 && !isCtrl) picked.push(item);
     }
     status();
     draw();
+  }
+
+  // Window selection (left-to-right): only items wholly enclosed
+  // Crossing selection (right-to-left): any item touching or inside
+  // Shift adds to selection, Ctrl removes from selection
+  function applyBoxSelect(box, ev) {
+    const st = active.state || {};
+    const hits = [];
+    for (const c of st.curves || []) {
+      if (boxTakesCurve(box, c, box.crossing, screenOf)) {
+        hits.push({ kind: "curve", id: c.id, ent: { kind: "curve", id: c.id, curve: c } });
+      }
+    }
+    const isShift = ev.shiftKey;
+    const isCtrl = ev.ctrlKey || ev.metaKey;
+    if (isShift) {
+      for (const h of hits) {
+        if (!picked.some((p) => p.id === h.id)) picked.push(h);
+      }
+    } else if (isCtrl) {
+      const hitIds = new Set(hits.map((h) => h.id));
+      picked = picked.filter((p) => !hitIds.has(p.id));
+    } else {
+      picked = hits;
+    }
+    status();
+    draw();
+  }
+
+  // Apply constraint tool directly to the selected entities where meaningful
+  async function applyConstraintToPicked(kind) {
+    if (!picked.length || busy) return false;
+    const isLine = (p) => p.ent?.kind === "curve" && p.ent.curve?.type === "line";
+    const isPoint = (p) => p.ent?.kind === "point" || p.kind === "point";
+    const isCurve = (p) => p.ent?.kind === "curve" || p.kind === "curve";
+
+    let cmds = [];
+    if (kind === "fix") {
+      for (const p of picked) cmds.push({ command: "sketch.constraint.fix", params: { entity: p.id } });
+    } else if (kind === "horizontal" || kind === "vertical") {
+      if (picked.length === 2 && isPoint(picked[0]) && isPoint(picked[1])) {
+        cmds.push({ command: "sketch.constraint.horizontal_vertical", params: { points: [picked[0].id, picked[1].id], mode: kind } });
+      } else {
+        const lines = picked.filter(isLine);
+        if (lines.length > 0) {
+          for (const l of lines) cmds.push({ command: "sketch.constraint.horizontal_vertical", params: { line: l.id, mode: kind } });
+        }
+      }
+    } else if (kind === "parallel" || kind === "perpendicular" || kind === "tangent") {
+      if (picked.length === 2 && isCurve(picked[0]) && isCurve(picked[1])) {
+        cmds.push({ command: `sketch.constraint.${kind}`, params: { a: picked[0].id, b: picked[1].id } });
+      }
+    } else if (kind === "equal") {
+      const curves = picked.filter(isCurve);
+      if (curves.length >= 2) {
+        for (let i = 0; i < curves.length - 1; i++) {
+          cmds.push({ command: "sketch.constraint.equal", params: { a: curves[i].id, b: curves[i + 1].id } });
+        }
+      }
+    } else if (kind === "coincident") {
+      if (picked.length === 2) {
+        cmds.push({ command: "sketch.constraint.coincident", params: { a: picked[0].id, b: picked[1].id } });
+      }
+    }
+
+    if (!cmds.length) return false;
+
+    busy = true;
+    try {
+      for (const { command, params } of cmds) {
+        await send(command, params);
+        h.log?.("sketch_cmd", { command, kind });
+      }
+    } catch (err) {
+      h.statusEl.textContent = `Sketch: ${err.message}`;
+    } finally {
+      busy = false;
+      status();
+      draw();
+    }
+    return true;
   }
   function togglePick(kind, id, ev) {
     if (tool) return;
@@ -456,9 +561,9 @@ export function initSketcher(h) {
       return at;
     };
     const ptSpot = (pi) => { const p = st.points?.[pi]; return p ? screenOf(p.at).map((v, i) => v + (i ? -12 : 12)) : null; };
-    // fixed curves carry `fixed` (not a constraint): an anchor; Fix on it again releases it
+    // fixed curves carry `fixed` (not a constraint): an anchor; Fix on it again releases it (projected curves have `link`)
     (st.curves || []).forEach((k, i) => {
-      if (!k.fixed) return;
+      if (!k.fixed || k.link) return;
       const at = spotOf(i);
       if (!at) return;
       const el = document.createElement("span");
@@ -519,7 +624,7 @@ export function initSketcher(h) {
       draw();
       return;
     }
-    const ent = pickEntity(raw.screen);
+    const ent = pickCurve(raw.screen);
     if (!ent || ent.kind !== "curve") return;
     if (tool === "offset") { offSel = ent; status(); draw(); return; }
     busy = true;
@@ -588,7 +693,7 @@ export function initSketcher(h) {
     addLine([[0, 0], [25, 0]].map((p) => p), COLORS.axisX);
     addLine([[0, 0], [0, 25]], COLORS.axisY);
     for (const c of st.curves || []) {
-      const color = c.fully_constrained ? colorFixed() : COLORS.free;
+      const color = c.link ? colorProjected() : c.fully_constrained ? colorFixed() : COLORS.free;
       if (c.type === "line") addLine([c.start_at, c.end_at], color, c.construction);
       else if (c.type === "circle") addLine(circlePts(c.center_at, c.radius), color, c.construction);
       else if (c.type === "arc" && c.center_at && c.start_at && c.end_at) {
@@ -599,8 +704,9 @@ export function initSketcher(h) {
       }
     }
     const pts = (st.points || []).filter((p) => p.id !== "origin");
-    addPoints(pts.filter((p) => !p.fully_constrained).map((p) => p.at), COLORS.free, 5);
-    addPoints(pts.filter((p) => p.fully_constrained).map((p) => p.at), colorFixed(), 5);
+    addPoints(pts.filter((p) => !p.link && !p.fully_constrained).map((p) => p.at), COLORS.free, 5);
+    addPoints(pts.filter((p) => !p.link && p.fully_constrained).map((p) => p.at), colorFixed(), 5);
+    addPoints(pts.filter((p) => p.link).map((p) => p.at), colorProjected(), 5);
     addPoints([[0, 0]], COLORS.axisX, 7);
     const prev = shapePreview();
     if (prev) addLine(prev, COLORS.preview);
@@ -736,7 +842,7 @@ export function initSketcher(h) {
   // a click held at a line's midpoint keeps it there (SolidCraft connects equal points by itself)
   async function holdMidpoints(snaps) {
     for (const { at, line } of snaps) {
-      const p = (active.state.points || []).find((q) => q.id !== "origin" && Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < 1e-6
+      const p = (active.state.points || []).find((q) => q.id !== "origin" && !q.link && Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < 1e-6
         && !String(q.id).startsWith(line + "."));
       if (p) {
         try { await send("sketch.constraint.midpoint", { point: p.id, line }); } catch (_) { /* drawn anyway */ }
@@ -784,8 +890,17 @@ export function initSketcher(h) {
   }
 
   // --- tools and events ---------------------------------------------------------------------------------------
-  function setTool(next) {
+  async function setTool(next) {
+    if (boxDrag) {
+      if (boxDrag.pointerId != null) { try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {} }
+      boxDrag = null;
+      boxEl.hidden = true;
+    }
     if (tool === "project" && next !== "project") h.viewTools.stopEdgePick();
+    if (next?.startsWith("con:") && picked.length > 0) {
+      const applied = await applyConstraintToPicked(next.slice(4));
+      if (applied) return;
+    }
     tool = next;
     clicks = [];
     offSel = null;
@@ -796,6 +911,7 @@ export function initSketcher(h) {
     dimHover = null;
     closeHud();
     if (tool) openHud();
+    dimLayer.classList.toggle("tool-active", Boolean(tool));
     document.querySelectorAll("[data-sketch-tool]").forEach((b) => b.classList.toggle("active", b.dataset.sketchTool === tool));
     status();
     draw();
@@ -831,7 +947,31 @@ export function initSketcher(h) {
     if (!active) return;
     const raw = planeAt(ev);
     if (!raw) return;
-    if (tool === "dimension" || !tool || tool.startsWith("con:") || ["trim", "extend", "offset", "project"].includes(tool)) {
+    if (!tool && boxDrag) {
+      const dx = ev.clientX - boxDrag.startClient[0];
+      const dy = ev.clientY - boxDrag.startClient[1];
+      if (!boxDrag.active && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+        boxDrag.active = true;
+      }
+      if (boxDrag.active) {
+        const minX = Math.min(boxDrag.startScreen[0], raw.screen[0]);
+        const maxX = Math.max(boxDrag.startScreen[0], raw.screen[0]);
+        const minY = Math.min(boxDrag.startScreen[1], raw.screen[1]);
+        const maxY = Math.max(boxDrag.startScreen[1], raw.screen[1]);
+        const crossing = raw.screen[0] < boxDrag.startScreen[0];
+        boxEl.hidden = false;
+        boxEl.className = `sketch-box-select ${crossing ? "crossing" : "window"}`;
+        boxEl.style.left = `${minX}px`;
+        boxEl.style.top = `${minY}px`;
+        boxEl.style.width = `${maxX - minX}px`;
+        boxEl.style.height = `${maxY - minY}px`;
+        return;
+      }
+    }
+    if (["trim", "extend", "offset"].includes(tool)) {
+      cursor = { at: raw.uv, snap: null };
+      dimHover = pickCurve(raw.screen);
+    } else if (tool === "dimension" || !tool || tool.startsWith("con:") || tool === "project") {
       cursor = { at: raw.uv, snap: null };
       dimHover = pickEntity(raw.screen);
     } else {
@@ -844,7 +984,19 @@ export function initSketcher(h) {
     ev.preventDefault();
     const raw = planeAt(ev);
     if (!raw) return;
-    if (!tool) { selectClick(raw, ev); return; }
+    if (!tool) {
+      canvas.setPointerCapture?.(ev.pointerId);
+      boxDrag = {
+        startScreen: raw.screen,
+        startClient: [ev.clientX, ev.clientY],
+        shift: ev.shiftKey,
+        ctrl: ev.ctrlKey || ev.metaKey,
+        raw,
+        active: false,
+        pointerId: ev.pointerId,
+      };
+      return;
+    }
     if (tool === "dimension") { dimClick(raw); return; }
     if (tool.startsWith("con:")) { conClick(raw); return; }
     if (tool === "project") return;  // the view's edge pick answers (startProject)
@@ -856,6 +1008,35 @@ export function initSketcher(h) {
       draw();
     } else {
       place();
+    }
+  }
+  function onUp(ev) {
+    if (!active || ev.button !== 0) return;
+    if (boxDrag) {
+      if (boxDrag.pointerId != null) {
+        try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {}
+      }
+      boxEl.hidden = true;
+      const raw = planeAt(ev) || boxDrag.raw;
+      const wasActive = boxDrag.active;
+      const startScr = boxDrag.startScreen;
+      const savedRaw = boxDrag.raw;
+      boxDrag = null;
+      if (wasActive && raw) {
+        const box = boxFromDrag(startScr, raw.screen);
+        applyBoxSelect(box, ev);
+      } else {
+        selectClick(raw || savedRaw, ev);
+      }
+    }
+  }
+  function onCancel() {
+    if (boxDrag) {
+      if (boxDrag.pointerId != null) { try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {} }
+      boxDrag = null;
+      boxEl.hidden = true;
+      status();
+      draw();
     }
   }
   function onContext(ev) {
@@ -871,7 +1052,13 @@ export function initSketcher(h) {
     const mod = ev.ctrlKey || ev.metaKey;
     let handled = true;
     if (k === "Escape") {
-      if (clicks.length || dimSel.length || conSel.length || offSel) { clicks = []; dimSel = []; conSel = []; offSel = null; openHud(); status(); draw(); }
+      if (boxDrag) {
+        if (boxDrag.pointerId != null) { try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {} }
+        boxDrag = null;
+        boxEl.hidden = true;
+        status();
+        draw();
+      } else if (clicks.length || dimSel.length || conSel.length || offSel) { clicks = []; dimSel = []; conSel = []; offSel = null; openHud(); status(); draw(); }
       else if (!tool && picked.length) { picked = []; status(); draw(); }
       else if (tool) setTool(null);
     } else if (k === "Tab" && tool && clicks.length) {
@@ -945,6 +1132,9 @@ export function initSketcher(h) {
     setButtons(true);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onCancel);
+    window.addEventListener("pointerup", onUp);
     canvas.addEventListener("contextmenu", onContext);
     h.controls.addEventListener("change", draw);
     setTool(null);
@@ -954,8 +1144,14 @@ export function initSketcher(h) {
     h.viewTools.stopEdgePick();
     canvas.removeEventListener("pointermove", onMove);
     canvas.removeEventListener("pointerdown", onDown);
+    canvas.removeEventListener("pointerup", onUp);
+    canvas.removeEventListener("pointercancel", onCancel);
+    window.removeEventListener("pointerup", onUp);
     canvas.removeEventListener("contextmenu", onContext);
     h.controls.removeEventListener("change", draw);
+    if (boxDrag?.pointerId != null) { try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {} }
+    boxDrag = null;
+    boxEl.hidden = true;
     if (savedButtons) h.controls.mouseButtons = savedButtons;
     if (h.controls.touches) h.controls.touches.ONE = THREE.TOUCH.ROTATE;
     if (savedView) {
@@ -966,6 +1162,7 @@ export function initSketcher(h) {
       h.controls.update();
     }
     active = null; tool = null; clicks = []; cursor = null;
+    dimLayer.classList.remove("tool-active");
     closeHud();
     closeDimEditor();
     dimLayer.textContent = "";
@@ -999,8 +1196,15 @@ export function initSketcher(h) {
     bar.className = "sketch-plane-bar";
     bar.innerHTML = `<span>New sketch: click a plane or a flat face</span>
       <button type="button" data-plane="XY">XY</button><button type="button" data-plane="XZ">XZ</button>
-      <button type="button" data-plane="YZ">YZ</button><button type="button" data-plane="">Cancel</button>`;
+      <button type="button" data-plane="YZ">YZ</button>
+      <label class="sketch-autoproject" title="Automatically project face edges into the sketch (Inventor: Autoproject edges for sketch creation)"><input type="checkbox" data-autoproject${autoProject ? " checked" : ""}> Project edges</label>
+      <button type="button" data-plane="">Cancel</button>`;
     h.viewportEl.appendChild(bar);
+    const apBox = bar.querySelector("[data-autoproject]");
+    apBox?.addEventListener("change", () => {
+      autoProject = apBox.checked;
+      h.post("api/sketch/auto_project", { value: autoProject }).catch(() => {});
+    });
     // the origin planes (also hidden ones, as SolidCraft brings them back for this) are clicked directly
     h.revealOriginPlanes?.(true);
     const overPlane = (ev) => h.hoverOriginPlane?.(h.originPlaneAt?.(ev.clientX, ev.clientY) || null);
@@ -1033,7 +1237,7 @@ export function initSketcher(h) {
     h.viewTools.startFacePick((pick) => {
       if (!pick.planar) { h.statusEl.textContent = "That face is not flat: click a flat face or choose a plane"; return; }
       done();
-      begin({ plane: { face: pick.point.toArray().map((c) => +c.toFixed(4)) } });
+      begin({ plane: { face: pick.point.toArray().map((c) => +c.toFixed(4)) }, project_edges: autoProject });
     });
     choosing = bar;
     h.statusEl.textContent = "New sketch: click an origin plane or a flat face, or choose XY, XZ or YZ";
@@ -1082,7 +1286,10 @@ export function initSketcher(h) {
   setButtons(false);
 
   // a sketch left open (page reloaded while sketching) is picked up again
-  if (h.resume !== false) h.get("api/sketch/state").then((st) => { if (st && st.active) enter(st); }).catch(() => {});
+  if (h.resume !== false) h.get("api/sketch/state").then((st) => {
+    if (st && typeof st.auto_project === "boolean") autoProject = st.auto_project;
+    if (st && st.active) enter(st);
+  }).catch(() => {});
 
   return {
     start,

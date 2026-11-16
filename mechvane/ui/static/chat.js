@@ -117,11 +117,11 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
     let sel = spoken || await selected();
     spoken = null;
     if (sel.length) {
-      const rr = await fetch("api/resolve_selection", { method: "POST", body: JSON.stringify({ items: sel }) });
+      const rr = await fetch("api/resolve_selection", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: sel }) });
       if (rr.ok) sel = (await rr.json()).selection;
     }
     input.value = "";
-    const r = await fetch("api/agent/send", { method: "POST", body: JSON.stringify({ text, selection: sel }) });
+    const r = await fetch("api/agent/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, selection: sel }) });
     const res = await r.json();
     if (!r.ok) { add("err", res.error); idle(); return; }
     if (clearSelection) clearSelection();
@@ -131,12 +131,12 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
 
   async function act(path, label) {
     if (beforeAction) beforeAction();
-    const r = await fetch("api/agent/" + path, { method: "POST", body: "{}" });
+    const r = await fetch("api/agent/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     const res = await r.json();
     if (!r.ok) {
       idle();
       if (r.status === 409 && path === "undo" && confirm(res.error + "\n\nUndo anyway?")) {
-        await fetch("api/agent/undo", { method: "POST", body: JSON.stringify({ force: true }) });
+        await fetch("api/agent/undo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) });
       } else { add("err", label + ": " + res.error); return; }
     }
     if (path === "undo") redoBtn.hidden = false;
@@ -144,7 +144,7 @@ export function initAgentChat({ root, getSelection, clearSelection, beforeSend, 
     await poll();
   }
 
-  sendBtn.addEventListener("click", () => (busy ? fetch("api/agent/stop", { method: "POST", body: "{}" }) : send()));
+  sendBtn.addEventListener("click", () => (busy ? fetch("api/agent/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }) : send()));
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
   undoBtn.addEventListener("click", (e) => { e.stopPropagation(); act("undo", "Undo"); });
   redoBtn.addEventListener("click", (e) => { e.stopPropagation(); act("redo", "Redo"); });
@@ -194,7 +194,7 @@ function initSpeech(btn, input, hint, selected, keepSelection) {
       btn.classList.remove("listening");
       rec = null;
       if (!heard.trim()) return;
-      const r = await fetch("api/speech", { method: "POST", body: JSON.stringify({ text: heard }) }).catch(() => null);
+      const r = await fetch("api/speech", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: heard }) }).catch(() => null);
       input.value = (before ? before + " " : "") + (r && r.ok ? (await r.json()).text : heard);
       input.focus();
     };

@@ -28,7 +28,7 @@ with sync_playwright() as p:
     sy = lambda v: cy - (v - l1["start_at"][1]) / mpp
     # crossing lines for trim
     pg.keyboard.press("l"); pg.keyboard.down("Control")
-    pg.mouse.click(sx(-30), sy(-15)); pg.mouse.click(sx(30), sy(-15)); pg.keyboard.up("Control"); pg.keyboard.press("Escape")
+    pg.mouse.click(sx(-30), sy(-15)); pg.mouse.click(sx(30), sy(-15)); pg.keyboard.up("Control"); pg.wait_for_timeout(500); pg.keyboard.press("Escape")
     pg.keyboard.down("Control"); pg.mouse.click(sx(0), sy(-35)); pg.mouse.click(sx(0), sy(5)); pg.keyboard.up("Control"); pg.wait_for_timeout(1200)
     pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
     n0 = len(st()["curves"])
@@ -36,6 +36,11 @@ with sync_playwright() as p:
     hl = [(c["start_at"], c["end_at"]) for c in st()["curves"] if c["type"] == "line" and abs(c["start_at"][1] + 15) < 0.5 and abs(c["end_at"][1] + 15) < 0.5]
     if not (len(hl) == 1 and abs(hl[0][1][0]) < 0.5): fails.append("trim")
     print("trim: curves", n0, "->", len(st()["curves"]), "| horizontal:", [[[round(v, 1) for v in a], [round(v, 1) for v in e]] for a, e in hl])
+    # trim loose end with only one intersection (removes the remaining piece up to the intersection)
+    pg.mouse.move(sx(-20), sy(-15)); pg.mouse.click(sx(-20), sy(-15)); pg.wait_for_timeout(1500)
+    hl2 = [(c["start_at"], c["end_at"]) for c in st()["curves"] if c["type"] == "line" and abs(c["start_at"][1] + 15) < 0.5 and abs(c["end_at"][1] + 15) < 0.5]
+    if len(hl2) != 0: fails.append("trim_loose_end")
+    print("trim loose end: remaining horizontal:", len(hl2))
     # offset the vertical line by a typed 5 to the right
     pg.keyboard.press("o"); pg.mouse.click(sx(0), sy(-25)); pg.mouse.move(sx(8), sy(-25)); pg.wait_for_timeout(300)
     pg.screenshot(path="/tmp/shots/11-versatz-vorschau.png")
@@ -60,6 +65,95 @@ with sync_playwright() as p:
     print("project: curves", nproj, "->", len(c), c[-1].get("start_at"), c[-1].get("end_at"), c[-1].get("construction"))
     pg.keyboard.press("Escape"); pg.mouse.move(cx, cy + 330); pg.wait_for_timeout(300)
     pg.screenshot(path="/tmp/shots/12-stutzen-versatz-projizieren.png")
+
+    # Box selection test (#67): rectangle plus circle
+    # Window left-to-right encloses only circle -> 1 element
+    # Crossing right-to-left across rectangle edge -> that line
+    # Delete removes the selection
+    # Draw rectangle at [-40, -20] to [-10, 10]
+    pg.keyboard.press("r"); pg.keyboard.down("Control")
+    pg.mouse.click(sx(-40), sy(-20)); pg.mouse.click(sx(-10), sy(10))
+    pg.keyboard.up("Control"); pg.wait_for_timeout(800)
+    pg.keyboard.press("Escape")
+    # Draw circle at center [30, 0], radius 12
+    pg.keyboard.press("c"); pg.keyboard.down("Control")
+    pg.mouse.click(sx(30), sy(0)); pg.mouse.click(sx(42), sy(0))
+    pg.keyboard.up("Control"); pg.wait_for_timeout(800)
+    pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
+    pg.wait_for_timeout(500)
+
+    curves = st()["curves"]
+    circ = [c for c in curves if c["type"] == "circle"]
+    top_line = [c for c in curves if c["type"] == "line" and abs(c["start_at"][1] - 10) < 0.5 and abs(c["end_at"][1] - 10) < 0.5]
+    print("box selection setup: curves", len(curves), "circle:", [c["id"] for c in circ], "top line:", [c["id"] for c in top_line])
+
+    # 1. Window selection (left to right): only around the circle
+    pg.mouse.move(sx(15), sy(16))
+    pg.mouse.down()
+    pg.mouse.move(sx(45), sy(-16))
+    pg.mouse.up()
+    pg.wait_for_timeout(600)
+    picked_win = pg.evaluate("window.mechvaneSketchPicked ? window.mechvaneSketchPicked() : []")
+    win_ok = len(picked_win) == 1 and bool(circ) and picked_win[0]["id"] == circ[0]["id"]
+    if not win_ok: fails.append("box_window_circle")
+    print("box window circle:", len(picked_win), [p["id"] for p in picked_win], "ok:", win_ok)
+
+    # 2. Crossing selection (right to left): across the rectangle top edge
+    pg.mouse.move(sx(-20), sy(15))
+    pg.mouse.down()
+    pg.mouse.move(sx(-30), sy(5))
+    pg.mouse.up()
+    pg.wait_for_timeout(600)
+    picked_cross = pg.evaluate("window.mechvaneSketchPicked ? window.mechvaneSketchPicked() : []")
+    cross_ok = len(picked_cross) == 1 and bool(top_line) and picked_cross[0]["id"] == top_line[0]["id"]
+    if not cross_ok: fails.append("box_crossing_line")
+    print("box crossing line:", len(picked_cross), [p["id"] for p in picked_cross], "ok:", cross_ok)
+
+    # 3. Delete removes the selection
+    n_before = len(st()["curves"])
+    pg.keyboard.press("Delete")
+    pg.wait_for_timeout(1000)
+    n_after = len(st()["curves"])
+    picked_after = pg.evaluate("window.mechvaneSketchPicked ? window.mechvaneSketchPicked() : []")
+    del_ok = (n_after == n_before - 1) and not any(c["id"] == top_line[0]["id"] for c in st()["curves"]) and len(picked_after) == 0
+    if not del_ok: fails.append("box_delete")
+    print("box delete:", n_before, "->", n_after, "remaining:", [c["id"] for c in st()["curves"]], "ok:", del_ok)
+
+    pg.screenshot(path="/tmp/shots/13-fensterauswahl.png")
+    pg.click('[data-sketch-action="cancel"]'); pg.wait_for_timeout(1500)
+
+    # Sketch on planar face (#68): auto-project 4 boundary edges of top face, snap a line from a projected corner
+    pg.keyboard.press("s"); pg.wait_for_timeout(400)
+    for dx, dy in [(-60, -20), (60, -20), (-80, 0), (0, -35), (-40, -40), (40, -40)]:
+        pg.mouse.click(cx + dx, cy + dy); pg.wait_for_timeout(1200)
+        if pg.locator(".sketch-plane-bar").count() == 0:
+            break
+    pg.wait_for_timeout(1000)
+    face_st = st()
+    proj_lines = [c for c in face_st.get("curves", []) if c["type"] == "line" and c.get("link")]
+    if len(proj_lines) != 4:
+        fails.append("face_autoproject_4_lines")
+    print("face auto-project: projected lines:", len(proj_lines), [c["id"] for c in proj_lines])
+
+    # Snap a line starting from the projected corner at [-40, -25]
+    pg.keyboard.press("l")
+    pg.mouse.move(sx(-40), sy(-25)); pg.wait_for_timeout(300)
+    snap_vis = pg.locator(".sketch-snap").is_visible()
+    pg.mouse.click(sx(-40), sy(-25))
+    pg.mouse.move(sx(-10), sy(0)); pg.wait_for_timeout(200)
+    pg.mouse.click(sx(-10), sy(0)); pg.wait_for_timeout(1200)
+    pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
+    face_st2 = st()
+    drawn = [c for c in face_st2.get("curves", []) if c["type"] == "line" and not c.get("link")]
+    coinc = [k for k in face_st2.get("constraints", []) if k.get("type") == "coincident"]
+    snap_ok = (snap_vis and len(drawn) == 1
+               and abs(drawn[0]["start_at"][0] + 40) < 1e-3 and abs(drawn[0]["start_at"][1] + 25) < 1e-3
+               and len(coinc) >= 1)
+    if not snap_ok:
+        fails.append("face_snap_corner")
+    print("face corner snap: visible:", snap_vis, "drawn:", [c["start_at"] for c in drawn], "coincident:", len(coinc), "ok:", snap_ok)
+    pg.screenshot(path="/tmp/shots/14-flaechenkanten-projiziert.png")
+
     pg.evaluate("fetch('api/sketch/cancel', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})")
     print("errors:", errs, "| failed:", fails or "none")
     b.close()

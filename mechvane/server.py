@@ -3,6 +3,7 @@ sketch ownership and joint checks across file boundaries. Run: python3 -m mechva
 
 import base64
 import functools
+import io
 import os
 from pathlib import Path
 import re
@@ -26,11 +27,12 @@ mcp = FastMCP(
         "(sketch.project, sketch.constraint.midpoint, dimensions to the projected line), never as computed "
         "coordinates, so it still holds when the part changes. Put parts into an assembly with insert_part, join them with add_joint and change them with "
         "edit_joint or delete_joint (not raw joint.create or joint.edit, so Mechvane can check the joint "
-        "later), and after changing a part file call update_links: it reports joints that moved to another "
+        "later); for a rule between faces (mate, flush, concentric, angle ...) use add_constraint and edit_constraint, and after changing a part file call update_links: it reports joints that moved to another "
         "face. Save with save_document. To inspect or repair a part before a feature, roll there with "
         "part_end(document, before=feature) and back with part_end(document). For holes and screws use bolted_connection; "
         "check a part with check_design (pass material, or assign one in SolidCraft; values carry their sources); "
-        "export with export_gltf for Blender or the web. Lengths in mm."
+        "export with export_gltf for Blender or the web; visually inspect with verify_view (when adding a feature in a "
+        "new place, after errors, or before finishing; not after every step). Lengths in mm."
     ),
 )
 
@@ -69,12 +71,13 @@ def new_part(name: str, path: str | None = None, overwrite: bool = False) -> dic
 @mcp.tool()
 @sc_errors.explained
 def import_step(source: str, name: str | None = None, path: str | None = None, overwrite: bool = False,
-                up: str = "z") -> dict:
-    """Make a part file from a STEP (or IGES, FreeCAD, Rhino) file and keep it open: a fixed body without
+                up: str = "z", split: bool = False) -> dict:
+    """Make a part or assembly file from a STEP (or IGES, FreeCAD, Rhino) file and keep it open: a fixed body without
     history, e.g. a bought-in part to insert into an assembly with insert_part, or a part to measure and
     check. source is absolute or relative to the project folder; up="y" turns a file with Y up so that Y
-    becomes Z. Returns the bodies with volume and bounding box."""
-    return step_import.import_step(ws, source, name=name, path=path, overwrite=overwrite, up=up)
+    becomes Z. When split=True, a file with multiple bodies is imported as an assembly with individual part files
+    for each body. Returns the document info and bodies/parts with volume and bounding box."""
+    return step_import.import_step(ws, source, name=name, path=path, overwrite=overwrite, up=up, split=split)
 
 
 @mcp.tool()
@@ -192,7 +195,11 @@ _compact = modeling.compact
 def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
     """Run SolidCraft commands ([{command, params}]) in a document, all or nothing. In a part, owned
     sketches are then moved directly before their feature, and a delta report (volume, bounding box,
-    body count and warnings) is returned. The reply leaves out empty fields and timings unless verbose."""
+    body count and warnings) is returned. The reply leaves out empty fields and timings unless verbose.
+    A failed step leaves the document as it was; its error has a line "Where: …" naming the edge or face
+    it was aimed at, the feature in the way with distance and point, and the largest size that fits. A
+    change that makes a later feature fail succeeds and lists that feature in feature_errors (with
+    where): fix it or take the change back before going on."""
     return modeling.run_commands(ws.get(document), commands, verbose)
 
 
@@ -218,6 +225,46 @@ def delete_feature(document: str, feature: str, keep_sketch: bool = False) -> di
 
 @mcp.tool()
 @sc_errors.explained
+def rename_feature(document: str, feature: str, name: str) -> dict:
+    """Rename a part feature or sketch in the timeline. The new name must be 1…128 characters
+    and unique among features."""
+    name = (name or "").strip()
+    if not name or len(name) > 128:
+        raise ValueError("name must be 1…128 characters")
+    doc = ws.get(document, PART)
+    tl = sketch_rule.timeline(doc.session)["timeline"]
+    existing = {f["name"] for f in tl}
+    if feature not in existing:
+        raise KeyError(f"feature {feature!r} not found in {document}")
+    if name in existing and name != feature:
+        raise ValueError(f"another feature is called {name!r}")
+    r = doc.session.cmd("timeline.rename", {"feature": feature, "name": name})
+    for other in ws.docs.values():
+        if other.kind == ASSEMBLY:
+            meta = other.metadata()
+            conns = meta.get("bolted_connections", {})
+            changed = False
+            for c in conns.values():
+                for p in c.get("parts", []):
+                    try:
+                        p_file = Path(p.get("file", "")).resolve()
+                        if p_file == doc.path.resolve():
+                            if p.get("hole_feature") == feature:
+                                p["hole_feature"] = name
+                                changed = True
+                            if "hole_features" in p and feature in p["hole_features"]:
+                                p["hole_features"] = [name if f == feature else f for f in p["hole_features"]]
+                                changed = True
+                    except Exception:
+                        pass
+            if changed:
+                other.set_metadata(meta)
+                other.save()
+    return {"feature": feature, "name": name, "result": r}
+
+
+@mcp.tool()
+@sc_errors.explained
 def insert_part(assembly: str, part_path: str, name: str | None = None, translate: list[float] | None = None,
                 rotate: dict | list | None = None, grounded: bool | None = None) -> dict:
     """Place a part or subassembly file in an assembly. A part is linked directly; a subassembly
@@ -234,13 +281,8 @@ def insert_part(assembly: str, part_path: str, name: str | None = None, translat
 def add_joint(assembly: str, params: dict) -> dict:
     """Create a joint (params as SolidCraft joint.create takes them, `name` required) and record which
     part face each side sits on, so update_links can check it later."""
-    if not params.get("name"):
-        raise ValueError("give the joint a name")
     doc = ws.get(assembly, ASSEMBLY)
-    params = links.resolve_occurrences(doc.session, params)
-    r = doc.session.cmd("joint.create", params)
-    anchors = links.record(ws, doc, params["name"], params)
-    return {"joint": r, "anchors": anchors["sides"]}
+    return modeling.add_joint(ws, doc, params)
 
 
 @mcp.tool()
@@ -249,19 +291,30 @@ def edit_joint(assembly: str, joint: str, params: dict) -> dict:
     """Change a joint (params as SolidCraft joint.edit takes them, e.g. flip, offset, a, b) and record
     its part faces again."""
     doc = ws.get(assembly, ASSEMBLY)
-    params = links.resolve_occurrences(doc.session, params)
-    new_name = params.get("name", joint)
-    r = doc.session.cmd("joint.edit", dict(params, joint=joint))
-    if new_name != joint:
-        meta = doc.metadata()
-        joints_meta = meta.get("joints", {})
-        if joint in joints_meta:
-            old_data = joints_meta.pop(joint)
-            if "create" in old_data and isinstance(old_data["create"], dict):
-                old_data["create"] = dict(old_data["create"], name=new_name)
-            joints_meta[new_name] = old_data
-            doc.set_metadata(meta)
-    return {"joint": r, "anchors": links.record(ws, doc, new_name)["sides"]}
+    return modeling.edit_joint(ws, doc, joint, params)
+
+
+@mcp.tool()
+@sc_errors.explained
+def add_constraint(assembly: str, params: dict) -> dict:
+    """Constrain two parts by a rule between a reference on each (params as SolidCraft
+    assembly.constraint.create takes them: type mate, flush, distance, concentric, insert, parallel,
+    perpendicular, angle, tangent or point_on_axis; a and b as joint origins, e.g. {occurrence, face: [x,y,z]}
+    for a plane or {occurrence, circle: [x,y,z]} for a round face; offset, angle, flip, name). b moves.
+    Mechvane records the part faces like a joint's, so update_links checks and repairs it; delete it with
+    delete_joint."""
+    doc = ws.get(assembly, ASSEMBLY)
+    return modeling.add_constraint(ws, doc, params)
+
+
+@mcp.tool()
+@sc_errors.explained
+def edit_constraint(assembly: str, constraint: str, params: dict) -> dict:
+    """Change a constraint's rule, gap (offset), angle, flip, name or suppression (as SolidCraft
+    assembly.constraint.edit takes them) and record its part faces again. For other references delete it
+    and add a new one."""
+    doc = ws.get(assembly, ASSEMBLY)
+    return modeling.edit_constraint(ws, doc, constraint, params)
 
 
 @mcp.tool()
@@ -347,13 +400,7 @@ def command(document: str, command: str, params: dict | None = None) -> dict:
     return r if isinstance(r, dict) else {"result": r}
 
 
-@mcp.tool()
-def screenshot(document: str, view: str = "iso", path: str | None = None):
-    """Render a document headless (views: iso, front, top, right, …).
-    If path is given, saves the PNG file under this path (relative to the workspace,
-    not outside) and returns path, size in bytes and image dimensions instead of the image."""
-    r = ws.get(document).session.tool("screenshot", {"view": view})
-    raw = base64.b64decode(r["images"][0]["image"])
+def _save_or_return_png(raw: bytes, path: str | None, ws: Workspace = ws):
     if path is None:
         return Image(data=raw, format="png")
     if not path or not path.strip():
@@ -387,6 +434,170 @@ def screenshot(document: str, view: str = "iso", path: str | None = None):
         "height": height,
         "dimensions": [width, height],
     }
+
+
+def _bounding_box_info(doc) -> tuple[str | None, list[float], list[float]]:
+    """Size text, min and max of all bodies; the text is None when the box is not known (no wrong "0 × 0 × 0 mm")."""
+    try:
+        meas = measure(doc.name)
+        bodies = meas.get("bodies", []) if isinstance(meas, dict) else []
+        valid_bboxes = [b["bbox"] for b in bodies if b.get("bbox") and "min" in b["bbox"] and "max" in b["bbox"]]
+        if valid_bboxes:
+            min_pt = [min(b["min"][i] for b in valid_bboxes) for i in range(3)]
+            max_pt = [max(b["max"][i] for b in valid_bboxes) for i in range(3)]
+            dx = round(max_pt[0] - min_pt[0], 2)
+            dy = round(max_pt[1] - min_pt[1], 2)
+            dz = round(max_pt[2] - min_pt[2], 2)
+            return f"{dx:g} × {dy:g} × {dz:g} mm", min_pt, max_pt
+    except Exception:
+        pass
+    return None, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+
+
+def _bounding_box_str(doc) -> str | None:
+    return _bounding_box_info(doc)[0]
+
+
+def _view_font(size: int = 14, bold: bool = False):
+    from PIL import ImageFont
+    paths = (
+        [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+            "DejaVuSans-Bold.ttf",
+            "arialbd.ttf",
+        ]
+        if bold
+        else [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "DejaVuSans.ttf",
+            "arial.ttf",
+        ]
+    )
+    for p in paths:
+        try:
+            return ImageFont.truetype(p, size)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
+@mcp.tool()
+def screenshot(document: str, view: str = "iso", path: str | None = None):
+    """Render a document headless (views: iso, front, top, right, …).
+    If path is given, saves the PNG file under this path (relative to the workspace,
+    not outside) and returns path, size in bytes and image dimensions instead of the image."""
+    r = ws.get(document).session.tool("screenshot", {"view": view})
+    raw = base64.b64decode(r["images"][0]["image"])
+    return _save_or_return_png(raw, path, ws)
+
+
+@mcp.tool()
+def verify_view(document: str, section: dict | None = None, path: str | None = None):
+    """Render a 2x2 visual verification image (Iso, Front, Top, Section) of the document.
+    Each quadrant shows its view label and bounding box dimensions in mm.
+    If path is given, saves the PNG file under this path (relative to the workspace,
+    not outside) and returns path, size in bytes and image dimensions instead of the image."""
+    from PIL import Image as PILImage, ImageDraw
+
+    doc = ws.get(document)
+    bbox_str, min_pt, max_pt = _bounding_box_info(doc)
+
+    views = [
+        ("iso", "Iso"),
+        ("front", "Front"),
+        ("top", "Top"),
+    ]
+    raw_images = []
+    for v, lbl in views:
+        r = doc.session.tool("screenshot", {"view": v})
+        raw_images.append((base64.b64decode(r["images"][0]["image"]), lbl))
+
+    # Section view: cut through the middle of the bounding box (normal X by default)
+    # or user-specified plane/offset/at.
+    mid_x = (min_pt[0] + max_pt[0]) / 2.0
+    mid_y = (min_pt[1] + max_pt[1]) / 2.0
+    mid_z = (min_pt[2] + max_pt[2]) / 2.0
+
+    sec_lbl = "Section"
+    if section:
+        sec_params = dict(section)
+        sec_view = sec_params.pop("view", None)
+        plane_u = str(sec_params.get("plane", "")).upper()
+        if not sec_view:
+            if plane_u == "XZ":
+                sec_view = "front"
+            elif plane_u == "XY":
+                sec_view = "top"
+            else:
+                sec_view = "right"
+        if "at" not in sec_params and "offset" not in sec_params:
+            if plane_u == "YZ":
+                sec_params["at"] = round(mid_x, 4)
+            elif plane_u == "XZ":
+                sec_params["at"] = round(mid_y, 4)
+            elif plane_u == "XY":
+                sec_params["at"] = round(mid_z, 4)
+    else:
+        sec_params = {"plane": "YZ", "at": round(mid_x, 4)}
+        sec_view = "right"
+
+    try:
+        doc.session.cmd("inspect.section", sec_params)
+        try:
+            r = doc.session.tool("screenshot", {"view": sec_view})
+            raw_images.append((base64.b64decode(r["images"][0]["image"]), sec_lbl))
+        finally:
+            try:
+                doc.session.cmd("inspect.section", {"clear": True})
+            except Exception:
+                pass
+    except Exception:
+        # Fallback to plain right view if inspect.section fails
+        r = doc.session.tool("screenshot", {"view": "right"})
+        raw_images.append((base64.b64decode(r["images"][0]["image"]), "Right"))
+
+    pil_images = [PILImage.open(io.BytesIO(raw)).convert("RGB") for raw, _ in raw_images]
+    w, h = pil_images[0].size
+    combined = PILImage.new("RGB", (2 * w, 2 * h), "white")
+    combined.paste(pil_images[0], (0, 0))
+    combined.paste(pil_images[1], (w, 0))
+    combined.paste(pil_images[2], (0, h))
+    combined.paste(pil_images[3], (w, h))
+
+    draw = ImageDraw.Draw(combined)
+    f_bold = _view_font(18, bold=True)
+    f_reg = _view_font(15, bold=False)
+
+    coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
+    for (col, row), (_, lbl) in zip(coords, raw_images):
+        x0, y0 = col * w, row * h
+        # Label badge at top-left
+        tb = draw.textbbox((0, 0), lbl, font=f_bold)
+        lw, lh = tb[2] - tb[0], tb[3] - tb[1]
+        draw.rectangle([x0 + 16, y0 + 16, x0 + 16 + lw + 16, y0 + 16 + lh + 12], fill=(30, 30, 30))
+        draw.text((x0 + 24, y0 + 20), lbl, fill=(255, 255, 255), font=f_bold)
+
+        # Bounding box badge at bottom (left out when the size is not known)
+        if bbox_str:
+            dim_text = f"Size: {bbox_str}"
+            tb2 = draw.textbbox((0, 0), dim_text, font=f_reg)
+            dw, dh = tb2[2] - tb2[0], tb2[3] - tb2[1]
+            draw.rectangle([x0 + 16, y0 + h - dh - 24, x0 + 16 + dw + 16, y0 + h - 14], fill=(30, 30, 30))
+            draw.text((x0 + 24, y0 + h - dh - 20), dim_text, fill=(255, 255, 255), font=f_reg)
+
+    # Dividers between panels
+    draw.line([(w, 0), (w, 2 * h)], fill=(180, 180, 180), width=2)
+    draw.line([(0, h), (2 * w, h)], fill=(180, 180, 180), width=2)
+
+    buf = io.BytesIO()
+    combined.save(buf, format="PNG")
+    raw = buf.getvalue()
+    return _save_or_return_png(raw, path, ws)
 
 
 @mcp.tool()

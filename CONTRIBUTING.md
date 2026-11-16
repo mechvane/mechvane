@@ -20,6 +20,9 @@ standard values help most.
 - Every change comes with a check in `tests/mechvane/check.py`, and all checks pass
   (`python3 tests/mechvane/check.py`, `python3 tests/reference/check.py`). Do not weaken
   checks to get to green.
+- User-facing changes: add a changelog snippet in `changelog.d/<issue>.md` (first line
+  `Added`/`Changed`/`Fixed`/`Removed`, then bullet list in English; do not edit `CHANGELOG.md`
+  directly; see `changelog.d/README.md`).
 - Larger decisions as an ADR under `docs/adr/`.
 
 ## Standard values and design rules

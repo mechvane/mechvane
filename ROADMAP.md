@@ -211,7 +211,51 @@ Branches erst gesichtet werden, wenn ihr Punkt dran ist. Phase 2 und später tra
 Neue Ideen kommen sofort an ihre Phase in die ROADMAP; umgesetzt werden sie, wenn die Phase dran ist, außer der
 Nutzer sagt ausdrücklich „jetzt“.
 Der native CAD-Import bleibt Langzeitziel: #32/#33 werden gesichtet, neue Aufträge erst nach v0.1.
+**Schnitt von v0.1 (Nutzer-OK 2026-11-10).** v0.1 zeigt, dass der Ansatz trägt: der ganze Umfang von SolidCraft
+ist in Mechvane erreichbar, das Mechvane-Eigene (Harness für Agenten, Wissens- und Normenkatalog, Zusammenarbeit
+von Mensch und Agent) ist in erster Fassung zu sehen, und die Oberfläche wirkt fertig. Abgenommen wird an vier
+Prüfungen, die kein Modell entscheidet:
+1. **Abdeckung:** jeder SolidCraft-Befehl ist über MCP und in der Oberfläche erreichbar (Test über die Befehlsliste).
+2. **Konstruieren:** eine feste Konstruktionsaufgabe mit Auswerter erreicht mindestens 80 von 100 Punkten.
+3. **Zusammenarbeit:** der Ablauf „Agent baut, Nutzer ändert, Agent prüft“ läuft unter Windows und Linux aus dem
+   Installer durch.
+4. **Eindruck:** Sichtung der Oberfläche mindestens 32 von 40 Punkten (2026-11-06: 23); ein Neuling baut den Flansch
+   nach der Demo in unter 15 Minuten.
+
+Drei Etappen, jede endet mit einer Alpha-Version und einem Praxistest: **Fundament** (Tests bei jedem Push,
+Nachtläufe auf Windows, macOS und Linux, serielle Agenten-Queue, Rückstau der Branches), **Vollständig**
+(Befehlsdialog und Abdeckung, Skizzierer-Lücken, STEP-Baugruppen, Wechsel auf SolidCraft 0.40), **Glanz**
+(Grafik-Overhaul, Geistervolumen, Agenten-Wiedergabe, Katalog sichtbar, Installer, Website).
+Entscheidungen dazu: v0.1 erscheint auf **SolidCraft 0.40 (solidcore)**, sobald es final ist (Stichtag zwei Wochen vor
+dem Release, sonst 0.30.1); Direktbearbeitung, Upstream-PRs und Spracheingabe am Handy folgen nach v0.1.
+
 Bis v0.1 fehlt noch:
+- [ ] **Wechsel auf SolidCraft 0.40.1** (#91, begonnen 2026-11-12): Stand und offene Fehler in der Übergabe und im Issue; `install.py` erst nach grünen Tests.
+- [ ] **Upstream-Watch** (#90): wöchentliche Bestandsaufnahme von SolidCraft (Releases, Befehlsdifferenz, beobachtete Issues), ohne Modell.
+- [ ] **Baugruppen-Reiter in der Oberfläche** (Nutzer 2026-11-12, #88; Schritt 1a Place + Update Links = #89, in der Queue): „Assemble“ ist in 0.1.0a19 komplett ausgegraut,
+      Baugruppen gehen nur über Agent/MCP. Zuerst Place, Joint und Bolted Connection als Dialoge über `/api/feature`,
+      dann Update Links als Knopf, danach Place Standard Part, Constrain, BOM (BOM Phase 2). Vorher `crates/ui-egui`
+      (`dialogs_assembly_tests.rs`, `joint_handles.rs`) lesen. Abnahme: Bedien-Reise ohne Agent (#83).
+      *Stand 2026-11-15:* Place, Joint (#93), Bolted Connection (#94), Update Links, Place Standard Part und Constrain
+      (neun Regeln, MCP `add_constraint`/`edit_constraint`) fertig, Joints und Constraints im Browser löschbar.
+      Offen: BOM (Phase 2) und die Bedien-Reise (#83) als Abnahme.
+- [ ] **Allgemeiner Befehlsdialog und Abdeckungsmatrix** (2026-11-10): Befehlssuche (Strg+K) und ein Formular, das
+      aus dem Schema jedes SolidCraft-Befehls entsteht (`describe_command`), Auswahlfelder für Kanten, Flächen und
+      Skizzen über die vorhandene Auswahl, Vorschau und Rückgängig über `/api/feature`. Eigene Dialoge bleiben für die
+      häufigsten Befehle. Eine Matrix führt je Befehl, wie er erreichbar ist (eigener Dialog, allgemeiner Dialog, MCP);
+      ein Test geht die Befehlsliste durch. Zuerst ein Versuch an zehn Befehlen quer durch die Bereiche.
+      *Versuch fertig 2026-11-15 (#77, [Bericht](docs/research/2026-11-15-befehlsdialog-versuch.md)):* 572 Befehle mit
+      Schema, 92,3 % der 2667 Parameter lassen sich aus Schema und Name einem Eingabefeld zuordnen; Matrix mit
+      `tools/command_matrix.py` nach `build/befehlsmatrix.json`.
+- [ ] **Wissen sichtbar** (2026-11-10): jeder Befund der Prüfung zeigt Regel, Wert, Quelle und Zitat aus dem Katalog;
+      dazu eine Katalogseite auf mechvane.dev, erzeugt aus `katalog/`.
+- [ ] **Sehen, was der Agent geändert hat, erste Fassung** (2026-11-10, vorgezogen aus „3D-Diff“): vorheriger Stand
+      als Geistervolumen, neue und geänderte Features im Baum markiert (SolidCraft `inspect.compare`). Annehmen und
+      Verwerfen einzelner Änderungen bleibt nach v0.1.
+- [ ] **Agenten-Wiedergabe in der Live-Demo** (2026-11-10): eine aufgezeichnete Sitzung (Auftrag, Werkzeugaufrufe,
+      Modell wächst, Prüfung findet etwas, Agent behebt es) spielt im Browser ab, ohne Schlüssel; Daten aus dem
+      Sitzungsprotokoll.
+- [ ] **„Was kommt“ in der App** (2026-11-10): die nächsten Punkte aus `roadmap.json` und der Knopf „Wunsch äußern“.
 - [ ] **Eigene Oberfläche** (Nutzer 2026-10-31: „eigene vollständige Oberfläche“, schnell etwas zeigen):
       [ADR 0005](docs/adr/0005-eigene-oberflaeche.md) (angenommen 2026-10-31). Stufe 1 Arbeitsbereich wie Inventor,
       Stufe 2 eigene Feature-Dialoge über `/api/feature`, Stufe 3 Skizzierer (mit Übersicht der Abhängigkeiten und
@@ -226,7 +270,7 @@ Bis v0.1 fehlt noch:
       Rechteck- und Kreismuster, Spiegeln (Features im Baum anklicken, Richtung/Achse/Ebene aus X/Y/Z oder angeklickter
       Kante bzw. Fläche; auch bearbeiten), Extrusion und Drehung auf einer vorhandenen Skizze (Operation, Richtung,
       durch alle; auch bearbeiten). Bohrungsposition über Abstände zu ein oder zwei Kanten gemergt 2026-11-05 (#43, SolidCraft `references`). Profilwahl in Extrusion und Drehung fertig 2026-11-05 (alle oder ein Profil, Liste mit Fläche/Löchern aus `sketch.inspect`, auch bearbeiten; mehrere einzeln gewählte nur über den Agenten, im Dialog „Several (as set)“). Profile per Klick in der Ansicht fertig 2026-11-06 (Nutzer: Extrusion nahm alle Profile; `sketchgeom.js`,
-      ein Profil vorgewählt, mehrere zum Anklicken); Drehung noch mit Auswahlliste.*
+      ein Profil vorgewählt, mehrere zum Anklicken); Drehung mit zwei Auswahlfeldern (Profile und Axis per Klick auf Skizzenlinie, Modellkante oder Ursprungsachse, Wechsel per Klick oder Tab, Bearbeiten zeigt beides wieder) fertig 2026-11-07 (#59).*
       *Skizzierumgebung (Nutzer 2026-11-05: dringend): Server-Teil fertig 2026-11-05 (`/api/sketch/*`, ein Rückgängig-
       Schritt je Sitzung). Schritt (a) fertig 2026-11-06: `sketcher.js` (Ebene/Fläche wählen, Linie als Kette,
       Rechteck, Kreis, Gummiband, Fangen End-/Mittelpunkt/Ursprung/H/V/Raster, Eingabefelder am Cursor →
@@ -237,6 +281,8 @@ Bis v0.1 fehlt noch:
       und Symbole, Dreipunktbogen, Auswahl ohne Werkzeug + Entf (`sketch.delete`). (d) fertig 2026-11-06: Stutzen (T), Verlängern,
       Versatz (O, Wert am Cursor), Projizieren (P, Modellkanten über die Kantenwahl der Ansicht), Koinzident, Fest
       (Anker, zweiter Klick löst), Konflikte in der Statusleiste und rot an den Symbolen; Test `tools/sketch_smoke.py`.
+      Befunde aus dem Surface-Test 2026-11-06 umgesetzt (#61): Stutzen loser Enden, Flächenhervorhebung bei Skizze anlegen,
+      Profilkurven-Topologie ohne Diagonale, Registerleiste ohne Windows-Scrollleiste.
       Offen: Skizzen-Parameter im Parameterpanel, Bild-Symbole für die Werkzeuge (Overhaul). Live-Demo kann skizzieren (2026-11-06, `demo_kernel.js` zählt die
       SolidCraft-Undo-Einträge je Sitzung; `demo_smoke.py` prüft es).*
       *Stufe 3 begonnen 2026-11-02:* Skizze auf XY/XZ/YZ oder Fläche, Rechteck und Kreis per Klick oder Zahl, voll
@@ -250,64 +296,45 @@ Bis v0.1 fehlt noch:
       *Dialoge in der Live-Demo fertig 2026-11-02:* `demo_kernel.js` beantwortet die `api/*`-Anfragen im Browser über die
       versteckte SolidCraft-Web-App (Netz per `file.export` 3mf-tagged in OPFS, Prüfung per Pyodide, Rückgängig über
       `edit.undo/redo`).
+- [x] **Lücken aus dem Soll-Abläufe-Abgleich** ([2026-11-07](docs/research/2026-11-07-soll-ablaeufe-abgleich.md),
+      Gemini #55–#57): Umbenennen im Baum (F2), Sichtbarkeit von Skizzen/Körpern (Auge, V), Löschen fragt nach der
+      verbrauchten Skizze, Flächenkanten beim Skizzieren auf einer Fläche automatisch projizieren, Fensterauswahl im
+      Skizzierer (Window/Crossing), Kürzel R für Drehung. Hervorhebung und Profilklick bei der Drehung stehen oben bzw.
+      im Plan. Alles Weitere (ViewCube, EOP ziehen, getriebene Maße, HUD, Rundungsfilter …) erst nach v0.1.
+      *Fertig 2026-11-15:* als letzte die automatische Projektion der Flächenkanten (#68).
 - [x] **Live-Demo prüft nach dem Speichern** (1b, erster Eindruck): Pyodide-Prototyp #35, danach einbauen.
       *Prototyp gemergt 2026-11-02* (`browser_check.py`, `demo_check.js`, ~5 MB Download, 2 ms je Prüfung).
       *Fertig und veröffentlicht 2026-11-02 (0.1.0a12, Nutzer: Stufe 1 ausliefern):* in Chromium gegen die echte
       Web-App getestet, unverändert gespeichert gleiche 6 Befunde wie vorberechnet, nach `parameters.change`
       (Grundplatte 1,2 mm) live neue Befunde. Baugruppen in der Demo bleiben vorberechnet.
-- [ ] **Point and speak fertig** (2): Spracheingabe auf echten Geräten (Handy, Surface) mit Fachbegriffen
-      testen, Fehler beheben.
+- [x] **Point and speak fertig** (2): Spracheingabe auf echten Geräten (Handy, Surface) mit Fachbegriffen
+      testen, Fehler beheben. *Surface ok (Nutzer 2026-11-06); Auswahl per Klick ohne Werkzeug seit 2026-11-06. Offen: Handy.* *Für v0.1 erledigt (2026-11-10): das Handy folgt mit dem Fernzugang `app.mechvane.dev`.*
 - [x] **Öffnen/Neu ohne Browser-Dialoge** (3): „New part“ mit eigenem Dialog statt `prompt()`/`alert()`
       (Surface-Test 2026-10-31). *Erledigt 2026-11-01: `newpart.js`, Fehler im Dialog, Klicktest in
       `ui_smoke.py`. Zwei `confirm()` im Agenten-Chat (Undo trotz Konflikt, Einwilligung Spracheingabe) bleiben
       vorerst.*
-- [ ] **Projektordner in der UI wechseln** (3, Nutzer 2026-11-05): Bisher legt nur der Start (`mechvane ui <ordner>`,
+- [x] **Projektordner in der UI wechseln** (3, Nutzer 2026-11-05): Bisher legt nur der Start (`mechvane ui <ordner>`,
       Startmenü `~/Mechvane`) den Ordner fest. Eigener Dialog „Open folder…“ im Stil von `newpart.js`: Server listet
       Laufwerke und Unterordner (kein Browser-Datei-Dialog, der liefert keinen Pfad), zuletzt benutzte Ordner merken,
       Dateiliste neu laden, offene Dokumente vorher schließen bzw. Speichern anbieten. Eine einzelne Datei öffnen =
-      ihren Ordner zum Projekt machen (relative Pfade der Baugruppen bleiben gültig). Noch nicht umsetzen.
+      ihren Ordner zum Projekt machen (relative Pfade der Baugruppen bleiben gültig). *Fertig 2026-11-07: File → Open
+      folder… und Browse… bei Import STEP (Issue #60).*
 - [ ] **Konstruktionsabsicht in Dialogen** (3, Nutzerregel 2026-11-05): Agenten bauen Beziehungen („mittig“,
       „X mm vom Rand“, bündig, konzentrisch, gleich, symmetrisch) als Skizzen-Abhängigkeiten (MCP-Anweisungen, Skill
-      `konstrukteur`, Test `design_intent_checks`). *Bohrungsdialog „Middle of face“ fertig 2026-11-05*
-      (`centred_hole_commands` in `ui/server.py`: Skizze an zwei gegenüberliegenden geraden Kanten, Mittelpunkt-
-      Abhängigkeiten; Bearbeiten einer solchen Bohrung im Dialog noch nicht, nur löschen und neu setzen). Offen: die
-      übrigen Beziehungen je mit Test, Flächen ohne zwei parallele Kanten (Kreis: konzentrisch).
-- [ ] **STEP als Referenzkörper importieren** (3, Nutzer 2026-11-05; *MCP-Werkzeug `import_step` fertig 2026-11-06:
+      `konstrukteur`, Test `design_intent_checks`). *Bohrungsdialog „Middle of face“ an geraden Kanten fertig 2026-11-05,
+      an runden Flächen konzentrisch fertig 2026-11-09 (Issue #71), Bearbeiten mittig gesetzter Bohrungen fertig 2026-11-10 (Issue #72)*
+      (`centred_hole_commands` in `ui/server.py`: Skizze an zwei gegenüberliegenden geraden Kanten oder konzentrisch
+      zur größten Kreiskante; Bearbeiten im Dialog erhält die Skizze und Abhängigkeiten, Position bleibt fest mittig).
+      Offen: die übrigen Beziehungen je mit Test.
+- [x] **STEP als Referenzkörper importieren** (3, Nutzer 2026-11-05; *MCP-Werkzeug `import_step` fertig 2026-11-06:
       `file.insert_step` in einer Arbeitssitzung, `component.extract` in eine eigene Bauteildatei, Test mit selbst
       exportierter STEP-Datei, mit echten Zukaufteilen geprüft. File → Import STEP… fertig
-      2026-11-06 (Dateien im Projektordner, `/api/import_step`). Offen: STEP-Baugruppen in einzelne Teile zerlegen,
-      Dateien außerhalb des Ordners (mit dem Ordner-Dialog)*): Zukaufteile in Baugruppen setzen, fremde Teile
+      2026-11-06 (Dateien im Projektordner, `/api/import_step`), Dateien außerhalb des Ordners fertig 2026-11-07
+      (Browse… mit Ordner-Dialog, Issue #60). STEP-Baugruppen in einzelne Teile zerlegen fertig 2026-11-11 (Issue #74)*): Zukaufteile in Baugruppen setzen, fremde Teile
       öffnen, messen und prüfen. Grundlage SolidCraft `file.insert_step`, Ergebnis ein fester Körper ohne Verlauf
       (ausdrücklich nicht der verlustfreie Import mit Verlauf, der bleibt Langzeitziel). Mechvane-Werkzeug für den
       Agenten und Knopf in der UI, passt zum Ordner-Dialog. Zuerst prüfen: Einheiten, Baugruppen-STEP (mehrere Körper),
       Namen und Farben. SolidCraft liest STEP-Baugruppen als einzelne Körper ein (Komponenten flachgeklopft).
-- [ ] **Direktbearbeitung wie Inventor** (3 oder später, Nutzer 2026-11-05): Flächen eines Körpers verschieben,
-      versetzen, drehen, löschen, Bohrungs-Ø ändern, mit Ziehgriffen und Werteingabe, als ein Schritt im Verlauf;
-      vor allem für Körper ohne Verlauf (STEP-Import). Bausteine in SolidCraft (nur Befehlsnamen gesichtet, nicht
-      getestet): `solid.offset_face`, `face.delete`, `solid.replace_face`, `solid.draft`, `solid.move`,
-      `solid.split_face`; für Drehen und Radius ändern kein Befehl gefunden. Zuerst Test auf einem STEP-Körper, dann
-      Dialog nach ADR 0005.
-      **Grenze SolidCraft 0.25.1 (Nutzertest 2026-11-05):** Versetzen (`solid.offset_face`, auch `solid.shell`) geht nur,
-      wenn der **ganze Körper** aus Ebenen, Zylindern, Kegeln, Kugeln und Tori besteht; eine einzige Freiformfläche
-      (B-Spline aus Loft, Sweep, Rundung zwischen zwei gekrümmten Flächen oder aus STEP) sperrt den Befehl:
-      `offset: only bodies with planes, cylinders, cones, spheres and tori (a face at [x, y, z])`, der Punkt zeigt die
-      Freiformfläche. Viele echte STEP-Teile fallen damit heraus. Kein Eintrag dazu in SolidCraft-ROADMAP/roadmap-detail
-      gefunden. Optionen: nur die betroffenen Flächen prüfen statt des ganzen Körpers (Upstream-Beitrag), Freiform-Offset
-      upstream anfragen (öffentliches Issue nur mit Nutzer-OK), bis dahin die Fehlermeldung übersetzen (Fläche benennen).
-      *Stand 2026-11-05:* Beides ist upstream schon gemeldet, kein neues Issue: **#745** (ferne Freiformfläche sperrt
-      Offset, Ursache `offset_body` in `crates/kernel/src/offset.rs`, Fix-PR #3893 auf Entwurf gesetzt und geschlossen) und
-      **#10884** (Freiformfläche selbst versetzen; verwandt #2990, #8974 Shell eines Lofts). Kernel-Arbeit ist pausiert
-      (**#3992**, SolidCraft bittet um keine neuen Issues/PRs zu Kernel, Offset, Shell, STEP), weil SolidCraft den Kernel
-      **solidcore** (Rust-Port von NVIDIA SMLib, Offset/Shell auf NURBS im Umfang) prüft. Vorgehen: #3992 und solidcore
-      beobachten, nach der Kernel-Entscheidung beide Fälle dort erneut testen; *Nachtrag 2026-11-05:* v0.40.0-rc.1/rc.2
-      (2026-11-03) laufen bereits auf solidcore. *Test 2026-11-06 (Loft Quadrat→Kreis):* rc.2 kann Shell mit offenem Boden, hohle
-      Shell, Offset der ebenen Flächen (= #745 gelöst); weiter offen: Shell mit offener Kreisfläche (status 1001) und
-      Offset der Freiformfläche selbst (#10884). Bericht `docs/research/2026-11-06-solidcore-testbericht-3992.md`; Fehlerübersetzung in Mechvane sofort möglich.
-      Anwendungsfall unter #745 kommentiert (2026-11-05, Nutzer-OK).
-- [ ] **An SolidCraft per PR mitarbeiten** (Nutzer 2026-11-05, [ADR 0001](docs/adr/0001-grundlage-solidcraft.md)
-      Nachtrag): Build auf Colab Pro (`--high-mem`, Cache für `target/` zurückholen) einrichten und mit `cargo xtask ci`
-      auf `main` erproben; ersten kleinen PR außerhalb des Kernels wählen (Kandidat offen, #8517 ist vergeben);
-      Kernel-Fälle (#745, #10884) erst nach der Entscheidung zu solidcore (#3992). Jeder PR nur mit Nutzer-OK.
 - [ ] **SolidCraft-Fehler für Agent und Nutzer übersetzen** (Nutzer 2026-10-31, aus einem Gespräch mit Gemini):
       Jeder fehlgeschlagene Befehl (`run`, Mechvane-Werkzeuge, später `/api/feature`) wird abgefangen, das
       Feature und die Stelle lokalisiert (Kante/Fläche mit Mechvane-Namen, Punkt, beteiligte Features) und
@@ -317,6 +344,15 @@ Bis v0.1 fehlt noch:
       *Stufe 1 fertig 2026-11-02* (#38, `sc_errors.py`: 24 Meldungen mit Erklärung und Vorschlag in `run`). Offen:
       Stelle mit Mechvane-Namen lokalisieren. *Stufe 2 gemergt 2026-11-05* (#42: alle Mechvane-Werkzeuge per
       Dekorator `sc_errors.explained`, `/api/feature` mit `explanation`/`hint`).
+      *Stufe 3 fertig 2026-11-09* (`sc_locate.py`, Test `sc_locate_checks`): `run` und `/api/feature` nennen die
+      Stelle (`Where: …`): gemeinte Kante/Fläche mit Feature-Namen aus den Flächennamen (`F<id>:…`, kein
+      `body_topology`), bei Rundung/Fase das Feature im Weg mit Abstand und Punkt über ein Querschnittsmodell (Größe,
+      ab der ein Nachbar erreicht wird; stimmt mit SolidCrafts „largest size that fits“ auf < 3 % überein), Bogenradius
+      der Kante, Rundung am Kantenende; bei Bohrungen die nächste Fläche, bei Fehlgriffen die nächste Kante bzw. die
+      Kanten an der Ecke. **Neu:** Eine Änderung, die ein späteres Feature scheitern lässt, blieb in `run` bisher
+      unbemerkt (Batch ok, Feature fehlt); jetzt `feature_errors` mit Stelle und Warnung. Offen: Stelle in der Ansicht
+      markieren (`location.at` liegt in der Antwort), Stelle auch für `bolted_connection` und Baugruppen, „lumps“-Fall
+      aus Praxistest 6 (Körper mehrerer Bauteile), Skizzenfehler.
 - [x] **Bauteilende für den Agenten** (*fertig 2026-11-04, #44, MCP-Werkzeug `part_end`, gemergt 2026-11-05; Speichern im zurückgerollten Zustand erlaubt wie Inventor (Nutzer 2026-11-05), Hinweis in `run`*) (Nutzer 2026-11-01, vorgezogen zur Fehlerübersetzung): MCP-Werkzeug,
       das den Bauteilende-Marker vor eine Fehlerstelle setzt (SolidCraft `timeline.rollback`/`timeline.roll_to`),
       dort isoliert messen und reparieren, dann schrittweise vorrücken. Regel im Skill `konstrukteur`.
@@ -358,6 +394,10 @@ Bis v0.1 fehlt noch:
       Browser, Dialoge), Recherche an Gemini (*fertig 2026-10-30*,
       [Bericht](docs/research/2026-10-30-abgleich-inventor-solidcraft-flash.md)), danach entscheiden, was über SolidCraft-
       Einstellungen/Plugins geht und was eine eigene Oberfläche braucht.
+
+**Entscheidung 2026-11-10 (Nutzer-OK):** Mechvane bleibt bis v0.2 Python. Neu entschieden wird nicht nach Datum,
+sondern sobald SolidCrafts Plugin-Generatoren (#1221) ausgeliefert sind. Die Windows-Hülle für v0.1 ist pywebview auf
+WebView2 mit Installer, Linux bleibt beim App-Fenster. Der Absatz darunter ist der Stand davor.
 
 **Prüfpunkt Sprache (nach v0.1, spätestens Januar 2027, Nutzer-OK 2026-10-24):** Mechvane bleibt
 bis v0.1 Python (ADR 0001: „Rust, sobald die Schnittstelle steht“). Dann neu entscheiden, früher,
@@ -516,7 +556,7 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 - [ ] **Werkstoffdatenbank** (Nutzerwunsch 2026-10-29): umfangreich, Kennwerte (Dichte, E-Modul,
       Rm, Rp0,2, Bruchdehnung, Härte, Wärmeausdehnung, -leitfähigkeit, Gebrauchstemperatur) je
       Werkstoff und Zustand als Katalogeinträge nach ADR 0002 (`katalog/eintraege/werkstoffe/`),
-      recherchiert von Gemini Flash wie die Regeln (Quelle, wörtliches Zitat, `check_sources.py`,
+      recherchiert von Gemini Hydrogen wie die Regeln (Quelle, wörtliches Zitat, `check_sources.py`,
       „belegt“ erst mit zwei Quellen). Runde 1 (16 Werkstoffe: Baustahl, Vergütungsstahl, Edelstahl,
       Aluminium, Grauguss, Messing, POM, PA6, PLA, PETG) *gemergt 2026-10-29*
       ([Bericht](docs/research/2026-10-29-werkstoffe-flash.md), `katalog/eintraege/werkstoffe/`). Danach:
@@ -558,6 +598,41 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 
 ### Nach v0.1: Harness und Zusammenarbeit (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
 
+- [ ] **Direktbearbeitung wie Inventor** (Nutzer 2026-11-05; seit 2026-11-10 nach v0.1, in v0.1 nur über den allgemeinen Befehlsdialog): Flächen eines Körpers verschieben,
+      versetzen, drehen, löschen, Bohrungs-Ø ändern, mit Ziehgriffen und Werteingabe, als ein Schritt im Verlauf;
+      vor allem für Körper ohne Verlauf (STEP-Import). Bausteine in SolidCraft (nur Befehlsnamen gesichtet, nicht
+      getestet): `solid.offset_face`, `face.delete`, `solid.replace_face`, `solid.draft`, `solid.move`,
+      `solid.split_face`; für Drehen und Radius ändern kein Befehl gefunden. Zuerst Test auf einem STEP-Körper, dann
+      Dialog nach ADR 0005.
+      **Grenze SolidCraft 0.25.1 (Nutzertest 2026-11-05):** Versetzen (`solid.offset_face`, auch `solid.shell`) geht nur,
+      wenn der **ganze Körper** aus Ebenen, Zylindern, Kegeln, Kugeln und Tori besteht; eine einzige Freiformfläche
+      (B-Spline aus Loft, Sweep, Rundung zwischen zwei gekrümmten Flächen oder aus STEP) sperrt den Befehl:
+      `offset: only bodies with planes, cylinders, cones, spheres and tori (a face at [x, y, z])`, der Punkt zeigt die
+      Freiformfläche. Viele echte STEP-Teile fallen damit heraus. Kein Eintrag dazu in SolidCraft-ROADMAP/roadmap-detail
+      gefunden. Optionen: nur die betroffenen Flächen prüfen statt des ganzen Körpers (Upstream-Beitrag), Freiform-Offset
+      upstream anfragen (öffentliches Issue nur mit Nutzer-OK), bis dahin die Fehlermeldung übersetzen (Fläche benennen).
+      *Stand 2026-11-05:* Beides ist upstream schon gemeldet, kein neues Issue: **#745** (ferne Freiformfläche sperrt
+      Offset, Ursache `offset_body` in `crates/kernel/src/offset.rs`, Fix-PR #3893 auf Entwurf gesetzt und geschlossen) und
+      **#10884** (Freiformfläche selbst versetzen; verwandt #2990, #8974 Shell eines Lofts). Kernel-Arbeit ist pausiert
+      (**#3992**, SolidCraft bittet um keine neuen Issues/PRs zu Kernel, Offset, Shell, STEP), weil SolidCraft den Kernel
+      **solidcore** (Rust-Port von NVIDIA SMLib, Offset/Shell auf NURBS im Umfang) prüft. Vorgehen: #3992 und solidcore
+      beobachten, nach der Kernel-Entscheidung beide Fälle dort erneut testen; *Nachtrag 2026-11-05:* v0.40.0-rc.1/rc.2
+      (2026-11-03) laufen bereits auf solidcore. *Test 2026-11-06 (Loft Quadrat→Kreis):* rc.2 kann Shell mit offenem Boden, hohle
+      Shell, Offset der ebenen Flächen (= #745 gelöst); weiter offen: Shell mit offener Kreisfläche (status 1001) und
+      Offset der Freiformfläche selbst (#10884). Bericht `docs/research/2026-11-06-solidcore-testbericht-3992.md`; Fehlerübersetzung in Mechvane sofort möglich.
+      Anwendungsfall unter #745 kommentiert (2026-11-05, Nutzer-OK).
+      *Stand 2026-11-11:* SolidCraft hat **#745** und unser **#5353** (Durchgangsbohrung wegen Sackbohrungsspitze
+      verweigert) geschlossen, beide auf `main` (0.40.0-rc.4, solidcore) behoben; auf 0.30.1 bleiben sie. Beim Wechsel
+      auf 0.40 nachziehen: Hinweis in `mechvane/sc_errors.py` (Offset-Fehler nennt pauschal #745/#10884, gilt dann nur
+      noch für die Freiformfläche selbst und Shell mit offener Kreisfläche) und die Tests dazu in
+      `tests/mechvane/check.py` (Suche nach `#745`).
+      *Stand 2026-11-14:* nachgezogen. Der Hinweis nennt #745 als ab 0.40 behoben und #10884 als teils offen, der Live-Test 5
+      deckt beide Versionen ab (0.40+: Shell am Loft gelingt; 0.30.1: Fehler mit Hinweis). Scratch-Ordner (#7836): unter 0.41.0
+      bleibt keiner zurück, der Aufräumcode in `solidcraft.py` bleibt für ältere Versionen.
+- [ ] **An SolidCraft per PR mitarbeiten** (Nutzer 2026-11-05, seit 2026-11-10 laufendes Thema außerhalb von v0.1, [ADR 0001](docs/adr/0001-grundlage-solidcraft.md)
+      Nachtrag): Build auf Colab Pro (`--high-mem`, Cache für `target/` zurückholen) einrichten und mit `cargo xtask ci`
+      auf `main` erproben; ersten kleinen PR außerhalb des Kernels wählen (Kandidat offen, #8517 ist vergeben);
+      Kernel-Fälle (#745, #10884) erst nach der Entscheidung zu solidcore (#3992). Jeder PR nur mit Nutzer-OK.
 - [ ] **Nutzersperren**: Parameter, Maße, Features und Funktionsflächen „vom Nutzer festgelegt“ (Schloss im
       Baum, Attribut in den Mechvane-Metadaten); der Agent bekommt bei Änderungen eine sprechende Ablehnung
       mit Vorschlag. Keep-Out-Flächen: Überschneidung nach dem Befehl prüfen und zurücknehmen.
@@ -571,7 +646,9 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 - [ ] **Versionen, Branches und Varianten** (Nutzer 2026-11-01): benannte Stände mit Vergleich (3D nebeneinander,
       Feature-Diff aus `document.json`, Git darunter), danach Branches (Varianten-Zweige), besonders für den Agenten
       („Variante A/B“, übernehmen oder verwerfen), zuletzt Zusammenführen auf Feature-Ebene mit
-      Konfliktanzeige (Vorbild Onshape).
+      Konfliktanzeige (Vorbild Onshape). Vorstufe **Parametervarianten** (#108, Entwurf
+      `docs/strategie/2026-11-14-varianten-skill.md`): Skill mit Treiberprüfung, Mengenbestätigung und Manifest über
+      `check_parameters`, ohne Varianten-Dateien; eigenes Werkzeug und Ablage als Stände erst mit diesem Punkt.
 - [ ] **Modell je Auftrag wählen** (Nutzer 2026-11-02: „eine Fase an eine Kante braucht kein Flaggschiff“): bisher
       setzt Mechvane kein Modell, es gilt der Standard des Kontos (vermutlich Opus). Plan: (1) im Protokoll festhalten,
       welches Modell lief (`agent_session`, seit 2026-11-02); (2) einfache Einstufung je Nachricht: ein Feature mit Maß
@@ -688,6 +765,22 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       als SolidCraft-Plugins statt in der Python-Schicht; zählt beim Prüfpunkt Sprache für Rust/WASM.
       Unser Kommentar (Nutzer-OK, 2026-11-02): [deklarierte Eingaben über die API lesbar für Hosts und Agenten, Auswahl
       und Ergebnis nicht auf einen Körper festlegen](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6585010413).
+      *2026-11-08:* SychPL hat beides in PR #4980 übernommen (Abschnitt 13a, [Antwort](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6725506608)):
+      Eingaben einmal in plugin.json (`input` als JSON Schema, Ausdrücke mit Parameterbezug), über `engine.describe`/`plugin.list`
+      lesbar, Instanz liefert gespeicherte Eingaben und aufgelöste Bezüge, Ziele als Liste; Ergebnis als native Features in
+      einem verwalteten Timeline-Ordner. Spätere Arbeit, nicht in 0.1. Offen für uns, [nachgefragt](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6726545120)
+      (Nutzer-OK): darf ein Generator Joints anlegen (Verschraubung verbindet Schraube/Mutter mit der Bohrung), und darf ein
+      Ziel ein eingefügtes Teil (eigene Datei) sein, Features dann im Teil oder in der Baugruppe? Antwort entscheidet, ob
+      `bolted_connection` Generator-Paket wird oder in der Mechvane-Schicht bleibt; `standard_part` passt schon (neues Bauteil).
+      *2026-11-11:* #4980 geschlossen, abgelöst durch RFC 0002 (PR #15110): Host in Phasen (1 `execute`, 3 `FeatureKind::Plugin`,
+      4 Add-on-Manager/Dialoge aus Schemas), erst Phase 1 in Arbeit. Das RFC übernimmt Abschnitt 13a nicht (Ziele als Liste,
+      lesbare Instanzen), Joints und eingefügte Teile als Ziel stehen nicht drin; unsere Fragen bleiben offen.
+      Plugins sind WASM (Rust, dann TypeScript), Python-Features müssten neu geschrieben werden.
+      Unser Kommentar am RFC (Nutzer-OK, 2026-11-11, [Antwort raykholo](https://github.com/tangency-labs/solidcraft/pull/15110#issuecomment-6806473533)):
+      lesbare Eingaben (`plugin.list`, `engine.describe`) und Ziele als Liste kommen schon in Phase 1; gespeicherte Eingaben mit
+      aufgelösten Bezügen, Joints durch Generatoren und Ziele in eingefügten Teilen gehören zu Phase 3 / RFC-Abschnitt 9, Verschraubung
+      ist dort als Abnahmebeispiel genannt.
+      [Notiz](docs/research/2026-11-11-solidcraft-plugin-rfc-0002.md).
 
 ### Ergänzungen Phase 2 (Nutzer 2026-11-01, [Vorschlag](docs/research/2026-11-01-roadmap-ergaenzungen-harness-ux.md))
 
@@ -774,3 +867,5 @@ Nicht geplant: T-Splines, Rohrleitungen, Kabelbaum, BIM/Revit, Vault-artiges PDM
 | Zeichnungsmodul unterschätzt | erst DXF-Flächenexport, Zeichnungen erst in Phase 3 |
 | Zeit: Freizeitprojekt mit begrenzter Kapazität | kleine, einzeln nutzbare Meilensteine; jeder Phase-1-Baustein hilft schon beim eigenen Konstruieren |
 | Angaben aus der Recherche ungenau | Gemini-Recherche ist Rohmaterial; Zahlen und Features vor Entscheidungen selbst prüfen |
+| Live-Demo hängt an einer 96-MB-wasm (Limit 100 MB je Datei beim heutigen Hosting) | Größe bei jedem SolidCraft-Wechsel messen; Ausweichort vorher prüfen (Dateigrößen-Limits der Anbieter) |
+| v0.1 wächst schneller, als es schrumpft | fester Schnitt vom 2026-11-10 mit vier Abnahmeprüfungen; Neues kommt an seine Phase, nicht in v0.1 |

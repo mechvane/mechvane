@@ -1,6 +1,7 @@
 """Small vector helpers. SolidCraft transforms are 4x4, row-vector convention:
 world = [x, y, z, 1] · M, translation in the last row."""
 
+import re
 import math
 import warnings
 
@@ -42,6 +43,13 @@ def apply_point(m, p):
 
 def apply_dir(m, d):
     return [sum(d[j] * m[j][i] for j in range(3)) for i in range(3)]
+
+
+def blend_parts(name: str) -> list[str] | None:
+    """The faces a blend face (fillet or chamfer) joins, from its name, or None when it is no blend face.
+    SolidCraft up to 0.30 wrote "F4:blend:F1:+x|F1:+z", since 0.40 it is "F4:blend(F1:+x|F1:+z)"."""
+    m = re.search(r":blend\((.*)\)$", name or "") or re.search(r":blend:(.*)$", name or "")
+    return m.group(1).split("|") if m else None
 
 
 def mat_mul(parent, child):
@@ -169,7 +177,7 @@ def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
         feat_info = timeline_map.get(feat_id, {})
 
         # Ignore edge fillets, chamfers and blend faces
-        if feat_info.get("type") in ("FilletFeature", "ChamferFeature") or any(":blend:" in f["name"] for f in grp):
+        if feat_info.get("type") in ("FilletFeature", "ChamferFeature") or any(blend_parts(f["name"]) is not None for f in grp):
             is_hole[idx] = False
             continue
 

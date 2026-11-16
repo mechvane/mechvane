@@ -43,6 +43,26 @@
       "einheit": "mm"
     },
     {
+      "name": "M2 Vorlochbohrung",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2 Mindestbohrungstiefe",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Vorlochbohrung",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Mindestbohrungstiefe",
+      "wert": 6.7,
+      "einheit": "mm"
+    },
+    {
       "name": "M3 Vorlochbohrung",
       "wert": 4.0,
       "einheit": "mm"
@@ -50,6 +70,46 @@
     {
       "name": "M3 Mindestbohrungstiefe",
       "wert": 6.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Vorlochbohrung",
+      "wert": 5.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Mindestbohrungstiefe",
+      "wert": 9.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Vorlochbohrung",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Mindestbohrungstiefe",
+      "wert": 10.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Vorlochbohrung",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Mindestbohrungstiefe",
+      "wert": 13.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Vorlochbohrung",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Mindestbohrungstiefe",
+      "wert": 13.7,
       "einheit": "mm"
     }
   ],
@@ -92,6 +152,12 @@
       "stelle": "ruthex RX-M3x5.7 Produktseite & Spezifikation",
       "zitat": "Optimal für alle gängigen thermoplastischen Werkstoffe wie PLA, PETG, ABS, PP, PPS und mehr.",
       "abgerufen": "2026-10-21"
+    },
+    {
+      "url": "https://www.cnckitchen.com/blog/tips-and-tricks-for-heat-set-inserts",
+      "stelle": "Design rules for blind holes and insert geometry",
+      "zitat": "A blind hole should be slightly deeper than the length of the insert (approx. 1 mm)",
+      "abgerufen": "2026-11-05"
     }
   ],
   "begruendung": "Die gerändelte Messing-Außenkontur verankert sich durch thermisches Plastifizieren im thermoplastischen Schichtgefüge und verhindert Auszug und Durchdrehen.",

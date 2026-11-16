@@ -22,6 +22,7 @@ python3 tests/reference/check.py       # reference parts with expected values
 
 Every change comes with a check in `tests/mechvane/check.py`. Never weaken or skip a check to get to green.
 Headless UI checks: `tools/ui_smoke.py` (needs playwright).
+Nightly and on pushes to `main` in the public repository, `.github/workflows/platforms.yml` runs a clean installation and smoke test (`tools/ci_smoke.py`) across Windows, macOS, and Linux.
 
 ## Where things are
 
@@ -50,6 +51,7 @@ Headless UI checks: `tools/ui_smoke.py` (needs playwright).
 - In assemblies use Mechvane's tools (`insert_part`, `add_joint`, `edit_joint`, `update_links`,
   `bolted_connection`), not raw SolidCraft joint commands, so joints stay checkable.
 - A sketch used by one feature sits directly before it (`sketch_rule`).
-- Changing behaviour users see: add a line to `CHANGELOG.md` under "Unreleased" and update `roadmap.json`
-  (`next` for done but unreleased).
+- Changing behaviour users see: add a changelog snippet in `changelog.d/<issue>.md` (first line
+  one of `Added`/`Changed`/`Fixed`/`Removed`, then bullet list in English; do not edit `CHANGELOG.md`
+  directly) and update `roadmap.json` (`next` for done but unreleased).
 - Public texts: encouraging and factual, no hype, always credit SolidCraft.

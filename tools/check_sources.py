@@ -17,6 +17,7 @@ import argparse
 from dataclasses import dataclass, field, asdict
 import datetime as dt
 import difflib
+import gzip
 import hashlib
 import html
 from html.parser import HTMLParser
@@ -458,6 +459,13 @@ class SourceFetcher:
                 status_code = resp.status
                 content_type = resp.headers.get("Content-Type", "").lower()
                 data = resp.read()
+                # Some hosts send gzip although the request did not ask for it (seen at jules.google): urllib does not
+                # unpack it, so the page text would be binary noise and every quote "not found".
+                if resp.headers.get("Content-Encoding", "").lower() == "gzip" or data[:2] == b"\x1f\x8b":
+                    try:
+                        data = gzip.decompress(data)
+                    except OSError:
+                        pass  # not gzip after all
 
                 # Process PDF or HTML
                 is_pdf = "application/pdf" in content_type or url.lower().endswith(".pdf") or data.startswith(b"%PDF")

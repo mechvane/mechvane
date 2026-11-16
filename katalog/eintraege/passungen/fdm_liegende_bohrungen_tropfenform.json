@@ -1,0 +1,52 @@
+{
+  "id": "fdm_liegende_bohrungen_tropfenform",
+  "aussage": "Liegende Bohrungen (Zylinderachse waagrecht zur Druckaufbaurichtung Z) bilden im Scheitelbereich Überhänge/Brücken. Ab einem Durchmesser von 5 mm bis 6 mm tritt ohne Stütze Durchhängen auf; solche Bohrungen erfordern Stützstrukturen oder eine Tropfen-/Rautenform.",
+  "werte": [
+    {
+      "name": "Maximaler Brückendurchmesser ohne Stütze",
+      "wert": 5.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Grenzdurchmesser für Warnung liegender Bohrungen in Mechvane",
+      "wert": 6.0,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Bohrung",
+      "Liegende Bohrung",
+      "Horizontale Achse",
+      "Brücke",
+      "Überhang"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-fdm-3d-printing/",
+      "stelle": "Abschnitt Bridging and horizontal-axis holes",
+      "zitat": "Bridging in FDM occurs when the printer is required to print between two supports or anchor points. Because there is nothing to build on, no support is offered for the initial layer being printed and the material tends to sag. Bridges most often occur in horizontal-axis holes found in the walls of objects or in the top layer (or roof) of hollow parts.",
+      "abgerufen": "2026-11-05"
+    }
+  ],
+  "begruendung": "FDM baut Teile schichtweise in Z auf. Bei waagrechten Bohrungen erreicht der Überhangwinkel im Scheitel 90 Grad (horizontale Brücke), wodurch der Schmelzstrang ohne Unterstützung absackt.",
+  "ausnahmen": "Bohrungen, die durch Drehung des Teils vertikal gedruckt werden, oder Bohrungen mit konstruktiv integrierter Tropfenform.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

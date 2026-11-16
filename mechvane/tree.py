@@ -10,7 +10,10 @@ from .sketch_rule import consumers, is_work_feature, owners, timeline
 def part_tree(s, groups=False):
     """With groups, the same ownership also as Fusion-style folders: every sketch and work
     feature once, with the feature it belongs to (or what shares it)."""
-    insp = timeline(s)
+    try:
+        insp = s.tool("inspect_design", {"measure": False, "sketches": True}) if hasattr(s, "tool") else timeline(s)
+    except (RuntimeError, KeyError, AttributeError):
+        insp = timeline(s)
     tl = insp["timeline"]
     marker = insp.get("marker")
     end = len(tl) if marker is None else marker
@@ -20,6 +23,8 @@ def part_tree(s, groups=False):
     for sketch, feature in owned.items():
         by_feature.setdefault(feature, []).append(sketch)
     kinds = {f["name"]: f for f in tl}
+    hidden_origin = set(insp.get("hidden_origin", []))
+    sketch_vis = {sk["name"]: sk.get("visible", True) for sk in insp.get("sketches", [])}
 
     def with_children(n):
         children = [with_children(node(kinds[sk])) for sk in by_feature.get(n["name"], [])]
@@ -34,6 +39,10 @@ def part_tree(s, groups=False):
                 n[key] = True
         if f.get("error"):
             n["error"] = f["error"]
+        if f["type"] == "Sketch":
+            n["visible"] = sketch_vis.get(f["name"], f["name"] not in owned)
+        elif is_work_feature(f):
+            n["visible"] = f["name"] not in hidden_origin
         return n
 
     items = []
@@ -45,8 +54,11 @@ def part_tree(s, groups=False):
         items.append(with_children(node(f)))
     if end >= len(tl):
         items.append({"type": "EndOfPart"})
-    out = {"kind": "part", "name": insp.get("name"), "bodies": [b["name"] for b in insp.get("bodies", [])],
-           "features": items}
+    bodies = insp.get("bodies", [])
+    body_names = [b["name"] if isinstance(b, dict) else str(b) for b in bodies]
+    hidden_bodies = [b["name"] for b in bodies if isinstance(b, dict) and not b.get("visible", True)]
+    out = {"kind": "part", "name": insp.get("name"), "bodies": body_names,
+           "hidden_bodies": hidden_bodies, "features": items}
     if groups:
         def entry(f):
             users = cons.get(f["name"], [])
@@ -97,7 +109,7 @@ def assembly_tree(s, groups=False, base=None):
         for j in joints:
             if o["id"] in (j["a"], j["b"]):
                 partner = j["b"] if j["a"] == o["id"] else j["a"]
-                entry = {"name": j["name"], "type": j["type"], "with": names.get(partner, partner)}
+                entry = {"name": j["name"], "type": j.get("constraint") or j["type"], "with": names.get(partner, partner)}
                 if j.get("suppressed"):
                     entry["suppressed"] = True
                 mine.append(entry)

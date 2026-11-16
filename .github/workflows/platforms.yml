@@ -1,0 +1,81 @@
+# Nightly and push verification across platforms (Windows, macOS, Linux).
+name: Platforms
+
+"on":
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+# The jobs only read the repository and upload artifacts: no write access needed.
+permissions:
+  contents: read
+
+jobs:
+  platforms:
+    name: ${{ matrix.os }} (Python ${{ matrix.python-version }})
+    if: github.repository == 'mechvane/mechvane'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache SolidCraft downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/mechvane
+            ~/AppData/Local/mechvane
+          key: solidcraft-${{ runner.os }}-${{ hashFiles('mechvane/install.py', 'mechvane/ui/webapp.py') }}
+          restore-keys: |
+            solidcraft-${{ runner.os }}-
+
+      - name: Install Mechvane
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run CI smoke test
+        run: python tools/ci_smoke.py
+
+      - name: Install Playwright
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium chromium-headless-shell
+
+      - name: Run UI smoke test
+        if: matrix.os == 'ubuntu-latest'
+        run: python tools/ui_smoke.py http://127.0.0.1:8799/ screenshots
+
+      - name: Run demo smoke test
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python tools/build_demo_site.py /tmp/demosite
+          python -m http.server 8811 --directory /tmp/demosite &
+          SERVER_PID=$!
+          sleep 2
+          RC=0
+          python tools/demo_smoke.py || RC=$?
+          kill $SERVER_PID 2>/dev/null || true
+          rm -rf /tmp/demosite
+          exit $RC
+
+      - name: Upload screenshots artifact
+        if: matrix.os == 'ubuntu-latest' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: screenshots/
+          if-no-files-found: ignore

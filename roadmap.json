@@ -54,7 +54,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "A picture to check against",
           "text": "One image with iso, front, top and a section, with axes and sizes, the last change highlighted: a quick visual check for agents that can see images.",
           "milestone": "v0.1"
@@ -100,6 +100,24 @@
           "text": "Bring in STEP files from suppliers or other tools as solid bodies, using SolidCraft's STEP reader: place bought parts in an assembly, measure them and run the checks on them. In the workspace (File → Import STEP…) or through your agent."
         },
         {
+          "status": "done",
+          "title": "Moves to SolidCraft 0.41",
+          "text": "Mechvane switches to SolidCraft 0.41 (with the new solid kernel since 0.40), so offset, shell and loft cases that fail today work in your parts.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Moves to SolidCraft 0.43",
+          "text": "Mechvane follows SolidCraft to 0.43, with view tabs, new sketch and solid commands and file verification available to you and your agent.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Keeps pace with SolidCraft",
+          "text": "A weekly check lists new SolidCraft releases, new commands and fixed upstream issues, and shows which of them Mechvane already offers.",
+          "milestone": "v0.1"
+        },
+        {
           "status": "planned",
           "title": "Open files from other CAD systems",
           "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first. Features that cannot be rebuilt directly stay as placeholders until your agent or a later version rebuilds them."
@@ -137,7 +155,7 @@
         {
           "status": "done",
           "title": "Parameters",
-          "text": "Change parameters and dimensions in a form; several changes apply together or not at all.",
+          "text": "Change parameters and dimensions in a form; sketch dimensions appear grouped by sketch with named dimensions first, and several changes apply together or not at all.",
           "milestone": "v0.1"
         },
         {
@@ -165,15 +183,22 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Your own Mechvane workspace",
-          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, and dialogs with live preview for extrude, revolve, hole, fillet, chamfer, patterns and mirror, editable from the model browser. A sketch environment with lines, rectangles and circles, snapping, arcs, constraints, a dimension tool and dimensions typed at the cursor is ready for the next release; projecting model edges, trim and offset are in too.",
+          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, inline renaming in the model browser (F2, slow click, context menu) with shortcut R for revolve outside sketcher, and dialogs with live preview for extrude, revolve (profiles and axis picked in the view), hole, fillet, chamfer, patterns and mirror, editable from the model browser. A sketch environment with lines, rectangles and circles, snapping, arcs, constraints, a dimension tool and dimensions typed at the cursor; projecting model edges, automatic projection of the outer and inner boundary edges of a picked planar face on sketch creation (with a toggle to turn it off), trim (including loose ends), offset and window selection (enclosing left-to-right, crossing right-to-left, Shift/Ctrl modifiers) are in too, with planar face hover on sketch creation and clean extrude profiles without diagonal seam lines. Sketches on the XZ plane now show world Z pointing up, as in Inventor's front view.",
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "Switch project folders in the app",
-          "text": "Pick another project folder from inside Mechvane, with recently used folders at hand, instead of starting it again with a different folder. Opening a single file makes its folder the project, so assemblies keep finding their parts."
+          "text": "Pick another project folder from inside Mechvane, with recently used folders at hand, instead of starting it again with a different folder. Opening a single file makes its folder the project, so assemblies keep finding their parts.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Model browser visibility",
+          "text": "Show or hide sketches, work features (planes, axes, points) and solid bodies with an eye button on each entry, key V on selection, or the Visibility context menu item. Hidden elements appear dimmed in the tree and are persisted in the document.",
+          "milestone": "v0.1"
         },
         {
           "status": "planned",
@@ -181,9 +206,45 @@
           "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
         },
         {
+          "status": "progress",
+          "title": "Assemble tab by hand",
+          "text": "Place parts, add joints, bolt them together and update links from the workspace, without an agent, as in classic mechanical CAD. Done: placing parts and standard parts from the norm tables, joints (rigid, revolute, slider, cylindrical, ball) and constraints (mate, flush, distance, concentric, angle and more) picked on faces in the view and editable from the browser, bolted connections with ISO screws, nuts and washers, preview, edit and delete, and Update Links. Next: a parts list (BOM).",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Every SolidCraft command in the workspace",
+          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo. Whatever SolidCraft can do, you and your agent can do in Mechvane, including commands that appear in a new SolidCraft release.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Watch an agent session in the live demo",
+          "text": "A recorded session plays in the browser: the request, the steps, the model growing, the check finding something and the agent fixing it. No key and no installation needed.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "What comes next, inside the app",
+          "text": "The next roadmap items right in the workspace, next to the button for your own feature request.",
+          "milestone": "v0.1"
+        },
+        {
           "status": "done",
           "title": "Hole positioning by edge distances",
           "text": "Place holes by distances from one or two straight edges in the Hole dialog (Inventor style), with interactive edge picking and live preview.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Centred holes on circular faces",
+          "text": "The Hole dialog with 'Middle of face' places holes concentric to the outer circular edge on cylinders, flanges and rings, keeping them centred when parameters change.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "done",
+          "title": "Edit centred holes",
+          "text": "Holes placed with 'Middle of face' (centred on rectangular faces or concentric on circular faces) can be edited from the model browser, keeping their centred position and sketch constraints when part parameters change.",
           "milestone": "v0.1"
         },
         {
@@ -218,7 +279,8 @@
         {
           "status": "planned",
           "title": "See what your agent changed",
-          "text": "The previous state as a ghost over the new one and changed features marked in the browser, to accept or undo each change. Removed geometry in red, new in blue, as in Onshape's visual compare."
+          "text": "The previous state as a ghost over the new one and changed features marked in the browser. A first version comes with v0.1; accepting or undoing single changes follows. Builds on SolidCraft's compare.",
+          "milestone": "v0.1"
         },
         {
           "status": "planned",
@@ -228,7 +290,7 @@
         {
           "status": "planned",
           "title": "Versions, branches and variants",
-          "text": "Named versions you can compare side by side, branches to try a variant (also by your agent, for you to pick), later merged back feature by feature."
+          "text": "Named versions you can compare side by side, branches to try a variant (also by your agent, for you to pick), later merged back feature by feature. Your agent can sweep parameters and lay out the variants in a table to choose from."
         },
         {
           "status": "planned",
@@ -290,6 +352,12 @@
           "text": "Every value with its source, quotation and status, checked automatically against the source."
         },
         {
+          "status": "planned",
+          "title": "Every finding shows its source",
+          "text": "Each finding of the design check shows the rule, the value, the source and the quoted passage from the knowledge catalog, and the catalog gets its own page on mechvane.dev.",
+          "milestone": "v0.1"
+        },
+        {
           "status": "progress",
           "title": "Material database",
           "text": "28 materials so far (steels, stainless steels, aluminium alloys and casting, cast iron, copper, brass, engineering plastics and 3D-printing materials), every value with its source, ready to assign in SolidCraft as a material library."
@@ -300,7 +368,7 @@
           "text": "Minimum thread depth, edge distance and contact pressure calculated from strength values instead of fixed tables."
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "More rules per manufacturing process",
           "text": "For 3D printing teardrop holes and heat-set inserts, for milling inner radii, drilling depth and tool access, each with its source."
         },

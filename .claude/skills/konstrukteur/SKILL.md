@@ -86,11 +86,18 @@ Geprüfte Konstruktionsregeln:
   - Regel: Überhänge $> 45^\circ$ zur Vertikalen ohne Stütze (nach unten gerichtete Flächen $N_z < -0{,}707$ oberhalb der Druckbett-Ebene $z_{\min}$) werden beanstandet.
   - Regel: Kleinste Bohrung $\ge 2{,}0\text{ mm}$ bei 0,4-mm-Düse (Gefahr des Zuwachsens).
 
-### 5. Visuelle Endkontrolle (`screenshot`)
+### 5. Visuelle Endkontrolle (`screenshot` / `verify_view`)
 Mit `screenshot(document="lasche", view="iso")` (oder `view="top"`) ein Bild des gerenderten Modells erzeugen und visuell prüfen:
 - Zeigen Radien und Fasen in die gewünschte Richtung?
 - Sitzen Durchbrüche auf der richtigen Seite?
 - Bei Baugruppen: Zeigen montierte Teile nach `add_joint` in die richtige Ausrichtung (kein verdrehter Bolzen)?
+
+**Sichtprüfung mit `verify_view`:**
+`verify_view(document="lasche")` liefert ein 2×2-Raster aus vier Ansichten (Iso, Front, Top, Section) mit Ansichtsnamen und Hüllmaßen (`Size`) in mm. Gezielt nutzen:
+- wenn ein neues Feature an einer neuen Stelle gebaut wurde,
+- nach Fehlern zur visuellen Ursachenforschung,
+- vor dem Abschluss als Gesamtkontrolle.
+*Nicht* nach jedem Einzelschritt aufrufen (schont Kontext und Token-Budget).
 
 ### 6. Korrekturschleife & Abbruchkriterien
 - **Bauteilende zurückrollen (`part_end`) bei Fehlern oder zur isolierten Diagnose:**
@@ -98,6 +105,8 @@ Mit `screenshot(document="lasche", view="iso")` (oder `view="top"`) ein Bild des
   - An dieser Position isoliert nachmessen (`measure`) oder Geometrie anpassen.
   - `run()` weist im zurückgerollten Zustand mit einer Warnung auf unterdrückte Folge-Features hin.
   - **Wichtig:** Vor dem Speichern (`save_document`) muss der Marker immer mit `part_end(document)` (bzw. `before=None`) wieder ans Ende gerückt werden. `save_document` verweigert das Speichern im zurückgerollten Zustand, damit keine unvollständigen Modelle auf der Festplatte landen.
+- **Wenn `run` einen Schritt ablehnt:** Die Zeile `Where: …` der Fehlermeldung lesen. Sie nennt die gemeinte Kante oder Fläche, das Feature im Weg mit Abstand und Punkt und die größte passende Größe. Danach entscheiden: Größe verkleinern (Wert aus der Meldung) oder das genannte Feature versetzen. Nicht blind mit kleineren Werten probieren.
+- **Wenn `run` gelingt, aber `feature_errors` meldet:** Die Änderung hat ein späteres Feature zerstört (es fehlt jetzt im Modell, das Volumen im `delta` springt). `where` nennt Stelle und Ursache. Entweder das genannte Feature anpassen oder die Änderung zurücknehmen; nie mit einem fehlerhaften Feature weiterbauen oder speichern.
 - **Wenn `check_design` `fail` oder `warn` meldet:**
   - Fehlermeldung und Ort (`location.face`, `location.point`) analysieren.
   - Gezielt korrigieren: Parameter per `run(document, [{"command": "parameters.change", "params": {"name": ..., "expression": ...}}])` anpassen oder Feature per `delete_feature` ersetzen.

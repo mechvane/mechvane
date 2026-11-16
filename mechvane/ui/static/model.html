@@ -250,7 +250,7 @@ async function main() {
   }
 
   if (!STATIC && docParam) {
-    await fetch("api/open/" + encodeURIComponent(docParam), { method: "POST" });
+    await fetch("api/open/" + encodeURIComponent(docParam), { method: "POST", headers: { "Content-Type": "application/json" } });
   } else if (!STATIC && project && project.mode === "folder" && !project.current) {
     if (project.documents && project.documents.length > 0) {
       location.replace("?doc=" + encodeURIComponent(project.documents[0].name));
@@ -276,7 +276,7 @@ async function main() {
       li.addEventListener("click", async () => {
         if (d.name === curName) return;
         status("Opening " + d.name + "…");
-        const r = await fetch("api/open/" + encodeURIComponent(d.name), { method: "POST" });
+        const r = await fetch("api/open/" + encodeURIComponent(d.name), { method: "POST", headers: { "Content-Type": "application/json" } });
         if (r.ok) {
           location.href = "?doc=" + encodeURIComponent(d.name);
         } else {
@@ -393,7 +393,7 @@ async function syncSaved() {
       continue;
     }
     status("Checking " + name + "…");
-    const r = await fetch("api/file/" + encodeURIComponent(name), { method: "POST", body: await file.arrayBuffer() });
+    const r = await fetch("api/file/" + encodeURIComponent(name), { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: await file.arrayBuffer() });
     const res = await r.json();
     if (!r.ok) { status("Save failed: " + res.error); throw new Error(res.error); }
     showFindings(res.findings);

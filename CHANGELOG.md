@@ -7,6 +7,67 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a20] - 2026-11-16
+
+### Added
+
+- **Model browser visibility:** toggle visibility of sketches, work features (planes, axes, points) and solid bodies via an eye button on each entry in the model tree, keyboard shortcut `V` on selection, or the "Visibility" context menu item (as in Autodesk Inventor). Hidden items appear dimmed in the browser tree and their visibility state is persisted directly in the SolidCraft document.
+- **verify_view** MCP tool for visual inspection: returns a single 2×2 grid PNG showing Iso, Front, Top and Section views with view labels and bounding box dimensions in mm, supporting direct file saving via `path`.
+- **Import STEP: split into parts (assembly)**: import multi-body STEP files as an assembly with individual part files for each body (`<name>_<body_name>.solidcraft`) placed at their original locations, with the first part grounded. Available via MCP tool `import_step(..., split=True)` and in the workspace via a "Split into parts (assembly)" checkbox in File → Import STEP… dialog.
+- **Sketch window selection:** dragging a box in sketch mode when no tool is active selects curves, following SolidCraft and Inventor. Dragging left-to-right selects only elements wholly enclosed (window selection, solid blue border); dragging right-to-left selects everything touched or crossed (crossing selection, dashed green border). Shift adds to the selection, Ctrl removes elements. Delete and constraint tools apply to the selected elements.
+- **Edit centred holes**: holes placed with "Middle of face" (centred between straight edges or concentric on circular faces) can now be edited via double-click in the model browser (diameter, thread, counterbore/countersink, depth/through all); the sketch and centring constraints are preserved, and position fields are replaced by a fixed "centred on face" notice (#72).
+- **Sketch dimensions in parameter panel**: sketch dimensions (including named dimensions like `b = 40`) appear in the parameter panel grouped under their sketch heading with named dimensions first, and can be changed like feature parameters (#73).
+- **Model browser inline rename (F2)**: select a feature or sketch in the model tree, then press F2, click slowly, or choose "Rename" in the context menu to edit its name inline. Enter accepts, Esc cancels; empty names and duplicates are rejected with an explanation in the status bar. The rename updates the tree, dialogs, and parameters as a single undo step. Also available to agents via MCP tool `rename_feature`.
+- **Keyboard shortcut `R` outside sketcher**: opens the Revolve dialog directly, matching `E` for Extrude (in the sketcher, `R` remains the rectangle tool).
+- **Hole dialog ("Middle of face")**: places a hole concentric to the largest circular edge on circular
+  planar faces (cylinder end faces, flanges, rings) and keeps it centred when the face diameter changes.
+- **Errors name the spot**: when SolidCraft rejects a step in a part, Mechvane now says where: the edge or
+  face the step was aimed at, the feature in the way with its distance and point, and the largest size that
+  fits, for example "Chamfer C1 (5.5 mm) on the edge of Plate between +z and -y at [30, 0, 10] has Hole1
+  (bore) 5 mm away at [8, 5, 10]. Largest size that fits: 4.913 mm." A hole position off the part names the
+  nearest face, a pick that misses names the nearest edge. The fillet, chamfer and hole dialogs show the
+  same sentence.
+- **A later feature that breaks is reported**: when a change (moving a hole, changing a parameter) makes a
+  feature further down fail, `run` lists it in `feature_errors` with the place and the reason, and keeps
+  reminding you while it still fails.
+- **More SolidCraft errors explained**: 35 further SolidCraft 0.30.1 error messages now come with a plain
+  explanation and a hint, for you and your agent (offset and shell, sketches, extrude, revolve, loft, sweep,
+  holes, patterns, planes, parameters and STEP import).
+- **File → Open folder…** in its own dialog to switch project folders directly from the workspace. Lists
+  drives and home, subfolders per click with their .solidcraft and STEP file counts, and up to 5 recently
+  used folders at the top. Open switches the project folder, closing open documents and saving unsaved changes.
+- **File → Import STEP…** gets a **Browse…** button to pick STEP and IGES files from outside the project
+  folder using the same folder dialog, importing them into the project.
+- More design rules per manufacturing process in `check_design`: for FDM 3D printing horizontal-axis holes (teardrop profile or support suggestion) and heat-set insert hole geometry (ruthex RX series Vorloch diameter and blind hole depth); for CNC milling pocket inside corner radius vs. cutter radius, twist drill hole depth-to-diameter ratio, and undercut notices. All rule thresholds and sources are loaded from the open knowledge catalog.
+- Creating a 2D sketch on a planar body face now automatically projects the face's outer boundary edges and inner hole loops into the sketch as linked reference geometry (purple, fixed, snappable and dimensionable, updated when the model changes, undone in one step with sketch creation), with a setting (`/api/sketch/auto_project` and the "Project edges" checkbox in the sketch plane bar) to turn it off (#68).
+- Assemble tab: **Constrain** adds SolidCraft's assembly constraints by hand (mate, flush, distance, concentric, insert, parallel, perpendicular, angle, tangent, point on axis) between faces picked in the view, editable from the model browser, which names the rule. Mechvane follows them like joints: Update Links checks them and repairs them by their rule. Your agent gets the same as the MCP tools `add_constraint` and `edit_constraint` (#88).
+- Assemble tab: **Place Standard Part** places a screw, nut, washer, heat-set insert or ball bearing from Mechvane's norm tables (norm, size, preferred length); the parametric part file is made in the project folder once and reused (#88).
+- Place and Update Links buttons in the Assemble ribbon tab to manually insert linked components and run link/joint checks (with Repair) via SolidCraft. (#89)
+- Assemble tab: interactive Joint dialog (`#btn-joint`) for creating and editing assembly joints (`rigid`, `revolute`, `slider`, `cylindrical`, `ball`) by picking faces or origin planes/axes on two components (#93).
+- Web UI endpoints `/api/assembly/context`, `POST /api/assembly/joint`, and `POST /api/assembly/joint/edit` backed by `mechvane.modeling.add_joint` / `edit_joint` and `links.record` on the shared undo list.
+- Assemble tab: interactive Bolted Connection dialog (hole/face picking, screw/washer/nut selection from standard parts, live 3D fastener preview, list/edit/delete of existing bolted connections with shared Undo/Redo). (#94)
+
+### Changed
+
+- Deleting a feature with a consumed sketch in the model browser now asks "Delete the sketch too?" with a pre-selected "Delete consumed sketch" checkbox (Inventor style, GUID-983D8293). Unchecking it retains the consumed sketch as an unconsumed sketch in the tree and in the 3D view. Undo (Ctrl+Z) restores both the feature and the sketch in a single step.
+- Clicking a face in the view selects it without switching on a tool first, as in SolidCraft and Inventor; a
+  click beside the part clears the selection, dragging still turns the view. Then tell your agent what to do.
+- Revolve: pick the profiles to revolve and the revolve axis (a sketch line, a model edge or an origin axis X/Y/Z) by
+  clicking in the view, with two selection fields (`Profile` and `Axis`, switched by clicking a field or pressing
+  `Tab`), as in SolidCraft and Inventor. Editing a revolve shows both the picked profiles and the axis again.
+- Built and tested with **SolidCraft 0.41.0** (was 0.30.1); `mechvane setup` fetches it. SolidCraft 0.40 and later round and chamfer more edges than before and no longer notches a wall with a countersink, so some design checks that fired on 0.30 no longer have anything to report. Files saved by SolidCraft 0.41 do not open in 0.40 or older. (#91)
+
+### Fixed
+
+- UI server: checks the Host and Origin headers and requires Content-Type application/json for requests that change state (protection against DNS rebinding and CSRF, #62).
+- Sketch Trim (T): trimming a loose end (a line with only one intersection) now reliably trims or removes the piece up to the intersection, even when clicked near its endpoint or over a constraint glyph.
+- Create 2D Sketch (S): flat faces on the 3D model are now highlighted with a fill and outline on hover, matching the origin work planes.
+- Extrude profile preview: sketch profile curves with projected edges are chained topologically, eliminating the bright diagonal line across the face.
+- Ribbon tabs on Windows: fixed vertical subpixel overflow that caused classic Windows scrollbars with arrows to clip the workspace tabs after loading.
+- Update Links no longer fails as a whole when one linked part has a failing feature (SolidCraft 0.40 refuses to read such a part): the other links are updated, the part is named in the warnings (`link_blocked`, with the failing feature) and keeps its old bodies. Joints on that part are not repaired against stale geometry.
+- Error location works with the full-circle hole rims of SolidCraft 0.40 (nearest face, edge radius), and the explanation covers the new wording for a fillet that is too large.
+- Edit Hole: changing a hole that was placed without edge references (for example the hole in the demo bracket and the live demo) no longer fails with "invalid type: integer, expected a string"; the dialog now sends no references as an empty list. (#111)
+
 ## [0.1.0a19] - 2026-11-06
 
 ### Fixed

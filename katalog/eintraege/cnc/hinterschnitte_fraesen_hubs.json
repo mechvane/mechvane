@@ -1,0 +1,44 @@
+{
+  "id": "hinterschnitte_fraesen_hubs",
+  "aussage": "Hinterschnitte sind Kavitäten oder Flächen, die von oben mit Standardwerkzeugen nicht zugänglich sind. Sie erfordern Sonderwerkzeuge (T-Nuten-, Scheibenfräser) oder Mehrachs-Maschinen und sollen als Fertigungshinweis ausgewiesen werden.",
+  "werte": [
+    {
+      "name": "Freiraum vor Hinterschnittwand zu Schnitttiefe",
+      "wert": 4.0,
+      "einheit": "x Hinterschnitttiefe"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Hinterschnitt",
+      "T-Nut",
+      "Schwalbenschwanz",
+      "Undercut"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt CNC machining undercuts",
+      "zitat": "Undercuts are features that cannot be machined using standard cutting tools, as some of their surfaces are not accessible directly from above.",
+      "abgerufen": "2026-11-05"
+    }
+  ],
+  "begruendung": "Standard-3-Achs-Fräsmaschinen führen das rotierende Werkzeug ausschließlich von oben entlang der Spindelachse Z zu. Verdeckte oder nach unten gerichtete Flächen erfordern Sonderwerkzeuge oder Umspannen.",
+  "ausnahmen": "Fertigung auf 5-Achs-Bearbeitungszentren oder konstruktiv eingebrachte Freistiche und Entlastungsnuten.",
+  "haerte": "hinweis",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

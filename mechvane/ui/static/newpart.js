@@ -1,6 +1,8 @@
 // "New part" dialog of the workspace (File menu): asks for the file name in the app's own dialog instead of
 // the browser's prompt(), creates the part through api/new and reports errors (name taken, bad name) inline.
 
+import { openStepBrowseDialog } from "./folder.js";
+
 function suggestName(existing) {
   const taken = new Set(existing.map((n) => n.toLowerCase()));
   for (let i = 1; i < 1000; i++) {
@@ -109,7 +111,16 @@ function ensureImportDialog() {
       <div class="request-dialog-body">
         <div class="request-field-group">
           <label for="import-step-file">File in this folder</label>
-          <select id="import-step-file"></select>
+          <div style="display: flex; gap: 6px;">
+            <select id="import-step-file" style="flex: 1;"></select>
+            <button type="button" id="import-step-browse" class="btn-cancel" style="white-space: nowrap;">Browse…</button>
+          </div>
+        </div>
+        <div class="request-field-group" style="margin-top: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+            <input type="checkbox" id="import-step-split">
+            Split into parts (assembly)
+          </label>
         </div>
         <div class="request-dialog-note" id="import-step-note">Becomes a part with a fixed body (no history), saved next to it as
           <span id="import-step-target"></span>. Insert it into an assembly, measure it or check it.</div>
@@ -123,14 +134,51 @@ function ensureImportDialog() {
   `;
   document.body.appendChild(dialog);
   const select = dialog.querySelector("#import-step-file");
+  const browseBtn = dialog.querySelector("#import-step-browse");
   const target = dialog.querySelector("#import-step-target");
+  const splitCheckbox = dialog.querySelector("#import-step-split");
+  const noteEl = dialog.querySelector("#import-step-note");
   const errorEl = dialog.querySelector("#import-step-error");
   const submit = dialog.querySelector(".btn-submit");
   const showTarget = () => {
-    target.textContent = select.value ? select.value.replace(/\.[^.]+$/, "") + ".solidcraft" : "";
+    const val = select.value ? select.value.split(/[/\\]/).pop() : "";
+    const stem = val ? val.replace(/\.[^.]+$/, "") : "";
+    target.textContent = stem ? stem + ".solidcraft" : "";
+    if (splitCheckbox && splitCheckbox.checked) {
+      noteEl.innerHTML = `Becomes an assembly (<span id="import-step-target">${stem ? stem + ".solidcraft" : ""}</span>) with each body as its own part file (<span style="font-family: monospace;">${stem}_&lt;body&gt;.solidcraft</span>), placed at their original positions.`;
+    } else {
+      noteEl.innerHTML = `Becomes a part with a fixed body (no history), saved next to it as <span id="import-step-target">${stem ? stem + ".solidcraft" : ""}</span>. Insert it into an assembly, measure it or check it.`;
+    }
     errorEl.hidden = true;
   };
   select.addEventListener("change", showTarget);
+  if (splitCheckbox) {
+    splitCheckbox.addEventListener("change", showTarget);
+  }
+  if (browseBtn) {
+    browseBtn.addEventListener("click", () => {
+      dialog.close();
+      openStepBrowseDialog(
+        (selectedFilePath) => {
+          let opt = Array.from(select.options).find((o) => o.value === selectedFilePath);
+          if (!opt) {
+            opt = document.createElement("option");
+            opt.value = selectedFilePath;
+            opt.textContent = `${selectedFilePath.split(/[/\\]/).pop()} (${selectedFilePath})`;
+            select.prepend(opt);
+          }
+          select.value = selectedFilePath;
+          submit.disabled = false;
+          errorEl.hidden = true;
+          showTarget();
+          dialog.showModal();
+        },
+        () => {
+          dialog.showModal();
+        }
+      );
+    });
+  }
   dialog.querySelector(".request-dialog-close").addEventListener("click", () => dialog.close());
   dialog.querySelector(".btn-cancel").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
@@ -143,7 +191,7 @@ function ensureImportDialog() {
       const res = await fetch("api/import_step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: select.value }),
+        body: JSON.stringify({ file: select.value, split: splitCheckbox ? splitCheckbox.checked : false }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -158,11 +206,14 @@ function ensureImportDialog() {
     }
   });
   dialog._open = (files) => {
+    if (splitCheckbox) splitCheckbox.checked = false;
     select.replaceChildren(...files.map((f) => Object.assign(document.createElement("option"), { value: f, textContent: f })));
-    submit.disabled = !files.length;
+    submit.disabled = !select.value;
     if (!files.length) {
-      errorEl.textContent = "No STEP or IGES files in this folder yet: copy one in, then open this again.";
+      errorEl.textContent = "No STEP or IGES files in this folder yet: click Browse… or copy one in.";
       errorEl.hidden = false;
+    } else {
+      errorEl.hidden = true;
     }
     showTarget();
     if (!files.length) errorEl.hidden = false;

@@ -867,6 +867,45 @@ def repair(ws, doc, joint):
         params["limits"] = [v.get("limits") for v in live["values"]]
     if live.get("values"):
         params["values"] = [v["value"] for v in live["values"]]
+    if live.get("constraint"):
+        # An assembly constraint (#88): recreate it by its rule. The joint's flip is set afterwards with
+        # joint.edit, since assembly.constraint.create's flip counts from the rule's default facing (for flush
+        # the opposite of the joint's).
+        cparams = {"type": live["constraint"], "a": params["a"], "b": params["b"], "name": joint}
+        # The rule's gap and angle: the expression the constraint keeps, else what Mechvane recorded (an angle
+        # is not in joint.list). The joint's own offset is the rule's gap only for the plane rules; for tangent
+        # it includes the radius.
+        expr = live.get("expressions") or {}
+        stored = entry.get("create") or {}
+        for k in ("offset", "angle"):
+            if expr.get(k) is not None:
+                cparams[k] = expr[k]
+            elif stored.get(k) is not None:
+                cparams[k] = stored[k]
+            elif k == "offset" and live["constraint"] in ("mate", "flush", "distance") and live.get(k) is not None:
+                cparams[k] = live[k]
+        # delete and create as one: a refused create must not lose the constraint
+        cp = s.cmd("edit.checkpoint").get("checkpoint")
+        try:
+            s.cmd("joint.delete", {"joint": joint})
+            s.cmd("assembly.constraint.create", cparams)
+            now = next(j for j in s.cmd("joint.list").get("joints", []) if j["name"] == joint)
+            if bool(now.get("flip")) != bool(live.get("flip")):
+                s.cmd("joint.edit", {"joint": joint, "flip": bool(live.get("flip"))})
+            if live.get("suppressed"):
+                s.cmd("joint.edit", {"joint": joint, "suppressed": True})
+        except Exception:
+            if cp is not None:
+                s.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+            raise
+        if cp is not None:
+            s.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+        record(ws, doc, joint, dict(cparams, constraint=True))
+        res = [r for r in check(ws, doc) if r["joint"] == joint]
+        if repair_warnings:
+            for r in res:
+                r["warnings"] = repair_warnings
+        return res
     s.cmd("joint.delete", {"joint": joint})
     s.cmd("joint.create", params)
     if live.get("suppressed"):
@@ -879,16 +918,52 @@ def repair(ws, doc, joint):
     return res
 
 
+def _update_component_links(s):
+    """Run component.update_links; returns (result, blocked).
+
+    Since SolidCraft 0.40 the call refuses the whole assembly when one linked design cannot be read (for example it
+    has a feature that fails). Then every linked component is updated on its own: the readable ones are updated, the
+    others keep their old bodies and come back in `blocked` ({component, name, error, feature, occurrences}).
+    """
+    try:
+        return s.cmd("component.update_links"), []
+    except SolidCraftError as first:
+        if "component.update_links" not in str(first):
+            raise
+        comps = [c for c in s.cmd("component.list")["components"] if c.get("id") not in (0, None)]
+        updated, blocked = [], []
+        for c in comps:
+            try:
+                r = s.cmd("component.update_links", {"components": [c["id"]]})
+                updated += r.get("updated") or []
+            except SolidCraftError as e:
+                text = str(e)
+                if "is not linked" in text or "not a linked" in text:
+                    continue  # a component built inside the assembly: nothing to read again
+                feature = re.search(r"feature that fails \(([^:)]+)", text)
+                blocked.append({"component": c["id"], "name": c.get("name"), "error": text,
+                                "feature": feature.group(1) if feature else None,
+                                "occurrences": [o["name"] for o in c.get("occurrences", []) if o.get("name")]})
+        if not blocked:
+            raise first  # the per-component calls all worked: the refusal came from something else
+        return {"updated": updated, "blocked": [{k: b[k] for k in ("component", "name", "error")} for b in blocked]}, blocked
+
+
 def update_links(ws, doc, repair_moved=False):
     """Sync subassemblies and update linked parts, then check every recorded joint (and repair moved ones if asked).
     After joints, checks bolted connections against their anchors and repairs moved ones if asked."""
     subs = _sync_subassemblies(ws, doc)
-    result = doc.session.cmd("component.update_links")
+    result, blocked = _update_component_links(doc.session)
+    blocked_occs = {o for b in blocked for o in b["occurrences"]}
     report = check(ws, doc)
     repaired = []
     repair_warnings = []
     if repair_moved:
         for joint in sorted({r["joint"] for r in report if r["status"] in ("moved", "origin_lost")}):
+            if any(r["joint"] == joint and r.get("occurrence") in blocked_occs for r in report):
+                # the part was not read again: its bodies are stale, so repairing against its file would guess
+                repaired.append({"joint": joint, "status": "failed", "error": "part not updated (link_blocked)"})
+                continue
             try:
                 after = repair(ws, doc, joint)
                 w = [item["warnings"] for item in after if "warnings" in item]
@@ -906,7 +981,7 @@ def update_links(ws, doc, repair_moved=False):
 
     # Bolted connections check (and repair if repair_moved)
     from . import bolted
-    bolted_report = bolted.check_and_update_bolted_connections(ws, doc, repair=repair_moved)
+    bolted_report = bolted.check_and_update_bolted_connections(ws, doc, repair=repair_moved and not blocked)
     if any(b.get("status") == "moved_repaired" for b in bolted_report):
         report = check(ws, doc)
 
@@ -915,7 +990,13 @@ def update_links(ws, doc, repair_moved=False):
         for b in bolted_report if b.get("status") not in ("ok", "moved_repaired")
     ]
 
-    all_warnings = [r for r in report if r["status"] not in ("ok", "unverifiable")] + repair_warnings + bolted_warnings
+    blocked_warnings = [
+        {"joint": None, "connection": None, "status": "link_blocked", "component": b["name"], "feature": b["feature"],
+         "error": b["error"]}
+        for b in blocked
+    ]
+    all_warnings = ([r for r in report if r["status"] not in ("ok", "unverifiable")] + repair_warnings + bolted_warnings
+                    + blocked_warnings)
     return {"update": result, "subassemblies": subs, "joints": report, "repaired": repaired,
             "bolted_connections": bolted_report, "warnings": all_warnings}
 

@@ -19,7 +19,7 @@ ERROR_TABLE: list[dict[str, str]] = [
         "hint": "Check for unintended collisions between parts or separate the touching bodies before boolean operations or drilling.",
     },
     {
-        "pattern": r"(?:blend is larger than the neighbouring faces|a fillet larger than the faces next to it|blend would consume a neighbouring face)",
+        "pattern": r"(?:blend is larger than the neighbouring faces|the fillet is larger than the faces beside its edges allow|would cut through the material behind it into the hollow|a fillet larger than the faces next to it|blend would consume a neighbouring face|the rounds would leave openings in the surface|blend is larger than a corner radius|blend is taller than the walls)",
         "code": "blend_too_large",
         "message": "The fillet or chamfer is too large for the faces next to the edge.",
         "hint": "Make it smaller: SolidCraft names the largest size that fits, or check the faces around the edge.",
@@ -156,6 +156,216 @@ ERROR_TABLE: list[dict[str, str]] = [
         "message": "The sketch profile has zero enclosed area.",
         "hint": "Ensure the sketch curves form a closed loop with non-zero area.",
     },
+    {
+        "pattern": r"offset: only bodies with planes, cylinders, cones, spheres and tori(?:\s*\(a face at (?P<face>\[.*?\])\))?",
+        "code": "offset_unsupported_surface",
+        "message": "Offset and shell only support analytic surfaces (planes, cylinders, cones, spheres, tori); the face at {face} is an unsupported freeform surface.",
+        "hint": "Freeform surfaces from loft, sweep, fillet or STEP import block offset and shell before SolidCraft 0.40 (#745, fixed there) and in some cases still (#10884); update SolidCraft, hollow or offset using primitive cuts, or rebuild without freeform faces.",
+    },
+    {
+        "pattern": r"offset: not supported yet: the move is larger than a wall or step is thick \(faces would cross\)",
+        "code": "offset_faces_cross",
+        "message": "The offset or shell distance exceeds the wall or step thickness, causing offsetting faces to intersect.",
+        "hint": "Choose a smaller offset distance or shell thickness that does not exceed the local wall thickness.",
+    },
+    {
+        "pattern": r"offset: not supported yet: the move is larger than a rim or ledge near (?P<point>\[.*?\]) is wide \(a face would turn inside out\)",
+        "code": "offset_rim_too_narrow",
+        "message": "The offset distance near {point} is wider than an adjacent rim or ledge, which would invert the face.",
+        "hint": "Reduce the offset distance or widen the rim or ledge geometry around {point}.",
+    },
+    {
+        "pattern": r"offset: an edge vanishes \(the offset is too large\)",
+        "code": "offset_edge_vanishes",
+        "message": "An edge collapses completely because the requested offset or shell distance is too large.",
+        "hint": "Reduce the offset distance or shell thickness so edges do not vanish.",
+    },
+    {
+        "pattern": r"offset: the neutral plane is parallel to the pull direction",
+        "code": "draft_pull_parallel",
+        "message": "The neutral plane is parallel to the draft pull direction.",
+        "hint": "Select a neutral plane or face that is perpendicular or angled relative to the pull direction.",
+    },
+    {
+        "pattern": r"a thin extrude needs 1…1000 sketch curves \(`curves`\)",
+        "code": "extrude_curves_missing",
+        "message": "No sketch curves were selected or found for the thin extrude.",
+        "hint": "Specify `curves` with the curve IDs to follow or ensure the sketch contains drawn curves.",
+    },
+    {
+        "pattern": r"no curve `(?P<curve>[^`]+)` in the sketch",
+        "code": "curve_not_in_sketch",
+        "message": "The curve `{curve}` was not found in the referenced sketch.",
+        "hint": "Verify the curve ID in the sketch timeline or re-inspect the sketch's created curves.",
+    },
+    {
+        "pattern": r"`side: two_sides` needs `thickness2` \(the thickness outside\)",
+        "code": "thin_two_sides_missing_thickness",
+        "message": "Thin extrude with two-sided wall thickness is missing the second thickness parameter.",
+        "hint": "Provide `thickness2` for the outer wall thickness or change `side` to inside, outside or center.",
+    },
+    {
+        "pattern": r"(?P<sketch>[^` ]+) has no closed profiles",
+        "code": "sketch_no_closed_profiles",
+        "message": "The sketch `{sketch}` has no closed profiles to extrude or revolve.",
+        "hint": "Close the sketch contour by connecting endpoints, or use thin extrude (thin=True) with a thickness.",
+    },
+    {
+        "pattern": r"profile loop is not closed",
+        "code": "profile_loop_not_closed",
+        "message": "The profile curves do not form a closed loop.",
+        "hint": "Connect the endpoints of the sketch profile or use thin extrude for open curves.",
+    },
+    {
+        "pattern": r"the curves are not connected end to end",
+        "code": "curves_not_connected",
+        "message": "The sketch curves do not form a continuous chain connected end to end.",
+        "hint": "Ensure the endpoints of successive curves match within tolerance without gaps or branches.",
+    },
+    {
+        "pattern": r"revolve axis has no direction",
+        "code": "revolve_axis_no_direction",
+        "message": "The revolve axis has zero length or no defined direction vector.",
+        "hint": "Provide a non-zero axis vector, a valid origin axis, or a straight sketch line.",
+    },
+    {
+        "pattern": r"`axis` must be a sketch line id, x, y \(sketch axes\), X, Y, Z, a construction axis",
+        "code": "revolve_axis_param_invalid",
+        "message": "The revolve axis specification is invalid or unrecognized.",
+        "hint": "Specify `axis` as an origin axis ('X', 'Y', 'Z'), sketch line id, construction axis, or {origin, dir}.",
+    },
+    {
+        "pattern": r"every loft section must have the same number of holes",
+        "code": "loft_holes_count_mismatch",
+        "message": "Loft cross sections have differing numbers of internal holes or loops.",
+        "hint": "Ensure every section sketch has the exact same number of inner hole profiles.",
+    },
+    {
+        "pattern": r"loft sections (?P<sec1>\d+) and (?P<sec2>\d+) lie in the same plane \(no volume between them\)",
+        "code": "loft_same_plane",
+        "message": "Loft sections {sec1} and {sec2} lie in the same geometric plane, leaving no volume between them.",
+        "hint": "Place successive loft sections on separate parallel or angled work planes spaced along the loft direction.",
+    },
+    {
+        "pattern": r"a path segment has no direction",
+        "code": "sweep_path_no_direction",
+        "message": "A segment of the sweep path has zero length or undefined tangent direction.",
+        "hint": "Check the sweep path curve definitions for zero-length segments or degenerate arcs.",
+    },
+    {
+        "pattern": r"box needs a positive size in x, y and z",
+        "code": "primitive_box_dimensions",
+        "message": "The box primitive dimensions must all be strictly positive.",
+        "hint": "Ensure length, width, and height are all positive numbers or evaluate to positive lengths.",
+    },
+    {
+        "pattern": r"radius must be positive",
+        "code": "primitive_radius_non_positive",
+        "message": "The cylinder or cone radius must be strictly positive.",
+        "hint": "Provide a positive non-zero value for radius or diameter.",
+    },
+    {
+        "pattern": r"torus needs major > minor > 0",
+        "code": "primitive_torus_radii",
+        "message": "The torus major radius must be strictly greater than the minor radius, and both must be positive.",
+        "hint": "Ensure major > minor > 0 for the torus dimensions.",
+    },
+    {
+        "pattern": r"unknown hole type `(?P<type>[^`]+)`",
+        "code": "hole_type_unknown",
+        "message": "The hole type `{type}` is unknown or unsupported.",
+        "hint": "Use a valid hole type: simple, drilled, counterbore, or countersink.",
+    },
+    {
+        "pattern": r"the reference edges are parallel",
+        "code": "hole_reference_edges_parallel",
+        "message": "The hole reference edges are parallel and cannot establish a 2D coordinate fix on the face.",
+        "hint": "Pick two non-parallel intersecting or crossing straight edges on the face.",
+    },
+    {
+        "pattern": r"the reference distances put the hole's centre off its face",
+        "code": "hole_reference_off_face",
+        "message": "The reference edge distances position the hole center outside the boundary of the selected face.",
+        "hint": "Adjust the reference edge distances so the drilled hole falls within the face perimeter.",
+    },
+    {
+        "pattern": r"that chamfer angle runs past the other face",
+        "code": "chamfer_angle_past_face",
+        "message": "The chamfer angle creates a cut extending past the adjacent face.",
+        "hint": "Reduce the chamfer angle or distance, or use an equal-distance 45-degree chamfer.",
+    },
+    {
+        "pattern": r"`features` must list features to copy",
+        "code": "pattern_features_missing",
+        "message": "No seed features were specified to replicate in the pattern.",
+        "hint": "Provide a list of feature names or IDs in `features`, or use `bodies` for a body pattern.",
+    },
+    {
+        "pattern": r"no feature `(?P<feature>[^`]+)`",
+        "code": "pattern_feature_not_found",
+        "message": "The feature `{feature}` referenced as a pattern seed does not exist in the timeline.",
+        "hint": "Check the feature name or verify that it occurs earlier in the design history.",
+    },
+    {
+        "pattern": r"`(?P<plane>[^`]+)` is reserved for an origin plane \(XY, XZ, YZ, Top, Front, Right\); give the construction plane another name",
+        "code": "plane_name_reserved",
+        "message": "The plane name `{plane}` is reserved for a default origin plane.",
+        "hint": "Choose a distinct custom name for the construction plane, such as 'OffsetPlane1'.",
+    },
+    {
+        "pattern": r"there is already a parameter `(?P<param>[^`]+)`",
+        "code": "param_already_exists",
+        "message": "A parameter named `{param}` already exists in the document.",
+        "hint": "Use a different parameter name, reference the existing parameter, or edit it via parameters.change.",
+    },
+    {
+        "pattern": r"circular reference:\s*(?P<path>.+)",
+        "code": "param_circular_reference",
+        "message": "Parameter expression contains a circular reference: {path}.",
+        "hint": "Remove the cyclical parameter dependency so each parameter evaluates to a defined value.",
+    },
+    {
+        "pattern": r"division by zero",
+        "code": "expr_division_by_zero",
+        "message": "The parameter expression attempted a division by zero.",
+        "hint": "Ensure the divisor expression evaluates to a non-zero value.",
+    },
+    {
+        "pattern": r"cannot (?:add|subtract) (?:a |an )?(?P<dim1>[a-z_]+) and (?:a |an )?(?P<dim2>[a-z_]+)",
+        "code": "expr_incompatible_units",
+        "message": "Cannot add or subtract values with incompatible physical dimensions ({dim1} and {dim2}).",
+        "hint": "Ensure both operands have compatible units (e.g. both lengths or both angles).",
+    },
+    {
+        "pattern": r"sketch is too large \(at most \d+ points or curves\)",
+        "code": "sketch_too_large",
+        "message": "The sketch exceeds the entity limit (maximum 20,000 points or curves).",
+        "hint": "Simplify complex drawings (e.g. imported DXF/SVG contours) or split the geometry across multiple sketches.",
+    },
+    {
+        "pattern": r"unknown sketch entity `(?P<entity>[^`]+)`",
+        "code": "sketch_unknown_entity",
+        "message": "The sketch entity `{entity}` was not found in the active sketch.",
+        "hint": "Verify the point or curve identifier against the current sketch definition.",
+    },
+    {
+        "pattern": r"shell is not closed",
+        "code": "step_shell_not_closed",
+        "message": "The imported STEP solid shell is open and does not enclose a sealed watertight volume.",
+        "hint": "Check the source CAD model for missing faces or unstitched surface boundaries before exporting STEP.",
+    },
+    {
+        "pattern": r"shell is not manifold",
+        "code": "step_shell_not_manifold",
+        "message": "The imported STEP geometry has non-manifold edges or vertices where more than two faces meet.",
+        "hint": "Repair self-intersections and non-manifold boundaries in the CAD authoring software.",
+    },
+    {
+        "pattern": r"STEP import: no bodies \((?P<reason>[^)]+)\)",
+        "code": "step_no_bodies",
+        "message": "The STEP file contained no valid solid bodies ({reason}).",
+        "hint": "Ensure the STEP file contains solid 3D B-Rep entities (AP203/AP214/AP242 models) rather than wireframes or empty assemblies.",
+    },
 ]
 
 
@@ -198,23 +408,56 @@ def explain(text: str | Exception, command: str | None = None) -> dict[str, str]
     for entry in ERROR_TABLE:
         pat = entry["pattern"]
         for cand in candidates:
-            if re.search(pat, cand, re.IGNORECASE):
+            m = re.search(pat, cand, re.IGNORECASE)
+            if m:
+                msg = entry["message"]
+                hint = entry["hint"]
+                gd = m.groupdict()
+                if gd:
+                    subs = {k: (v if v is not None else "") for k, v in gd.items()}
+                    if entry["code"] == "offset_unsupported_surface" and not subs.get("face"):
+                        msg = "Offset and shell only support analytic surfaces (planes, cylinders, cones, spheres, tori); the body has an unsupported freeform surface."
+                    try:
+                        msg = msg.format(**subs)
+                    except (KeyError, IndexError, ValueError):
+                        pass
+                    try:
+                        hint = hint.format(**subs)
+                    except (KeyError, IndexError, ValueError):
+                        pass
                 return {
                     "code": entry["code"],
-                    "message": entry["message"],
-                    "hint": entry["hint"],
+                    "message": msg,
+                    "hint": hint,
                 }
 
     return None
 
 
-def reraise(e: Exception):
-    """Re-raise e as RuntimeError with explanation and hint when explain() recognises it, else unchanged."""
+class ExplainedError(RuntimeError):
+    """A SolidCraft error with what Mechvane can add to it: `explanation` ({code, message, hint} or None)
+    and `location` (see sc_locate.locate, or None). The text reads: explanation, "Where: …", SolidCraft's
+    reply."""
+
+    def __init__(self, text: str, explanation: dict | None = None, location: dict | None = None):
+        super().__init__(text)
+        self.explanation = explanation
+        self.location = location
+
+
+def reraise(e: Exception, location: dict | None = None):
+    """Re-raise e with explanation and hint when explain() recognises it and with the place when one was
+    found (ExplainedError, a RuntimeError), else unchanged."""
     exp = explain(e)
+    if exp is None and not location:
+        raise e
+    lines = []
     if exp is not None:
-        # RuntimeError, not type(e): not every exception class takes a single message argument.
-        raise RuntimeError(f"{exp['message']} ({exp['hint']})\n{e}") from e
-    raise e
+        lines.append(f"{exp['message']} ({exp['hint']})")
+    if location:
+        lines.append(f"Where: {location['text']}")
+    # RuntimeError, not type(e): not every exception class takes a single message argument.
+    raise ExplainedError("\n".join(lines + [str(e)]), exp, location) from e
 
 
 def explained(fn: Callable) -> Callable:

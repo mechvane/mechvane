@@ -241,7 +241,7 @@ async function showRunState(el) {
 
 async function stopServer() {
   try {
-    await fetch("api/quit", { method: "POST" });
+    await fetch("api/quit", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   } catch {
     // the server may already be gone
   }

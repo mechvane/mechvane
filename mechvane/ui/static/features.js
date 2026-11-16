@@ -6,7 +6,7 @@
 // shown or hidden by the other values), how the values become the command's parameters, and for
 // editing how a feature's definition (timeline.inspect) becomes values and back (timeline.edit).
 import * as THREE from "three";
-import { profileShapes, profileAt, profileMesh, toWorld } from "./sketchgeom.js";
+import { profileShapes, profileAt, profileMesh, sketchLineAt, toWorld } from "./sketchgeom.js";
 import { bodyEdges, edgeInfo, edgeKey } from "./viewtools.js";
 
 // Feature types the model browser can open in a dialog again (the server keeps the same list)
@@ -63,6 +63,21 @@ function planeBasis(normal) {
 
 // The part's sketches for Extrude and Revolve (GET /api/sketches), loaded each time a dialog opens
 let sketchList = [];
+// Part files in the project folder eligible for Place (GET /api/files), loaded when Place opens
+let placeFiles = [];
+const PLACE_FILE_OPTIONS = () => (placeFiles.length ? placeFiles.map((f) => [f, f]) : [["", "No parts in folder"]]);
+// Occurrences, world-body -> occurrence map, and existing joints (GET /api/assembly/context)
+let jointContext = { occurrences: [], body_occurrences: {}, joints: [] };
+const JOINT_TYPES = [
+  ["rigid", "Rigid"],
+  ["revolute", "Revolute"],
+  ["slider", "Slider"],
+  ["cylindrical", "Cylindrical"],
+  ["ball", "Ball"],
+];
+const JOINT_COMPONENT_OPTIONS = () => (jointContext.occurrences.length
+  ? jointContext.occurrences.map((o) => [o.path, o.grounded ? `${o.path} (grounded)` : o.path])
+  : [["", "Place components first"]]);
 const SKETCH_OPTIONS = () => sketchList.map((sk) => [sk.name,
   sk.name + (sk.used_by.length ? ` (used by ${sk.used_by.join(", ")})` : "")]);
 const OPERATIONS = [["join", "Join"], ["cut", "Cut"], ["new_body", "New body"], ["intersect", "Intersect"]];
@@ -84,19 +99,33 @@ const PROFILE_OPTIONS = (v) => {
 };
 const PROFILE_FIELD = { key: "profile", label: "Profile", type: "select", value: "all", options: PROFILE_OPTIONS,
   show: (v) => (sketchList.find((x) => x.name === v.sketch)?.profiles?.length || 0) > 1 || v.profile !== "all" };
-const profileParam = (v) => (/^\d+$/.test(v.profile) ? [Number(v.profile)] : undefined);
-const profileSet = (v) => (v.profile === "all" ? "all" : /^\d+$/.test(v.profile) ? [Number(v.profile)] : undefined);
-// a stored choice (loops of curves) back to a profile of the sketch
+// a stored choice (loops of curves) back to profiles of the sketch
 function profileValue(d, names) {
   const pr = d.profiles;
   if (!pr || pr.type === "all") return "all";
   const sk = sketchList.find((x) => x.name === (names[d.sketch] || d.sketch));
   const loops = pr.loops || [];
   const same = (a, b) => a.length === b.length && a.every((c) => b.includes(c));
-  // one profile: its outer loop, then one loop per hole
-  const hit = loops.length ? (sk?.profiles || []).find((p) => same(p.curves, loops[0]) && p.holes === loops.length - 1) : null;
-  if (hit) return String(hit.index);
-  return "multi";
+  // each chosen profile is stored as its outer loop followed by one loop per hole
+  const profs = sk?.profiles || [];
+  const matched = [];
+  let i = 0;
+  while (i < loops.length) {
+    const hit = profs.find((p) => same(p.curves, loops[i]) && i + 1 + (p.holes || 0) <= loops.length
+      && (p.hole_loops || []).every((hl, j) => same(hl, loops[i + 1 + j])));
+    if (!hit) return "multi";
+    matched.push(hit.index);
+    i += 1 + (hit.holes || 0);
+  }
+  return matched.length ? matched.join(",") : "multi";
+}
+
+function revolveAxisLabel(ax) {
+  if (!ax) return "Click in view";
+  if (ax.type === "world") return `${ax.axis} axis`;
+  if (ax.type === "sketch_line") return `Sketch line ${ax.curve}`;
+  if (ax.type === "edge") return "Clicked edge";
+  return ax.label || "As set";
 }
 
 // Tables for the Hole dialog (GET /api/hole_sizes), loaded once
@@ -139,6 +168,40 @@ function shapeLines(sh, frame) {
   }
   return [at(sh.x, sh.y), at(sh.x + sh.w, sh.y), at(sh.x + sh.w, sh.y + sh.h), at(sh.x, sh.y + sh.h), at(sh.x, sh.y)];
 }
+
+let boltedCache = { std: null, existing: [] };
+const BOLTED_NORM_OPTIONS = () => {
+  const norms = boltedCache.std?.bolted_norms || ["ISO 4762", "ISO 10642"];
+  const labels = { "ISO 4762": "ISO 4762 (Cap screw)", "ISO 10642": "ISO 10642 (Countersunk)" };
+  return norms.map((n) => [n, labels[n] || n]);
+};
+const BOLTED_SIZE_OPTIONS = (v) => {
+  const norm = v?.screw_norm || "ISO 4762";
+  const sizes = Object.keys(boltedCache.std?.bolted_details?.[norm]?.sizes || {});
+  const list = sizes.length ? sizes : ["M3", "M4", "M5", "M6", "M8", "M10", "M12"];
+  return list.map((s) => [s, s]);
+};
+const BOLTED_LENGTH_OPTIONS = (v) => {
+  const norm = v?.screw_norm || "ISO 4762";
+  const row = boltedCache.std?.bolted_details?.[norm]?.sizes?.[v?.size || "M6"];
+  const lens = [...(row?.preferred_lengths || [10, 12, 16, 20, 25, 30, 35, 40, 50, 60])];
+  const cur = Number(v?.length_override);
+  if (Number.isFinite(cur) && cur > 0 && !lens.includes(cur)) {
+    lens.push(cur);
+    lens.sort((a, b) => a - b);
+  }
+  return [["auto", "Auto (standard fit)"], ...lens.map((l) => [String(l), `${l} mm`])];
+};
+const BOLTED_MATERIAL_OPTIONS = () => (boltedCache.std?.materials || ["steel", "aluminum", "brass", "cast_iron"])
+  .map((m) => [m, m.replace(/_/g, " ")]);
+
+// Place Standard Part (#88 step 3): the norms, sizes and preferred lengths of Mechvane's standard parts
+let standardCache = null;
+const STD_NORM_OPTIONS = () => (standardCache?.norms || []).map((n) => [n.norm, `${n.norm} · ${n.name.replace(/ \(.*\)$/, "")}`]);
+const STD_SIZE_OPTIONS = (v) => Object.keys(standardCache?.details?.[v?.norm]?.sizes || {}).map((s) => [s, s]);
+const STD_LENGTH_OPTIONS = (v) => (standardCache?.details?.[v?.norm]?.sizes?.[v?.size]?.preferred_lengths || [])
+  .map((l) => [String(l), `${l} mm`]);
+const stdHasLength = (v) => Boolean(standardCache?.details?.[v?.norm]?.has_length);
 
 const DIALOGS = {
   sketch: {
@@ -287,6 +350,7 @@ const DIALOGS = {
     view: "face",
     hint: "Click a face where the hole goes",
     status: (v, p) => {
+      if (v.centre_fixed) return "centred on face";
       if ([v.x, v.y, v.z].some((c) => c === null || c === undefined || c === "")) return null;
       if (v.centre) return "Middle of the face: the hole stays in the middle when the part changes";
       if (v.edge1 === "edge" && v.edge2 === "edge") {
@@ -302,8 +366,8 @@ const DIALOGS = {
       return "Face selected: click up to 2 edges for distance references, or type the position";
     },
     ready: (v, p) => {
-      if ([v.x, v.y, v.z].some((c) => c === null || c === undefined || c === "")) return false;
       if (v.centre) return true;
+      if ([v.x, v.y, v.z].some((c) => c === null || c === undefined || c === "")) return false;
       const n = p?.edgePicks?.length || 0;
       if (v.edge1 === "edge" && n < 1) return false;
       if (v.edge2 === "edge" && n < 2) return false;
@@ -313,7 +377,8 @@ const DIALOGS = {
       }
       return true;
     },
-    onClear(active, set) {
+    onClear(active, set, v) {
+      if (v?.centre_fixed) return;
       active.edges.clear();
       set("edge1", "none");
       set("dist1", "");
@@ -393,6 +458,7 @@ const DIALOGS = {
       active.startFace = startFace;
 
       const v = h.values();
+      if (v.centre_fixed) return;
       if (v.x !== null && v.x !== "" && v.x !== undefined) {
         startEdges();
       } else {
@@ -411,22 +477,24 @@ const DIALOGS = {
     needs: async (get) => { if (!holeTables) holeTables = await get("api/hole_sizes"); },
     fields: [
       { key: "x", label: "X", unit: "mm", value: "", group: "position",
-        show: (v) => v.edge1 !== "edge" },
+        show: (v) => !v.centre_fixed && v.edge1 !== "edge" },
       { key: "y", label: "Y", unit: "mm", value: "", group: "position",
-        show: (v) => v.edge1 !== "edge" },
+        show: (v) => !v.centre_fixed && v.edge1 !== "edge" },
       { key: "z", label: "Z", unit: "mm", value: "", group: "position",
-        show: (v) => v.edge1 !== "edge" },
+        show: (v) => !v.centre_fixed && v.edge1 !== "edge" },
       { key: "centre", label: "Middle of face", type: "check", value: false,
-        show: (v) => v.edge1 !== "edge" },
+        show: (v) => !v.centre_fixed && v.edge1 !== "edge" },
+      { key: "centre_note", label: "Position", value: "centred on face", readonly: () => true,
+        show: (v) => !!v.centre_fixed },
       { key: "edge1", label: "Edge 1", type: "select", value: "none",
         options: [["none", "None"], ["edge", "Clicked edge"]], show: (v) => !v.centre },
       { key: "dist1", label: "Distance 1", unit: "mm", value: "",
-        show: (v) => v.edge1 === "edge" },
+        show: (v) => !v.centre && v.edge1 === "edge" },
       { key: "edge2", label: "Edge 2", type: "select", value: "none",
         options: [["none", "None"], ["edge", "Clicked edge"]],
-        show: (v) => v.edge1 === "edge" },
+        show: (v) => !v.centre && v.edge1 === "edge" },
       { key: "dist2", label: "Distance 2", unit: "mm", value: "",
-        show: (v) => v.edge2 === "edge" },
+        show: (v) => !v.centre && v.edge2 === "edge" },
       { key: "spec", label: "Size", type: "select", value: "clearance",
         options: [["clearance", "Clearance for screw"], ["tapped", "Tapped thread"], ["diameter", "Diameter"]] },
       { key: "size", label: "Screw", type: "select", value: "M5", options: HOLE_SIZE_OPTIONS,
@@ -507,29 +575,36 @@ const DIALOGS = {
       const hole = { type: v.type };
       if (v.type === "counterbore") Object.assign(hole, { cb_diameter: v.cb_diameter, cb_depth: v.cb_depth });
       if (v.type === "countersink") Object.assign(hole, { cs_diameter: v.cs_diameter, cs_angle: v.cs_angle });
-      const set = { position: [+v.x, +v.y, +v.z], diameter: v.diameter, depth: v.through ? null : v.depth,
+      const set = { diameter: v.diameter, depth: v.through ? null : v.depth,
                     thread: v.spec === "tapped" ? v.size : null, hole };
-      if (picks.direction) set.direction = picks.direction;
+      if (v.centre) {
+        set.centre = true;
+      } else {
+        set.position = [+v.x, +v.y, +v.z];
+        if (picks.direction) set.direction = picks.direction;
 
-      const edgeList = (picks.edgePicks || []);
-      const refs = [];
-      const pt = (q) => (Array.isArray(q) ? q : [q.x, q.y, q.z].map((c) => +c.toFixed(6)));
-      if (v.edge1 === "edge" && edgeList[0] && v.dist1 !== null && v.dist1 !== "") {
-        refs.push({ edge: pt(edgeList[0].point), distance: v.dist1 });
+        const edgeList = (picks.edgePicks || []);
+        const refs = [];
+        const pt = (q) => (Array.isArray(q) ? q : [q.x, q.y, q.z].map((c) => +c.toFixed(6)));
+        if (v.edge1 === "edge" && edgeList[0] && v.dist1 !== null && v.dist1 !== "") {
+          refs.push({ edge: pt(edgeList[0].point), distance: v.dist1 });
+        }
+        if (v.edge2 === "edge" && edgeList[1] && v.dist2 !== null && v.dist2 !== "") {
+          refs.push({ edge: pt(edgeList[1].point), distance: v.dist2 });
+        }
+        set.references = refs;  // an empty list removes them; SolidCraft takes no null here (#111)
       }
-      if (v.edge2 === "edge" && edgeList[1] && v.dist2 !== null && v.dist2 !== "") {
-        refs.push({ edge: pt(edgeList[1].point), distance: v.dist2 });
-      }
-      set.references = refs.length > 0 ? refs : null;
       return set;
     },
     fromDefinition(d) {
       const h = d.hole || {};
       const dia = parseFloat(d.diameter);
+      const isCentred = !!(d.centre || (d.points && d.points.sketch && Array.isArray(d.points.ids) && d.points.ids.includes("c")));
       const v = { x: d.position?.[0], y: d.position?.[1], z: d.position?.[2], diameter: dia, type: h.type || "simple",
                   through: d.depth === undefined || d.depth === null, depth: d.depth ?? "10",
                   cb_diameter: h.cb_diameter, cb_depth: h.cb_depth, cs_diameter: h.cs_diameter, cs_angle: h.cs_angle,
-                  edge1: "none", dist1: "", edge2: "none", dist2: "" };
+                  edge1: "none", dist1: "", edge2: "none", dist2: "",
+                  centre: isCentred, centre_fixed: isCentred, centre_note: "centred on face" };
       // which table entry made this diameter: a thread, a clearance hole of some fit, or neither
       if (d.thread) Object.assign(v, { spec: "tapped", size: d.thread });
       else {
@@ -585,7 +660,9 @@ const DIALOGS = {
         const n = active.prof.shapes.length;
         const val = h.values().profile;
         if (from !== "fresh" && val === "all") active.prof.shapes.forEach((x) => active.prof.picked.add(x.index));
-        else if (from !== "fresh" && /^\d+$/.test(String(val))) active.prof.picked.add(Number(val));
+        else if (from !== "fresh" && /^\d+(,\d+)*$/.test(String(val))) {
+          String(val).split(",").forEach((i) => active.prof.picked.add(Number(i)));
+        }
         else if (from !== "fresh" && val === "multi") active.prof.keep = true;  // the agent's own choice: kept unless clicked
         else if (n === 1) active.prof.picked.add(active.prof.shapes[0].index);
         if (from === "fresh") active.prof.touched = true;
@@ -651,38 +728,196 @@ const DIALOGS = {
   revolve: {
     title: "Revolve",
     command: "solid.revolve",
-    view: "edge",
-    hint: "Choose the sketch and the axis",
+    hint: "Choose the profile and axis in the view",
     needs: async (get) => { sketchList = (await get("api/sketches")).sketches || []; },
     fields: [
       { key: "sketch", label: "Sketch", type: "select", value: defaultSketch, options: SKETCH_OPTIONS },
-      PROFILE_FIELD,
-      { key: "axis", label: "Axis", type: "select", value: "Z", options: AXIS_OPTIONS("Clicked edge") },
+      { key: "profile", label: "Profile", type: "pick", value: "Click in view" },
+      { key: "axis", label: "Axis", type: "pick", value: "Click in view" },
       { key: "angle", label: "Angle", unit: "°", value: "360" },
       { key: "operation", label: "Operation", type: "select", value: "join", options: OPERATIONS },
     ],
-    ready: (v, p) => !!v.sketch && (v.axis !== "edge" || !!p.edge1),
-    status: (v, p) => (!sketchList.length ? "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent"
-      : v.axis === "edge" && !p.edge1 ? "Click a straight edge in the sketch's plane for the axis" : null),
-    params(v, p) {
-      const out = { sketch: v.sketch, axis: v.axis === "edge" ? { edge: p.edge1.point } : v.axis, angle: deg(v.angle),
-                    operation: opParam(v.operation) };
-      if (profileParam(v)) out.profiles = profileParam(v);
+    onChange(key, v, set, active) {
+      if (key === "sketch" && active?.startRevolvePick) active.startRevolvePick(v.sketch, "fresh");
+    },
+    // Profiles and axis as in Inventor and SolidCraft (dialogs.rs): two selection fields (Profile, Axis),
+    // the active field decides what a click in the view selects; Tab or clicking a field switches between them.
+    // When a sketch has one closed region, it is preselected and Axis is active right away.
+    async init(active, h) {
+      const syncSlots = () => {
+        const p = active.prof;
+        const n = p?.shapes?.length || 0, k = p?.picked?.size || 0;
+        h.setValue("profile", p?.keep ? "As set" : !k ? "Click in view" : n === 1 ? "1 profile" : `${k} of ${n} profiles`);
+        h.setValue("axis", revolveAxisLabel(active.axis));
+      };
+      active.setSlot = (slot) => {
+        if (slot !== "profile" && slot !== "axis") return;
+        active.slot = slot;
+        h.revealOriginAxes?.(slot === "axis");
+        syncSlots();
+        h.log?.("dialog_slot", { dialog: active.kind, slot });
+        h.update();
+      };
+      active.startRevolvePick = (name, from) => {
+        const sk = sketchList.find((x) => x.name === name);
+        active.prof = { sketch: sk, shapes: sk?.plane ? profileShapes(sk) : [], picked: new Set(), touched: false };
+        const n = active.prof.shapes.length;
+        const val = active.fromProfile;
+        if (from !== "fresh" && val === "all") active.prof.shapes.forEach((x) => active.prof.picked.add(x.index));
+        else if (from !== "fresh" && /^\d+(,\d+)*$/.test(String(val || ""))) {
+          String(val).split(",").forEach((i) => active.prof.picked.add(Number(i)));
+        } else if (from !== "fresh" && val === "multi") active.prof.keep = true;
+        else if (n === 1) active.prof.picked.add(active.prof.shapes[0].index);
+        if (from === "fresh") {
+          active.prof.touched = true;
+          if (active.axis?.type === "sketch_line") active.axis = null;
+          active.slot = n === 1 ? "axis" : "profile";
+        } else {
+          active.slot = active.axis || active.prof.picked.size || active.prof.keep ? "axis" : "profile";
+        }
+        h.revealOriginAxes?.(active.slot === "axis");
+        syncSlots();
+        if (sk?.plane) {
+          h.viewTools.startPlanePick(sk.plane, (uv, _at, info) => {
+            if (!active) return;
+            if (active.slot === "profile") {
+              const hit = uv && profileAt(active.prof.shapes, uv);
+              if (!hit) return;
+              const p = active.prof;
+              if (p.picked.has(hit.index)) p.picked.delete(hit.index); else p.picked.add(hit.index);
+              p.touched = true;
+              p.keep = false;
+              syncSlots();
+              h.log?.("pick_profile", { sketch: name, profile: hit.index, picked: p.picked.size });
+              h.update();
+              return;
+            }
+            const line = uv && sketchLineAt(sk, uv, info?.planeTol ?? 3);
+            const edgePick = info?.edge?.();
+            const orig = info && h.originAxisAt?.(info.clientX, info.clientY);
+            const linePx = line ? (line.dist * 10) / Math.max(info?.planeTol || 3, 1e-6) : Infinity;
+            const edgePx = edgePick ? edgePick.dist : Infinity;
+            const origPx = orig ? orig.dist : Infinity;
+            if (line && linePx - 1.5 <= Math.min(edgePx, origPx)) {
+              active.axis = { type: "sketch_line", curve: line.id };
+              active.edge1 = null;
+              h.log?.("pick_axis", { kind: "sketch_line", curve: line.id });
+            } else if (edgePick && edgePx <= origPx) {
+              active.edge1 = edgePick;
+              active.axis = { type: "edge", point: edgePick.point };
+              h.log?.("pick_axis", { kind: "edge", point: edgePick.point });
+            } else if (orig) {
+              active.axis = { type: "world", axis: orig.axis };
+              active.edge1 = null;
+              h.log?.("pick_axis", { kind: "world", axis: orig.axis });
+            } else {
+              return;
+            }
+            syncSlots();
+            h.update();
+          });
+        } else h.viewTools.stopEdgePick();
+        h.update();
+      };
+      active.pickOrigin = (axis) => {
+        if (!AXES[axis]) return false;
+        active.axis = { type: "world", axis };
+        active.edge1 = null;
+        active.slot = "axis";
+        h.revealOriginAxes?.(true);
+        syncSlots();
+        h.log?.("pick_axis", { kind: "world", axis });
+        h.update();
+        return true;
+      };
+      active.startRevolvePick(h.values().sketch, active.edit ? "edit" : "fresh");
+    },
+    draw(active, v, add, addMesh) {
+      const p = active.prof;
+      if (p?.sketch?.plane) {
+        for (const shape of p.shapes) {
+          const on = p.picked.has(shape.index) || p.keep;
+          addMesh(profileMesh(p.sketch.plane, shape, on ? 0x58a6ff : 0x8b949e, on ? 0.45 : 0.12));
+          add(toWorld(p.sketch.plane, [...shape.outer, shape.outer[0]]), on ? 0x58a6ff : 0x8b949e);
+        }
+        for (const c of p.sketch.curves || []) {
+          if (c.type !== "line" || !c.start_at || !c.end_at) continue;
+          const on = active.axis?.type === "sketch_line" && active.axis.curve === c.id;
+          if (on || c.construction) {
+            add(toWorld(p.sketch.plane, [c.start_at, c.end_at]), on ? 0x58a6ff : 0x8b949e);
+          }
+        }
+      }
+      if (active.axis?.type === "world" && AXES[active.axis.axis]) {
+        const d = new THREE.Vector3(...AXES[active.axis.axis]);
+        add([d.clone().multiplyScalar(-50), d.clone().multiplyScalar(50)], 0x58a6ff);
+      }
+    },
+    ready: (v, pk, active) => !!v.sketch && !!(active?.prof?.picked.size || active?.prof?.keep) && !!active?.axis,
+    status: (v, pk, active) => {
+      if (!sketchList.length) return "This part has no sketch yet: make one with Create 2D Sketch (S), or ask your agent";
+      const p = active?.prof;
+      if (!p || !p.shapes.length) return null;
+      const n = p.shapes.length, k = p.picked.size;
+      const hasProf = k > 0 || p.keep;
+      const ax = active?.axis;
+      if (!hasProf) return `Click the profile${n > 1 ? "s" : ""} to revolve in the view (${n} in ${v.sketch})`;
+      if (!ax) {
+        return active.slot === "profile"
+          ? `${k} of ${n} profiles selected · click Axis (or press Tab), then click a sketch line, model edge or origin axis`
+          : "Click a sketch line, model edge or origin axis in the view for the axis";
+      }
+      if (active.slot === "profile") {
+        return p.keep
+          ? "Revolves the profiles chosen before · click profiles in the view to choose again"
+          : `${k} of ${n} profile${n > 1 ? "s" : ""} selected · click in the view to add or remove`;
+      }
+      return `${n > 1 ? `${k} of ${n} profiles · ` : ""}${revolveAxisLabel(ax)} · click in the view to change`;
+    },
+    params(v, pk, active) {
+      const ax = active?.axis;
+      const axis = ax?.type === "world" ? ax.axis
+        : ax?.type === "sketch_line" ? ax.curve
+        : { edge: ax?.point || pk.edge1?.point };
+      const out = { sketch: v.sketch, axis, angle: deg(v.angle), operation: opParam(v.operation) };
+      const pr = active?.prof;
+      if (pr && pr.picked.size && pr.picked.size < pr.shapes.length) out.profiles = [...pr.picked].sort((a, b) => a - b);
       return out;
     },
-    editSet(v, p) {
+    editSet(v, pk, active) {
       const set = { sketch: v.sketch, angle: deg(v.angle), operation: v.operation };
-      if (profileSet(v) !== undefined) set.profiles = profileSet(v);
-      if (v.axis !== "edge") set.axis = { type: "world", axis: v.axis };
-      else if (p.edge1?.keep) set.axis = p.edge1.keep;
-      else set.axis = { edge: p.edge1.point };
+      const pr = active?.prof;
+      if (pr && pr.touched && pr.picked.size) {
+        set.profiles = pr.picked.size === pr.shapes.length ? "all" : [...pr.picked].sort((a, b) => a - b);
+      }
+      const ax = active?.axis;
+      if (ax?.type === "world") set.axis = { type: "world", axis: ax.axis };
+      else if (ax?.type === "sketch_line") set.axis = { type: "sketch_line", curve: ax.curve };
+      else if (ax?.keep) set.axis = ax.keep;
+      else if (ax?.type === "edge") set.axis = { type: "model", geo: { type: "edge", at: ax.point } };
       return set;
     },
     fromDefinition(d, names) {
-      const world = d.axis?.type === "world";
-      return { values: { sketch: names[d.sketch] || d.sketch, profile: profileValue(d, names), axis: world ? d.axis.axis : "edge",
-                         angle: String(d.angle ?? "360").replace(/\s*deg$/, ""), operation: d.operation || "join" },
-               edge1: world ? null : { point: d.axis?.at || [0, 0, 0], keep: d.axis } };
+      const a = d.axis || {};
+      let axis = null, edge1 = null;
+      if (a.type === "world") axis = { type: "world", axis: a.axis };
+      else if (a.type === "sketch_line") axis = { type: "sketch_line", curve: a.curve };
+      else if (a.type === "model" && a.geo?.at) {
+        axis = { type: "edge", point: a.geo.at, keep: a };
+        edge1 = { point: a.geo.at, keep: a };
+      } else if (a.type) {
+        axis = { type: "keep", keep: a, label: a.type === "sketch_axis" ? `Sketch ${a.axis}` : "As set" };
+      }
+      return {
+        values: {
+          sketch: names[d.sketch] || d.sketch,
+          angle: String(d.angle ?? "360").replace(/\s*deg$/, ""),
+          operation: d.operation || "join",
+        },
+        profile: profileValue(d, names),
+        axis,
+        edge1,
+      };
     },
   },
   rectangular: {
@@ -795,6 +1030,590 @@ const DIALOGS = {
                face: world ? null : { point: pl.plane?.origin, normal: null, keep: pl } };
     },
   },
+  // Place dialog for assemblies (POST /api/assembly/insert).
+  // Deviation from SolidCraft (dialogs_assembly.rs): SolidCraft has no Place parameters dialog and
+  // instead inserts designs via an open-designs menu or OS file picker without XYZ or Grounded inputs;
+  // Mechvane follows its feature-dialog pattern with folder file list, Name, Translation/Rotation XYZ, and Grounded.
+  place: {
+    title: "Place",
+    endpoint: "api/assembly/insert",
+    noPreview: true,
+    hint: "Choose a part from the project folder",
+    needs: async (get) => {
+      const d = await get("api/files");
+      const selfName = d.document || "";
+      placeFiles = (d.parts || d.files || []).filter((f) => f !== selfName);
+    },
+    fields: [
+      { key: "file", label: "File", type: "select", value: () => placeFiles[0] || "", options: PLACE_FILE_OPTIONS },
+      { key: "name", label: "Name", type: "text", value: "", placeholder: "Optional" },
+      { key: "tx", label: "Move X", unit: "mm", value: "0", group: "position" },
+      { key: "ty", label: "Move Y", unit: "mm", value: "0", group: "position" },
+      { key: "tz", label: "Move Z", unit: "mm", value: "0", group: "position" },
+      { key: "rx", label: "Rotate X", unit: "°", value: "0", group: "rotation" },
+      { key: "ry", label: "Rotate Y", unit: "°", value: "0", group: "rotation" },
+      { key: "rz", label: "Rotate Z", unit: "°", value: "0", group: "rotation" },
+      { key: "grounded", label: "Grounded", type: "select", value: "",
+        options: [["", "Auto (first grounded)"], ["true", "Yes (grounded)"], ["false", "No (free)"]] },
+    ],
+    ready: (v) => Boolean(v.file),
+    status: (v) => (!v.file ? "No other .solidcraft parts found in project folder" : `Place ${v.file}`),
+    params(v) {
+      const out = {
+        file: v.file,
+        translate: [v.tx || 0, v.ty || 0, v.tz || 0],
+        rotate: [v.rx || 0, v.ry || 0, v.rz || 0],
+      };
+      if (v.name) out.name = v.name;
+      if (v.grounded !== "") out.grounded = v.grounded === "true";
+      return out;
+    },
+  },
+  // Place Standard Part (POST /api/assembly/standard). Inventor places from the Content Center; Mechvane makes the
+  // parametric part file in the folder (as the MCP tool standard_part does, reused when it exists) and places it.
+  // SolidCraft has no standard part library of its own, so there is no dialog there to follow.
+  place_standard: {
+    title: "Place Standard Part",
+    endpoint: "api/assembly/standard",
+    noPreview: true,
+    hint: "Choose a norm, a size and a length",
+    needs: async (get) => {
+      standardCache = standardCache || await get("api/standard_parts");
+    },
+    fields: [
+      { key: "norm", label: "Norm", type: "select", value: () => standardCache?.norms?.[0]?.norm || "", options: STD_NORM_OPTIONS },
+      { key: "size", label: "Size", type: "select", value: "M6", options: STD_SIZE_OPTIONS },
+      { key: "length", label: "Length", type: "select", value: "", options: STD_LENGTH_OPTIONS, show: stdHasLength },
+      { key: "tx", label: "Move X", unit: "mm", value: "0", group: "position" },
+      { key: "ty", label: "Move Y", unit: "mm", value: "0", group: "position" },
+      { key: "tz", label: "Move Z", unit: "mm", value: "0", group: "position" },
+      { key: "grounded", label: "Grounded", type: "select", value: "false",
+        options: [["false", "No (free)"], ["true", "Yes (grounded)"], ["", "Auto (first grounded)"]] },
+    ],
+    onChange(key, v, setValue) {
+      // a size or length the new norm or size does not have falls back to its first one
+      if (key === "norm" || key === "size") {
+        const sizes = STD_SIZE_OPTIONS(v).map((o) => o[0]);
+        if (key === "norm" && !sizes.includes(v.size)) setValue("size", sizes.includes("M6") ? "M6" : sizes[0] || "");
+        const lens = STD_LENGTH_OPTIONS({ ...v, size: key === "norm" && !sizes.includes(v.size) ? (sizes.includes("M6") ? "M6" : sizes[0]) : v.size }).map((o) => o[0]);
+        if (!lens.includes(String(v.length))) setValue("length", lens.includes("20") ? "20" : lens[0] || "");
+      }
+    },
+    ready: (v) => Boolean(v.norm && v.size && (!stdHasLength(v) || v.length)),
+    status: (v) => (!v.norm ? "No standard parts available" : stdHasLength(v) && !v.length
+      ? "Choose a length" : `Place ${v.norm} ${v.size}${stdHasLength(v) ? `x${v.length}` : ""}`),
+    params(v) {
+      const out = { norm: v.norm, size: v.size, translate: [v.tx || 0, v.ty || 0, v.tz || 0] };
+      if (stdHasLength(v)) out.length = Number(v.length);
+      if (v.grounded !== "") out.grounded = v.grounded === "true";
+      return out;
+    },
+  },
+  // Joint dialog for assemblies (POST /api/assembly/joint and POST /api/assembly/joint/edit).
+  // Built against the SolidCraft CLI command schema for joint.create / joint.edit and Inventor's
+  // Joint dialog workflow (two component origins, type: rigid/revolute/slider/cylindrical/ball,
+  // flip, axial offset in mm, angle in deg).
+  // Deviation from SolidCraft (crates/ui-egui/src/dialogs_assembly.rs, compared 2026-11-15): SolidCraft
+  // offers 13 types (TYPES, also pin_slot, planar and the relations parallel/perpendicular/angle/
+  // point_on_*/line_on_plane), limits and a driven live preview (world_preview). This dialog is the
+  // first step of #88 with the five types the issue asks for, no limits and no preview; those can follow.
+  joint: {
+    title: "Joint",
+    endpoint: (dlg) => (dlg?.edit ? "api/assembly/joint/edit" : "api/assembly/joint"),
+    noPreview: true,
+    slots: ["origin_a", "origin_b"],
+    hint: "Click a face on the first component",
+    needs: async (get) => {
+      jointContext = await get("api/assembly/context");
+    },
+    fields: [
+      { key: "type", label: "Type", type: "select", value: "rigid", options: JOINT_TYPES },
+      { key: "comp_a", label: "Component 1", type: "select",
+        value: () => jointContext.occurrences[0]?.path || "", options: JOINT_COMPONENT_OPTIONS },
+      { key: "origin_a", label: "Origin 1", type: "pick", value: "Click face 1 in 3D view" },
+      { key: "comp_b", label: "Component 2", type: "select",
+        value: () => jointContext.occurrences[1]?.path || jointContext.occurrences[0]?.path || "", options: JOINT_COMPONENT_OPTIONS },
+      { key: "origin_b", label: "Origin 2", type: "pick", value: "Click face 2 in 3D view" },
+      { key: "name", label: "Name", type: "text", value: "", placeholder: "Optional" },
+      { key: "flip", label: "Flip", type: "check", value: false },
+      { key: "offset", label: "Offset", unit: "mm", value: "0", show: (v) => v.type !== "ball" },
+      { key: "angle", label: "Angle", unit: "°", value: "0", show: (v) => v.type === "revolute" || v.type === "cylindrical" },
+    ],
+    loadEdit(edit, active, setValue) {
+      setValue("type", edit.type || "rigid");
+      setValue("comp_a", edit.occurrence_a || "");
+      setValue("comp_b", edit.occurrence_b || "");
+      setValue("name", edit.name || "");
+      setValue("flip", !!edit.flip);
+      setValue("offset", String(edit.offset ?? 0));
+      setValue("angle", String(edit.angle ?? 0));
+      const aLabel = edit.anchors?.a?.face ? `${edit.occurrence_a} · ${edit.anchors.a.face} (keep)` : `${edit.occurrence_a || "Origin 1"} (keep)`;
+      const bLabel = edit.anchors?.b?.face ? `${edit.occurrence_b} · ${edit.anchors.b.face} (keep)` : `${edit.occurrence_b || "Origin 2"} (keep)`;
+      setValue("origin_a", aLabel);
+      setValue("origin_b", bLabel);
+      active.jointFrames = { a: edit.frame_a || null, b: edit.frame_b || null };
+      active.origCompA = edit.occurrence_a || "";
+      active.origCompB = edit.occurrence_b || "";
+      active.keepA = Boolean(edit.occurrence_a);
+      active.keepB = Boolean(edit.occurrence_b);
+      active.jointA = null;
+      active.jointB = null;
+    },
+    onChange(key, v, setValue, active) {
+      if (!active) return;
+      if (key === "comp_a" && (!active.jointA || active.jointA.occurrence !== v.comp_a)) {
+        active.jointA = null;
+        active.keepA = false;
+        setValue("origin_a", "Click face 1 in 3D view");
+        active.slot = "origin_a";
+      } else if (key === "comp_b" && (!active.jointB || active.jointB.occurrence !== v.comp_b)) {
+        active.jointB = null;
+        active.keepB = false;
+        setValue("origin_b", "Click face 2 in 3D view");
+        active.slot = "origin_b";
+      }
+    },
+    hasClear: (active) => Boolean(active.jointA || active.jointB),
+    onClear(active, setValue) {
+      active.jointA = null;
+      active.jointB = null;
+      active.keepA = false;
+      active.keepB = false;
+      setValue("origin_a", "Click face 1 in 3D view");
+      setValue("origin_b", "Click face 2 in 3D view");
+      active.setSlot?.("origin_a");
+    },
+    async init(active, h) {
+      active.jointA = active.jointA || null;
+      active.jointB = active.jointB || null;
+      active.slot = "origin_a";
+      h.revealOriginAxes?.(true);
+      const ORIGIN_KEYS = { XY: "plane", XZ: "plane", YZ: "plane", X: "axis", Y: "axis", Z: "axis" };
+      const applySidePick = (slot, data) => {
+        if (slot === "origin_a") {
+          active.jointA = data;
+          active.keepA = false;
+          h.setValue("comp_a", data.occurrence);
+          h.setValue("origin_a", data.label);
+          if (!active.jointB && !active.keepB) active.slot = "origin_b";
+        } else {
+          active.jointB = data;
+          active.keepB = false;
+          h.setValue("comp_b", data.occurrence);
+          h.setValue("origin_b", data.label);
+        }
+        h.revealOriginAxes?.(true);
+        h.update();
+      };
+      active.setSlot = (next) => {
+        active.slot = next === "origin_b" ? "origin_b" : "origin_a";
+        h.revealOriginAxes?.(true);
+        h.update();
+      };
+      active.pickOrigin = (name) => {
+        const kind = ORIGIN_KEYS[name];
+        if (!kind) return false;
+        const slot = active.slot === "origin_b" ? "origin_b" : "origin_a";
+        const v = h.values();
+        const occ = slot === "origin_a" ? v.comp_a : v.comp_b;
+        if (!occ) return false;
+        const side = { occurrence: occ, label: `${occ} · ${name}` };
+        side[kind] = name;
+        h.log?.("pick_joint_origin", { slot, occurrence: occ, [kind]: name });
+        applySidePick(slot, side);
+        return true;
+      };
+      h.viewTools.startFacePick((pick) => {
+        if (!active) return;
+        const occ = jointContext.body_occurrences?.[pick.body];
+        if (!occ) return;
+        const pt = pick.point.toArray().map((c) => +c.toFixed(6));
+        const n = pick.normal.toArray().map((c) => +c.toFixed(6));
+        const slot = active.slot === "origin_b" ? "origin_b" : "origin_a";
+        const short = pt.map((c) => fmt(c)).join(", ");
+        const label = pick.faceName ? `${occ} · ${pick.faceName}` : `${occ} (${short})`;
+        h.log?.("pick_joint_face", { slot, occurrence: occ, face: pick.faceName || null, point: pt });
+        // the Constrain dialog takes a round face as an axis reference (circle), a flat one as a plane (face)
+        const key = active.kind === "constrain" && !pick.planar ? "circle" : "face";
+        applySidePick(slot, { occurrence: occ, [key]: pt, normal: n, label });
+      });
+    },
+    draw(active, v, add, addMesh) {
+      const ms = Math.max(active.markerSize || 1, 0.25);
+      const drawSide = (side, frame, color) => {
+        const pt = side?.face || side?.circle || frame?.origin;
+        const norm = side?.normal || frame?.z;
+        if (!pt) return;
+        const at = new THREE.Vector3(...pt);
+        const dot = new THREE.Mesh(
+          new THREE.SphereGeometry(ms, 16, 12),
+          new THREE.MeshBasicMaterial({ color, depthTest: false }),
+        );
+        dot.position.copy(at);
+        dot.renderOrder = 22;
+        addMesh(dot);
+        if (norm) {
+          const end = at.clone().addScaledVector(new THREE.Vector3(...norm), ms * 10);
+          add([at, end], color);
+        }
+      };
+      drawSide(active.jointA, active.keepA ? active.jointFrames?.a : null, PICK_COLOR);
+      drawSide(active.jointB, active.keepB ? active.jointFrames?.b : null, 0x3fb950);
+    },
+    ready(v, _pk, active) {
+      if (jointContext.occurrences.length < 2) return false;
+      if (!v.comp_a || !v.comp_b || v.comp_a === v.comp_b) return false;
+      const hasA = Boolean(active?.jointA || (active?.edit && active?.keepA && v.comp_a === active.origCompA));
+      const hasB = Boolean(active?.jointB || (active?.edit && active?.keepB && v.comp_b === active.origCompB));
+      return hasA && hasB;
+    },
+    status(v, _pk, active) {
+      if (jointContext.occurrences.length < 2) return "Place at least two components before creating a joint";
+      if (v.comp_a && v.comp_b && v.comp_a === v.comp_b) return "Choose two different components (Component 1 and Component 2 must differ)";
+      const hasA = Boolean(active?.jointA || (active?.edit && active?.keepA && v.comp_a === active.origCompA));
+      const hasB = Boolean(active?.jointB || (active?.edit && active?.keepB && v.comp_b === active.origCompB));
+      if (!hasA) return "Origin 1: click a face in the 3D view (or Origin plane/axis)";
+      if (!hasB) return "Origin 2: click a face on the second component";
+      return `Ready: ${v.type} between ${v.comp_a} and ${v.comp_b}`;
+    },
+    params(v, _pk, active) {
+      const strip = (s) => {
+        if (!s) return undefined;
+        const out = { occurrence: s.occurrence };
+        for (const k of ["face", "point", "circle", "edge", "plane", "axis", "frame"]) {
+          if (s[k] !== undefined) out[k] = s[k];
+        }
+        return out;
+      };
+      const req = { type: v.type, flip: !!v.flip };
+      if (active?.edit) req.joint = active.edit;
+      if (v.name) req.name = v.name;
+      const sideA = strip(active?.jointA);
+      const sideB = strip(active?.jointB);
+      if (sideA) req.a = sideA;
+      if (sideB) req.b = sideB;
+      if (v.type !== "ball" && v.offset !== null && v.offset !== "") req.offset = v.offset;
+      if ((v.type === "revolute" || v.type === "cylindrical") && v.angle !== null && v.angle !== "") req.angle = v.angle;
+      return req;
+    },
+  },
+  // Bolted Connection dialog for assemblies (POST /api/assembly/bolted/*).
+  // Deviation from SolidCraft: SolidCraft has no bolted connection generator dialog (bolted connections
+  // are a Mechvane layer on top of SolidCraft); Mechvane follows Inventor's Bolted Connection Generator
+  // (placement point/hole + standard screw/washer/nut stack + live preview + list/edit/delete of existing).
+  bolted: {
+    title: "Bolted Connection",
+    previewEndpoint: "api/assembly/bolted/preview",
+    endpoint: (dlg) => (dlg.boltedEditId ? "api/assembly/bolted/edit" : "api/assembly/bolted/create"),
+    hint: "Click a hole or flat face in the 3D view, or type X/Y/Z",
+    extraHtml: `<div class="bolted-existing"></div>`,
+    needs: async (get) => {
+      const [std, existing] = await Promise.all([
+        get("api/standard_parts"),
+        get("api/assembly/bolted"),
+      ]);
+      boltedCache.std = std;
+      boltedCache.existing = existing.items || [];
+    },
+    fields: [
+      { key: "name", label: "Name", type: "text", value: "", placeholder: "Auto", show: (_v, dlg) => !dlg?.boltedEditId },
+      { key: "x", label: "X", unit: "mm", value: "", group: "position" },
+      { key: "y", label: "Y", unit: "mm", value: "", group: "position" },
+      { key: "z", label: "Z", unit: "mm", value: "", group: "position" },
+      { key: "flip", label: "Flip direction", type: "check", value: false },
+      { key: "screw_norm", label: "Standard", type: "select", value: "ISO 4762", options: BOLTED_NORM_OPTIONS },
+      { key: "size", label: "Size", type: "select", value: "M6", options: BOLTED_SIZE_OPTIONS },
+      { key: "length_override", label: "Length", type: "select", value: "auto", options: BOLTED_LENGTH_OPTIONS },
+      { key: "connection_type", label: "Type", type: "select", value: "through",
+        options: [["through", "Through + nut"], ["blind", "Blind tapped"], ["insert", "Ruthex insert"]] },
+      { key: "fit", label: "Fit", type: "select", value: "normal",
+        options: [["close", "Close"], ["normal", "Normal"], ["loose", "Loose"]] },
+      { key: "blind_material", label: "Material", type: "select", value: "steel", options: BOLTED_MATERIAL_OPTIONS,
+        show: (v) => v.connection_type === "blind" },
+      { key: "counterbore", label: "Counterbore", type: "check", value: true, show: (v) => v.screw_norm !== "ISO 10642" },
+      { key: "washer_head", label: "Head washer (ISO 7089)", type: "check", value: true, show: (v) => v.screw_norm !== "ISO 10642" },
+      { key: "washer_nut", label: "Nut washer (ISO 7089)", type: "check", value: true, show: (v) => v.connection_type === "through" },
+    ],
+    ready: (v) => [v.x, v.y, v.z].every((c) => typeof c === "number"),
+    status: (v, _p, dlg) => {
+      if (dlg?.boltedEditId) return `Editing ${dlg.boltedEditId} (${v.screw_norm} ${v.size})`;
+      if ([v.x, v.y, v.z].every((c) => typeof c === "number")) {
+        return `${v.screw_norm} ${v.size} at (${v.x}, ${v.y}, ${v.z})`;
+      }
+      return "Click a hole or flat face in the 3D view, or type X/Y/Z";
+    },
+    sourceNote: (v) => {
+      const parts = [v.screw_norm || "ISO 4762", "clearance hole ISO 273"];
+      if (v.connection_type === "through") parts.push("nut ISO 4032");
+      if (v.connection_type === "insert") parts.push("Ruthex insert");
+      if (v.washer_head || v.washer_nut) parts.push("washer ISO 7089");
+      return parts.join(" · ");
+    },
+    onChange(changed, v, set) {
+      if (changed === "screw_norm") {
+        const isCs = v.screw_norm === "ISO 10642";
+        set("counterbore", !isCs);
+        set("washer_head", !isCs);
+      }
+      if (changed === "connection_type") {
+        set("washer_nut", v.connection_type === "through");
+      }
+    },
+    describePreview: (res) => {
+      const stack = (res.parts || []).map((p) => p.occurrence).join(" → ");
+      const len = res.selected_screw_length ? ` × ${res.selected_screw_length} mm` : "";
+      const cb = res.counterbore ? " · counterbored" : "";
+      return `${res.screw_norm} ${res.size}${len} · stack ${res.stack_thickness} mm · ${res.fit} Ø${res.clearance_diameter} mm${cb}${stack ? ` · ${stack}` : ""}`;
+    },
+    params(v, _p, dlg) {
+      const baseDir = dlg.boltedDirection || [0, 0, -1];
+      const dir = v.flip ? baseDir.map((c) => -c) : baseDir;
+      const out = {
+        placement: { type: "point", position: [v.x, v.y, v.z], direction: dir },
+        screw_norm: v.screw_norm || "ISO 4762",
+        size: v.size || "M6",
+        fit: v.fit || "normal",
+        connection_type: v.connection_type || "through",
+        counterbore: v.screw_norm === "ISO 10642" ? false : !!v.counterbore,
+        washer_head: v.screw_norm === "ISO 10642" ? false : !!v.washer_head,
+        washer_nut: v.connection_type === "through" ? !!v.washer_nut : false,
+        length_override: v.length_override === "auto" ? null : Number(v.length_override),
+      };
+      if (v.connection_type === "blind") out.blind_material = v.blind_material || "steel";
+      if (v.name && !dlg.boltedEditId) out.name = v.name;
+      if (dlg.boltedEditId) out.id = dlg.boltedEditId;
+      return out;
+    },
+    previewParams(v, _p, dlg) {
+      const out = DIALOGS.bolted.params(v, _p, dlg);
+      if (dlg.boltedEditId) out.edit_id = dlg.boltedEditId;
+      return out;
+    },
+    draw(active, v, add, addMesh) {
+      if (![v.x, v.y, v.z].every((c) => typeof c === "number")) return;
+      const prev = active.previewData;
+      const baseDir = active.boltedDirection || [0, 0, -1];
+      const dirArr = prev?.direction || (v.flip ? baseDir.map((c) => -c) : baseDir);
+      const dir = new THREE.Vector3(...dirArr).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const pts = prev?.points || [[v.x, v.y, v.z]];
+      const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, depthWrite: false });
+      const cylAt = (center, rTop, rBot, h, radial = 20) => {
+        if (!(h > 0 && rTop > 0 && rBot > 0)) return;
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, radial), mat);
+        m.position.copy(center);
+        m.quaternion.copy(quat);
+        m.renderOrder = 21;
+        addMesh(m);
+      };
+      for (const p of pts) {
+        const at = new THREE.Vector3(...p);
+        add([at, at.clone().addScaledVector(dir, prev?.selected_screw_length || 20)], PICK_COLOR);
+        if (!prev?.dims) continue;
+        const d = prev.dims;
+        const cbOffset = prev.counterbore && prev.cb_depth ? prev.cb_depth : 0;
+        let bearing = at.clone().addScaledVector(dir, cbOffset);
+        if (prev.washer_head && prev.head !== "countersunk") {
+          cylAt(bearing.clone().addScaledVector(dir, -d.washer_h / 2), d.washer_d2 / 2, d.washer_d2 / 2, d.washer_h);
+          bearing = bearing.clone().addScaledVector(dir, -d.washer_h);
+        }
+        if (prev.head === "countersunk") {
+          cylAt(bearing.clone().addScaledVector(dir, d.k / 2), d.d / 2, d.dk / 2, d.k);
+          const L = prev.selected_screw_length || 20;
+          cylAt(bearing.clone().addScaledVector(dir, L / 2), d.d / 2, d.d / 2, L);
+        } else {
+          cylAt(bearing.clone().addScaledVector(dir, -d.k / 2), d.dk / 2, d.dk / 2, d.k);
+          const L = prev.selected_screw_length || 20;
+          cylAt(bearing.clone().addScaledVector(dir, L / 2), d.d / 2, d.d / 2, L);
+        }
+        if (prev.connection_type === "through" && prev.total_thickness > 0) {
+          let nutBase = at.clone().addScaledVector(dir, prev.total_thickness);
+          if (prev.washer_nut) {
+            cylAt(nutBase.clone().addScaledVector(dir, d.washer_h / 2), d.washer_d2 / 2, d.washer_d2 / 2, d.washer_h);
+            nutBase = nutBase.clone().addScaledVector(dir, d.washer_h);
+          }
+          const nutR = d.nut_s / Math.sqrt(3);
+          cylAt(nutBase.clone().addScaledVector(dir, d.nut_m / 2), nutR, nutR, d.nut_m, 6);
+        }
+      }
+    },
+    init(active, h) {
+      active.boltedDirection = [0, 0, -1];
+      active.boltedEditId = active.boltedEditId || null;
+      active.previewData = null;
+      const box = active.form.querySelector(".bolted-existing");
+      const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const titleEl = active.form.querySelector(".feature-dialog-title");
+
+      const loadConn = (c) => {
+        if (!c) return;
+        active.boltedEditId = c.id;
+        titleEl.textContent = `Edit ${c.name || c.id}`;
+        const pl = c.placement || c.parameters?.placement || {};
+        const pt = Array.isArray(pl.position) ? pl.position : (Array.isArray(pl.point) ? pl.point : (c.instances?.[0]?.point || [0, 0, 0]));
+        const dir = Array.isArray(pl.direction) ? pl.direction : [0, 0, -1];
+        active.boltedDirection = dir.map((x) => +Number(x).toFixed(6));
+        h.setValue("x", +Number(pt[0] ?? 0).toFixed(3));
+        h.setValue("y", +Number(pt[1] ?? 0).toFixed(3));
+        h.setValue("z", +Number(pt[2] ?? 0).toFixed(3));
+        h.setValue("flip", false);
+        const norm = c.screw_norm || (c.head === "countersunk" ? "ISO 10642" : "ISO 4762");
+        h.setValue("screw_norm", norm);
+        h.setValue("size", c.size || "M6");
+        h.setValue("connection_type", c.type || "through");
+        h.setValue("fit", c.fit || "normal");
+        h.update();
+        const ov = c.parameters?.fasteners?.length_override;
+        h.setValue("length_override", ov ? String(Number(ov)) : "auto");
+        if (c.blind_material) h.setValue("blind_material", c.blind_material);
+        h.setValue("counterbore", !!c.counterbore);
+        h.setValue("washer_head", !!c.washer_head);
+        h.setValue("washer_nut", !!c.washer_nut);
+        renderExisting();
+        h.update();
+      };
+
+      const renderExisting = () => {
+        if (!box) return;
+        const items = boltedCache.existing || [];
+        const newBtn = active.boltedEditId
+          ? `<button type="button" class="btn-text bolted-new-btn">New</button>`
+          : "";
+        if (!items.length) {
+          box.innerHTML = `<div class="bolted-list-head"><span>Existing connections (0)</span>${newBtn}</div>`;
+        } else {
+          const rows = items.map((c) => {
+            const isCur = active.boltedEditId === c.id;
+            const len = c.screw_length ? ` × ${c.screw_length}` : "";
+            return `<div class="bolted-item${isCur ? " active" : ""}">
+              <span class="bolted-item-label" title="${esc(c.id)}">${esc(c.name || c.id)} · ${esc(c.size || "")}${esc(len)}</span>
+              <span class="bolted-item-actions">
+                <button type="button" class="btn-text" data-bolted-edit="${esc(c.id)}">Edit</button>
+                <button type="button" class="btn-text" data-bolted-del="${esc(c.id)}">Delete</button>
+              </span>
+            </div>`;
+          }).join("");
+          box.innerHTML = `<div class="bolted-list-head"><span>Existing connections (${items.length})</span>${newBtn}</div><div class="bolted-list">${rows}</div>`;
+        }
+        box.querySelector(".bolted-new-btn")?.addEventListener("click", () => {
+          active.boltedEditId = null;
+          titleEl.textContent = "Bolted Connection";
+          renderExisting();
+          h.update();
+        });
+        box.querySelectorAll("[data-bolted-edit]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const target = (boltedCache.existing || []).find((x) => x.id === btn.dataset.boltedEdit);
+            if (target) loadConn(target);
+          });
+        });
+        box.querySelectorAll("[data-bolted-del]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const cid = btn.dataset.boltedDel;
+            h.setError("");
+            try {
+              const res = await h.post("api/assembly/bolted/delete", { id: cid });
+              if (active.boltedEditId === cid) {
+                active.boltedEditId = null;
+                titleEl.textContent = "Bolted Connection";
+              }
+              const fresh = await h.get("api/assembly/bolted");
+              boltedCache.existing = fresh.items || [];
+              await h.reload();
+              renderExisting();
+              if (h.statusEl) h.statusEl.textContent = res.done || `Deleted ${cid}`;
+              h.update();
+            } catch (err) {
+              h.setError(firstLine(err.message));
+            }
+          });
+        });
+      };
+
+      h.viewTools.startHoleOrFacePick((pick) => {
+        if (!active) return;
+        const p = pick.planar && !pick.hole ? roundOnPlane(pick.point, pick.normal) : pick.point;
+        const coords = p.toArray().map((c) => +c.toFixed(3));
+        const dir = (pick.direction || pick.normal.clone().negate()).toArray().map((c) => +c.toFixed(6));
+        active.boltedDirection = dir;
+        h.setValue("x", coords[0]);
+        h.setValue("y", coords[1]);
+        h.setValue("z", coords[2]);
+        h.setValue("flip", false);
+        h.log?.("pick_bolted", { point: coords, direction: dir, hole: !!pick.hole });
+        h.update();
+      });
+
+      if (active.boltedEditId) {
+        const target = (boltedCache.existing || []).find((x) => x.id === active.boltedEditId);
+        if (target) loadConn(target);
+      }
+      renderExisting();
+    },
+  },
+};
+
+// Constrain dialog (Inventor's Constrain; SolidCraft assembly.constraint.create/edit, POST /api/assembly/constraint).
+// Built on the Joint dialog: two components, a face picked on each (a round face is an axis), the rule and its
+// gap or angle. As in SolidCraft's dialogs_constrain.rs (compared 2026-11-15) the rule changes in place but the
+// references stay: to pick other faces, delete the constraint and add a new one. Deviation: SolidCraft offers only
+// the rules that fit the picked references and keeps the dialog open for the next rule; here all ten are listed
+// and SolidCraft's refusal explains a misfit. point_on_axis needs a point pick this dialog does not make; it stays
+// with the MCP tool add_constraint.
+const CONSTRAINT_TYPES = [
+  ["mate", "Mate (faces against each other)"],
+  ["flush", "Flush (faces the same way)"],
+  ["distance", "Distance"],
+  ["concentric", "Concentric (round faces)"],
+  ["insert", "Insert (round edges)"],
+  ["parallel", "Parallel"],
+  ["perpendicular", "Perpendicular"],
+  ["angle", "Angle"],
+  ["tangent", "Tangent (round face on a plane)"],
+];
+const GAP_RULES = new Set(["mate", "flush", "distance"]);
+DIALOGS.constrain = {
+  ...DIALOGS.joint,
+  title: "Constrain",
+  endpoint: (dlg) => (dlg?.edit ? "api/assembly/constraint/edit" : "api/assembly/constraint"),
+  fields: [
+    { key: "type", label: "Rule", type: "select", value: "mate", options: CONSTRAINT_TYPES },
+    ...DIALOGS.joint.fields.filter((f) => ["comp_a", "origin_a", "comp_b", "origin_b", "name", "flip"].includes(f.key)),
+    { key: "offset", label: "Offset", unit: "mm", value: "0", show: (v) => GAP_RULES.has(v.type) },
+    { key: "angle", label: "Angle", unit: "°", value: "30", show: (v) => v.type === "angle" },
+  ],
+  loadEdit(edit, active, setValue) {
+    DIALOGS.joint.loadEdit(edit, active, setValue);
+    setValue("type", edit.constraint || "mate");
+    setValue("flip", false);  // the joint's flip counts differently; Flip on edit turns b over from how it faces now
+  },
+  status(v, pk, active) {
+    const base = DIALOGS.joint.status(v, pk, active);
+    if (active?.edit && (active.jointA || active.jointB)) return "A constraint keeps its faces: delete it and add a new one to pick others";
+    return base.replace(/^Ready: \S+/, `Ready: ${v.type}`).replace("before creating a joint", "before adding a constraint");
+  },
+  ready(v, pk, active) {
+    if (active?.edit && (active.jointA || active.jointB)) return false;
+    return DIALOGS.joint.ready(v, pk, active);
+  },
+  params(v, _pk, active) {
+    const strip = (s) => {
+      const out = { occurrence: s.occurrence };
+      for (const k of ["face", "circle", "point", "plane", "axis"]) if (s[k] !== undefined) out[k] = s[k];
+      return out;
+    };
+    const req = { type: v.type };
+    if (v.flip) req.flip = true;
+    if (v.name) req.name = v.name;
+    if (active?.edit) req.constraint = active.edit;
+    else {
+      if (active?.jointA) req.a = strip(active.jointA);
+      if (active?.jointB) req.b = strip(active.jointB);
+    }
+    if (GAP_RULES.has(v.type) && v.offset !== null && v.offset !== "") req.offset = v.offset;
+    if (v.type === "angle" && v.angle !== null && v.angle !== "") req.angle = v.angle;
+    return req;
+  },
 };
 
 // A value field holds a number or an expression with parameters ("t/2"); numbers go as numbers
@@ -808,6 +1627,14 @@ function fieldValue(text) {
 // The first line of a SolidCraft error: Mechvane's explanation and hint, without the raw reply under it
 function firstLine(msg) {
   return String(msg || "").split("\n")[0];
+}
+
+// What a dialog shows for a refused step: the place when the server found one (edge, what is in the way,
+// the size that fits), else the explanation or SolidCraft's words, with what the step was aimed at
+function errorText(err) {
+  const where = err.where || "";
+  if (where && (err.location || {}).kind !== "picks") return where;
+  return [err.explanation || firstLine(err.message), where].filter(Boolean).join(" ");
 }
 
 // The mesh edge a stored edge point lies on (a feature keeps its edges as points), or null
@@ -842,7 +1669,8 @@ function distanceToLineEdge(point, edge) {
 
 export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl, statusEl, post, get,
                                      showPreview, clearPreview, reload, showModel, restoreModel,
-                                     lookAlong = () => {}, log = () => {} }) {
+                                     lookAlong = () => {}, originAxisAt = () => null, revealOriginAxes = () => {},
+                                     log = () => {} }) {
   const pickGroup = new THREE.Group();
   scene.add(pickGroup);
   const emptyHtml = propertiesEl.innerHTML;
@@ -928,7 +1756,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     for (const f of active.def.fields) {
       const el = input(f.key);
       if (f.type === "check") out[f.key] = el.checked;
-      else if (f.type === "select") out[f.key] = el.value;
+      else if (f.type === "select" || f.type === "pick") out[f.key] = el.value || "";
+      else if (f.type === "text") out[f.key] = el.value.trim();
       else out[f.key] = fieldValue(el.value);
     }
     return out;
@@ -939,7 +1768,10 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const f = active.def.fields.find((x) => x.key === key);
     if (!el || !f || value === undefined || value === null) return;
     if (f.type === "check") el.checked = !!value;
-    else {
+    else if (f.type === "pick") {
+      el.textContent = String(value);
+      el.value = String(value);
+    } else {
       if (f.type === "select" && typeof f.options === "function") fillOptions(el, f, { ...values(), [key]: value });
       el.value = String(value);
     }
@@ -960,12 +1792,14 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   function refreshFields() {
     const v = values();
     for (const f of active.def.fields) {
-      if (f.type === "select" && typeof f.options === "function" && f.options.length) fillOptions(input(f.key), f, v);
-      const row = input(f.key).closest(".feature-field");
-      row.hidden = f.show ? !f.show(v) : false;
-      if (f.readonly) input(f.key).readOnly = f.readonly(v);
+      const el = input(f.key);
+      if (f.type === "select" && typeof f.options === "function" && f.options.length) fillOptions(el, f, v);
+      if (f.type === "pick") el.classList.toggle("active", active.slot === f.key);
+      const row = el.closest(".feature-field");
+      row.hidden = f.show ? !f.show(v, active) : false;
+      if (f.readonly) el.readOnly = f.readonly(v, active);
     }
-    active.noteEl.textContent = active.def.sourceNote ? active.def.sourceNote(v) : "";
+    active.noteEl.textContent = active.def.sourceNote ? active.def.sourceNote(v, active) : "";
   }
 
   function setError(msg) {
@@ -1002,8 +1836,8 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     if (def.view === "edges" && !active.edges.size) return false;
     if (def.ready && !def.ready(v, p, active)) return false;
     if (def.noFieldCheck) return true; // the sketch: shapes already added count, the fields may be empty
-    return def.fields.every((f) => f.type === "check" || f.type === "select" || (f.show && !f.show(v))
-      || v[f.key] !== null);
+    return def.fields.every((f) => f.type === "check" || f.type === "select" || f.type === "pick" || f.type === "text"
+      || (f.show && !f.show(v, active)) || v[f.key] !== null);
   }
 
   function update() {
@@ -1019,7 +1853,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       active.clearBtn.hidden = n === 0;
     } else {
       text = text || def.hint;
-      active.clearBtn.hidden = active.edges.size === 0;
+      active.clearBtn.hidden = def.hasClear ? !def.hasClear(active) : (active.edges.size === 0 || !!v.centre_fixed);
     }
     active.countEl.textContent = text;
     if (def.view === "sketch" && !active.frame && !(def.status && def.status(v, p))) {
@@ -1073,18 +1907,35 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     const seq = ++dlg.seq;
     const slow = setTimeout(() => { if (active === dlg) dlg.deltaEl.textContent = "Computing preview…"; }, 250);
     try {
-      const req = request(true);
-      const res = await post("api/feature", req);
-      if (active !== dlg || dlg.stale || seq !== dlg.seq) return; // closed, or the values changed meanwhile
-      setError("");
-      showPreview(res.mesh);
-      dlg.deltaEl.textContent = describeDelta(res.delta);
+      let res;
+      if (dlg.def.previewEndpoint) {
+        const req = dlg.def.previewParams ? dlg.def.previewParams(values(), picks(), dlg) : dlg.def.params(values(), picks(), dlg);
+        res = await post(dlg.def.previewEndpoint, req);
+        if (active !== dlg || dlg.stale || seq !== dlg.seq) return;
+        setError("");
+        dlg.previewData = res;
+        if (res.mesh) showPreview(res.mesh);
+        else clearPreview();
+        drawPicks();
+        dlg.deltaEl.textContent = dlg.def.describePreview ? dlg.def.describePreview(res, dlg) : "";
+      } else {
+        const req = request(true);
+        res = await post("api/feature", req);
+        if (active !== dlg || dlg.stale || seq !== dlg.seq) return; // closed, or the values changed meanwhile
+        setError("");
+        showPreview(res.mesh);
+        dlg.deltaEl.textContent = describeDelta(res.delta);
+      }
     } catch (err) {
       if (active !== dlg || dlg.stale || seq !== dlg.seq) return;
       log("dialog_preview_error", { dialog: dlg.kind, values: values(), error: firstLine(err.message) });
+      if (dlg.def.previewEndpoint) {
+        dlg.previewData = null;
+        drawPicks();
+      }
       clearPreview();
       dlg.deltaEl.textContent = "";
-      setError(err.explanation || firstLine(err.message));
+      setError(errorText(err));
     } finally {
       clearTimeout(slow);
       dlg.inflight = false;
@@ -1099,9 +1950,11 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     active.okBtn.disabled = true;
     const dlg = active;
     try {
-      const req = request(false);
-      log("dialog_ok", { dialog: dlg.kind, edit: dlg.edit, values: values(), request: req });
-      const res = await post("api/feature", req);
+      const customEp = typeof dlg.def.endpoint === "function" ? dlg.def.endpoint(dlg) : dlg.def.endpoint;
+      const endpoint = customEp || "api/feature";
+      const req = customEp ? dlg.def.params(values(), picks(), dlg) : request(false);
+      log("dialog_ok", { dialog: dlg.kind, edit: dlg.edit || dlg.boltedEditId, values: values(), request: req });
+      const res = await post(endpoint, req);
       const def = dlg.def;
       close();
       await reload();
@@ -1111,7 +1964,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       log("dialog_ok_error", { dialog: dlg.kind, error: firstLine(err.message) });
       dlg.busy = false;
       if (active === dlg) {
-        setError(err.explanation || firstLine(err.message));
+        setError(errorText(err));
         update();
       }
     }
@@ -1123,13 +1976,14 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     clearTimeout(active.timer);
     const wasEdit = active.edit, wasSketch = active.def.view === "sketch";
     active = null;
+    revealOriginAxes(false);
     if (wasEdit) restoreModel();
     if (wasSketch) lookAlong(null); // back to the usual view, as Inventor does after Finish Sketch
     viewTools.stopEdgePick();
     clearPreview();
     drawPicks();
     propertiesEl.innerHTML = emptyHtml;
-    document.querySelectorAll("[data-feature]").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll("[data-feature], [data-assembly]").forEach((b) => b.classList.remove("active"));
   }
 
   function fieldHtml(f) {
@@ -1139,18 +1993,39 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       control = `<select name="${f.key}">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>`;
     } else if (f.type === "check") {
       control = `<input type="checkbox" name="${f.key}">`;
+    } else if (f.type === "pick") {
+      control = `<button type="button" class="feature-slot" name="${f.key}" data-slot="${f.key}"></button>`;
     } else {
       // no inputmode="decimal": some touch keyboards then hide the minus sign, and fields take expressions (t/2)
-      control = `<input name="${f.key}" spellcheck="false" autocapitalize="off" autocomplete="off">`;
+      const ph = f.placeholder ? ` placeholder="${f.placeholder}"` : "";
+      control = `<input name="${f.key}"${ph} spellcheck="false" autocapitalize="off" autocomplete="off">`;
     }
     return `<label class="feature-field${f.type === "check" ? " feature-check" : ""}"><span>${f.label}</span>${control}`
       + `<span class="feature-unit">${f.unit || ""}</span></label>`;
   }
 
+  function renderFieldsHtml(fields) {
+    let html = "";
+    for (let i = 0; i < fields.length;) {
+      const grp = fields[i].group;
+      if (grp) {
+        const chunk = [];
+        while (i < fields.length && fields[i].group === grp) chunk.push(fields[i++]);
+        html += `<div class="feature-position">${chunk.map(fieldHtml).join("")}</div>`;
+      } else {
+        html += fieldHtml(fields[i++]);
+      }
+    }
+    return html;
+  }
+
   async function open(kind, edit = null) {
     const def = DIALOGS[kind];
     if (!def) return;
-    if (active && active.kind === kind && !edit && !active.edit) return close();
+    // any edit object but a bolted connection's (feature definitions, joints with loadEdit) edits in place
+    const isFeatureEdit = Boolean(edit && !edit.boltedEditId);
+    const boltedEditId = edit?.boltedEditId || null;
+    if (active && active.kind === kind && !isFeatureEdit && !boltedEditId && !active.edit && !active.boltedEditId) return close();
     close();
     if (def.needs) {
       try {
@@ -1160,8 +2035,6 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         return;
       }
     }
-    const position = def.fields.filter((f) => f.group === "position");
-    const rest = def.fields.filter((f) => f.group !== "position");
     propertiesEl.innerHTML = `
       <form class="feature-dialog" autocomplete="off">
         <div class="feature-dialog-title"></div>
@@ -1169,8 +2042,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
           <span class="feature-pick-count"></span>
           <button type="button" class="btn-text feature-clear" hidden>Clear</button>
         </div>
-        ${position.length ? `<div class="feature-position">${position.map(fieldHtml).join("")}</div>` : ""}
-        ${rest.map(fieldHtml).join("")}
+        ${renderFieldsHtml(def.fields)}
         <div class="feature-note"></div>
         <div class="feature-delta"></div>
         <div class="feature-error" hidden></div>
@@ -1180,11 +2052,12 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         </div>
       </form>`;
     const form = propertiesEl.querySelector("form");
-    form.querySelector(".feature-dialog-title").textContent = edit ? `Edit ${edit.name}` : def.title;
-    log("dialog_open", { dialog: kind, edit: edit ? edit.name : null });
+    form.querySelector(".feature-dialog-title").textContent = isFeatureEdit ? `Edit ${edit.name}` : def.title;
+    log("dialog_open", { dialog: kind, edit: isFeatureEdit ? edit.name : boltedEditId });
     active = {
       kind, def, form, edges: new Map(), point: null, edge1: null, face: null, features: [],
-      timer: null, seq: 0, busy: false, edit: edit ? edit.name : null,
+      timer: null, seq: 0, busy: false, edit: isFeatureEdit ? edit.name : null,
+      boltedEditId, previewData: null,
       countEl: form.querySelector(".feature-pick-count"),
       clearBtn: form.querySelector(".feature-clear"),
       okBtn: form.querySelector(".feature-ok"),
@@ -1210,26 +2083,39 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
       };
       el.addEventListener(el.tagName === "SELECT" || el.type === "checkbox" ? "change" : "input", handler);
     });
+    form.querySelectorAll(".feature-slot").forEach((el) => {
+      el.addEventListener("click", () => active?.setSlot?.(el.dataset.slot));
+    });
 
-    if (edit) {
-      const from = def.fromDefinition(edit.definition, edit.feature_names || {});
-      for (const [k, v] of Object.entries(from.values || {})) setValue(k, v);
-      for (const point of from.edges || []) {
-        const edge = edgeAt(edit.before, point);
-        active.edges.set(edge ? edgeKey(edge) : `point|${point.join(",")}`, { point, edge });
+    if (isFeatureEdit) {
+      if (def.loadEdit) {
+        def.loadEdit(edit, active, setValue);
+      } else {
+        const from = def.fromDefinition(edit.definition, edit.feature_names || {});
+        for (const [k, v] of Object.entries(from.values || {})) setValue(k, v);
+        for (const point of from.edges || []) {
+          const edge = edgeAt(edit.before, point);
+          active.edges.set(edge ? edgeKey(edge) : `point|${point.join(",")}`, { point, edge });
+        }
+        if (from.direction) active.point = { direction: from.direction };
+        if (from.features) active.features = from.features;
+        if (from.edge1) {
+          const edge = from.edge1.point ? edgeAt(edit.before, from.edge1.point) : null;
+          active.edge1 = edge ? { ...from.edge1, edge } : from.edge1;
+        }
+        if (from.face) active.face = from.face;
+        if (from.profile !== undefined) active.fromProfile = from.profile;
+        if (from.axis !== undefined) active.axis = from.axis;
       }
-      if (from.direction) active.point = { direction: from.direction };
-      if (from.features) active.features = from.features;
-      if (from.edge1) active.edge1 = from.edge1;
-      if (from.face) active.face = from.face;
     } else {
-      document.querySelectorAll(`[data-feature="${kind}"]`).forEach((b) => b.classList.add("active"));
+      document.querySelectorAll(`[data-feature="${kind}"], [data-assembly="${kind}"]`).forEach((b) => b.classList.add("active"));
     }
     const box = new THREE.Box3().setFromObject(scene);
     markerSize = Math.max(box.isEmpty() ? 1 : box.getSize(new THREE.Vector3()).length() / 250, 0.05);
+    active.markerSize = markerSize;
 
     if (def.init) {
-      await def.init(active, { get, setValue, values, update, setError, viewTools, lookAlong, log });
+      await def.init(active, { get, post, reload, statusEl, setValue, values, update, setError, viewTools, lookAlong, originAxisAt, revealOriginAxes, log });
     } else if (def.view === "edges") {
       viewTools.startEdgePick((pick) => {
         if (!active) return;
@@ -1282,11 +2168,121 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     statusEl.textContent = "Ready";
   }
 
-  async function remove(name) {
+  async function editJoint(name) {
     close();
+    statusEl.textContent = `Opening ${name}…`;
+    try {
+      jointContext = await get("api/assembly/context");
+    } catch (err) {
+      statusEl.textContent = err.message;
+      return;
+    }
+    const found = (jointContext.joints || []).find((j) => j.name === name);
+    if (!found) {
+      statusEl.textContent = `Joint ${name} not found`;
+      return;
+    }
+    await open(found.constraint ? "constrain" : "joint", found);
+    statusEl.textContent = "Ready";
+  }
+
+  // Delete confirmation dialog, Inventor style:
+  // When deleting a feature that consumes a sketch, ask "Delete the sketch too?" with a preselected
+  // "Delete consumed sketch" checkbox. If unchecked, keep_sketch=true is sent.
+  // Deviation from SolidCraft: SolidCraft's ui-egui timeline.delete only confirms cascading deletes
+  // via a binary ConfirmDelete dialog ("Also deletes", "Will fail"). Mechvane follows Inventor
+  // (GUID-983D8293): features with consumed sketches ask "Delete the sketch too?" with a pre-selected
+  // checkbox "Delete consumed sketch", allowing the user to preserve their constrained sketches.
+  function ensureDeleteDialog() {
+    let dialog = document.getElementById("delete-feature-dialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "delete-feature-dialog";
+    dialog.className = "request-dialog delete-feature-dialog";
+    dialog.innerHTML = `
+      <form method="dialog" class="request-form">
+        <div class="request-dialog-header">
+          <h3 id="delete-feature-dialog-title">Delete Features</h3>
+          <button type="button" class="request-dialog-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="request-dialog-body">
+          <p id="delete-feature-prompt" style="margin: 0 0 12px 0;">Delete the sketch too?</p>
+          <div class="request-checkbox-row">
+            <label>
+              <input type="checkbox" id="delete-consumed-sketch" checked>
+              Delete consumed sketch
+            </label>
+          </div>
+          <div id="delete-feature-error" class="new-part-error" role="alert" hidden></div>
+        </div>
+        <div class="request-dialog-footer">
+          <button type="button" class="btn-cancel">Cancel</button>
+          <button type="submit" class="btn-submit" id="delete-feature-submit">Delete</button>
+        </div>
+      </form>
+    `;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".request-dialog-close").addEventListener("click", () => dialog.close());
+    dialog.querySelector(".btn-cancel").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+    return dialog;
+  }
+
+  function promptDeleteWithSketch(name) {
+    return new Promise((resolve) => {
+      const dialog = ensureDeleteDialog();
+      const checkbox = dialog.querySelector("#delete-consumed-sketch");
+      checkbox.checked = true; // Preselected as in Inventor (vorausgewählt)
+      const form = dialog.querySelector("form");
+      let resolved = false;
+
+      const finish = (result) => {
+        if (resolved) return;
+        resolved = true;
+        form.removeEventListener("submit", onSubmit);
+        dialog.removeEventListener("close", onClose);
+        resolve(result);
+      };
+
+      const onSubmit = (e) => {
+        e.preventDefault();
+        const keepSketch = !checkbox.checked;
+        dialog.close();
+        finish({ confirmed: true, keepSketch });
+      };
+
+      const onClose = () => {
+        finish({ confirmed: false });
+      };
+
+      form.addEventListener("submit", onSubmit);
+      dialog.addEventListener("close", onClose, { once: true });
+      dialog.showModal();
+    });
+  }
+
+  function consumesSketch(name) {
+    const row = document.querySelector(`.tree-row[data-feature="${CSS.escape(name)}"]`);
+    if (!row) return false;
+    if (row.dataset.consumesSketch === "true") return true;
+    const item = row.closest(".tree-item");
+    return Boolean(item?.querySelector(":scope > .tree-children .tree-row[data-type='Sketch']"));
+  }
+
+  async function remove(name, keepSketch = undefined) {
+    close();
+    if (keepSketch === undefined) {
+      if (consumesSketch(name)) {
+        const res = await promptDeleteWithSketch(name);
+        if (!res.confirmed) return;
+        keepSketch = res.keepSketch;
+      } else {
+        keepSketch = false;
+      }
+    }
     statusEl.textContent = `Deleting ${name}…`;
     try {
-      const res = await post("api/feature/delete", { name });
+      const res = await post("api/feature/delete", { name, keep_sketch: !!keepSketch });
       const failing = Object.keys(res.failing || {});
       await reload();
       statusEl.textContent = failing.length
@@ -1297,10 +2293,43 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     }
   }
 
+  async function rename(feature, newName) {
+    close();
+    statusEl.textContent = `Renaming ${feature}…`;
+    try {
+      const res = await post("api/feature/rename", { feature, name: newName });
+      await reload();
+      statusEl.textContent = res.done || `Renamed ${feature} to ${newName}`;
+      return true;
+    } catch (err) {
+      statusEl.textContent = `Rename: ${err.message}`;
+      return false;
+    }
+  }
+
+  async function renameJoint(joint, newName) {
+    close();
+    statusEl.textContent = `Renaming ${joint}…`;
+    try {
+      const res = await post("api/assembly/joint/edit", { joint, name: newName });
+      await reload();
+      statusEl.textContent = res.done || `Renamed ${joint} to ${newName}`;
+      return true;
+    } catch (err) {
+      statusEl.textContent = `Rename: ${err.message}`;
+      return false;
+    }
+  }
+
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && active) {
       e.preventDefault();
       close();
+    } else if (e.key === "Tab" && active?.setSlot && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const slots = active.def.slots?.length ? active.def.slots : ["profile", "axis"];
+      const next = slots[(slots.indexOf(active.slot) + 1) % slots.length];
+      active.setSlot(next);
     }
   });
 
@@ -1315,12 +2344,20 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     return true;
   }
 
+  function pickOrigin(name) {
+    return active?.pickOrigin ? active.pickOrigin(name) : false;
+  }
+
   const api = {
     open,
     close,
     edit,
+    editJoint,
     remove,
+    rename,
+    renameJoint,
     pickFeature,
+    pickOrigin,
     picksFeatures: () => !!(active && active.def.features),
     // The model was reloaded under an open dialog (agent, undo): the picked edges may be gone
     modelChanged() {
@@ -1329,6 +2366,11 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
         active.edges.clear();
         active.edge1 = null;
         active.face = null;
+        if (active.axis?.type === "edge") active.axis = null;
+        if (active.kind === "joint") {
+          active.jointA = null;
+          active.jointB = null;
+        }
         update();
       }
       if (active) markTree();
@@ -1336,4 +2378,104 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     isOpen: () => !!active,
   };
   return api;
+}
+
+function ensureUpdateLinksDialog() {
+  let dialog = document.getElementById("update-links-dialog");
+  if (dialog) return dialog;
+  dialog = document.createElement("dialog");
+  dialog.id = "update-links-dialog";
+  dialog.className = "request-dialog";
+  dialog.innerHTML = `
+    <div class="request-form">
+      <div class="request-dialog-header">
+        <h3>Update Links</h3>
+        <button type="button" class="request-dialog-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="request-dialog-body">
+        <div id="update-links-summary"></div>
+        <div id="update-links-details" class="request-dialog-note"></div>
+        <div id="update-links-error" class="new-part-error" role="alert" hidden></div>
+      </div>
+      <div class="request-dialog-footer">
+        <button type="button" class="btn-submit" id="update-links-repair">Repair</button>
+        <button type="button" class="btn-cancel" id="update-links-close">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  dialog.querySelector(".request-dialog-close").addEventListener("click", () => dialog.close());
+  dialog.querySelector("#update-links-close").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  return dialog;
+}
+
+function formatUpdateLinksHtml(data) {
+  const checked = data.checked_joints || [];
+  const count = data.joint_count ?? checked.length;
+  const moved = data.moved_joints || [];
+  const repaired = data.repaired || [];
+  const updated = data.update?.updated || [];
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const lines = [];
+  lines.push(`<p><strong>${count} joint${count === 1 ? "" : "s"} checked.</strong>`
+    + (moved.length ? ` Moved: <strong>${moved.map(esc).join(", ")}</strong>.` : "") + `</p>`);
+  if (updated.length) {
+    lines.push(`<p>Updated components: ${updated.map(esc).join(", ")}.</p>`);
+  }
+  if (repaired.length) {
+    const items = repaired.map((r) => `${esc(r.joint)} (${esc(r.status)}${r.error ? `: ${esc(r.error)}` : ""})`);
+    lines.push(`<p>Repair result: ${items.join(", ")}.</p>`);
+  }
+  const warnings = data.warnings || [];
+  if (warnings.length) {
+    lines.push("<ul>" + warnings.map((w) => {
+      if (w.status === "link_blocked") {
+        // SolidCraft refused to read this part again: its old bodies stay in the assembly
+        return `<li>Part ${esc(w.component || "?")} not updated${w.feature ? `: feature ${esc(w.feature)} fails` : ""}. Fix the part, then Update Links again.</li>`;
+      }
+      const target = w.joint ? `Joint ${esc(w.joint)} (${esc(w.side || "?")})` : `Bolted ${esc(w.connection || "?")}`;
+      return `<li>${target}: ${esc(w.status)}${w.now_on ? ` (now on ${esc(w.now_on)})` : ""}</li>`;
+    }).join("") + "</ul>");
+  }
+  return {
+    summary: lines.join(""),
+    details: data.message || data.done || "",
+  };
+}
+
+/** Run POST /api/assembly/update_links and show the result dialog with a Repair button (repair=true). */
+export async function runUpdateLinks({ post, reload, statusEl, log = () => {} }) {
+  const dialog = ensureUpdateLinksDialog();
+  const summaryEl = dialog.querySelector("#update-links-summary");
+  const detailsEl = dialog.querySelector("#update-links-details");
+  const errorEl = dialog.querySelector("#update-links-error");
+  const repairBtn = dialog.querySelector("#update-links-repair");
+
+  async function execute(repair) {
+    errorEl.hidden = true;
+    repairBtn.disabled = true;
+    statusEl.textContent = repair ? "Repairing joints…" : "Updating links…";
+    try {
+      const res = await post("api/assembly/update_links", { repair: !!repair });
+      log("assembly_update_links", { repair: !!repair, joint_count: res.joint_count, moved: res.moved_joints });
+      const formatted = formatUpdateLinksHtml(res);
+      summaryEl.innerHTML = formatted.summary;
+      detailsEl.textContent = formatted.details;
+      await reload();
+      statusEl.textContent = res.message || res.done || "Links updated";
+      if (!dialog.open) dialog.showModal();
+    } catch (err) {
+      errorEl.textContent = err.message || "Update links failed";
+      errorEl.hidden = false;
+      statusEl.textContent = errorEl.textContent;
+      if (!dialog.open) dialog.showModal();
+    } finally {
+      repairBtn.disabled = false;
+    }
+  }
+
+  repairBtn.onclick = () => execute(true);
+  await execute(false);
 }

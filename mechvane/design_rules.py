@@ -2,8 +2,14 @@
 depth, and FDM printability. Operates via the SolidCraft session."""
 
 import math
+import re
+import warnings
 
 from . import geometry as g, hole_tables
+try:
+    from . import katalog
+except ImportError:
+    katalog = None
 
 PROFILES = {
     "fdm_0.4": {
@@ -14,6 +20,8 @@ PROFILES = {
         "min_hole_diameter": 2.0,         # mm
         "max_overhang_angle": 45.0,       # degrees from vertical
         "build_direction": [0, 0, 1],     # unit vector (+Z)
+        "check_horizontal_holes": True,   # threshold loaded from katalog
+        "check_heat_set_inserts": True,
     },
     "cnc_alu": {
         "name": "CNC Fräsen (Aluminium)",
@@ -22,6 +30,9 @@ PROFILES = {
         "thread_depth_factor": 1.5,       # >= 1.5 * d thread engagement depth
         "min_hole_diameter": 1.0,         # mm
         "max_overhang_angle": None,       # no overhang constraint
+        "check_pocket_corner_radius": True,  # threshold loaded from katalog
+        "check_hole_depth_ratio": True,      # threshold loaded from katalog
+        "check_undercuts": True,
     },
 }
 
@@ -89,7 +100,123 @@ def match_iso_tap_drill(diameter: float) -> tuple[float, float, float] | None:
     return None
 
 
+_KATALOG_RULES_CACHE = None
+
+
+def _load_katalog_verfahrensregeln() -> dict:
+    """Load manufacturing rules and parameters from the knowledge catalog (katalog/)."""
+    # Fallback defaults in case katalog module or catalog files are unavailable (e.g. Pyodide in browser)
+    max_hh = 6.0
+    src_hh = "https://www.hubs.com/knowledge-base/how-design-parts-fdm-3d-printing/"
+    ruthex_specs = {
+        "M2":   {"d_hole": 3.2, "min_depth": 5.0, "L": 4.0, "code": "RX-M2x4"},
+        "M2.5": {"d_hole": 4.0, "min_depth": 6.7, "L": 5.7, "code": "RX-M2.5x5.7"},
+        "M3":   {"d_hole": 4.0, "min_depth": 6.7, "L": 5.7, "code": "RX-M3x5.7"},
+        "M4":   {"d_hole": 5.6, "min_depth": 9.1, "L": 8.1, "code": "RX-M4x8.1"},
+        "M5":   {"d_hole": 6.4, "min_depth": 10.5, "L": 9.5, "code": "RX-M5x9.5"},
+        "M6":   {"d_hole": 8.0, "min_depth": 13.7, "L": 12.7, "code": "RX-M6x12.7"},
+        "M8":   {"d_hole": 10.0, "min_depth": 13.7, "L": 12.7, "code": "RX-M8x12.7"},
+    }
+    src_ruthex = "https://www.ruthex.de/products/ruthex-gewindeeinsatz-m3-100-stuck-rx-m3x5-7-messing-gewindebuchsen"
+    min_corner_r = 1.5
+    src_pcr = "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/"
+    max_hdr = 10.0
+    src_hdr = "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/"
+    src_uc = "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/"
+
+    if katalog is not None:
+        try:
+            entries = katalog.load()
+            # 1. Horizontal hole max diameter (FDM)
+            e_hh = katalog.get_entry("fdm_liegende_bohrungen_tropfenform", eintraege=entries)
+            if e_hh:
+                for w in e_hh.get("werte", []):
+                    if "grenzdurchmesser" in w.get("name", "").lower():
+                        max_hh = float(w["wert"])
+                        break
+                if e_hh.get("quellen"):
+                    src_hh = e_hh["quellen"][0].get("url", src_hh)
+
+            # 2. Ruthex heat-set insert specs (FDM)
+            e_ruthex = katalog.get_entry("gewindeeinsaetze_3ddruck_ruthex", eintraege=entries)
+            if e_ruthex:
+                if e_ruthex.get("quellen"):
+                    src_ruthex = e_ruthex["quellen"][0].get("url", src_ruthex)
+                werte_map = {w.get("name", ""): w.get("wert") for w in e_ruthex.get("werte", []) if isinstance(w, dict)}
+                parsed_specs = {}
+                for size in e_ruthex.get("geltungsbereich", {}).get("groesse", []):
+                    d_hole = werte_map.get(f"{size} Vorlochbohrung")
+                    min_depth = werte_map.get(f"{size} Mindestbohrungstiefe")
+                    L = None
+                    code = None
+                    for k, v in werte_map.items():
+                        if k.startswith(f"{size} Länge") and "short" not in k.lower():
+                            L = v
+                            parts = k.split()
+                            if len(parts) >= 3 and parts[2].startswith("RX-"):
+                                code = parts[2]
+                            break
+                    if d_hole is not None and min_depth is not None:
+                        parsed_specs[size] = {
+                            "d_hole": float(d_hole),
+                            "min_depth": float(min_depth),
+                            "L": float(L) if L is not None else float(min_depth - 1.0),
+                            "code": code or f"RX-{size}",
+                        }
+                if parsed_specs:
+                    ruthex_specs = parsed_specs
+
+            # 3. Pocket corner radius (CNC)
+            e_pcr = katalog.get_entry("innenradius_vertikale_kanten_hubs", eintraege=entries)
+            if e_pcr:
+                for w in e_pcr.get("werte", []):
+                    if "mindest-eckenradius" in w.get("name", "").lower() or "mindest-innenradius standard" in w.get("name", "").lower():
+                        min_corner_r = float(w["wert"])
+                        break
+                if e_pcr.get("quellen"):
+                    src_pcr = e_pcr["quellen"][0].get("url", src_pcr)
+
+            # 4. Hole depth ratio (CNC)
+            e_hdr = katalog.get_entry("bohrungstiefe_fraesen_hubs", eintraege=entries)
+            if e_hdr:
+                for w in e_hdr.get("werte", []):
+                    if "typisch machbare" in w.get("name", "").lower():
+                        max_hdr = float(w["wert"])
+                        break
+                if e_hdr.get("quellen"):
+                    src_hdr = e_hdr["quellen"][0].get("url", src_hdr)
+
+            # 5. Undercuts (CNC)
+            e_uc = katalog.get_entry("hinterschnitte_fraesen_hubs", eintraege=entries)
+            if e_uc and e_uc.get("quellen"):
+                src_uc = e_uc["quellen"][0].get("url", src_uc)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            warnings.warn(f"Failed to load design rules from katalog: {exc}", stacklevel=2)
+
+    return {
+        "max_horizontal_hole_diameter": max_hh,
+        "src_horizontal_hole": src_hh,
+        "ruthex_specs": ruthex_specs,
+        "src_ruthex": src_ruthex,
+        "min_pocket_corner_radius": min_corner_r,
+        "src_pocket_corner_radius": src_pcr,
+        "max_hole_depth_factor": max_hdr,
+        "src_hole_depth_ratio": src_hdr,
+        "src_undercut": src_uc,
+    }
+
+
+def get_katalog_verfahrensregeln(reload: bool = False) -> dict:
+    global _KATALOG_RULES_CACHE
+    if _KATALOG_RULES_CACHE is None or reload:
+        _KATALOG_RULES_CACHE = _load_katalog_verfahrensregeln()
+    return _KATALOG_RULES_CACHE
+
+
 def _get_cfg(profile: str | dict, build_direction: str | list[float] | None = None) -> dict:
+    kt = get_katalog_verfahrensregeln()
     if isinstance(profile, str):
         if profile not in PROFILES:
             raise ValueError(f"unknown profile {profile!r}, available: {', '.join(PROFILES)}")
@@ -99,6 +226,12 @@ def _get_cfg(profile: str | dict, build_direction: str | list[float] | None = No
         base.update(profile)
     else:
         raise TypeError(f"profile must be str or dict, got {type(profile).__name__}")
+    if base.get("check_horizontal_holes") and "max_horizontal_hole_diameter" not in base:
+        base["max_horizontal_hole_diameter"] = kt["max_horizontal_hole_diameter"]
+    if base.get("check_pocket_corner_radius") and "min_pocket_corner_radius" not in base:
+        base["min_pocket_corner_radius"] = kt["min_pocket_corner_radius"]
+    if base.get("check_hole_depth_ratio") and "max_hole_depth_factor" not in base:
+        base["max_hole_depth_factor"] = kt["max_hole_depth_factor"]
     if build_direction is not None:
         base["build_direction"] = parse_build_direction(build_direction)
     elif base.get("build_direction") is not None:
@@ -249,6 +382,11 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
         "thread_depth": {"status": "ok", "findings": []},
         "printability": {"status": "ok", "findings": []},
         "countersink_clearance": {"status": "ok", "findings": []},
+        "horizontal_hole": {"status": "ok", "findings": []},
+        "heat_set_insert": {"status": "ok", "findings": []},
+        "pocket_corner_radius": {"status": "ok", "findings": []},
+        "hole_depth_ratio": {"status": "ok", "findings": []},
+        "undercut": {"status": "ok", "findings": []},
     }
 
     # A countersink tool only leaves its flat top face (`csink:base`) when it cut material above
@@ -585,6 +723,251 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
                 "threshold": round(min_hole_d, 4),
             })
 
+    kt_vals = get_katalog_verfahrensregeln()
+
+    # 4. FDM horizontal holes: check for unsupported horizontal-axis holes > max_horizontal_hole_diameter
+    max_horiz_d = cfg.get("max_horizontal_hole_diameter")
+    src_hh = kt_vals["src_horizontal_hole"]
+    if max_horiz_d is not None:
+        d_build = g.unit(cfg.get("build_direction") or [0, 0, 1])
+        for h in holes:
+            if abs(g.dot(h["axis"], d_build)) < 0.1:
+                if h["diameter"] > max_horiz_d + 1e-4:
+                    if rules["horizontal_hole"]["status"] != "fail":
+                        rules["horizontal_hole"]["status"] = "warn"
+                    rules["horizontal_hole"]["findings"].append({
+                        "status": "warn",
+                        "location": {"point": h["representative_point"], "face": h["faces"][0]},
+                        "message": (f"Horizontal hole Ø {h['diameter']:.1f} mm > {max_horiz_d:.1f} mm: "
+                                    "needs support or a teardrop/diamond profile to avoid bridging sag (Hubs FDM guide)"),
+                        "value": round(h["diameter"], 4),
+                        "threshold": round(max_horiz_d, 4),
+                        "source": src_hh,
+                    })
+
+    # 5. FDM heat-set inserts (Ruthex RX series / CNC Kitchen)
+    if cfg.get("check_heat_set_inserts"):
+        RUTHEX_SPECS = kt_vals["ruthex_specs"]
+        src_ruthex = kt_vals["src_ruthex"]
+        for h in holes:
+            if any(":cbore:" in fn for fn in h["faces"]):
+                continue
+            feat = h.get("feature") or {}
+            feat_defn = feat.get("definition", {})
+            if "clearance" in feat_defn:
+                continue
+
+            feat_name = feat.get("name", "")
+
+            # Only check if the hole is explicitly designated as an insert
+            insert_marker = None
+            if feat_defn.get("insert"):
+                insert_marker = feat_defn.get("insert")
+            elif feat_defn.get("hole_type") == "insert":
+                insert_marker = True
+            elif feat_defn.get("use_insert"):
+                insert_marker = True
+            elif feat_defn.get("insert_norm"):
+                insert_marker = feat_defn.get("insert_norm")
+            elif feat.get("insert"):
+                insert_marker = feat.get("insert")
+            elif feat.get("use_insert"):
+                insert_marker = True
+            elif h.get("insert") or h.get("use_insert"):
+                insert_marker = h.get("insert") or True
+            elif re.search(r"(?:^|[_ -])(insert|ruthex|gewindeeinsatz|einschmelz)(?:[_ -]|$)", feat_name, re.IGNORECASE):
+                insert_marker = feat_name
+            elif cfg.get("insert_holes") or cfg.get("inserts"):
+                ins_cfg = cfg.get("insert_holes") or cfg.get("inserts")
+                if isinstance(ins_cfg, (list, tuple, set)):
+                    if feat_name in ins_cfg or any(fn in ins_cfg for fn in h["faces"]):
+                        insert_marker = True
+                elif ins_cfg is True:
+                    insert_marker = True
+
+            if not insert_marker:
+                continue
+
+            # Determine M-size for this insert
+            m_size = None
+            if isinstance(insert_marker, str):
+                m_match = re.search(r"(?:^|[^a-zA-Z0-9])(M\d+(?:\.\d+)?)(?:[^a-zA-Z0-9]|$)", insert_marker, re.IGNORECASE)
+                if m_match and m_match.group(1).upper() in RUTHEX_SPECS:
+                    m_size = m_match.group(1).upper()
+
+            if not m_size:
+                th = h["thread"]
+                thread_spec = th.get("designation") if th else feat_defn.get("thread")
+                if thread_spec and thread_spec.upper().startswith("M"):
+                    m_part = thread_spec.upper().split("X")[0].split("-")[0].strip()
+                    if m_part in RUTHEX_SPECS:
+                        m_size = m_part
+
+            if not m_size:
+                m_match = re.search(r"(?:^|[^a-zA-Z0-9])(M\d+(?:\.\d+)?)(?:[^a-zA-Z0-9]|$)", feat_name, re.IGNORECASE)
+                if m_match and m_match.group(1).upper() in RUTHEX_SPECS:
+                    m_size = m_match.group(1).upper()
+
+            if not m_size:
+                # Try matching by mounting hole diameter in RUTHEX_SPECS
+                for sz, sp in RUTHEX_SPECS.items():
+                    if abs(h["diameter"] - sp["d_hole"]) < 0.2:
+                        m_size = sz
+                        break
+
+            if not m_size:
+                continue
+
+            depth_val = _eval_length(session, feat_defn.get("depth"), default=h["length"])
+            act_depth = min(depth_val, h["length"]) if depth_val else h["length"]
+            spec = RUTHEX_SPECS[m_size]
+
+            if h["diameter"] < spec["d_hole"] - 0.2:
+                rules["heat_set_insert"]["status"] = "fail"
+                rules["heat_set_insert"]["findings"].append({
+                    "status": "fail",
+                    "location": {"point": h["representative_point"], "face": h["faces"][0]},
+                    "message": (f"Hole Ø {h['diameter']:.1f} mm is too small for {m_size} heat-set insert: "
+                                f"ruthex {spec['code']} requires hole Ø {spec['d_hole']:.1f} mm"),
+                    "value": round(h["diameter"], 4),
+                    "threshold": round(spec["d_hole"], 4),
+                    "source": src_ruthex,
+                })
+            elif h["is_blind"] and act_depth < spec["min_depth"] - 1e-4:
+                rules["heat_set_insert"]["status"] = "fail"
+                rules["heat_set_insert"]["findings"].append({
+                    "status": "fail",
+                    "location": {"point": h["representative_point"], "face": h["faces"][0]},
+                    "message": (f"Blind hole depth {act_depth:.1f} mm < {spec['min_depth']:.1f} mm for {m_size} "
+                                f"heat-set insert (ruthex {spec['code']} requires L={spec['L']:.1f} mm + 1 mm clearance)"),
+                    "value": round(act_depth, 4),
+                    "threshold": round(spec["min_depth"], 4),
+                    "source": src_ruthex,
+                })
+
+    # 6. CNC pocket corner radius: check vertical internal/concave pocket corners
+    min_corner_r = cfg.get("min_pocket_corner_radius")
+    src_pcr = kt_vals["src_pocket_corner_radius"]
+    if min_corner_r is not None:
+        tool_dir = g.unit(cfg.get("build_direction") or [0, 0, 1])
+        f_map = {f["name"]: f for f in faces}
+
+        for f in faces:
+            if f.get("cylinder") and g.blend_parts(f.get("name", "")) is not None:
+                axis = f["cylinder"]["axis"]
+                if abs(g.dot(axis, tool_dir)) > 0.9:
+                    touch_names = g.blend_parts(f["name"]) or []
+                    is_concave = False
+                    if len(touch_names) >= 2 and touch_names[0] in f_map and touch_names[1] in f_map:
+                        f1, f2 = f_map[touch_names[0]], f_map[touch_names[1]]
+                        n1, n2 = f1.get("plane_normal"), f2.get("plane_normal")
+                        c1 = f1.get("centroid") or f1.get("point")
+                        c2 = f2.get("centroid") or f2.get("point")
+                        if n1 and n2 and c1 and c2:
+                            if abs(g.dot(n1, tool_dir)) < 0.1 and abs(g.dot(n2, tool_dir)) < 0.1:
+                                p0 = f["cylinder"]["origin"]
+                                d1 = g.dot(g.sub(p0, c1), n1)
+                                d2 = g.dot(g.sub(p0, c2), n2)
+                                if d1 > 0.05 and d2 > 0.05:
+                                    is_concave = True
+                    if not is_concave:
+                        continue
+
+                    r_blend = f["cylinder"]["radius"]
+                    if r_blend < min_corner_r - 1e-4:
+                        rules["pocket_corner_radius"]["status"] = "fail"
+                        rules["pocket_corner_radius"]["findings"].append({
+                            "status": "fail",
+                            "location": {"point": f.get("point") or f.get("centroid"), "face": f["name"]},
+                            "message": (f"Internal pocket corner radius {r_blend:.2f} mm < {min_corner_r:.2f} mm: "
+                                        "smaller than common CNC milling cutter radius (Hubs CNC guide)"),
+                            "value": round(r_blend, 4),
+                            "threshold": round(min_corner_r, 4),
+                            "source": src_pcr,
+                        })
+
+        for e in edges:
+            p1, p2 = e["start"], e["end"]
+            edge_vec = g.sub(p2, p1)
+            edge_len = g.norm(edge_vec)
+            if edge_len > 0.5:
+                e_u = g.scale(edge_vec, 1.0 / edge_len)
+                if abs(g.dot(e_u, tool_dir)) > 0.9:
+                    t = e.get("touches", [])
+                    if not t and "|" in e.get("name", ""):
+                        t = e["name"].split("|")
+                    if len(t) >= 2 and t[0] in f_map and t[1] in f_map:
+                        f1, f2 = f_map[t[0]], f_map[t[1]]
+                        n1, n2 = f1.get("plane_normal"), f2.get("plane_normal")
+                        if n1 and n2:
+                            if abs(g.dot(n1, tool_dir)) < 0.1 and abs(g.dot(n2, tool_dir)) < 0.1:
+                                mid = g.scale(g.add(p1, p2), 0.5)
+                                c1 = f1.get("centroid") or f1.get("point")
+                                c2 = f2.get("centroid") or f2.get("point")
+                                v1 = g.sub(c1, mid)
+                                v2 = g.sub(c2, mid)
+                                if g.dot(v1, n2) > 0.1 and g.dot(v2, n1) > 0.1:
+                                    rules["pocket_corner_radius"]["status"] = "fail"
+                                    rules["pocket_corner_radius"]["findings"].append({
+                                        "status": "fail",
+                                        "location": {"point": mid, "edge": e.get("name")},
+                                        "message": (f"Sharp vertical inside corner at {e.get('name', 'edge')} (radius 0 mm < {min_corner_r:.2f} mm): "
+                                                    "CNC end mills cannot cut sharp 90° internal corners; add a fillet or relief (Hubs CNC guide)"),
+                                        "value": 0.0,
+                                        "threshold": round(min_corner_r, 4),
+                                        "source": src_pcr,
+                                    })
+
+    # 7. CNC hole depth-to-diameter ratio (twist drill depth limit)
+    max_depth_factor = cfg.get("max_hole_depth_factor")
+    src_hdr = kt_vals["src_hole_depth_ratio"]
+    if max_depth_factor is not None:
+        for h in holes:
+            if any(":cbore:" in fn for fn in h["faces"]):
+                continue
+            feat_defn = h["feature"].get("definition", {})
+            depth_val = _eval_length(session, feat_defn.get("depth"), default=h["length"])
+            act_depth = min(depth_val, h["length"]) if depth_val else h["length"]
+            if h["diameter"] > 1e-4:
+                ratio = act_depth / h["diameter"]
+                if ratio > max_depth_factor + 1e-4:
+                    if rules["hole_depth_ratio"]["status"] != "fail":
+                        rules["hole_depth_ratio"]["status"] = "warn"
+                    rules["hole_depth_ratio"]["findings"].append({
+                        "status": "warn",
+                        "location": {"point": h["representative_point"], "face": h["faces"][0]},
+                        "message": (f"Hole depth-to-diameter ratio {ratio:.1f} > {max_depth_factor:.1f} "
+                                    f"(depth {act_depth:.1f} mm for Ø {h['diameter']:.1f} mm exceeds standard twist drill ratio 10 × d, Hubs CNC guide)"),
+                        "value": round(ratio, 4),
+                        "threshold": round(max_depth_factor, 4),
+                        "source": src_hdr,
+                    })
+
+    # 8. CNC undercuts (downward-facing surfaces above part bottom not reachable from tool direction)
+    if cfg.get("check_undercuts"):
+        tool_dir = g.unit(cfg.get("build_direction") or [0, 0, 1])
+        src_uc = kt_vals["src_undercut"]
+        lo, hi = bbox["min"], bbox["max"]
+        corners = [[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
+        min_h = min(g.dot(c, tool_dir) for c in corners)
+        hole_faces = {fn for h in holes for fn in h["faces"]}
+        for f in faces:
+            if f["name"] in hole_faces or any(k in f.get("name", "") for k in (":bore:", ":cbore:", ":csink:")):
+                continue
+            n = f.get("plane_normal")
+            if n and g.dot(n, tool_dir) < -0.1:
+                pt = f.get("centroid") or f.get("point")
+                if pt and g.dot(pt, tool_dir) > min_h + 0.1:
+                    if rules["undercut"]["status"] != "fail":
+                        rules["undercut"]["status"] = "warn"
+                    rules["undercut"]["findings"].append({
+                        "status": "warn",
+                        "location": {"point": pt, "face": f["name"]},
+                        "message": (f"Possible undercut on face {f['name']} (normal {n}, centroid {pt}): "
+                                    "downward surface is not directly accessible from above in 3-axis CNC milling (Hubs CNC guide)"),
+                        "source": src_uc,
+                    })
+
     return rules
 
 
@@ -677,6 +1060,11 @@ def check(session_or_doc, profile: str | dict | None = None,
         "thread_depth": {"status": "ok", "findings": []},
         "printability": {"status": "ok", "findings": []},
         "countersink_clearance": {"status": "ok", "findings": []},
+        "horizontal_hole": {"status": "ok", "findings": []},
+        "heat_set_insert": {"status": "ok", "findings": []},
+        "pocket_corner_radius": {"status": "ok", "findings": []},
+        "hole_depth_ratio": {"status": "ok", "findings": []},
+        "undercut": {"status": "ok", "findings": []},
     }
 
     for body in bodies:

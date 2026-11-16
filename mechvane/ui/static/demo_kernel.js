@@ -206,8 +206,19 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       const sk = byId[def.sketch];
       if (sk && sk.type === "Sketch" && !owned.has(sk.name)) owned.set(sk.name, f.name);
     }
-    const node = (f) => ({ name: f.name, type: f.type, suppressed: f.suppressed || undefined,
-                           rolled_back: f.rolled_back || undefined, error: f.error || undefined });
+    const ins = await exec("document.inspect", { measure: false, sketches: true });
+    const hiddenOrigin = new Set(ins.hidden_origin || []);
+    const sketchVis = Object.fromEntries((ins.sketches || []).map((s) => [s.name, s.visible]));
+    const node = (f) => {
+      const n = { name: f.name, type: f.type, suppressed: f.suppressed || undefined,
+                  rolled_back: f.rolled_back || undefined, error: f.error || undefined };
+      if (f.type === "Sketch") {
+        n.visible = sketchVis[f.name] !== undefined ? sketchVis[f.name] : !owned.has(f.name);
+      } else if (f.type && f.type.startsWith("Construction")) {
+        n.visible = !hiddenOrigin.has(f.name);
+      }
+      return n;
+    };
     const features = [];
     for (const f of tl) {
       if (f.type === "Sketch" && owned.has(f.name)) continue;
@@ -217,9 +228,9 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       features.push(n);
     }
     features.push({ type: "EndOfPart" });
-    const ins = await exec("document.inspect", { measure: false });
+    const hiddenBodies = (ins.bodies || []).filter((b) => b.visible === false).map((b) => b.name);
     return { kind: files.kind || "part", name: files.document.replace(/\.solidcraft$/, ""),
-             bodies: (ins.bodies || []).map((b) => b.name), features };
+             bodies: (ins.bodies || []).map((b) => b.name), hidden_bodies: hiddenBodies, features };
   }
 
   async function findings() {
@@ -238,13 +249,21 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     return out;
   }
 
+  // as sketch_session.create_params: an XZ sketch flipped so that world Z is up (seen from the front, as in Inventor);
+  // on a picked body face, project_edges controls Inventor's "Autoproject edges for sketch creation" (default on)
+  const createParams = (plane, projectEdges = true) => {
+    if (plane === "XZ") return { plane, flip: true };
+    if (plane && Array.isArray(plane.face)) return { plane: { face: plane.face }, project_edges: Boolean(projectEdges) };
+    return { plane };
+  };
+
   // mechvane.sketch as the server's sketch_commands: rectangles and circles, each fully dimensioned,
   // all or nothing; one undo step in the app is not guaranteed here, so the step is not undoable
   async function sketch(params) {
     const plane = params.plane && params.plane.face ? { face: params.plane.face } : params.plane;
     const cp = (await exec("edit.checkpoint")).checkpoint;
     try {
-      await exec("sketch.create", { plane });
+      await exec("sketch.create", createParams(plane, Boolean(params.project_edges)));
       for (const sh of params.shapes || []) {
         const num = (v, d) => (typeof v === "number" ? v : d);
         let dims;
@@ -284,7 +303,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     const plane = face ? { face: face.split(",").map(Number) } : (url.searchParams.get("plane") || "XY");
     const cp = (await exec("edit.checkpoint")).checkpoint;
     try {
-      await exec("sketch.create", { plane });
+      await exec("sketch.create", createParams(plane, false));
       const f = (await exec("sketch.inspect", {})).plane || {};
       return { origin: f.origin, x_dir: f.x_dir, y_dir: f.y_dir };
     } catch (err) {
@@ -355,11 +374,23 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
              feature_names: Object.fromEntries(tl.map((f) => [String(f.id), f.name])) };
   }
 
-  async function remove(name) {
+  async function remove(name, keepSketch) {
     const failingBefore = await errors();
-    if (!(await timeline()).some((f) => f.name === name)) throw new ApiError(404, `feature not found: ${name}`);
+    const tl = await timeline();
+    if (!tl.some((f) => f.name === name)) throw new ApiError(404, `feature not found: ${name}`);
+    const toDelete = [name];
+    if (!keepSketch) {
+      const byId = Object.fromEntries(tl.map((f) => [f.id, f]));
+      for (const f of tl) {
+        if (f.name === name) {
+          const def = (await exec("timeline.inspect", { feature: f.id })).definition || {};
+          const sk = byId[def.sketch];
+          if (sk && sk.type === "Sketch") toDelete.push(sk.name);
+        }
+      }
+    }
     try {
-      await exec("timeline.delete", { features: [name] });
+      await exec("timeline.delete", { features: toDelete });
     } catch (err) {
       throw new ApiError(400, shortError(err));
     }
@@ -368,8 +399,26 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     undone.length = 0;
     version++;
     stepped = true;
-    return { done: `Deleted ${name}`, deleted: [name],
+    return { done: `Deleted ${toDelete.join(", ")}`, deleted: toDelete,
              failing: Object.fromEntries(Object.entries(now).filter(([k]) => !(k in failingBefore))) };
+  }
+
+  async function rename(feature, name) {
+    if (!name || !name.trim()) throw new ApiError(400, "name required");
+    name = name.trim();
+    const tl = await timeline();
+    if (!tl.some((f) => f.name === feature)) throw new ApiError(404, `feature not found: ${feature}`);
+    if (tl.some((f) => f.name === name && f.name !== feature)) throw new ApiError(400, `another feature is called ${name}`);
+    try {
+      await exec("timeline.rename", { feature, name });
+    } catch (err) {
+      throw new ApiError(400, shortError(err));
+    }
+    done.push({ label: `Rename ${feature} to ${name}` });
+    undone.length = 0;
+    version++;
+    stepped = true;
+    return { done: `Renamed ${feature} to ${name}`, feature, name };
   }
 
   async function sketches() {
@@ -381,14 +430,18 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       const def = (await exec("timeline.inspect", { feature: f.id })).definition || {};
       if (byId[def.sketch]) (used[byId[def.sketch]] ||= []).push(f.name);
     }
+    let ins = {};
+    try { ins = await exec("document.inspect", { measure: false, sketches: true }); } catch (_) {}
+    const visMap = Object.fromEntries((ins.sketches || []).map((s) => [s.name, s.visible]));
     // as sketch_shapes() in mechvane/ui/server.py: plane, curves and profiles for drawing and picking
     const keys = ["id", "type", "start_at", "end_at", "center_at", "radius", "construction"];
     const out = [];
     for (const f of tl.filter((x) => x.type === "Sketch")) {
       let insp = {};
       try { insp = await exec("sketch.inspect", { sketch: f.name }); } catch (_) { /* drawn without it */ }
+      const vis = visMap[f.name] !== undefined ? visMap[f.name] : !(used[f.name] && used[f.name].length);
       out.push({
-        name: f.name, used_by: used[f.name] || [], plane: insp.plane || null,
+        name: f.name, visible: vis, used_by: used[f.name] || [], plane: insp.plane || null,
         curves: (insp.curves || []).map((c) => Object.fromEntries(keys.filter((k) => k in c).map((k) => [k, c[k]]))),
         profiles: (insp.profiles || []).map((p) => ({ index: p.index, area: Math.round(p.area_mm2 * 10) / 10, curves: p.curves,
           holes: (p.holes || []).length, hole_loops: p.holes || [] })),
@@ -403,8 +456,10 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   // undo inside the sketch takes one back, the finished sketch is one hand step of n entries.
   const SKETCH_NOT = new Set(["sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain"]);
   let sk = null;           // {name, editing, n: SolidCraft undo entries of this session}
+  let autoProject = true;  // Inventor's "Autoproject edges for sketch creation" (default on)
   async function sketchState() {
-    return { sketch: sk.name, editing: sk.editing, can_undo: sk.n > (sk.editing ? 0 : 1), state: await exec("sketch.inspect", {}) };
+    return { sketch: sk.name, editing: sk.editing, can_undo: sk.n > (sk.editing ? 0 : 1), auto_project: autoProject,
+             state: await exec("sketch.inspect", {}) };
   }
   async function sketchBegin(body) {
     if (sk) throw new ApiError(409, `sketch ${sk.name} is open: finish or cancel it first`);
@@ -417,7 +472,8 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
         if (!(["XY", "XZ", "YZ"].includes(plane) || (plane && Array.isArray(plane.face)))) {
           throw new ApiError(400, "plane: XY, XZ, YZ or {face: [x, y, z]}");
         }
-        const made = await exec("sketch.create", { plane });
+        const proj = body.project_edges ?? body.auto_project ?? plane?.project_edges ?? autoProject;
+        const made = await exec("sketch.create", createParams(plane, proj));
         sk = { name: made.name || (await exec("sketch.inspect", {})).name, editing: false, n: 1 };
       }
     } catch (err) {
@@ -493,10 +549,28 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       if (!holeSizes) holeSizes = await (await fetch("hole_sizes.json")).json();
       return holeSizes;
     }
+    if (route === "folders") {
+      return {
+        current: "/demo",
+        parent: null,
+        roots: [{ name: "Demo", path: "/demo" }],
+        recent: [{ name: "demo", path: "/demo", solidcraft_count: 1, step_count: 0 }],
+        folders: [],
+        step_files: [],
+      };
+    }
+    if (route === "project/open") {
+      throw new ApiError(403, "switching project folder is not available in the live demo");
+    }
     if (route === "history") {
       return { busy: !app && !!booting, undo: done.at(-1)?.label ?? null, redo: undone.at(-1)?.label ?? null };
     }
-    if (route === "sketch/state" && !sk) return { active: false };  // no need to start SolidCraft for that
+    if (route === "sketch/state" && !sk) return { active: false, auto_project: autoProject };  // no need to start SolidCraft for that
+    if (route === "sketch/auto_project") {
+      const val = body?.value ?? body?.project_edges ?? body?.auto_project;
+      autoProject = val === undefined ? !autoProject : Boolean(val);
+      return { auto_project: autoProject };
+    }
     if (!files) files = await (await fetch(`${base()}files.json`)).json();
     if (files.kind === "assembly" && /^feature|^sketch/.test(route)) {
       throw new ApiError(403, "features are added in a part: open one of the parts in Model by hand");
@@ -507,19 +581,28 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     if (route === "tree") return tree();
     if (route === "findings") return findings();
     if (route === "sketches") return sketches();
-    if (route === "sketch/state") return sk ? { active: true, ...(await sketchState()) } : { active: false };
+    if (route === "sketch/state") return sk ? { active: true, ...(await sketchState()) } : { active: false, auto_project: autoProject };
     if (route === "sketch/begin") return sketchBegin(body || {});
     if (route === "sketch/cmd") return sketchCmd(body);
     if (route === "sketch/undo") return sketchUndo();
     if (route === "sketch/finish") return sketchFinish();
     if (route === "sketch/cancel") return sketchCancel();
-    if (sk && (route === "feature" || route === "feature/delete") && method !== "GET") {
+    if (sk && (route === "feature" || route === "feature/delete" || route === "feature/rename") && method !== "GET") {
       throw new ApiError(409, `finish or cancel sketch ${sk.name} first`);
     }
     if (route === "sketch_plane") return sketchPlane(url);
     if (route === "feature" && method === "GET") return featureForEdit(url.searchParams.get("name") || "");
     if (route === "feature") return feature(body);
-    if (route === "feature/delete") return remove(body.name);
+    if (route === "feature/rename") return rename(body.feature || body.old, body.name || body.new);
+    if (route === "feature/delete") return remove(body.name, body.keep_sketch);
+    if (route === "visibility") {
+      const items = Array.isArray(body.items) ? body.items : (body.item ? [body.item] : []);
+      const visible = Boolean(body.visible);
+      await exec("browser.visibility", { items, visible });
+      stepped = true;
+      version++;
+      return { ok: true, items, visible };
+    }
     if (route === "agent/undo") return undoRedo("undo");
     if (route === "agent/redo") return undoRedo("redo");
     throw new ApiError(404, `not available in the live demo: ${route}`);

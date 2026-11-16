@@ -1,0 +1,10 @@
+{
+  "_comment": "Upstream issues in tangency-labs/solidcraft that Mechvane waits for (tools/upstream_watch.py). follow_up: what to update when one is closed.",
+  "issues": [
+    {"number": 745, "follow_up": "mechvane/sc_errors.py (offset_unsupported_surface) und die #745-Tests in tests/mechvane/check.py; ROADMAP.md beim #745-Punkt"},
+    {"number": 10884, "follow_up": "mechvane/sc_errors.py (Hinweis auf Freiformflächen beim Versatz) und ROADMAP.md beim #745-Punkt"},
+    {"number": 5589, "follow_up": "Speichern stürzt ab bei rechteckigem Muster mit Fillet: Hinweis oder Umgehung in Mechvane prüfen, ROADMAP.md"},
+    {"number": 7836, "follow_up": "MCP-Server räumt seinen leeren Scratch-Ordner auf: tests/mechvane/check.py (scratch_dir_checks) und Aufräumcode in mechvane/solidcraft.py prüfen"},
+    {"number": 1221, "follow_up": "Plugins (WASM/WIT): ROADMAP.md Plugin-Punkt, docs/research/2026-11-11-solidcraft-plugin-rfc-0002.md, Nachfrage vor Phase 3 (Übergabe)"}
+  ]
+}

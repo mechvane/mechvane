@@ -11,7 +11,7 @@ exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/p
 per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
-  (`mechvane/ui/webapp.py`) in der festen Version 0.30.1 (seit 2026-11-06) für die eigene Plattform in den Cache
+  (`mechvane/ui/webapp.py`) in der festen Version 0.41.0 (seit 2026-11-13, vorher 0.30.1) für die eigene Plattform in den Cache
   (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
   festgeschrieben, Entpacken mit Pfadprüfung.
 - `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
@@ -51,17 +51,19 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
 | `save_document(document)` | Offenes Dokument auf die Festplatte schreiben. Speichert Bauteile nur, wenn das Bauteilende am Ende der Historie steht; im zurückgerollten Zustand bricht der Aufruf mit Fehler ab, damit keine unterdrückten Features auf Disk persistiert werden |
 | `close_document(document, discard)` | Dokument schließen. Hat das Dokument ungespeicherte Änderungen, wird ein Fehler mit Hinweis gemeldet, außer es wird ausdrücklich `discard=true` übergeben |
 | `list_documents()` | Liste aller aktuell im Workspace geöffneten Dokumente und Arbeitsordner-Pfad |
-| `import_step(source, name, path, overwrite, up)` | STEP/IGES/FreeCAD/Rhino als Bauteildatei mit festem Körper ohne Verlauf (Zukaufteil, fremdes Teil zum Messen und Prüfen); `up="y"` dreht Y-oben-Dateien. Weg: `file.insert_step` in einer Arbeitssitzung, `component.extract` in eine eigene Datei (Bauteile bleiben ohne Komponenten). STEP-Baugruppen: Teile bleiben Komponenten im Bauteil, Warnung |
+| `import_step(source, name, path, overwrite, up, split)` | STEP/IGES/FreeCAD/Rhino als Bauteildatei mit festem Körper ohne Verlauf (Zukaufteil, fremdes Teil zum Messen und Prüfen); `up="y"` dreht Y-oben-Dateien. Mit `split=true` (Standard `false`) wird eine STEP-Datei mit mehreren Körpern als Baugruppe übernommen: je Körper eine eigene Bauteildatei (`<name>_<körper>.solidcraft`), dazu eine Baugruppendatei (`<name>.solidcraft`), erstes Teil fest (grounded), sonst keine Gelenke. Weg: `file.insert_step` in einer Arbeitssitzung, `component.extract` in eigene Dateien (Bauteile bleiben ohne Komponenten). |
 | `standard_part(norm, size, length, name, path)` | Parametrisches Normteil als eigene Bauteildatei erzeugen, speichern und offen halten (ISO 4762, ISO 10642, ISO 4032, ISO 7089, Ruthex, DIN 625) |
 | `list_standard_parts(norm)` | Verfügbare Normteile und Größen bzw. Maßtabelle einer Norm |
 | `part_end(document, before)` | Bauteilende-Marker versetzen: `before="<Feature>"` rollt vor dieses Feature zurück (Features dahinter werden unterdrückt), `before=None` rollt wieder ans Ende der Historie. Liefert Markerposition, Features dahinter sowie aktuellen Hüllquader und Volumen für isolierte Messungen oder Reparaturen |
-| `run(document, commands, verbose)` | SolidCraft-Befehle als Batch (alles oder nichts). In Bauteilen danach die Skizzenregel; schlägt die Skizzenregel fehl, wird der Befehlsbatch per Checkpoint automatisch zurückgerollt. Liefert bei Bauteilen ein kompaktes `delta` (Hüllquader, Schwerpunkt, Volumen, Körperzahl und Warnungen bei wirkungslosen Schritten, Mehrkörperbildung oder großen Sprüngen; steht das Bauteilende nicht am Ende, wird ein Hinweis mit den unterdrückten Features mitgeliefert). Antwort ohne leere Felder und Zeiten, außer mit `verbose` |
+| `run(document, commands, verbose)` | SolidCraft-Befehle als Batch (alles oder nichts). In Bauteilen danach die Skizzenregel; schlägt die Skizzenregel fehl, wird der Befehlsbatch per Checkpoint automatisch zurückgerollt. Liefert bei Bauteilen ein kompaktes `delta` (Hüllquader, Schwerpunkt, Volumen, Körperzahl und Warnungen bei wirkungslosen Schritten, Mehrkörperbildung oder großen Sprüngen; steht das Bauteilende nicht am Ende, wird ein Hinweis mit den unterdrückten Features mitgeliefert). Antwort ohne leere Felder und Zeiten, außer mit `verbose`. Schlägt ein Schritt fehl, steht in der Fehlermeldung nach der Erklärung eine Zeile `Where: …` mit der Stelle: die gemeinte Kante oder Fläche mit Feature-Namen, was im Weg ist (z. B. „Chamfer C1 (5.5 mm) on the edge of Plate between +z and -y at [30, 0, 10] has Hole1 (bore) 5 mm away at [8, 5, 10]. Largest size that fits: 4.913 mm.“), bei Bohrungen die nächste Fläche, bei Fehlgriffen die nächste Kante mit Mittelpunkt (`sc_locate.py`). Lässt eine Änderung ein späteres Feature scheitern, gelingt der Batch; die Antwort nennt es in `feature_errors` (`feature`, `error`, `message`, `hint`, `where`, `location`) und warnt, bei weiteren Schritten erinnert eine Warnung an noch fehlerhafte Features |
 | `browser(document, groups)` | Modellbrowser nach Inventor-Art, als Text und JSON; `groups` zeigt dieselben Einträge zusätzlich in Ordnern (siehe unten) |
 | `delete_feature(document, feature, keep_sketch)` | Feature löschen, die eigene Skizze geht mit |
 | `insert_part(assembly, part_path, name, translate, rotate, grounded)` | Bauteil oder Unterbaugruppe verknüpft einfügen (optional Drehung vor dem Fixieren; erstes Teil der Baugruppe wird automatisch fixiert (`grounded=True`), wenn `grounded` nicht angegeben ist; Folgekomponenten bleiben standardmäßig frei) |
 | `add_joint(assembly, params)` | Gelenk anlegen (Parameter wie `joint.create`, `name` Pflicht, Occurrence auch als `Sub:1/Part:1`) und die Bauteilflächen merken |
 | `edit_joint(assembly, joint, params)` | Gelenk ändern (wie `joint.edit`, z. B. `flip`, `offset`, `name` zur Umbenennung); Verankerung und Metadaten werden auch bei Umbenennung ohne verwaiste Einträge weitergeführt |
 | `delete_joint(assembly, joint)` | Gelenk löschen, Verankerung vergessen |
+| `add_constraint(assembly, params)` | Abhängigkeit wie Inventors Constrain (SolidCraft `assembly.constraint.create`: `type` mate, flush, distance, concentric, insert, parallel, perpendicular, angle, tangent, point_on_axis; `a`/`b` mit `face` für eine Ebene oder `circle` für eine runde Fläche, `offset`, `angle`, `flip`, `name`); SolidCraft führt sie als Gelenk, Mechvane verankert sie wie ein Gelenk, `update_links` prüft sie und `repair` legt sie über ihre Regel neu an (seit 2026-11-15, #88) |
+| `edit_constraint(assembly, constraint, params)` | Regel, Abstand, Winkel, `flip`, Name oder Unterdrückung ändern (`assembly.constraint.edit`); die Bezüge bleiben, für andere Flächen löschen (`delete_joint`) und neu anlegen. Beim Einfügen einer Unterbaugruppe wird eine Abhängigkeit als gleichwertiges Gelenk (z. B. planar) übernommen, die Regel fällt dabei weg |
 | `adopt_joint(assembly, joint)` | fremdes Gelenk (App, rohes `joint.create`) in die Prüfung aufnehmen; die Reparatur liest seine Parameter aus `joint.list` |
 | `update_links(assembly, repair)` | Unterbaugruppen und Bauteil-Verknüpfungen neu lesen, alle Gelenke prüfen (und auf Wunsch reparieren) sowie Verschraubungen gegen geometrische Anker prüfen: Ist ein Anker gewandert (> 1e-3 mm), wird die Verschraubung bei repair=true per edit_bolted_connection atomar an der neuen Position neu aufgebaut; liefert bolted_connections mit Status (ok, moved, moved_repaired, anchor_lost, failed) und shifted_by |
 | `check_joints(assembly)` | Gelenke prüfen, ohne neu zu lesen |
@@ -69,6 +71,7 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
 | `list_commands(document, filter)` | Befehlskatalog von SolidCraft mit Parametern |
 | `command(document, command, params)` | ein einzelner SolidCraft-Befehl, für Abfragen |
 | `screenshot(document, view, path)` | Bild headless; optional direkt als PNG-Datei (`.png`) im Arbeitsordner mit Pfad, Bytezahl und Maßen als schlanke Antwort (überschreibt keine CAD-Dateien oder Nicht-PNG-Dateien) |
+| `verify_view(document, section, path)` | Sichtprüfung für den Agenten: 2×2-Raster aus vier Ansichten (Iso, Front, Top, Section) in einem Bild mit Ansichtsnamen und Maßen (`Size`) in mm; optional direkt als PNG-Datei (`.png`) im Arbeitsordner (gleiche Pfadprüfung wie `screenshot`) |
 | `iso_fit(nominal, fit)` | ISO-286-Grenzabmaße einer Toleranzklasse (`H7`, `k6`) oder einer Passung (`H7/k6`: Spiel min/max in µm, Art), dazu passende Katalogeinträge. IT5–IT11, Bohrungen D–P, Wellen d–p, bis 500 mm, Tabellen in `mechvane/iso286.py` ([Quellen](research/2026-10-23-iso286-tabellen.md)) |
 | `export_gltf(document, path)` | Bauteil oder Baugruppe als glTF 2.0 (Meter, Y oben), je Körper ein Netz mit Normalen je B-Rep-Fläche und dem Aussehen aus SolidCraft (Körper-Aussehen, sonst Werkstoff: Farbe, metallic, roughness, IOR) nach ADR 0004 |
 | `check_design(document, profile, build_direction, material, remember)` | Bauteil gegen Konstruktionsregeln prüfen (Wandstärken, Randabstände, Einschraubtiefe, Druckbarkeit), Bericht als JSON. Mit `material` folgt die Einschraubtiefe der Werkstofftabelle von `bolted_connection` statt pauschal 1,5 d. Ohne Angabe gelten Profil und Werkstoff aus der Bauteildatei (Metadaten `rules`, gesetzt von der Prüfseite über `POST /api/rules` oder mit `remember=True`), dann der in SolidCraft zugewiesene Werkstoff |
@@ -123,6 +126,9 @@ Koordinate. Die Anweisungen des MCP-Servers sagen das jedem Agenten, die Tabelle
 Beispiel „Bohrung mittig“: Skizze auf der Fläche, zwei gegenüberliegende Kanten per `sketch.project`,
 Konstruktionslinie von Mitte zu Mitte, Punkt in deren Mitte, `solid.hole` am Skizzenpunkt. Getestet in
 `design_intent_checks` (Platte 80 × 50 → 120 × 70 → 200 × 20, Bohrung bleibt exakt mittig, SolidCraft 0.25.1).
+Auf runden ebenen Flächen (Zylinder, Flansch, Ring) wird die größte Kreiskante per `sketch.project`
+projiziert und der Bohrungsmittelpunkt mit `sketch.constraint.concentric` daran gebunden (getestet in
+`concentric_hole_checks`).
 
 ## Gelenke über Dateigrenzen
 
@@ -430,7 +436,7 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 ### Modus „Modellieren“ (seit 2026-10-25)
 
-`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.30.1.zip`, beim ersten
+`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.41.0.zip`, beim ersten
 Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
 ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
 Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App

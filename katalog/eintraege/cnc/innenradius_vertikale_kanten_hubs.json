@@ -6,6 +6,11 @@
       "name": "Mindest-Innenradius zu Kavitätstiefe",
       "wert": 0.333,
       "einheit": "x Kavitätstiefe"
+    },
+    {
+      "name": "Mindest-Innenradius Standard-Werkzeug",
+      "wert": 1.5,
+      "einheit": "mm"
     }
   ],
   "geltungsbereich": {
