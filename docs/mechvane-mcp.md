@@ -301,6 +301,12 @@ Geprüfte Kriterien:
 4. **Druckbarkeit (`printability`, FDM):** Überhänge $> 45^\circ$ zur Vertikalen ohne Stütze (nach unten gerichtete Flächen oberhalb des Druckbetts $z_{\min}$), Mindestbohrungsdurchmesser ($\ge 2{,}0\text{ mm}$ für 0,4-mm-Düse). Die Aufbaurichtung ist über `build_direction` (`+Z|-Z|+X|-X|+Y|-Y`, im Profil als Einheitsvektor, Standard `+Z` bzw. `[0, 0, 1]`) wählbar.
 5. **Senkung kerbt Nachbarwand (`countersink_clearance`, seit 2026-10-23):** SolidCraft schneidet den Senkkegel über die Eintrittsfläche hinaus. Steht eine Wand näher als der Senkradius, bleibt die Deckfläche des Werkzeugs (`…:csink:base`) als echte Fläche stehen; auf freier Fläche gibt es sie nicht. Jede solche Fläche ist ein `fail` (Praxistest 5, Befund 8).
 
+**Quelle je Befund (seit 2026-11-16, #120):** Befunde von Regeln mit Eintrag im Wissenskatalog tragen `source`
+als Objekt (`entry`, `titel`, `url`, `stelle`, `zitat`; die erste Quelle des Eintrags, Zitat wörtlich). Zugeordnet sind
+`horizontal_hole`, `heat_set_insert`, `pocket_corner_radius`, `hole_depth_ratio` und `undercut` (`design_rules.RULE_SOURCES`);
+für die übrigen läuft die Recherche (#123). Ohne Katalog (pip-Installation hat keinen `katalog/`-Ordner) bleibt der Link der
+Regel als `{"url": …}`. Die frühere Herkunftsmarke `source: "design_rules"|"links"` der Web-UI-Befunde heißt jetzt `origin`.
+
 Ergebnis je Regel ist `ok`, `warn` oder `fail` mit Angabe von Ort (`location.point`, `location.face`) und technischer Begründung.
 
 ## Semantische Abfragen (find)
@@ -408,6 +414,17 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 - **Modellbaum (links):** Zeigt für Bauteile die Körper sowie den Feature-Verlauf mit untergeordneten Skizzen und dem Bauteilende (`tree.part_tree`), für Baugruppen die Komponenten-Occurrences samt Gelenken und deren Prüfstatus aus `links.check` (`tree.assembly_tree`).
 - **3D-Ansicht (Mitte):** `three.js` (`three@0.160.0` mit `OrbitControls` per Import-Map von `cdn.jsdelivr.net`), Z-Achse nach oben, Kamera beim ersten Laden automatisch auf die Bounding Sphere des Modells eingepasst, scharfe B-Rep-Flächenkanten über die Face-Tags aus dem `3mf-tagged`-Export.
+- **„Last step“ (seit 2026-11-16, #121):** Nach jedem Schritt (von Hand, vom Agenten, nach Undo) zeigt die 3D-Ansicht das
+  Modell von vorher als bernsteinfarbenen, nicht anklickbaren Schatten; der Modellbaum markiert neue (grün) und geänderte
+  (bernstein) Features, eine Leiste „Last step“ über dem Baum nennt `+ neu · ~ geändert · − entfernt` und schaltet mit
+  „Hide“/„Show“ Schatten und Markierung. Grundlage ist eine Signatur je Feature im Baum (`sig`, `tree.signature`): Definition,
+  die aktuellen Werte der Parameter, die sie nennt, bei Skizzen die Geometrie. Nur für Bauteile. In der Live-Demo signiert der
+  Kernel (`demo_kernel.js`) den unberührten Stand vor dem ersten Schritt selbst.
+- **Stückliste (Assemble, Knopf „BOM“, seit 2026-11-16):** Dialog mit Position, Benennung, Anzahl, Norm und Größe, Werkstoff,
+  Masse, Datei; „Flat“ rechnet Unterbaugruppen ein, „Export CSV“ erzeugt die Datei im Browser. Eine fehlende oder unlesbare
+  Teiledatei steht als Zeile „(file missing)“ bzw. „(unreadable)“. Textzellen, die mit `=`, `+`, `-` oder `@` beginnen,
+  bekommen im CSV ein Apostroph (Schutz gegen Formelinjektion; MCP und Browser). Unterpositionen wie `1.2` deutet ein deutsches
+  Excel beim Öffnen als Datum: Datei über „Daten importieren“ mit Spalte „Text“ laden.
 - **Befundliste (rechts):** Zeigt alle Befunde aus `design_rules.check` (und bei Baugruppen zusätzlich `links.check`), farbig nach Schwere (`fail`, `warn`, `ok`). Ein Klick auf einen Befund hebt die betroffenen B-Rep-Flächen im 3D-Modell über die Zuordnung `Flächenname → Index (model.faces) → ft:face-Dreiecke` farbig hervor. Hat ein Befund keinen passenden Flächenbezug im Netz, aber einen 3D-Punkt (`location.point`), erscheint dort ein 3D-Marker; ohne beides wird nur der Text ausgewählt.
 - **Automatisches Neu-Laden:** Die Seite fragt alle 2 s `/api/version` ab. Ändert sich die `mtime` der Datei auf der Festplatte, lädt der Server das Dokument in `Workspace` neu und der Browser aktualisiert Netz, Baum und Befunde ohne Zurücksetzen der Kamera.
 - **Parameter, Messen, Schnitt (Prüfseite):** Unter dem Modellbaum ein Formular für die Parameter
