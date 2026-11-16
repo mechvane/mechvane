@@ -7,6 +7,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a22] - 2026-11-16
+
+### Added
+
+- `bill_of_materials` MCP tool and `GET /api/assembly/bom` UI endpoint: structured or flat bill of materials for assemblies (item, designation, count, file, material if assigned, mass, and standard norm and size for standard parts from `bolted_connection` or Place Standard Part), with optional semicolon-separated UTF-8 CSV export inside the workspace. (#49)
+- MCP tool `check_parameters(document, set)`: tries parameter values and puts the design back, returning volume, bounding box and mass per body, the body count, the cylindrical faces (where the holes are), and errors. A value that cannot be built often shows only as no body. (#108)
+- Skill `varianten`: tries parameter values of a part (which parameters drive, how many variants, per-variant status and design-check findings) and writes a manifest, without touching the base. Uses the new `check_parameters` tool. (#108)
+- Design check: findings of rules backed by the knowledge catalog (horizontal holes, heat-set inserts, pocket corner radius, hole depth, undercuts) carry a `source` (entry, title, link, place, verbatim quote). The findings panel shows it under "Source" and says so where the catalog has no source yet. (#120)
+- See what changed: after each step (yours or your agent's, and after Undo) the model shows the state before as an amber ghost, the model browser marks new and changed features, and a "Last step" bar above it lists what was added, changed or removed, with Hide/Show. Works for parts (not yet for assemblies) and in the live demo too. (#121)
+- Assemble tab: **BOM** opens the parts list of the assembly: position, designation, quantity, standard and size, material and mass, subassemblies indented or counted in ("Flat"), and Export CSV (semicolons, UTF-8). (#88, #49)
+
+### Changed
+
+- Live demo: runs on SolidCraft 0.43 again. Its web app (168 MB) is served in pieces that the page joins and checks against the release file, since GitHub Pages holds no file over 100 MB. (#119)
+- Findings of the web UI name their origin in `origin` (`design_rules`, `links`); `source` now holds the catalog source. In `check_design`, `source` is an object instead of a URL.
+
+### Fixed
+
+- Live demo and `mechvane ui --demo`: the demo bracket shows a design-check finding again (a hole 6 mm from the edge, where 1.5 d = 9.9 mm is needed); click it to see the bore highlighted. Since SolidCraft 0.40 the old countersink example no longer notched the wall. (#109)
+- Parts list: a missing or unreadable part file gives a row marked "(file missing)" or "(unreadable)" instead of failing the whole list; CSV cells that start with = + - or @ are no longer run as formulas by spreadsheets. (#49)
+- "Last step": a changed sketch dimension or parameter now shows up in the bar and the ghost, and the first step in the live demo marks only what it added. (#121)
+- Findings keep their rule's link as a source when the knowledge catalog is not available (pip installs); a held Ctrl+Z no longer queues dozens of undos. (#120, #112)
+
 ## [0.1.0a21] - 2026-11-16
 
 ### Changed

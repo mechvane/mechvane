@@ -206,7 +206,7 @@
           "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Assemble tab by hand",
           "text": "Place parts, add joints, bolt them together and update links from the workspace, without an agent, as in classic mechanical CAD. Done: placing parts and standard parts from the norm tables, joints (rigid, revolute, slider, cylindrical, ball) and constraints (mate, flush, distance, concentric, angle and more) picked on faces in the view and editable from the browser, bolted connections with ISO screws, nuts and washers, preview, edit and delete, Update Links, and a parts list (BOM) with CSV export.",
           "milestone": "v0.1"
@@ -277,7 +277,7 @@
           "text": "Mark parameters, features or faces as fixed; your agent works around them and tells you when a request would need them changed."
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "See what your agent changed",
           "text": "The previous state as a ghost over the new one and changed features marked in the browser. A first version comes with v0.1; accepting or undoing single changes follows. Builds on SolidCraft's compare.",
           "milestone": "v0.1"
@@ -352,7 +352,7 @@
           "text": "Every value with its source, quotation and status, checked automatically against the source."
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Every finding shows its source",
           "text": "Each finding of the design check shows the rule, the value, the source and the quoted passage from the knowledge catalog, and the catalog gets its own page on mechvane.dev.",
           "milestone": "v0.1"
