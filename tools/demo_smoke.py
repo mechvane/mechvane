@@ -52,12 +52,13 @@ with sync_playwright() as pw:
     p.keyboard.press("Control+y"); p.wait_for_function("document.querySelector('#tree-content').innerText.includes('Fillet1')", timeout=60000)
     print("ctrl+y redo ok")
     # hole with the tables from hole_sizes.json
-    p.keyboard.press("h"); p.wait_for_timeout(800)
+    p.keyboard.press("h"); p.wait_for_selector(".feature-dialog-title:has-text('Hole')", timeout=60000)  # wait for the state, not a time
     p.mouse.click(box["x"]+box["width"]*0.45, box["y"]+box["height"]*0.72)
     p.wait_for_function("/Volume|⚠/.test(document.querySelector('.feature-delta')?.textContent || '') || !document.querySelector('.feature-error')?.hidden", timeout=60000)
     print("hole:", p.locator(".feature-note").inner_text(), "|", p.locator(".feature-delta").inner_text(), p.locator(".feature-error").inner_text())
     p.keyboard.press("Escape")
-    p.keyboard.press("e"); p.wait_for_timeout(1500); print("extrude:", p.locator(".feature-pick-count").inner_text())
+    p.keyboard.press("e"); p.wait_for_selector(".feature-dialog-title:has-text('Extrude')", timeout=60000)
+    p.wait_for_timeout(500); print("extrude:", p.locator(".feature-pick-count").inner_text())
     p.keyboard.press("Escape"); p.wait_for_timeout(500)
     # Sketch environment on the demo kernel: S, XZ, a 50 x 20 rectangle typed at the cursor, Enter finishes,
     # the sketch is one step for Ctrl+Z
