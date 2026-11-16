@@ -11,7 +11,7 @@ exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/p
 per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
-  (`mechvane/ui/webapp.py`) in der festen Version 0.41.0 (seit 2026-11-13, vorher 0.30.1) für die eigene Plattform in den Cache
+  (`mechvane/ui/webapp.py`) in der festen Version 0.43.0 (seit 2026-11-16, vorher 0.41.0 und 0.30.1) für die eigene Plattform in den Cache
   (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
   festgeschrieben, Entpacken mit Pfadprüfung.
 - `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
@@ -436,7 +436,7 @@ Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mi
 
 ### Modus „Modellieren“ (seit 2026-10-25)
 
-`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.41.0.zip`, beim ersten
+`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.43.0.zip`, beim ersten
 Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
 ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
 Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App

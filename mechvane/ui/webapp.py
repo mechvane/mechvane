@@ -15,10 +15,10 @@ from pathlib import Path
 
 from ..install import CACHE
 
-VERSION = "0.41.0"
+VERSION = "0.43.0"
 ASSET = f"solidcraft-web-{VERSION}.zip"
 URL = f"https://github.com/tangency-labs/solidcraft/releases/download/v{VERSION}/{ASSET}"
-SHA256 = "dba9a9389bc479c0c12412493b1bec61d4d4d8434cd4e4cca67ad2a38183fc04"
+SHA256 = "4c00c05f57fcbc0c7affd455816104d2cc41e7b6e7ebc2c459cd253d402c0bf3"
 
 MIME = {
     ".html": "text/html; charset=utf-8",

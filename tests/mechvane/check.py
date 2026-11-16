@@ -8930,6 +8930,59 @@ def gate_class_checks():
        all(cls(p) == "C" for p in ("tools/agent_clone.sh", "tools/gemini_queue.sh", "tools/upstream_watch.py",
                                    "tests/tasks/scharnier/grade.py", "tools/status_collect.py", "tools/systemd/x.timer")))
     ok("gate: a count of ok( calls is read from a revision", gt.count_checks("HEAD") > 500, str(gt.count_checks("HEAD")))
+    # #115: a branch that touches nothing the UI runs on is checked against main before it goes back
+    ok("gate: grader-only or doc branches are UI-independent, product code and the UI tests are not (#115)",
+       gt.ui_independent(["tests/tasks/welle/grade.py", "docs/x.md", "katalog/a.json"])
+       and not gt.ui_independent(["tests/tasks/a.py", "mechvane/ui/static/app.js"])
+       and not gt.ui_independent(["mechvane/links.py"]) and not gt.ui_independent(["tools/ui_smoke.py"])
+       and not gt.ui_independent(["pyproject.toml"]))
+    head = gt.sh(["git", "rev-parse", "origin/main"])[1].strip()
+    cache = gt.REPO / "build/status" / f"main_ui_{head[:12]}.json"
+    had = cache.read_text() if cache.exists() else None
+    try:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({"red": True, "note": "planted"}))
+        red, note = gt.ui_red_on_main()
+    finally:
+        cache.write_text(had) if had is not None else cache.unlink(missing_ok=True)
+    ok("gate: the main counter-check is cached per main commit (no second ui_smoke run that night, #115)",
+       red is True and "zwischengespeichert" in note, f"{red} {note}")
+
+
+def py311_syntax_checks():
+    """#117: no f-string forms that need Python 3.12 (pyproject promises 3.11): the same quote nested,
+    a backslash or a comment inside a replacement field. Found by the tokenizer, every versioned *.py."""
+    import subprocess, tokenize, io
+    root = Path(__file__).resolve().parents[2]
+
+    def scan(src: bytes) -> list[str]:
+        found, stack = [], []
+        for t in tokenize.tokenize(io.BytesIO(src).readline):
+            if t.type == tokenize.FSTRING_START:
+                q = t.string.lstrip("fFrRbB")[:1]
+                if stack and stack[-1] == q:
+                    found.append(f"{t.start[0]}: nested f-string reuses {q}")
+                stack.append(q)
+            elif t.type == tokenize.FSTRING_END:
+                stack.pop()
+            elif stack and t.type == tokenize.STRING and (stack[-1] in t.string or "\\" in t.string):
+                found.append(f"{t.start[0]}: quote or backslash inside an f-string field")
+            elif stack and t.type == tokenize.COMMENT:
+                found.append(f"{t.start[0]}: comment inside an f-string")
+        return found
+
+    if not hasattr(tokenize, "FSTRING_START"):  # Python 3.11 itself compiles every file anyway
+        return
+    files = subprocess.run(["git", "ls-files", "*.py"], cwd=root, capture_output=True, text=True).stdout.split()
+    bad = []
+    for rel in files:
+        try:
+            bad += [f"{rel}:{x}" for x in scan((root / rel).read_bytes())]
+        except (tokenize.TokenError, SyntaxError, OSError) as e:
+            bad.append(f"{rel}: {e}")
+    old = scan(b'x = f"a {d[\'k\']} {g(\'s[name=\\"x\\"]\')!r}"\n')
+    ok("python 3.11: no f-string syntax that needs 3.12 in versioned files (and the scan finds a planted one)",
+       not bad and len(old) == 1, f"{bad[:10]} planted={old}")
 
 
 def check_sources_gzip_check():
@@ -10001,6 +10054,7 @@ def main():
             if _private_tool("gate.py"):
                 gate_class_checks()
             check_sources_gzip_check()
+            py311_syntax_checks()
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")
