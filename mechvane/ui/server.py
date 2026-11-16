@@ -1900,7 +1900,7 @@ def collect_findings(ws, doc, profile: str | None = None, material: str | None =
         point = loc.get("point")
         status = c.get("status", "ok")
         item = {
-            "source": "design_rules",
+            "origin": "design_rules",
             "rule": c.get("rule", "design_rule"),
             "status": status,
             "severity": status,
@@ -1912,7 +1912,7 @@ def collect_findings(ws, doc, profile: str | None = None, material: str | None =
         }
         if loc.get("body"):
             item["body"] = loc["body"]
-        for k in ("value", "threshold"):
+        for k in ("value", "threshold", "source"):
             if k in c:
                 item[k] = c[k]
         findings.append(item)
@@ -1943,7 +1943,7 @@ def collect_findings(ws, doc, profile: str | None = None, material: str | None =
             if asm_body:
                 loc["body"] = asm_body
             item = {
-                "source": "links",
+                "origin": "links",
                 "rule": "joint_check",
                 "joint": jname,
                 "side": side,

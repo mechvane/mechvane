@@ -1,7 +1,9 @@
 """Design rule checks for parts: wall thickness, hole edge distances, thread engagement
 depth, and FDM printability. Operates via the SolidCraft session."""
 
+import json
 import math
+import os
 import re
 import warnings
 
@@ -206,6 +208,49 @@ def _load_katalog_verfahrensregeln() -> dict:
         "src_hole_depth_ratio": src_hdr,
         "src_undercut": src_uc,
     }
+
+
+# Rule -> knowledge catalog entry that states the rule's threshold (katalog/eintraege). A rule without an
+# entry here has no entry in the catalog that states its value yet: its findings carry no `source`.
+RULE_SOURCES = {
+    "horizontal_hole": "fdm_liegende_bohrungen_tropfenform",
+    "heat_set_insert": "gewindeeinsaetze_3ddruck_ruthex",
+    "pocket_corner_radius": "innenradius_vertikale_kanten_hubs",
+    "hole_depth_ratio": "bohrungstiefe_fraesen_hubs",
+    "undercut": "hinterschnitte_fraesen_hubs",
+}
+
+_RULE_SOURCES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rule_sources.json")
+_RULE_SOURCE_CACHE = None
+
+
+def rule_sources() -> dict:
+    """Source of each mapped rule: {rule: {entry, titel, url, stelle, zitat}} from the first source of its
+    catalog entry (quote verbatim). Without the catalog (live demo in the browser) the bundled
+    rule_sources.json, written by tools/build_demo_site.py, stands in."""
+    global _RULE_SOURCE_CACHE
+    if _RULE_SOURCE_CACHE is not None:
+        return _RULE_SOURCE_CACHE
+    out = {}
+    if katalog is not None:
+        try:
+            entries = katalog.load()
+            for rule, entry_id in RULE_SOURCES.items():
+                e = katalog.get_entry(entry_id, eintraege=entries)
+                if e and e.get("quellen"):
+                    q = e["quellen"][0]
+                    out[rule] = {"entry": entry_id, "titel": e.get("aussage", entry_id), "url": q["url"],
+                                 "stelle": q["stelle"], "zitat": q["zitat"]}
+        except Exception as exc:
+            warnings.warn(f"Failed to load rule sources from katalog: {exc}", stacklevel=2)
+    if not out and os.path.exists(_RULE_SOURCES_FILE):
+        try:
+            with open(_RULE_SOURCES_FILE, encoding="utf-8") as fp:
+                out = json.load(fp)
+        except Exception:
+            out = {}
+    _RULE_SOURCE_CACHE = out
+    return out
 
 
 def get_katalog_verfahrensregeln(reload: bool = False) -> dict:
@@ -1076,9 +1121,16 @@ def check(session_or_doc, profile: str | dict | None = None,
             elif r_data["status"] == "warn" and all_rules[r_name]["status"] != "fail":
                 all_rules[r_name]["status"] = "warn"
 
+    sources = rule_sources()
     flat_checks = []
     for r_name, r_data in all_rules.items():
+        src = sources.get(r_name)
         for f in r_data["findings"]:
+            # `source` is the catalog source object; the rules' plain URL strings give way to it
+            if src:
+                f["source"] = dict(src)
+            else:
+                f.pop("source", None)
             flat_checks.append(dict(f, rule=r_name))
 
     has_fail = any(r["status"] == "fail" for r in all_rules.values())

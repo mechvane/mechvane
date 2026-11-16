@@ -1156,6 +1156,44 @@ def design_rule_checks(ws):
     ws.close("rule_probe_err")
 
 
+def finding_source_checks(ws):
+    """#120: findings of rules with a knowledge catalog entry carry its source, others carry none."""
+    from mechvane.ui import server as ui_server
+    entry_id = design_rules.RULE_SOURCES["horizontal_hole"]
+    entry = katalog.get_entry(entry_id)
+    q = entry["quellen"][0]
+    doc = ws.new(PART, "p_src_hh")
+    doc.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 40, "corner": [0, 0, 0], "name": "B"}},
+        {"command": "solid.cylinder", "params": {"diameter": 10, "height": 20, "base": [20, -5, 20], "axis": [0, 1, 0], "operation": "cut", "name": "H"}},
+    ])
+    res = design_rules.check(doc, profile="fdm_0.4")
+    f_hh = res["rules"]["horizontal_hole"]["findings"]
+    src = f_hh[0].get("source") if f_hh else None
+    ok("finding source: a mapped rule's finding carries the catalog entry's source",
+       bool(f_hh) and isinstance(src, dict) and src["entry"] == entry_id and src["url"] == q["url"]
+       and src["stelle"] == q["stelle"] and src["titel"] == entry["aussage"], str(src))
+    # verbatim from the catalog file itself
+    path = next(Path(__file__).resolve().parents[2].glob(f"katalog/eintraege/*/{entry_id}.json"))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    ok("finding source: the quote is exactly the text in the catalog file",
+       bool(src) and src["zitat"] == raw["quellen"][0]["zitat"], str(src and src["zitat"]))
+    wall = res["rules"]["min_wall_thickness"]["findings"]
+    ok("finding source: an unmapped rule's findings have no source field",
+       bool(wall) and all("source" not in f for f in wall)
+       and all(r not in design_rules.RULE_SOURCES for r in ("min_wall_thickness", "hole_edge_distance", "thread_depth")),
+       str(wall[:1]))
+    ok("finding source: every mapped rule resolves to a catalog entry with a source",
+       set(design_rules.rule_sources()) == set(design_rules.RULE_SOURCES), str(sorted(design_rules.rule_sources())))
+    cf = ui_server.collect_findings(ws, doc)["findings"]
+    c_hh = [f for f in cf if f["rule"] == "horizontal_hole"]
+    c_wall = [f for f in cf if f["rule"] == "min_wall_thickness"]
+    ok("finding source: collect_findings passes the source through, unmapped rules stay without",
+       bool(c_hh) and c_hh[0].get("source") == src and c_hh[0]["origin"] == "design_rules"
+       and bool(c_wall) and all("source" not in f for f in c_wall), str(c_hh[:1]))
+    ws.close("p_src_hh")
+
+
 def verfahrensregeln_checks(ws):
     # 1. FDM: horizontal_hole
     p_hh_trig = ws.new(PART, "p_vr_hh_trig")
@@ -1170,7 +1208,7 @@ def verfahrensregeln_checks(ws):
        and len(f_hh) == 1 and ("teardrop" in f_hh[0]["message"] or "support" in f_hh[0]["message"]),
        str(r_hh_trig["rules"]["horizontal_hole"]))
     ok("verfahrensregeln / fdm: horizontal hole finding contains source",
-       bool(f_hh[0].get("source")) and "hubs.com" in f_hh[0]["source"],
+       bool(f_hh[0].get("source")) and "hubs.com" in f_hh[0]["source"]["url"],
        str(f_hh[0]))
     r_hh_cnc = design_rules.check(p_hh_trig.session, profile="cnc_alu")
     ok("verfahrensregeln / cnc: horizontal hole does not trigger in cnc_alu profile",
@@ -1202,7 +1240,7 @@ def verfahrensregeln_checks(ws):
        and len(f_hsi) == 1 and "6.7" in f_hsi[0]["message"],
        str(r_hsi_trig["rules"]["heat_set_insert"]))
     ok("verfahrensregeln / fdm: heat-set insert finding contains source",
-       bool(f_hsi[0].get("source")) and ("ruthex" in f_hsi[0]["source"] or "cnckitchen" in f_hsi[0]["source"]),
+       bool(f_hsi[0].get("source")) and ("ruthex" in f_hsi[0]["source"]["url"] or "cnckitchen" in f_hsi[0]["source"]["url"]),
        str(f_hsi[0]))
 
     p_hsi_pass = ws.new(PART, "p_vr_hsi_pass")
@@ -1285,7 +1323,7 @@ def verfahrensregeln_checks(ws):
        and len(f_pcr_inner) >= 1 and any("1.00" in f["message"] for f in f_pcr_inner),  # the R1 corner among the sharp ones, in the kernel's order
        str(r_pcr_inner["rules"]["pocket_corner_radius"]))
     ok("verfahrensregeln / cnc: pocket corner radius finding contains source",
-       bool(f_pcr_inner[0].get("source")) and "hubs.com" in f_pcr_inner[0]["source"],
+       bool(f_pcr_inner[0].get("source")) and "hubs.com" in f_pcr_inner[0]["source"]["url"],
        str(f_pcr_inner[0]))
 
     p_pcr_pass = ws.new(PART, "p_vr_pcr_pass")
@@ -1319,7 +1357,7 @@ def verfahrensregeln_checks(ws):
        and len(f_hdr) == 1 and "10" in f_hdr[0]["message"],
        str(r_hdr_trig["rules"]["hole_depth_ratio"]))
     ok("verfahrensregeln / cnc: hole depth ratio finding contains source",
-       bool(f_hdr[0].get("source")) and "hubs.com" in f_hdr[0]["source"],
+       bool(f_hdr[0].get("source")) and "hubs.com" in f_hdr[0]["source"]["url"],
        str(f_hdr[0]))
 
     p_hdr_pass = ws.new(PART, "p_vr_hdr_pass")
@@ -1353,7 +1391,7 @@ def verfahrensregeln_checks(ws):
        and len(f_uc) >= 1 and "undercut" in f_uc[0]["message"].lower(),
        str(r_uc_trig["rules"]["undercut"]))
     ok("verfahrensregeln / cnc: undercut finding contains source",
-       bool(f_uc[0].get("source")) and "hubs.com" in f_uc[0]["source"],
+       bool(f_uc[0].get("source")) and "hubs.com" in f_uc[0]["source"]["url"],
        str(f_uc[0]))
 
     p_uc_pass = ws.new(PART, "p_vr_uc_pass")
@@ -4519,9 +4557,9 @@ def web_ui_stage1_checks(ws):
         with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/findings", timeout=10) as resp:
             asm_findings = json.loads(resp.read().decode("utf-8"))
         ok("web ui assembly: findings are joint checks only, no part design rules on the assembly",
-           asm_findings["findings"] and all(f["source"] == "links" for f in asm_findings["findings"])
+           asm_findings["findings"] and all(f["origin"] == "links" for f in asm_findings["findings"])
            and asm_findings["verdict"] == "ok" and "joints ok" in asm_findings["summary"],
-           f"summary={asm_findings.get('summary')} sources={[f['source'] for f in asm_findings['findings']]}")
+           f"summary={asm_findings.get('summary')} sources={[f['origin'] for f in asm_findings['findings']]}")
         asm_sel = [f.get("select") for f in asm_findings["findings"]]
         ok("web ui model mode: joint findings carry a select.set item on an assembly body",
            asm_sel and all(x and x["type"] == "face" and x["body"] in {bd["name"] for bd in asm_mesh.get("bodies", [])}
@@ -9022,6 +9060,25 @@ def demo_wasm_split_checks(tmp):
        and "serviceWorker.register" not in html and 'const VERSION = "dev"' in (sc / "sw.js").read_text(), f"{man} {html}")
 
 
+def step_signature_checks(ws):
+    """#121: every feature in the part tree carries a signature of its definition; a step changes exactly the
+    signatures of what it changed, so the workspace can mark new, changed and removed features."""
+    from mechvane import tree
+    doc = ws.new(PART, "sig_part", overwrite=True)
+    s = doc.session
+    s.batch([{"command": "solid.box", "params": {"length": 30, "width": 20, "height": 10, "corner": [0, 0, 0], "name": "Block"}},
+             {"command": "solid.fillet", "params": {"edges": [[15, 0, 10]], "radius": 1, "name": "Round"}}])
+    flat = lambda t: {n["name"]: n.get("sig") for n in t["features"] if n.get("name")}
+    before = flat(tree.part_tree(s, groups=True))
+    again = flat(tree.part_tree(s, groups=True))
+    s.cmd("timeline.edit", {"feature": "Round", "set": {"radius": 2}})
+    after = flat(tree.part_tree(s, groups=True))
+    ok("step marks: each feature has a signature, stable without a change; editing Round changes only its own (#121)",
+       all(before.values()) and before == again and after["Round"] != before["Round"] and after["Block"] == before["Block"],
+       f"{before} {after}")
+    ws.close("sig_part")
+
+
 def check_sources_gzip_check():
     """tools/check_sources.py unpacks a page a host sends gzipped although the request did not ask for it (jules.google)."""
     import gzip
@@ -10009,6 +10066,7 @@ def main():
             semantic_queries(ws)
             design_rule_checks(ws)
             verfahrensregeln_checks(ws)
+            finding_source_checks(ws)
             joints_across_files(ws)
             standard_parts_checks(ws)
             subassemblies(ws)
@@ -10093,6 +10151,7 @@ def main():
             check_sources_gzip_check()
             py311_syntax_checks()
             demo_wasm_split_checks(tmp)
+            step_signature_checks(ws)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

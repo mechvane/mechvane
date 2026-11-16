@@ -271,6 +271,9 @@ try:
             page.click(".feature-ok")
             page.wait_for_timeout(2500)
             added = "Fillet" in page.locator("#tree-content").inner_text() and "Fillet" not in tree_before
+            # #121: the step is named above the browser, the new row marked, the old model shown as a ghost
+            step_bar = page.locator("#step-changes").inner_text() if page.locator("#step-changes").count() else ""
+            step_new = page.locator('.tree-row.tree-step-new[data-type="FilletFeature"]').count() == 1
             # double-click in the model browser opens it again with its edge and radius; Esc leaves it as it is
             page.dblclick('.tree-row[data-type="FilletFeature"]')
             page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
@@ -281,9 +284,14 @@ try:
             page.keyboard.press("Control+z")
             page.wait_for_timeout(2500)
             undone = page.locator("#tree-content").inner_text() == tree_before
+            step_undo = page.locator("#step-changes").inner_text() if page.locator("#step-changes").count() else ""
+            page.click("#step-changes .step-changes-toggle")
+            hidden_marks = page.evaluate("document.getElementById('tree-content').classList.contains('step-marks-hidden')")
+            page.click("#step-changes .step-changes-toggle")
+            step_ok = ("+ Fillet1" in step_bar and step_new and "\u2212 Fillet1" in step_undo and hidden_marks)
             fillet = (f"preview {delta!r} {err!r}, esc cancels: {cancelled}, ok adds: {added}, edit reopens: {reopened}, "
-                      f"ctrl+z: {undone}")
-            fillet_ok = "Volume" in delta and not err and cancelled and added and reopened and undone
+                      f"ctrl+z: {undone}, last step: {step_bar!r} / {step_undo!r}, marked: {step_new}, hide: {hidden_marks}")
+            fillet_ok = "Volume" in delta and not err and cancelled and added and reopened and undone and step_ok
 
         # Hole dialog: face click (Hole1), Middle of face (Hole centre sketch), Ctrl+Z twice
         if page.locator("#btn-hole").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":

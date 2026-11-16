@@ -7,6 +7,15 @@ from . import files_on_disk, read_metadata
 from .sketch_rule import consumers, is_work_feature, owners, timeline
 
 
+def signature(defn, f) -> str:
+    """Short hash of a feature's definition and state: the workspace compares it before and after a step to
+    mark what is new, changed or gone (#121). Not stable across SolidCraft versions, only within a session."""
+    import hashlib
+    import json
+    state = [defn, bool(f.get("suppressed")), bool(f.get("rolled_back")), f.get("type")]
+    return hashlib.sha1(json.dumps(state, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
 def part_tree(s, groups=False):
     """With groups, the same ownership also as Fusion-style folders: every sketch and work
     feature once, with the feature it belongs to (or what shares it)."""
@@ -17,7 +26,8 @@ def part_tree(s, groups=False):
     tl = insp["timeline"]
     marker = insp.get("marker")
     end = len(tl) if marker is None else marker
-    cons = consumers(s, tl)
+    defs = {}
+    cons = consumers(s, tl, defs)
     owned = owners(cons)
     by_feature = {}
     for sketch, feature in owned.items():
@@ -33,7 +43,7 @@ def part_tree(s, groups=False):
         return n
 
     def node(f):
-        n = {"name": f["name"], "type": f["type"]}
+        n = {"name": f["name"], "type": f["type"], "sig": signature(defs.get(f["name"]), f)}
         for key in ("suppressed", "rolled_back"):
             if f.get(key):
                 n[key] = True

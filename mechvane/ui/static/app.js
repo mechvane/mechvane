@@ -73,6 +73,9 @@ scene.add(fillLight);
 const modelGroup = new THREE.Group();
 const highlightGroup = new THREE.Group();
 scene.add(modelGroup);
+// The state before the last step as a ghost (#121); its own group, so picking and measuring never hit it
+const ghostGroup = new THREE.Group();
+scene.add(ghostGroup);
 scene.add(highlightGroup);
 
 let currentVersion = null;
@@ -832,6 +835,83 @@ function renderOriginFolder() {
   return details;
 }
 
+// What the last step changed (#121): feature signatures from the tree before and after, the mesh before as a ghost
+let lastStep = null;       // {added, changed, removed}
+let ghostShown = true;
+let prevSigs = null, prevDocKey = null;
+
+function treeSigs(tree) {
+  const sigs = new Map();
+  const walk = (nodes) => {
+    for (const n of nodes || []) {
+      if (n.name && n.sig) sigs.set(n.name, n.sig);
+      walk(n.children);
+    }
+  };
+  walk(tree && tree.features);
+  return sigs;
+}
+
+function diffSigs(before, after) {
+  const step = { added: [], changed: [], removed: [] };
+  for (const [name, sig] of after) {
+    if (!before.has(name)) step.added.push(name);
+    else if (before.get(name) !== sig) step.changed.push(name);
+  }
+  for (const name of before.keys()) if (!after.has(name)) step.removed.push(name);
+  return step;
+}
+
+function showGhost(meshData) {
+  clearGroup(ghostGroup);
+  const color = 0xf59e0b;
+  for (const b of (meshData && meshData.bodies) || []) {
+    if (!b.positions || b.positions.length === 0 || !isBodyVisible(b.name, b)) continue;
+    const { geom, edgeGeom } = buildBodyGeometryAndEdges(b);
+    const fill = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+    fill.renderOrder = 2;
+    ghostGroup.add(fill);
+    if (edgeGeom.attributes.position.count > 0) {
+      const lines = new THREE.LineSegments(edgeGeom, new THREE.LineBasicMaterial({
+        color, transparent: true, opacity: 0.75, depthTest: false }));
+      lines.renderOrder = 3;
+      ghostGroup.add(lines);
+    }
+  }
+  ghostGroup.visible = ghostShown;
+  renderScene();
+}
+
+// Marks in the model browser and the "Last step" bar above it, with Hide/Show for marks and ghost
+function applyStepMarks() {
+  document.getElementById("step-changes")?.remove();
+  treeContentEl.classList.toggle("step-marks-hidden", !ghostShown);
+  if (!lastStep) return;
+  const row = (name) => treeContentEl.querySelector(`.tree-row[data-feature="${CSS.escape(name)}"]`);
+  lastStep.added.forEach((n) => row(n)?.classList.add("tree-step-new"));
+  lastStep.changed.forEach((n) => row(n)?.classList.add("tree-step-changed"));
+  const bar = document.createElement("div");
+  bar.id = "step-changes";
+  bar.className = "step-changes";
+  bar.innerHTML = '<span class="step-changes-label">Last step</span><span class="step-changes-list"></span>'
+    + '<button type="button" class="step-changes-toggle"></button>';
+  bar.querySelector(".step-changes-list").textContent = [
+    ...lastStep.added.map((n) => `+ ${n}`), ...lastStep.changed.map((n) => `~ ${n}`),
+    ...lastStep.removed.map((n) => `\u2212 ${n}`)].join(" \u00b7 ");
+  const btn = bar.querySelector("button");
+  const sync = () => {
+    btn.textContent = ghostShown ? "Hide" : "Show";
+    btn.title = ghostShown ? "Hide the previous state and the marks" : "Show the previous state as a ghost";
+    ghostGroup.visible = ghostShown;
+    treeContentEl.classList.toggle("step-marks-hidden", !ghostShown);
+    renderScene();
+  };
+  btn.addEventListener("click", () => { ghostShown = !ghostShown; sync(); });
+  sync();
+  treeContentEl.before(bar);  // above the browser, not in it: its text stays the model's
+}
+
 function updateTreeView(treeData) {
   treeContentEl.innerHTML = "";
   if (!treeData) {
@@ -1058,6 +1138,38 @@ function updateFindingsView(data, preserveSelection) {
       card.appendChild(loc);
     }
 
+    // Source from the knowledge catalog (design rule findings only; joint findings have no catalog rule)
+    if (f.source && f.source.zitat) {
+      const det = document.createElement("details");
+      det.className = "finding-source";
+      det.addEventListener("click", (e) => e.stopPropagation());
+      const sum = document.createElement("summary");
+      sum.textContent = "Source";
+      det.appendChild(sum);
+      const title = document.createElement("div");
+      title.className = "finding-source-title";
+      title.textContent = f.source.titel || f.source.entry || "";
+      det.appendChild(title);
+      const quote = document.createElement("blockquote");
+      quote.className = "finding-source-quote";
+      quote.textContent = `“${f.source.zitat}”`;
+      det.appendChild(quote);
+      if (f.source.url) {
+        const a = document.createElement("a");
+        a.href = f.source.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = f.source.stelle ? `${f.source.stelle} ↗` : "Open source ↗";
+        det.appendChild(a);
+      }
+      card.appendChild(det);
+    } else if (f.origin !== "links") {
+      const none = document.createElement("div");
+      none.className = "finding-source-none";
+      none.textContent = "no source in the knowledge catalog yet";
+      card.appendChild(none);
+    }
+
     card.addEventListener("click", () => selectFinding(idx));
     findingsContentEl.appendChild(card);
   });
@@ -1206,6 +1318,7 @@ async function loadAll(initial = false) {
       fetchJson(dataUrl("tree")),
       fetchJson(dataUrl("findings")),
     ]);
+    const oldMesh = viewBeforeEdit || currentMeshData;
     currentVersion = ver.version;
     docNameEl.textContent = ver.name || "Document";
     docKindEl.textContent = ver.kind === "assembly" ? "Assembly" : "Part";
@@ -1217,6 +1330,22 @@ async function loadAll(initial = false) {
     updateMeshView(mesh, initial);
     if (featureDialogs) featureDialogs.modelChanged();
     updateTreeView(tree);
+    // a step in the same document: compare the features before and after, keep the old model as a ghost (#121);
+    // a reload without a change (visibility, a second reload of the same step) leaves the last step as it is
+    const docKey = `${ver.kind}:${ver.name}`, sigs = treeSigs(tree);
+    if (initial || prevDocKey !== docKey) {
+      lastStep = null;
+      showGhost(null);
+    } else if (prevSigs) {  // no version check: pollVersion sets currentVersion before it calls loadAll
+      const step = diffSigs(prevSigs, sigs);
+      if (step.added.length || step.changed.length || step.removed.length) {
+        lastStep = step;
+        showGhost(oldMesh);
+      }
+    }
+    prevSigs = sigs;
+    prevDocKey = docKey;
+    applyStepMarks();
     updateFindingsView(findings, !initial);
     // rules are saved per part; an assembly has none to choose
     if (ver.kind === "assembly") ruleSetupEl.hidden = true;

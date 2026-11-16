@@ -277,7 +277,7 @@
           "text": "Mark parameters, features or faces as fixed; your agent works around them and tells you when a request would need them changed."
         },
         {
-          "status": "planned",
+          "status": "next",
           "title": "See what your agent changed",
           "text": "The previous state as a ghost over the new one and changed features marked in the browser. A first version comes with v0.1; accepting or undoing single changes follows. Builds on SolidCraft's compare.",
           "milestone": "v0.1"
@@ -352,7 +352,7 @@
           "text": "Every value with its source, quotation and status, checked automatically against the source."
         },
         {
-          "status": "planned",
+          "status": "next",
           "title": "Every finding shows its source",
           "text": "Each finding of the design check shows the rule, the value, the source and the quoted passage from the knowledge catalog, and the catalog gets its own page on mechvane.dev.",
           "milestone": "v0.1"

@@ -1737,3 +1737,66 @@ body.sketching #viewport canvas { cursor: crosshair; }
 .bolted-item.active { border-color: var(--selected-border); background: var(--hover-bg); }
 .bolted-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bolted-item-actions { display: inline-flex; gap: 4px; flex-shrink: 0; }
+
+/* Source from the knowledge catalog under a finding (#120) */
+.finding-source {
+  margin-top: 5px;
+  font-size: 11.5px;
+}
+.finding-source summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+.finding-source-title {
+  margin-top: 4px;
+  font-weight: 600;
+  word-break: break-word;
+}
+.finding-source-quote {
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  color: var(--text-muted);
+  font-style: italic;
+  word-break: break-word;
+}
+.finding-source a {
+  word-break: break-word;
+}
+.finding-source-none {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* What the last step changed (#121): a bar above the model browser, marked rows, the old model as a ghost */
+.step-changes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 6px 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--warn-border);
+  border-radius: 4px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 12px;
+}
+.step-changes-label { font-weight: 600; white-space: nowrap; }
+.step-changes-list { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-changes-toggle {
+  border: 1px solid var(--warn-border);
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.step-changes-toggle:hover { background: var(--hover-bg); }
+.tree-row.tree-step-new { box-shadow: inset 3px 0 0 var(--ok-border); }
+.tree-row.tree-step-changed { box-shadow: inset 3px 0 0 var(--warn-border); }
+.step-marks-hidden .tree-row.tree-step-new,
+.step-marks-hidden .tree-row.tree-step-changed { box-shadow: none; }

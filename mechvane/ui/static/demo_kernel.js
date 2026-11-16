@@ -196,13 +196,27 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   }
 
   // The model browser as the server's collect_tree: features with the sketch each one uses under it
+  // Short hash of a feature's definition and state (as tree.signature on the server, only compared within a session)
+  function stable(v) {
+    if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
+    if (v && typeof v === "object") return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(",")}}`;
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  function signature(v) {
+    let h = 0x811c9dc5;  // FNV-1a, 32 bit
+    for (const ch of stable(v)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16).padStart(8, "0");
+  }
+
   async function tree() {
     const tl = await timeline();
     const byId = Object.fromEntries(tl.map((f) => [f.id, f]));
     const owned = new Map();
+    const defs = {};  // every definition, for the signature the workspace compares across a step (#121)
     for (const f of tl) {
-      if (f.type === "Sketch") continue;
       const def = (await exec("timeline.inspect", { feature: f.id })).definition || {};
+      defs[f.name] = def;
+      if (f.type === "Sketch") continue;
       const sk = byId[def.sketch];
       if (sk && sk.type === "Sketch" && !owned.has(sk.name)) owned.set(sk.name, f.name);
     }
@@ -211,7 +225,8 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     const sketchVis = Object.fromEntries((ins.sketches || []).map((s) => [s.name, s.visible]));
     const node = (f) => {
       const n = { name: f.name, type: f.type, suppressed: f.suppressed || undefined,
-                  rolled_back: f.rolled_back || undefined, error: f.error || undefined };
+                  rolled_back: f.rolled_back || undefined, error: f.error || undefined,
+                  sig: signature([defs[f.name], !!f.suppressed, !!f.rolled_back, f.type]) };
       if (f.type === "Sketch") {
         n.visible = sketchVis[f.name] !== undefined ? sketchVis[f.name] : !owned.has(f.name);
       } else if (f.type && f.type.startsWith("Construction")) {

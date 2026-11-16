@@ -14,7 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from mechvane import install, links  # noqa: E402
+from mechvane import design_rules, install, links  # noqa: E402
 from mechvane.documents import ASSEMBLY, Workspace  # noqa: E402
 from mechvane.examples import DEMOS  # noqa: E402
 from mechvane.ui.mesh import collect_mesh  # noqa: E402
@@ -33,6 +33,8 @@ def make_mechvane_zip(dest: Path):
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in modules:
             zf.write(REPO / "mechvane" / name, f"mechvane/{name}")
+        # the browser has no knowledge catalog: ship the sources of the design rules (#120)
+        zf.writestr("mechvane/rule_sources.json", json.dumps(design_rules.rule_sources(), ensure_ascii=False))
 
 
 PART_BYTES = 95 * 1024 * 1024  # GitHub Pages refuses files over 100 MB (#119)

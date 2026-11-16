@@ -51,9 +51,10 @@ def references(definition, ids):
     return out
 
 
-def consumers(s, tl=None):
+def consumers(s, tl=None, defs=None):
     """{sketch or work feature: [names of what uses it directly]} for the whole history, read from
-    the feature definitions, so suppressed and rolled-back users count too."""
+    the feature definitions, so suppressed and rolled-back users count too. With a dict `defs`, the
+    definitions read on the way are kept there by feature name (the tree signs them, #121)."""
     tl = tl if tl is not None else timeline(s)["timeline"]
     ids = {f["id"]: f["name"] for f in tl}
     out = {f["name"]: [] for f in tl if f["type"] == "Sketch" or is_work_feature(f)}
@@ -64,6 +65,8 @@ def consumers(s, tl=None):
                 defn = [defn, s.cmd("sketch.inspect", {"sketch": f["id"]}).get("links", [])]
             except SolidCraftError:  # not evaluated (rolled back, suppressed): its projections are unknown
                 pass
+        if defs is not None:
+            defs[f["name"]] = defn
         for ref in sorted(references(defn, ids) - {f["name"]}):
             if ref in out:
                 out[ref].append(f["name"])

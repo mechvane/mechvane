@@ -87,7 +87,7 @@ def check_browser(payload: dict | str, doc_name: str = "doc.solidcraft",
         point = loc.get("point")
         status = c.get("status", "ok")
         item = {
-            "source": "design_rules",
+            "origin": "design_rules",
             "rule": c.get("rule", "design_rule"),
             "status": status,
             "severity": status,
@@ -99,7 +99,7 @@ def check_browser(payload: dict | str, doc_name: str = "doc.solidcraft",
         }
         if loc.get("body"):
             item["body"] = loc["body"]
-        for k in ("value", "threshold"):
+        for k in ("value", "threshold", "source"):
             if k in c:
                 item[k] = c[k]
         findings.append(item)
