@@ -8992,6 +8992,36 @@ def py311_syntax_checks():
        not bad and len(old) == 1, f"{bad[:10]} planted={old}")
 
 
+def demo_wasm_split_checks(tmp):
+    """#119: the demo build splits a wasm over GitHub's file limit and wires the loader into sc/index.html."""
+    import hashlib
+    from tools import build_demo_site as bds
+    sc = Path(tmp) / "wasm_split"
+    sc.mkdir()
+    data = bytes(range(256)) * 40  # 10240 bytes
+    (sc / "app-x_bg.wasm").write_bytes(data)
+    (sc / "index.html").write_text('<head><link rel="preload" href="./app-x_bg.wasm" crossorigin="anonymous" as="fetch">'
+                                   '<script type="module">init()</script><script>navigator.serviceWorker.register("sw.js")'
+                                   '</script></head>', encoding="utf-8")
+    (sc / "sw.js").write_text('// x\n/* @build */ const VERSION = "0.43.0-abc", FILES = [];\nconst RETIRE = VERSION === "dev";\n',
+                              encoding="utf-8")
+    old = bds.PART_BYTES
+    bds.PART_BYTES = 4000
+    try:
+        bds.split_large_wasm(sc)
+    finally:
+        bds.PART_BYTES = old
+    man = json.loads((sc / "app-x_bg.wasm.parts.json").read_text())
+    joined = b"".join((sc / p).read_bytes() for p in man["parts"])
+    html = (sc / "index.html").read_text()
+    ok("demo build: a wasm over the limit becomes pieces with size and SHA-256, the loader comes before the module, "
+       "no preload of the gone file, the offline worker retires (#119)",
+       not (sc / "app-x_bg.wasm").exists() and len(man["parts"]) == 3 and joined == data
+       and man["sha256"] == hashlib.sha256(data).hexdigest() and (sc / "wasm-parts.js").exists()
+       and html.index("wasm-parts.js") < html.index('<script type="module">') and "rel=\"preload\"" not in html
+       and "serviceWorker.register" not in html and 'const VERSION = "dev"' in (sc / "sw.js").read_text(), f"{man} {html}")
+
+
 def check_sources_gzip_check():
     """tools/check_sources.py unpacks a page a host sends gzipped although the request did not ask for it (jules.google)."""
     import gzip
@@ -10062,6 +10092,7 @@ def main():
                 gate_class_checks()
             check_sources_gzip_check()
             py311_syntax_checks()
+            demo_wasm_split_checks(tmp)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

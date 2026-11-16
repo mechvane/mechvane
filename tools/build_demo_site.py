@@ -35,6 +35,47 @@ def make_mechvane_zip(dest: Path):
             zf.write(REPO / "mechvane" / name, f"mechvane/{name}")
 
 
+PART_BYTES = 95 * 1024 * 1024  # GitHub Pages refuses files over 100 MB (#119)
+
+
+def split_large_wasm(sc: Path) -> None:
+    """GitHub Pages holds no file over 100 MB, SolidCraft's wasm is 167 MB from 0.41 on (#119). Split it into
+    pieces that tools/demo_site/wasm-parts.js joins in the page (checked against the release file's SHA-256),
+    and switch the web app's offline worker off for the demo: it keeps files by their SHA-256 and would keep
+    visitors on an older build it cannot update. The SolidCraft files are otherwise unchanged."""
+    import hashlib, re
+    big = [w for w in sc.glob("*_bg.wasm") if w.stat().st_size > PART_BYTES]
+    if not big:
+        return
+    for w in big:
+        data = w.read_bytes()
+        parts = []
+        for i in range(0, len(data), PART_BYTES):
+            name = f"{w.name}.part{i // PART_BYTES}"
+            (sc / name).write_bytes(data[i:i + PART_BYTES])
+            parts.append(name)
+        (sc / f"{w.name}.parts.json").write_text(json.dumps(
+            {"parts": parts, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}), encoding="utf-8")
+        w.unlink()
+    shutil.copy(REPO / "tools" / "demo_site" / "wasm-parts.js", sc / "wasm-parts.js")
+    index = sc / "index.html"
+    html = index.read_text(encoding="utf-8")
+    html = re.sub(r'<link rel="preload" href="\./[^"]*_bg\.wasm"[^>]*>', "", html)  # the whole file is gone
+    html = html.replace('navigator.serviceWorker.register("sw.js")', "Promise.resolve()")
+    if '<script src="wasm-parts.js">' not in html:
+        html = html.replace('<script type="module">', '<script src="wasm-parts.js"></script>\n<script type="module">', 1)
+    if "wasm-parts.js" not in html or "_bg.wasm\" crossorigin" in html:
+        raise RuntimeError("sc/index.html: could not wire the wasm pieces in")
+    index.write_text(html, encoding="utf-8")
+    sw = sc / "sw.js"
+    if sw.exists():  # "dev" makes the worker retire: it drops what it kept and unregisters (see sw.js)
+        text = sw.read_text(encoding="utf-8")
+        new = re.sub(r'^/\* @build \*/ const VERSION = "[^"]*"', '/* @build */ const VERSION = "dev"', text, count=1, flags=re.M)
+        if new == text:
+            raise RuntimeError("sc/sw.js: build line not found, the old offline worker would stay")
+        sw.write_text(new, encoding="utf-8")
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "site"
     if out.exists():
@@ -53,6 +94,7 @@ def main():
                                 encoding="utf-8")
     # The SolidCraft web app for "Model by hand" (release asset, SHA256 checked in webapp.py)
     shutil.copytree(webapp.webapp_dir(), demo / "sc")
+    split_large_wasm(demo / "sc")
     index = []
     with tempfile.TemporaryDirectory() as tmp:
         ws = Workspace(tmp)
