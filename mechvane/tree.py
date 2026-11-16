@@ -7,12 +7,41 @@ from . import files_on_disk, read_metadata
 from .sketch_rule import consumers, is_work_feature, owners, timeline
 
 
-def signature(defn, f) -> str:
+def _strings(o):
+    if isinstance(o, str):
+        yield o
+    elif isinstance(o, dict):
+        for v in o.values():
+            yield from _strings(v)
+    elif isinstance(o, (list, tuple)):
+        for v in o:
+            yield from _strings(v)
+
+
+def _rounded(o):
+    if isinstance(o, float):
+        return round(o, 6)
+    if isinstance(o, dict):
+        return {k: _rounded(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_rounded(v) for v in o]
+    return o
+
+
+def signature(defn, f, params=None) -> str:
     """Short hash of a feature's definition and state: the workspace compares it before and after a step to
-    mark what is new, changed or gone (#121). Not stable across SolidCraft versions, only within a session."""
+    mark what is new, changed or gone (#121). A feature stores parameters as expressions ("H"), so the current value
+    of every parameter named in its definition goes into the hash; a sketch's geometry comes with `defn`.
+    Not stable across SolidCraft versions, only within a session."""
     import hashlib
     import json
-    state = [defn, bool(f.get("suppressed")), bool(f.get("rolled_back")), f.get("type")]
+    import re
+    used = {}
+    for text in _strings(defn):
+        for tok in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text):
+            if params and tok in params:
+                used[tok] = params[tok]
+    state = _rounded([defn, used, bool(f.get("suppressed")), bool(f.get("rolled_back")), f.get("type")])
     return hashlib.sha1(json.dumps(state, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
@@ -28,6 +57,10 @@ def part_tree(s, groups=False):
     end = len(tl) if marker is None else marker
     defs = {}
     cons = consumers(s, tl, defs)
+    try:
+        params = {p["name"]: p.get("value") for p in s.cmd("parameters.list", {}).get("parameters", [])}
+    except Exception:  # noqa: BLE001 - signatures then ignore parameter values
+        params = {}
     owned = owners(cons)
     by_feature = {}
     for sketch, feature in owned.items():
@@ -43,7 +76,7 @@ def part_tree(s, groups=False):
         return n
 
     def node(f):
-        n = {"name": f["name"], "type": f["type"], "sig": signature(defs.get(f["name"]), f)}
+        n = {"name": f["name"], "type": f["type"], "sig": signature(defs.get(f["name"]), f, params)}
         for key in ("suppressed", "rolled_back"):
             if f.get(key):
                 n[key] = True

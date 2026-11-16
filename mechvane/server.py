@@ -360,6 +360,18 @@ def check_joints(assembly: str) -> dict:
 
 
 @mcp.tool()
+@sc_errors.explained
+def check_parameters(document: str, set: dict) -> dict:
+    """Try parameter values on an open document and put the design back (SolidCraft's check_parameters, #108).
+    `set` maps parameter names to values ("A": 70, "dh": "8 mm"); at least one. Nothing is kept: the document is
+    unchanged afterwards (`restored`: true). Returns `measure` (bodies with volume, bbox, mass; `total`, `body_count`),
+    `cylinders` (axis, origin, radius of every cylindrical face: where the holes are), `errors`, `parameter_errors`
+    and `warnings`. A variant that cannot be built comes back with `body_count` 0 or fewer/more bodies than the
+    base, not always with an error: compare against a run that sets one parameter to its current value."""
+    return ws.get(document).session.tool("check_parameters", {"set": set})
+
+
+@mcp.tool()
 def measure(document: str) -> dict:
     """Volume (mm³), area (mm²), centre of mass and bounding box of every body."""
     keep = ("name", "volume_mm3", "area_mm2", "center_of_mass", "bbox", "faces", "edges", "visible")

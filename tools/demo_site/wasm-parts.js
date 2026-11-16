@@ -18,9 +18,12 @@
     }));
     const blob = new Blob(buffers, { type: "application/wasm" });
     if (blob.size !== size) throw new Error(`wasm pieces: ${blob.size} bytes instead of ${size}`);
-    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
-    const hex = Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
-    if (hex !== sha256) throw new Error("wasm pieces: SHA-256 does not match the release file");
+    // crypto.subtle exists only on https and localhost (not on a plain http LAN address): there the size check stands alone
+    if (window.crypto && crypto.subtle) {
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
+      const hex = Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
+      if (hex !== sha256) throw new Error("wasm pieces: SHA-256 does not match the release file");
+    }
     return new Response(blob, { status: 200, headers: { "Content-Type": "application/wasm" } });
   };
 })();

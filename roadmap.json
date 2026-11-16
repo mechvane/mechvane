@@ -218,7 +218,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "Watch an agent session in the live demo",
           "text": "A recorded session plays in the browser: the request, the steps, the model growing, the check finding something and the agent fixing it. No key and no installation needed.",
           "milestone": "v0.1"

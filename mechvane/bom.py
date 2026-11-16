@@ -14,6 +14,7 @@ from typing import Any
 
 from . import files_on_disk, read_metadata
 from .documents import ASSEMBLY, Workspace
+from .solidcraft import SolidCraftError
 
 
 def _resolve_path(base_dir: Path, file_str: str) -> Path:
@@ -40,20 +41,32 @@ def _get_part_cache_info(ws: Workspace, file_path: Path, cache: dict[str, dict[s
     target_p = file_path.resolve()
     open_doc = next((d for d in ws.docs.values() if d.path.resolve() == target_p), None)
 
+    def unusable(why: str) -> dict[str, Any]:
+        # a part file that is gone or unreadable is a row of its own, not the end of the whole list (review 2026-11-16)
+        info = {"benennung": f"{file_path.stem} ({why})", "werkstoff": None, "masse": None, "norm": None,
+                "groesse": None, "length": None, "std": None, "problem": why}
+        cache[canon_key] = info
+        return info
+
     if open_doc is not None:
         meta = open_doc.metadata()
         meas = open_doc.session.tool("measure", {})
         doc_name = open_doc.name
+    elif not target_p.is_file():
+        return unusable("file missing")
     else:
-        reader = ws.reader(file_path)
         try:
-            raw_meta = reader.cmd("document.metadata").get("metadata")
-            meta = files_on_disk(read_metadata(raw_meta), file_path.parent)
-            meas = reader.tool("measure", {})
-            insp = reader.cmd("document.inspect")
-            doc_name = insp.get("name") or file_path.stem
-        finally:
-            reader.close()
+            reader = ws.reader(file_path)
+            try:
+                raw_meta = reader.cmd("document.metadata").get("metadata")
+                meta = files_on_disk(read_metadata(raw_meta), file_path.parent)
+                meas = reader.tool("measure", {})
+                insp = reader.cmd("document.inspect")
+                doc_name = insp.get("name") or file_path.stem
+            finally:
+                reader.close()
+        except SolidCraftError:
+            return unusable("unreadable")
 
     bodies = meas.get("bodies", [])
     materials = {b.get("material") for b in bodies} - {None, "Default"}
@@ -168,16 +181,23 @@ def _make_row(
     return row
 
 
+def _cell(v: Any) -> str:
+    """A text cell that a spreadsheet must not run as a formula: a leading = + - @ (or tab, return) gets an apostrophe
+    (CSV injection: a part description can come from a downloaded file)."""
+    t = str(v)
+    return "'" + t if t[:1] in ("=", "+", "-", "@", "\t", "\r") else t
+
+
 def _write_csv_row(writer: Any, r: dict[str, Any]) -> None:
     pos = str(r.get("position", ""))
-    name = str(r.get("benennung", "") or "")
+    name = _cell(r.get("benennung", "") or "")
     count = str(r.get("anzahl", "") or "")
-    file_ = str(r.get("datei", "") or "")
-    mat = str(r.get("werkstoff", "") or "")
+    file_ = _cell(r.get("datei", "") or "")
+    mat = _cell(r.get("werkstoff", "") or "")
     masse = r.get("masse")
     masse_str = f"{masse:.2f}" if isinstance(masse, (int, float)) else ("" if masse is None else str(masse))
-    norm = str(r.get("norm", "") or "")
-    size = str(r.get("groesse", "") or "")
+    norm = _cell(r.get("norm", "") or "")
+    size = _cell(r.get("groesse", "") or "")
     writer.writerow([pos, name, count, file_, mat, masse_str, norm, size])
     for ch in r.get("children", []):
         _write_csv_row(writer, ch)

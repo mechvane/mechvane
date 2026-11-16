@@ -1126,9 +1126,12 @@ def check(session_or_doc, profile: str | dict | None = None,
     for r_name, r_data in all_rules.items():
         src = sources.get(r_name)
         for f in r_data["findings"]:
-            # `source` is the catalog source object; the rules' plain URL strings give way to it
+            # `source` is the catalog source object; the rules' plain URL strings give way to it. Without the catalog
+            # (a pip install has no katalog/ folder) the rule's own URL stays, as an object with only the link
             if src:
                 f["source"] = dict(src)
+            elif isinstance(f.get("source"), str) and f["source"].startswith(("http://", "https://")):
+                f["source"] = {"url": f["source"]}
             else:
                 f.pop("source", None)
             flat_checks.append(dict(f, rule=r_name))

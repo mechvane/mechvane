@@ -2561,7 +2561,12 @@ export async function showBom({ get, statusEl, log = () => {} }) {
   flatEl.onchange = load;
   dialog.querySelector("#bom-csv").onclick = () => {
     if (!data) return;
-    const q = (v) => { const s = cell(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    // a text cell must not run as a formula in a spreadsheet: a leading = + - @ gets an apostrophe (CSV injection)
+    const q = (v) => {
+      let s = cell(v);
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
     const lines = [["Position", "Designation", "Qty", "File", "Material", "Mass g", "Standard", "Size"].join(";")];
     for (const r of flatRows(data.rows || [])) lines.push([r.position, r.name, r.count, r.file, r.material, mass(r), r.norm, r.size].map(q).join(";"));
     const url = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" }));

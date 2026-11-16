@@ -36,6 +36,12 @@ with sync_playwright() as pw:
     p.click(".feature-ok"); t=time.time()
     p.wait_for_function("document.querySelector('#tree-content').innerText.includes('Fillet1')", timeout=120000)
     print(f"ok after {time.time()-t:.1f}s:", status(), "|", tree()[-120:])
+    # #121 review: the first step in the demo marks only what it added, not every feature (the precomputed tree is signed
+    # by the server, the kernel signs its own)
+    p.wait_for_selector("#step-changes", timeout=60000)
+    bar = p.locator("#step-changes").inner_text().replace("\n", " ")
+    print("last step:", bar)
+    assert "+ Fillet1" in bar and "~" not in bar, f"first step marks more than the new feature: {bar!r}"
     print("findings:", p.locator("#findings-summary").inner_text()[:120], "| undo:", p.locator("#btn-undo").get_attribute("title"))
     p.dblclick('.tree-row[data-feature="Fillet1"]'); p.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=60000)
     print("edit:", p.locator(".feature-pick-count").inner_text(), p.input_value('input[name="radius"]'))

@@ -60,13 +60,17 @@ def consumers(s, tl=None, defs=None):
     out = {f["name"]: [] for f in tl if f["type"] == "Sketch" or is_work_feature(f)}
     for f in tl:
         defn = s.cmd("timeline.inspect", {"feature": f["id"]}).get("definition", {})
+        sk_state = None
         if f["type"] == "Sketch":  # projections live in the sketch itself
             try:
-                defn = [defn, s.cmd("sketch.inspect", {"sketch": f["id"]}).get("links", [])]
+                insp = s.cmd("sketch.inspect", {"sketch": f["id"]})
+                defn = [defn, insp.get("links", [])]
+                # the geometry is not in the definition (SolidCraft lists it as omitted): a changed dimension shows here
+                sk_state = {k: insp.get(k) for k in ("curves", "constraints", "points", "plane", "dof")}
             except SolidCraftError:  # not evaluated (rolled back, suppressed): its projections are unknown
                 pass
         if defs is not None:
-            defs[f["name"]] = defn
+            defs[f["name"]] = [defn, sk_state] if sk_state is not None else defn
         for ref in sorted(references(defn, ids) - {f["name"]}):
             if ref in out:
                 out[ref].append(f["name"])

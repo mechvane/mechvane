@@ -838,7 +838,7 @@ function renderOriginFolder() {
 // What the last step changed (#121): feature signatures from the tree before and after, the mesh before as a ghost
 let lastStep = null;       // {added, changed, removed}
 let ghostShown = true;
-let prevSigs = null, prevDocKey = null;
+let prevSigs = null, prevDocKey = null, baselineUsed = false;
 
 function treeSigs(tree) {
   const sigs = new Map();
@@ -1139,7 +1139,7 @@ function updateFindingsView(data, preserveSelection) {
     }
 
     // Source from the knowledge catalog (design rule findings only; joint findings have no catalog rule)
-    if (f.source && f.source.zitat) {
+    if (f.source && (f.source.zitat || f.source.url)) {
       const det = document.createElement("details");
       det.className = "finding-source";
       det.addEventListener("click", (e) => e.stopPropagation());
@@ -1149,12 +1149,14 @@ function updateFindingsView(data, preserveSelection) {
       const title = document.createElement("div");
       title.className = "finding-source-title";
       title.textContent = f.source.titel || f.source.entry || "";
-      det.appendChild(title);
-      const quote = document.createElement("blockquote");
-      quote.className = "finding-source-quote";
-      quote.textContent = `“${f.source.zitat}”`;
-      det.appendChild(quote);
-      if (f.source.url) {
+      if (title.textContent) det.appendChild(title);
+      if (f.source.zitat) {
+        const quote = document.createElement("blockquote");
+        quote.className = "finding-source-quote";
+        quote.textContent = `“${f.source.zitat}”`;
+        det.appendChild(quote);
+      }
+      if (/^https?:\/\//i.test(f.source.url || "")) {  // only web links, never javascript: and the like
         const a = document.createElement("a");
         a.href = f.source.url;
         a.target = "_blank";
@@ -1332,7 +1334,13 @@ async function loadAll(initial = false) {
     updateTreeView(tree);
     // a step in the same document: compare the features before and after, keep the old model as a ghost (#121);
     // a reload without a change (visibility, a second reload of the same step) leaves the last step as it is
-    const docKey = `${ver.kind}:${ver.name}`, sigs = treeSigs(tree);
+    const docKey = `${ver.kind}:${ver.path || ver.name}`, sigs = treeSigs(tree);
+    // live demo: the first tree from the kernel is signed differently from the precomputed one, so the kernel's own
+    // reading of the untouched model is the baseline
+    if (STATIC && demoKernel && demoKernel.changed && !baselineUsed && demoKernel.baselineSigs) {
+      prevSigs = demoKernel.baselineSigs;
+      baselineUsed = true;
+    }
     if (initial || prevDocKey !== docKey) {
       lastStep = null;
       showGhost(null);
@@ -2164,8 +2172,9 @@ async function undoRedo(which, { waitBusy = false } = {}) {
         await postJson(`api/agent/${which}`, {});
         break;
       } catch (err) {
-        // the files are briefly busy right after a step: a key press waits for them (up to ~10 s), not dropped
-        if (!waitBusy || tries >= 40 || !/agent is working/.test(err.message || "")) throw err;
+        // the files are briefly busy right after a step of your own: a key press waits for them (up to ~4 s), not dropped.
+        // A longer wait would meet a running agent round and undo that one instead (review 2026-11-16)
+        if (!waitBusy || tries >= 16 || !/agent is working/.test(err.message || "")) throw err;
         await new Promise((r) => setTimeout(r, 250));
       }
     }
@@ -2197,10 +2206,12 @@ function queueUndoRedo(which) {
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
       e.preventDefault();
+      if (e.repeat) return;  // a held key would queue dozens of undos
       if (sketcher && sketcher.isActive()) return;  // the sketch environment has its own undo
       queueUndoRedo("undo");
     } else if (mod && !e.altKey && (e.key === "y" || e.key === "Y" || ((e.key === "z" || e.key === "Z") && e.shiftKey))) {
       e.preventDefault();
+      if (e.repeat) return;
       if (sketcher && sketcher.isActive()) return;
       queueUndoRedo("redo");
     } else if (!mod && !e.altKey && (e.key === "f" || e.key === "F")) {

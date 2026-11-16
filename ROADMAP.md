@@ -230,15 +230,18 @@ Entscheidungen dazu: v0.1 erscheint auf **SolidCraft 0.40 (solidcore)**, sobald 
 dem Release, sonst 0.30.1); Direktbearbeitung, Upstream-PRs und Spracheingabe am Handy folgen nach v0.1.
 
 Bis v0.1 fehlt noch:
-- [ ] **Wechsel auf SolidCraft 0.40.1** (#91, begonnen 2026-11-12): Stand und offene Fehler in der Übergabe und im Issue; `install.py` erst nach grünen Tests.
-- [ ] **Upstream-Watch** (#90): wöchentliche Bestandsaufnahme von SolidCraft (Releases, Befehlsdifferenz, beobachtete Issues), ohne Modell.
-- [ ] **Baugruppen-Reiter in der Oberfläche** (Nutzer 2026-11-12, #88; Schritt 1a Place + Update Links = #89, in der Queue): „Assemble“ ist in 0.1.0a19 komplett ausgegraut,
+- [x] **Wechsel auf SolidCraft 0.40.1** (#91, begonnen 2026-11-12): Stand und offene Fehler in der Übergabe und im Issue; `install.py` erst nach grünen Tests.
+      *Fertig:* 0.41.0 am 2026-11-13 (#91), 0.43.0 am 2026-11-16 (#113, Release 0.1.0a21).
+- [x] **Upstream-Watch** (#90): wöchentliche Bestandsaufnahme von SolidCraft (Releases, Befehlsdifferenz, beobachtete Issues), ohne Modell.
+      *Fertig 2026-11-13:* `tools/upstream_watch.py`, Timer montags, Berichte unter `docs/upstream/`.
+- [x] **Baugruppen-Reiter in der Oberfläche** (Nutzer 2026-11-12, #88; Schritt 1a Place + Update Links = #89, in der Queue): „Assemble“ ist in 0.1.0a19 komplett ausgegraut,
       Baugruppen gehen nur über Agent/MCP. Zuerst Place, Joint und Bolted Connection als Dialoge über `/api/feature`,
       dann Update Links als Knopf, danach Place Standard Part, Constrain, BOM (BOM Phase 2). Vorher `crates/ui-egui`
       (`dialogs_assembly_tests.rs`, `joint_handles.rs`) lesen. Abnahme: Bedien-Reise ohne Agent (#83).
       *Stand 2026-11-15:* Place, Joint (#93), Bolted Connection (#94), Update Links, Place Standard Part und Constrain
       (neun Regeln, MCP `add_constraint`/`edit_constraint`) fertig, Joints und Constraints im Browser löschbar.
-      Offen: BOM (Phase 2) und die Bedien-Reise (#83) als Abnahme.
+      *Stand 2026-11-16:* Stückliste fertig (MCP `bill_of_materials`, CSV, Knopf „BOM“ mit Flat und CSV-Export, #49).
+      Offen nur die Bedien-Reise (#83) als Abnahme.
 - [ ] **Allgemeiner Befehlsdialog und Abdeckungsmatrix** (2026-11-10): Befehlssuche (Strg+K) und ein Formular, das
       aus dem Schema jedes SolidCraft-Befehls entsteht (`describe_command`), Auswahlfelder für Kanten, Flächen und
       Skizzen über die vorhandene Auswahl, Vorschau und Rückgängig über `/api/feature`. Eigene Dialoge bleiben für die
@@ -249,9 +252,13 @@ Bis v0.1 fehlt noch:
       `tools/command_matrix.py` nach `build/befehlsmatrix.json`.
 - [ ] **Wissen sichtbar** (2026-11-10): jeder Befund der Prüfung zeigt Regel, Wert, Quelle und Zitat aus dem Katalog;
       dazu eine Katalogseite auf mechvane.dev, erzeugt aus `katalog/`.
-- [ ] **Sehen, was der Agent geändert hat, erste Fassung** (2026-11-10, vorgezogen aus „3D-Diff“): vorheriger Stand
+      *Stand 2026-11-16:* Befunde zeigen ihre Quelle (#120; fünf Regeln haben eine, für die übrigen fünf läuft die
+      Recherche, #123). Offen: Katalogseite.
+- [x] **Sehen, was der Agent geändert hat, erste Fassung** (2026-11-10, vorgezogen aus „3D-Diff“): vorheriger Stand
       als Geistervolumen, neue und geänderte Features im Baum markiert (SolidCraft `inspect.compare`). Annehmen und
       Verwerfen einzelner Änderungen bleibt nach v0.1.
+      *Fertig 2026-11-16 (#121):* Schatten aus dem Netz vor dem Schritt, Signatur je Feature statt `inspect.compare`,
+      Leiste „Last step“ mit Hide; auch in der Live-Demo.
 - [ ] **Agenten-Wiedergabe in der Live-Demo** (2026-11-10): eine aufgezeichnete Sitzung (Auftrag, Werkzeugaufrufe,
       Modell wächst, Prüfung findet etwas, Agent behebt es) spielt im Browser ab, ohne Schlüssel; Daten aus dem
       Sitzungsprotokoll.

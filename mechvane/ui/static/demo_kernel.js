@@ -207,16 +207,44 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     for (const ch of stable(v)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
     return h.toString(16).padStart(8, "0");
   }
+  const round6 = (o) => (typeof o === "number" ? Math.round(o * 1e6) / 1e6 : Array.isArray(o) ? o.map(round6)
+    : o && typeof o === "object" ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, round6(v)])) : o);
+  // the definition holds a parameter as an expression ("H"): the current value of every parameter it names goes in
+  function featureSignature(def, f, params) {
+    const used = {}, strings = [];
+    (function walk(o) {
+      if (typeof o === "string") strings.push(o);
+      else if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === "object") Object.values(o).forEach(walk);
+    })(def);
+    for (const text of strings) for (const tok of text.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []) if (tok in params) used[tok] = params[tok];
+    return signature(round6([def, used, !!f.suppressed, !!f.rolled_back, f.type]));
+  }
+  // name -> signature over a whole tree (the page compares these before and after a step)
+  function sigsOf(t) {
+    const out = new Map();
+    (function walk(nodes) { for (const n of nodes || []) { if (n.name && n.sig) out.set(n.name, n.sig); walk(n.children); } })(t && t.features);
+    return out;
+  }
+  let baselineSigs = null;  // the model before the first step, signed here (the precomputed tree.json is signed by the server)
 
   async function tree() {
     const tl = await timeline();
     const byId = Object.fromEntries(tl.map((f) => [f.id, f]));
     const owned = new Map();
     const defs = {};  // every definition, for the signature the workspace compares across a step (#121)
+    const params = {};
+    for (const p of ((await exec("parameters.list", {})).parameters || [])) params[p.name] = p.value;
     for (const f of tl) {
       const def = (await exec("timeline.inspect", { feature: f.id })).definition || {};
       defs[f.name] = def;
-      if (f.type === "Sketch") continue;
+      if (f.type === "Sketch") {  // the geometry is not in the definition: read it for the signature
+        try {
+          const ins = await exec("sketch.inspect", { sketch: f.id });
+          defs[f.name] = [def, { curves: ins.curves, constraints: ins.constraints, points: ins.points, plane: ins.plane, dof: ins.dof }];
+        } catch (_) { /* not evaluated: the definition alone */ }
+        continue;
+      }
       const sk = byId[def.sketch];
       if (sk && sk.type === "Sketch" && !owned.has(sk.name)) owned.set(sk.name, f.name);
     }
@@ -226,7 +254,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     const node = (f) => {
       const n = { name: f.name, type: f.type, suppressed: f.suppressed || undefined,
                   rolled_back: f.rolled_back || undefined, error: f.error || undefined,
-                  sig: signature([defs[f.name], !!f.suppressed, !!f.rolled_back, f.type]) };
+                  sig: featureSignature(defs[f.name], f, params) };
       if (f.type === "Sketch") {
         n.visible = sketchVis[f.name] !== undefined ? sketchVis[f.name] : !owned.has(f.name);
       } else if (f.type && f.type.startsWith("Construction")) {
@@ -599,6 +627,10 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
       return { auto_project: autoProject };
     }
     if (!files) files = await (await fetch(`${base()}files.json`)).json();
+    // the first step: sign the untouched model first, so the page compares like with like (#121 review)
+    if (!baselineSigs && method === "POST" && /^(feature|feature\/delete|feature\/rename|sketch\/(begin|cmd|undo|finish|cancel)|agent\/(undo|redo)|visibility)$/.test(route)) {
+      try { baselineSigs = sigsOf(await tree()); } catch (_) { baselineSigs = null; }
+    }
     if (files.kind === "assembly" && /^feature|^sketch/.test(route)) {
       throw new ApiError(403, "features are added in a part: open one of the parts in Model by hand");
     }
@@ -638,6 +670,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   return {
     api,
     get started() { return !!app; },
+    get baselineSigs() { return baselineSigs; },
     // a step was made here: the page shows the kernel's model from now on, not the precomputed files
     get changed() { return stepped; },
   };
