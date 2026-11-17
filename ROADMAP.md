@@ -250,6 +250,12 @@ Bis v0.1 fehlt noch:
       *Versuch fertig 2026-11-15 (#77, [Bericht](docs/research/2026-11-15-befehlsdialog-versuch.md)):* 572 Befehle mit
       Schema, 92,3 % der 2667 Parameter lassen sich aus Schema und Name einem Eingabefeld zuordnen; Matrix mit
       `tools/command_matrix.py` nach `build/befehlsmatrix.json`.
+      *Erster Schnitt 2026-11-17 (#128):* Strg+K mit Suche wie SolidCraft, Formular aus dem Schema
+      (`mechvane/command_form.py`: Ausdruck, Zahl, Auswahlliste, Schalter, Text, Punkt, Namensliste, sonst JSON; Befehle
+      ohne Schema als JSON mit SolidCraft-Hilfetext), Vorschau, OK auf die gemeinsame Rückgängig-Liste, lesende Befehle
+      ohne Rückgängig-Schritt. Abdeckung 320 von 622 (36 App-Befehle ausgenommen; zurückgestellt: Skizzierer, Dateipfade, Befehle mit eigener Mechvane-Prüfung, Befehle nur fürs verborgene SolidCraft-Fenster). *Schnitt 2a 2026-11-17:* Auswahl in der Ansicht für Kanten, Flächen und Körper (Knopf „Pick“, Schreibform aus dem
+      Schema: Punkt, `{face: …}`, Name; vorbelegt aus der Auswahl). Offen:
+      `sketch.*` im Skizzierer, Dateipfade mit Dateiwahl, Live-Demo, `ui_smoke`/`demo_smoke` mit Strg+K.
 - [ ] **Wissen sichtbar** (2026-11-10): jeder Befund der Prüfung zeigt Regel, Wert, Quelle und Zitat aus dem Katalog;
       dazu eine Katalogseite auf mechvane.dev, erzeugt aus `katalog/`.
       *Stand 2026-11-16:* Befunde zeigen ihre Quelle (#120; fünf Regeln haben eine, für die übrigen fünf läuft die
@@ -259,7 +265,7 @@ Bis v0.1 fehlt noch:
       Verwerfen einzelner Änderungen bleibt nach v0.1.
       *Fertig 2026-11-16 (#121):* Schatten aus dem Netz vor dem Schritt, Signatur je Feature statt `inspect.compare`,
       Leiste „Last step“ mit Hide; auch in der Live-Demo.
-- [ ] **Agenten-Wiedergabe in der Live-Demo** (2026-11-10): eine aufgezeichnete Sitzung (Auftrag, Werkzeugaufrufe,
+- [x] **Agenten-Wiedergabe in der Live-Demo** (2026-11-10; fertig und veröffentlicht 2026-11-16, #124): eine aufgezeichnete Sitzung (Auftrag, Werkzeugaufrufe,
       Modell wächst, Prüfung findet etwas, Agent behebt es) spielt im Browser ab, ohne Schlüssel; Daten aus dem
       Sitzungsprotokoll.
 - [ ] **„Was kommt“ in der App** (2026-11-10): die nächsten Punkte aus `roadmap.json` und der Knopf „Wunsch äußern“.

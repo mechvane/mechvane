@@ -19,7 +19,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -226,7 +228,9 @@ def main() -> int:
     if first_run:  # the first run only records the state; show the newest of each kind as context
         fresh = [r for r in (stable, pre) if r]
 
-    installed_cli = install.find_cli()
+    # The CLI the project actually uses (PATH / SOLIDCRAFT_CLI) comes first; a stale download cache from `mechvane setup`
+    # made the report of 2026-11-16 name 0.41.0 although 0.43.0 was installed.
+    installed_cli = os.environ.get("SOLIDCRAFT_CLI") or shutil.which("solidcraft-cli") or install.find_cli()
     installed = sh_version(installed_cli)
     base = load_snapshot(installed, installed_cli)
 

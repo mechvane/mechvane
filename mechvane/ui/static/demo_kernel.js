@@ -296,7 +296,15 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   // on a picked body face, project_edges controls Inventor's "Autoproject edges for sketch creation" (default on)
   const createParams = (plane, projectEdges = true) => {
     if (plane === "XZ") return { plane, flip: true };
-    if (plane && Array.isArray(plane.face)) return { plane: { face: plane.face }, project_edges: Boolean(projectEdges) };
+    if (plane && Array.isArray(plane.face)) {
+      // with the body and face index it was picked on: a point on an edge is ambiguous otherwise (as sketch_session.face_plane)
+      const face = { face: plane.face };
+      if (typeof plane.body === "string" && plane.body && Number.isInteger(plane.index) && plane.index >= 0) {
+        face.body = plane.body;
+        face.index = plane.index;
+      }
+      return { plane: face, project_edges: Boolean(projectEdges) };
+    }
     return { plane };
   };
 

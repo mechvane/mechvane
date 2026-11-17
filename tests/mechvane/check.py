@@ -6008,6 +6008,18 @@ def params_checks(tmp):
             js, ctype = resp.read().decode(), resp.headers.get("Content-Type", "")
         with urllib.request.urlopen(base.replace("/api/params", "/chat.js")) as resp:
             chat_js = resp.read().decode()
+        # every script the pages import must be served (a 404 kills the whole module: Model mode stayed blank, #135)
+        import re as _re
+        missing_js = []
+        for page in ("index.html", "model.html"):
+            src = (ui_server.STATIC_DIR / page).read_text(encoding="utf-8")
+            for js_name in sorted(set(_re.findall(r'from "\./([A-Za-z0-9_]+\.js)"', src))):
+                try:
+                    with urllib.request.urlopen(base.replace("/api/params", "/" + js_name)):
+                        pass
+                except Exception:
+                    missing_js.append(f"{page}:{js_name}")
+        ok("ui: every script imported by the Check and Model pages is served", not missing_js, str(missing_js))
         index_html = (ui_server.STATIC_DIR / "index.html").read_text(encoding="utf-8")
         app_js = (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8")
         style_css = (ui_server.STATIC_DIR / "style.css").read_text(encoding="utf-8")
@@ -6084,6 +6096,133 @@ def params_checks(tmp):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+COMMANDS_JS_TEST = r"""
+import { scoreMatch, searchCommands, fieldValue, formParams, applyPick, pickText, ontoFace } from "./commands.js";
+const out = {};
+// SolidCraft's ranking (shortcut_box.rs tests): prefix > word start > letters in order; no match is 0
+out.rank = scoreMatch("ext", "extrude") > scoreMatch("ext", "offset text") && scoreMatch("pres", "press pull") > scoreMatch("ppl", "press pull")
+  && scoreMatch("ppl", "press pull") > 0 && scoreMatch("xyz", "extrude") === 0;
+const list = [{ id: "sketch.shell", label: "Shell sketch", offered: false, reason: "r" }, { id: "solid.shell", label: "Shell", offered: true },
+              { id: "solid.box", label: "Box", tab: "SOLID", panel: "CREATE", offered: true }];
+out.search = searchCommands(list, "shel").map((c) => c.id);
+out.byPanel = searchCommands(list, "create").map((c) => c.id);
+const form = { raw: false, fields: [
+  { name: "size", kind: "expr", required: true }, { name: "count", kind: "number", integer: true, required: false },
+  { name: "flip", kind: "bool", required: false }, { name: "at", kind: "point", required: false },
+  { name: "bodies", kind: "list", required: false }, { name: "rounds", kind: "json", required: false },
+  { name: "op", kind: "enum", required: false }, { name: "name", kind: "text", required: false }] };
+out.params = formParams(form, { size: " 12.5 ", count: "3", flip: "false", at: ["10", "", "w/2"], bodies: "A, B", rounds: "[[1,2,3]]", op: "", name: "" });
+out.exprText = fieldValue({ kind: "expr" }, "w / 2");
+const err = (f) => { try { f(); return ""; } catch (e) { return e.message; } };
+out.missing = err(() => formParams(form, { count: "2" }));
+out.badJson = err(() => formParams(form, { size: "1", rounds: "[1," }));
+out.badInt = err(() => formParams(form, { size: "1", count: "2.5" }));
+out.raw = formParams({ raw: true, fields: [{ name: "", kind: "json" }] }, { "": '{"thickness": 2}' });
+out.rawArray = err(() => formParams({ raw: true, fields: [{ name: "", kind: "json" }] }, { "": "[1]" }));
+// picks in the view: a list field toggles, a single field replaces; written as points, {face: point} or names
+const edges = { kind: "json", pick: "edges", multi: true, write: "point" };
+let p = applyPick(edges, [], { key: "a", point: [1, 2, 3] });
+p = applyPick(edges, p, { key: "b", point: [4, 5, 6] });
+out.edgesTwo = pickText(edges, p);
+out.edgesToggle = pickText(edges, applyPick(edges, p, { key: "a", point: [1, 2, 3.0001] }));
+const face = { kind: "json", pick: "faces", multi: false, write: "key:face" };
+out.face = pickText(face, applyPick(face, applyPick(face, [], { key: "f1", point: [0, 0, 1] }), { key: "f2", point: [0, 0, 2] }));
+const bodies = { kind: "list", pick: "bodies", multi: true, write: "name" };
+let b = applyPick(bodies, [], { key: "f|B1|3", point: [0, 0, 0], body: "B1" });
+b = applyPick(bodies, b, { key: "f|B2|1", point: [0, 0, 0], body: "B2" });
+out.bodies = pickText(bodies, b);
+out.bodyAgain = pickText(bodies, applyPick(bodies, b, { key: "f|B1|7", point: [0, 0, 0], body: "B1" }));
+const body = { kind: "text", pick: "bodies", multi: false, write: "name" };
+out.body = pickText(body, applyPick(body, [], { key: "x", point: [0, 0, 0], body: "Plate" }));
+// a click on a cylinder's chord (r 9.9 inside r 10, axis Z through (5, 0, 0)) lands on the true surface
+const v = (x, y, z) => ({ x, y, z });
+out.onto = ontoFace([5 + 9.9, 0, 3], { center: v(5, 0, 0), axis: v(0, 0, 2), radius: 10 });
+out.flat = ontoFace([1, 2, 3.0000004], { normal: v(0, 0, 1), area: 1 });
+console.log(JSON.stringify(out));
+"""
+
+
+def command_dialog_assembly_checks(tmp):
+    """Command dialog in an assembly (#128): modelling commands are not offered and refused (SolidCraft would add the
+    body to the assembly file or change a linked part's copy), as the feature dialogs; assembly commands stay."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "commanddialog_asm"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        asm, _ = hinge_assembly(w, plate_part(w))
+        path = asm.path
+    finally:
+        w.close_all()
+    srv = ui_server.create_server(str(path), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers={"Content-Type": "application/json"} if body is not None else {})
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    try:
+        mtime = path.stat().st_mtime_ns
+        _, lst = call("commands")
+        by_id = {c["id"]: c for c in lst.get("commands", [])}
+        st_f, fm = call("command?id=solid.box")
+        st_b, box = call("feature", {"command": "solid.box", "generic": True,
+                                     "params": {"length": 5, "width": 5, "height": 5, "corner": [100, 0, 0]}})
+        st_r, read = call("feature", {"command": "joint.list", "generic": True, "params": {}})
+        ok("command dialog: in an assembly modelling commands are not offered and refused, the file stays; "
+           "assembly commands run",
+           by_id.get("solid.box", {}).get("offered") is False and "part" in by_id.get("solid.box", {}).get("reason", "")
+           and st_f == 200 and fm.get("offered") is False and st_b == 403 and path.stat().st_mtime_ns == mtime
+           and by_id.get("joint.list", {}).get("offered") and st_r == 200,
+           f"{by_id.get('solid.box')} {st_b} {box} {st_r} {str(read)[:120]}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def commands_js_checks(tmp):
+    """Command dialog in the browser (#128): SolidCraft's search ranking, and the form values become command params."""
+    import subprocess
+    from mechvane.ui import server as ui_server
+    if not shutil.which("node"):
+        print("skip commands.js: node not installed")
+        return
+    d = Path(tmp) / "commandsjs"
+    d.mkdir()
+    shutil.copyfile(ui_server.STATIC_DIR / "commands.js", d / "commands.js")
+    (d / "package.json").write_text('{"type": "module"}')
+    (d / "t.js").write_text(COMMANDS_JS_TEST)
+    run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
+    try:
+        r = json.loads(run.stdout.splitlines()[0])
+    except (ValueError, IndexError):
+        r = {}
+    ok("commands.js: search ranks as SolidCraft (prefix, word start, letters), offered commands first, tab and panel match",
+       r.get("rank") is True and r.get("search") == ["solid.shell", "sketch.shell"] and r.get("byPanel") == ["solid.box"],
+       f"{r} {run.stderr[-300:]}")
+    ok("commands.js: form values become params (numbers, expressions, point with 0 for empty, list, JSON; empty left out)",
+       r.get("params") == {"size": 12.5, "count": 3, "flip": False, "at": [10, 0, "w/2"], "bodies": ["A", "B"], "rounds": [[1, 2, 3]]}
+       and r.get("exprText") == "w / 2" and r.get("raw") == {"thickness": 2}, f"{r} {run.stderr[-300:]}")
+    ok("commands.js: picks in the view: a list toggles the clicked edge, a single field takes the last face as {face: point}, "
+       "a body clicked twice counts once, a cylinder click lands on the true surface",
+       r.get("edgesTwo") == "[[1,2,3],[4,5,6]]" and r.get("edgesToggle") == "[[4,5,6]]" and r.get("face") == '{"face":[0,0,2]}'
+       and r.get("bodies") == "B1, B2" and r.get("bodyAgain") == "B2" and r.get("body") == "Plate"
+       and r.get("onto") == [15, 0, 3] and r.get("flat") == [1, 2, 3], str(r))
+    ok("commands.js: a missing required field, bad JSON, a fraction for a whole number and a non-object raw JSON are refused",
+       "size" in r.get("missing", "") and "rounds" in r.get("badJson", "") and "count" in r.get("badInt", "")
+       and "object" in r.get("rawArray", ""), str(r))
 
 
 VIEWTOOLS_TEST = r"""
@@ -6268,6 +6407,196 @@ def _viewtools_pick_ok(pk):
     seam_lo, seam_hi = sorted((0, 20))
     return (pk.get("chordR", 8) < 8 - 1e-4 and abs(pk.get("pickR", 0) - 8) < 1e-5 and abs(pk.get("pickZ", 1)) < 1e-9
             and seam_lo < pk.get("seamZ", -1) < seam_hi and pk.get("sameKey") is True and pk.get("seamKey") is True)
+
+
+def command_form_checks():
+    """General command dialog (#128): each schema shape becomes its field kind (type first, not the name), a
+    command without a schema gets one JSON field with SolidCraft's parameter text, and the offer rules hold."""
+    from mechvane import command_form as cf
+    defs = {"LengthExpr": {"anyOf": [{"type": "number"}, {"type": "string", "minLength": 1}]},
+            "Op": {"enum": ["new", "join", "cut"], "type": "string"},
+            "P3": {"anyOf": [{"type": "array", "items": {"$ref": "#/$defs/LengthExpr"}, "minItems": 3, "maxItems": 3},
+                             {"type": "object", "properties": {k: {"$ref": "#/$defs/LengthExpr"} for k in "xyz"}}]},
+            "Names": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+            "EdgeRefs": {"type": "array", "items": {"anyOf": [{"$ref": "#/$defs/P3"},
+                                                             {"type": "object", "properties": {"body": {"type": "string"}}}]}}}
+    schema = {"type": "object", "additionalProperties": False, "required": ["size"], "$defs": defs, "properties": {
+        "size": {"$ref": "#/$defs/LengthExpr"}, "operation": {"$ref": "#/$defs/Op"}, "flip": {"type": "boolean"},
+        "name": {"type": ["string", "null"], "default": None}, "count": {"type": "integer"},
+        "at": {"$ref": "#/$defs/P3"}, "bodies": {"anyOf": [{"$ref": "#/$defs/Names"}, {"type": "null"}]},
+        "rounds": {"$ref": "#/$defs/EdgeRefs"}, "camera": {"type": "object"}}}
+    fm = cf.form({"id": "x.test", "label": "Test", "params": "size: expr", "input": schema})
+    kinds = {f["name"]: (f["kind"], f.get("pick"), f["required"]) for f in fm["fields"]}
+    want = {"size": ("expr", None, True), "operation": ("enum", None, False), "flip": ("bool", None, False),
+            "name": ("text", None, False), "count": ("number", None, False), "at": ("point", None, False),
+            "bodies": ("list", "bodies", False), "rounds": ("json", "edges", False), "camera": ("json", None, False)}
+    ok("command form: each schema shape becomes its field kind; a json field names what to pick in the view",
+       kinds == want and not fm["raw"], str(kinds))
+    raw = cf.form({"id": "solid.shell", "label": "Shell", "params": "faces: [[x,y,z]]; thickness: expr", "input": None})
+    ok("command form: a command without a schema gets one JSON field with SolidCraft's parameter text",
+       raw["raw"] and len(raw["fields"]) == 1 and raw["fields"][0]["kind"] == "json"
+       and "thickness" in raw["fields"][0]["description"], str(raw))
+    try:
+        cf.to_params(fm, {"operation": "cut"})
+        missing = False
+    except ValueError as e:
+        missing = "size" in str(e)
+    ok("command form: a missing required field is refused, empty optional fields are left out",
+       missing and cf.to_params(fm, {"size": "w/2", "name": "", "bodies": []}) == {"size": "w/2"})
+    pathy = cf.form({"id": "parameters.export", "label": "Export", "params": "", "input": {
+        "type": "object", "properties": {"path": {"type": "string", "description": "Write to this file."}}}})
+    geo = {"P3": defs["P3"], "GeoRef": {"anyOf": [
+        {"type": "object", "properties": {"type": {"enum": ["point", "edge"]}}, "required": ["type"]},
+        {"type": "object", "properties": {"face": {"$ref": "#/$defs/P3"}}, "required": ["face"]},
+        {"type": "object", "properties": {"edge": {"$ref": "#/$defs/P3"}}, "required": ["edge"]}]},
+        "LengthExpr": defs["LengthExpr"], "Names": defs["Names"]}
+    pick_form = cf.form({"id": "x.pick", "label": "Pick", "params": "", "input": {"type": "object", "$defs": geo, "properties": {
+        "faces": {"type": "array", "items": {"$ref": "#/$defs/P3"}}, "face": {"$ref": "#/$defs/GeoRef"},
+        "edge": {"$ref": "#/$defs/GeoRef"}, "body": {"type": "string"}, "bodies": {"$ref": "#/$defs/Names"},
+        "body_names": {"$ref": "#/$defs/Names"}, "size": {"type": "object", "description": "the size of the face",
+                                                           "properties": {"a": {"type": "number"}}}}}})
+    picks = {f["name"]: (f.get("pick"), f.get("multi"), f.get("write")) for f in pick_form["fields"]}
+    ok("command form: edge, face and body fields say how a click in the view is written (points, {face: point}, names); "
+       "names of new bodies and a field that only mentions a face get no pick",
+       picks == {"faces": ("faces", True, "point"), "face": ("faces", False, "key:face"), "edge": ("edges", False, "key:edge"),
+                 "body": ("bodies", False, "name"), "bodies": ("bodies", True, "name"), "body_names": (None, None, None),
+                 "size": (None, None, None)}, str(picks))
+    ok("command form: app commands are excepted, sketch and Mechvane-owned commands deferred, file paths not offered",
+       cf.excepted("panel.timeline") and cf.excepted("tab.solid") and not cf.excepted("solid.box")
+       and cf.deferred("sketch.line") and cf.deferred("joint.create") and not cf.deferred("joint.origin")
+       and cf.why_not("parameters.export", pathy) == cf.FILE_REASON and cf.offered("solid.box", fm))
+
+
+def command_dialog_checks(tmp):
+    """General command dialog (#128) through the server: the search list, a form from the live schema, and one
+    command per field kind form -> server -> SolidCraft (expr, enum, point, text from solid.box; bool and
+    expr from parameters.add; a command without schema as raw JSON), on the shared undo list; a command
+    that only reads leaves no undo entry; refused: deferred, excepted, file paths, unknown."""
+    import urllib.error
+    import urllib.request
+    from mechvane.ui import server as ui_server
+
+    folder = Path(tmp) / "commanddialog"
+    folder.mkdir()
+    w = Workspace(folder)
+    try:
+        part = w.new(PART, "plate")
+        part.session.batch([{"command": "solid.box", "params": {"length": 40, "width": 20, "height": 10, "name": "Plate"}}])
+        part.save()
+    finally:
+        w.close_all()
+    path = folder / "plate.solidcraft"
+    srv = ui_server.create_server(str(path), port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
+
+    def call(endpoint, body=None):
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
+                                     data=json.dumps(body).encode() if body is not None else None, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def inspect():
+        with srv.lock:
+            return srv.ensure_current().session.cmd("document.inspect", {"measure": True})
+
+    def run(command, values, preview=False):
+        st, fm = call("command?id=" + command)
+        if st != 200:
+            return st, fm
+        from mechvane import command_form as cf
+        return call("feature", {"command": command, "params": cf.to_params(fm, values), "generic": True, "preview": preview})
+
+    try:
+        st_l, lst = call("commands")
+        by_id = {c["id"]: c for c in lst.get("commands", [])}
+        ok("command dialog: /api/commands lists SolidCraft's commands with label and panel, marks deferred ones, "
+           "leaves out app commands",
+           st_l == 200 and by_id.get("solid.box", {}).get("offered") and by_id.get("solid.box", {}).get("label")
+           and by_id.get("sketch.line", {}).get("offered") is False and "panel.timeline" not in by_id
+           and len(by_id) > 500, f"{st_l} {len(by_id)} {by_id.get('solid.box')} {by_id.get('sketch.line')}")
+        st_f, fm = call("command?id=solid.box")
+        kinds = {f["name"]: f["kind"] for f in fm.get("fields", [])}
+        ok("command dialog: /api/command builds the form from the live schema (solid.box: expr, enum, point, text)",
+           st_f == 200 and kinds.get("length") == "expr" and kinds.get("operation") == "enum"
+           and kinds.get("corner") == "point" and kinds.get("name") == "text" and fm.get("offered"), f"{st_f} {kinds}")
+
+        mtime = path.stat().st_mtime_ns
+        vol0 = inspect()["bodies"][0]["volume_mm3"] if inspect().get("bodies") else None
+        st_p, prev = run("solid.box", {"length": "10", "width": "10", "height": "5 mm", "corner": [60, 0, 0],
+                                       "operation": "new", "name": "Box2"}, preview=True)
+        ok("command dialog: preview runs the command, returns the mesh, saves nothing and leaves nothing",
+           st_p == 200 and prev.get("changed") and (prev.get("mesh") or {}).get("bodies")
+           and path.stat().st_mtime_ns == mtime and len(inspect()["bodies"]) == 1, f"{st_p} {str(prev)[:200]}")
+        st_b, done = run("solid.box", {"length": "10", "width": "10", "height": "5 mm", "corner": [60, 0, 0],
+                                       "operation": "new", "name": "Box2"})
+        bodies = inspect()["bodies"]
+        _, hist = call("history")
+        ok("command dialog: expr, enum, point and text fields run solid.box; the part is saved and the step is on the undo list",
+           st_b == 200 and done.get("changed") and len(bodies) == 2 and path.stat().st_mtime_ns != mtime
+           and any(abs(b.get("volume_mm3", 0) - 500) < 1e-3 for b in bodies)
+           and "solid.box" in (hist.get("undo") or ""), f"{st_b} {done} {[b.get('volume_mm3') for b in bodies]} {hist}")
+        st_u, _ = call("agent/undo", {})
+        ok("command dialog: Undo takes the box back", st_u == 200 and len(inspect()["bodies"]) == 1, str(st_u))
+
+        def saved_step(command, values):
+            # a change must be saved and on the undo list, not only in the session (document.revision moved)
+            mt = path.stat().st_mtime_ns
+            st, res = run(command, values)
+            _, h = call("history")
+            return st, res, (res.get("changed") is True and path.stat().st_mtime_ns != mt
+                             and command in (h.get("undo") or ""))
+
+        st_pa, pa, saved_pa = saved_step("parameters.add", {"name": "gap", "expression": "3 mm", "favorite": True})
+        with srv.lock:
+            params = {p["name"]: p for p in srv.ensure_current().session.cmd("parameters.list", {})["parameters"]}
+        ok("command dialog: bool and expr fields run parameters.add, saved and on the undo list",
+           st_pa == 200 and saved_pa and "gap" in params and params["gap"].get("favorite") is True,
+           f"{st_pa} {pa} {saved_pa} {params.get('gap')}")
+
+        body = inspect()["bodies"][0]["name"]
+        st_m, mi, saved_m = saved_step("solid.mirror", {"": {"bodies": [body], "plane": "YZ"}})
+        ok("command dialog: a command without schema runs with its parameters as raw JSON, saved and on the undo list",
+           st_m == 200 and saved_m and len(inspect()["bodies"]) == 2, f"{st_m} {mi} {saved_m}")
+
+        # picks in the view write these values (commands.js applyPick): edge points, {"face": point}, body names
+        _, chf = call("command?id=solid.chamfer")
+        _, axf = call("command?id=construct.axis.normal_to_face")
+        pick_fields = {f["name"]: (f.get("pick"), f.get("multi"), f.get("write"))
+                       for f in chf.get("fields", []) + axf.get("fields", []) if f.get("pick")}
+        st_ch, ch, saved_ch = saved_step("solid.chamfer", {"edges": [[20, 20, 10], [20, 0, 10]], "distance": "1"})
+        st_ax, ax, saved_ax = saved_step("construct.axis.normal_to_face", {"face": {"face": [20, 10, 10]}, "point": {"point": [20, 10, 10]}, "name": "PickAxis"})
+        with srv.lock:
+            ws_names = {f["name"] for f in srv.ensure_current().session.cmd("document.inspect", {"measure": False})["timeline"]}
+        ok("command dialog: values as the view picks write them run (two edge points for a chamfer, {face: point} for an axis)",
+           pick_fields.get("edges") == ("edges", True, "point") and pick_fields.get("face") == ("faces", False, "key:face")
+           and st_ch == 200 and saved_ch and st_ax == 200 and saved_ax and "PickAxis" in ws_names,
+           f"{pick_fields} {st_ch} {ch} {st_ax} {ax} {sorted(ws_names)}")
+
+        st_ma, ma, saved_ma = saved_step("material.assign", {"bodies": [body], "material": "Steel"})
+        ok("command dialog: a change outside the timeline (material) is saved and on the undo list",
+           st_ma == 200 and saved_ma, f"{st_ma} {ma} {saved_ma}")
+
+        _, hist_before = call("history")
+        mtime = path.stat().st_mtime_ns
+        st_r, read = run("parameters.list", {})
+        _, hist_after = call("history")
+        ok("command dialog: a command that only reads returns its result, saves nothing and leaves no undo entry",
+           st_r == 200 and read.get("changed") is False and read.get("results") and hist_after == hist_before
+           and path.stat().st_mtime_ns == mtime, f"{st_r} {str(read)[:200]} {hist_before} {hist_after}")
+
+        refused = {c: call("feature", {"command": c, "params": p, "generic": True})[0] for c, p in (
+            ("sketch.line", {}), ("panel.timeline", {}), ("parameters.export", {"path": "/tmp/x.csv"}),
+            ("joint.create", {}), ("timeline.delete", {"features": ["Plate"]}), ("view.fit", {}), ("no.such", {}))}
+        ok("command dialog: deferred (sketch, Mechvane-owned, hidden window), excepted, file-path and unknown commands are refused",
+           all(v == 403 for v in refused.values()), str(refused))
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def feature_dialog_checks(tmp):
@@ -8901,31 +9230,6 @@ Empfehlung: nacharbeiten, weil zwei Fehler.
        and summ["groq"]["model"] == "gpt-oss" and summ["argon"]["model"] == "gemini-4-argon", summ)
 
 
-def review_seeded_checks():
-    """tools/review_seeded.py (#105 phase 2): the mutation operators and how a review is judged."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("review_seeded", Path(__file__).resolve().parents[2] / "tools" / "review_seeded.py")
-    rsd = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(rsd)
-    cases = {
-        "    if a and b:": ("invert_if", "    if not (a and b):"),
-        "    elif x > 3:  # note": ("invert_if", "    elif not (x > 3):"),
-        "    ok = n <= 5": ("le_to_lt", "    ok = n < 5"),
-        "    same = a == b": ("eq_to_ne", "    same = a != b"),
-        "        raise ValueError('x')": ("swallow_raise", "        pass"),
-        "    return True": ("return_flip", "    return False"),
-        "    # if this: comment": None,
-        "    total = a + b": None,
-    }
-    got = {k: rsd.mutate(k) for k in cases}
-    ok("review_seeded: each operator changes one added line, comments and plain lines stay", got == cases,
-       {k: v for k, v in got.items() if v != cases[k]})
-    f = [{"file": "mechvane/a.py", "line": 12, "severity": "High"}, {"file": "tools/b.py", "line": None, "severity": "Low"}]
-    ok("review_seeded: found within 3 lines, file only, missed, control",
-       (rsd.judge(f, "mechvane/a.py", 15), rsd.judge(f, "tools/b.py", 40), rsd.judge(f, "mechvane/c.py", 1), rsd.judge(f, None, None))
-       == ("found", "file_only", "missed", "control"))
-
-
 def argon_review_checks(tmp):
     """tools/argon_review.py (#107): prompt on standard input, diff shortening, failed calls reported as such."""
     import importlib.util, subprocess as sp
@@ -9275,6 +9579,250 @@ def py311_syntax_checks():
     old = scan(b'x = f"a {d[\'k\']} {g(\'s[name=\\"x\\"]\')!r}"\n')
     ok("python 3.11: no f-string syntax that needs 3.12 in versioned files (and the scan finds a planted one)",
        not bad and len(old) == 1, f"{bad[:10]} planted={old}")
+
+
+def sketch_face_pick_checks(ws):
+    """A tap near an edge gives a point on two faces; SolidCraft refuses it as ambiguous. The workspace sends the body
+    and face index it hit, and the sketch goes on that face (live demo on Android, 2026-11-16)."""
+    from mechvane import examples
+    from mechvane.ui import sketch_session as ss
+    from mechvane.documents import Workspace
+    ws = Workspace(tempfile.mkdtemp(prefix="sketchface-"))
+    doc = examples.bracket(ws)
+    s = doc.session
+    edge = [30, 30, 8]  # where the top of the plate meets the front of the wall
+
+    def make(plane):
+        cp = s.cmd("edit.checkpoint", {})["checkpoint"]
+        try:
+            s.cmd("sketch.create", ss.create_params(plane))
+            return s.cmd("sketch.inspect", {}).get("plane")
+        except Exception as e:
+            return f"ERR {e}"
+        finally:
+            s.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+
+    alone = make({"face": edge})
+    ok("sketch on a face: a point on an edge alone is ambiguous (why the face is sent)", str(alone).startswith("ERR")
+       and "ambiguous" in str(alone), alone)
+    top = make({"face": edge, "body": "Bracket", "index": 1})
+    ok("sketch on a face: with body and face index the sketch goes on the face that was hit",
+       isinstance(top, dict) and top.get("origin", [0, 0, 0])[2] == 8.0 and top.get("y_dir") == [0.0, 1.0, 0.0], top)
+    ok("sketch on a face: body and index only together and well formed",
+       ss.face_plane({"face": edge, "body": "B", "index": True}) == {"face": edge}
+       and ss.face_plane({"face": edge, "index": 2}) == {"face": edge}
+       and ss.face_plane({"face": edge, "body": "B", "index": 2}) == {"face": edge, "body": "B", "index": 2})
+    ws.close_all()
+
+
+def record_replay_checks(ws):
+    """#124: a real agent session becomes a recording for the live demo: pauses cut to 2 s, the agent's text in one
+    line, changes marked, paths and the computer's name taken out, an unknown tool refused, times from the session
+    log; the agent's tool events carry the whole input; the demo build replays a change with the MCP functions."""
+    from tools import record_replay as rr
+    from mechvane.ui import agent as ag
+    ev = [
+        {"n": 1, "turn": 1, "type": "user", "text": "fix it", "selected": 0, "from": "user", "selection_names": [], "t": 100.0},
+        {"n": 2, "turn": 1, "type": "status", "status": "working", "t": 100.2},
+        {"n": 3, "turn": 1, "type": "tool", "id": "a", "tool": "check_design", "status": "pending", "t": 101.0},
+        {"n": 4, "turn": 1, "type": "tool", "id": "a", "status": "completed", "params": {"document": "/root/x/bracket.solidcraft"}, "t": 101.5},
+        {"n": 5, "turn": 1, "type": "text", "text": "Moving ", "t": 130.0},
+        {"n": 6, "turn": 1, "type": "text", "text": "the hole on myhost.local, myhost stays a word", "t": 130.1},
+        {"n": 7, "turn": 1, "type": "tool", "id": "b", "tool": "run", "status": "pending", "t": 131.0},
+        {"n": 8, "turn": 1, "type": "tool", "id": "b", "status": "completed",
+         "params": {"document": "bracket", "commands": [{"command": "timeline.edit", "params": {"feature": "Hole", "set": {"position": [10, 14, 8]}}}]}, "t": 132.0},
+        {"n": 9, "turn": 1, "type": "tool", "id": "c", "tool": "command", "status": "pending", "t": 132.5},
+        {"n": 10, "turn": 1, "type": "tool", "id": "c", "status": "completed", "params": {"document": "bracket", "command": "timeline.inspect"}, "t": 133.0},
+        {"n": 11, "turn": 1, "type": "done", "reason": "end_turn", "changed": ["bracket.solidcraft"], "removed": [], "t": 134.0},
+    ]
+    rec = rr.build(ev, demo="bracket", title="T", host="myhost")
+    types = [s["event"]["type"] for s in rec["steps"]]
+    ok("record_replay: status left out, the agent's text pieces are one line",
+       types == ["user", "tool", "tool", "text", "tool", "tool", "tool", "tool", "done"], types)
+    gaps = [round(b["t"] - a["t"], 2) for a, b in zip(rec["steps"], rec["steps"][1:])]
+    ok("record_replay: pauses cut to at most 2 s", max(gaps) <= rr.MAX_GAP and gaps[2] == rr.MAX_GAP, gaps)
+    text = json.dumps(rec)
+    ok("record_replay: paths and the computer's name taken out (the same word in text stays)", "/root" not in text
+       and rec["steps"][3]["event"]["text"] == "Moving the hole on computer.local, myhost stays a word", rec["steps"][3]["event"])
+    dos = [s["event"]["do"]["tool"] for s in rec["steps"] if s["event"].get("do")]
+    ok("record_replay: only the change is marked (run yes; check_design, timeline.inspect no)", dos == ["run"], dos)
+    try:
+        rr.build(ev[:2] + [{"turn": 1, "type": "tool", "id": "z", "tool": "bolted_connection", "status": "pending"},
+                           {"turn": 1, "type": "tool", "id": "z", "status": "completed", "params": {}}],
+                 demo="bracket", title="T", host="h")
+        ok("record_replay: an unknown changing tool is refused", False)
+    except ValueError as e:
+        ok("record_replay: an unknown changing tool is refused", "bolted_connection" in str(e), str(e))
+    # sessions before #124 have no time in the events: the session log has it (the day's earlier sessions skipped)
+    bare = [{k: v for k, v in e.items() if k != "t"} for e in ev]
+    log = [{"t": "09:00:00.000", "kind": "agent_event", "type": "user", "text": "fix it"},
+           {"t": "09:00:05.000", "kind": "agent_event", "type": "tool", "id": "a", "status": "pending"}]
+    stamp = 10 * 3600
+    for e in ev:
+        if e["type"] != "text":
+            log.append({"t": f"10:00:{e['t'] - 100:06.3f}", "kind": "agent_event",
+                        **{k: e[k] for k in ("type", "id", "status", "text") if k in e}})
+    times = rr.times_from_log(bare, log)
+    ok("record_replay: times from the session log, from the last time the message was logged",
+       times[0] == stamp and times[3] == stamp + 1.5 and times[4] == times[3], times[:5])
+    # the ACP adapter sends the input only with an update: the completion event carries it
+    seen = []
+    a = ag.AcpAgent.__new__(ag.AcpAgent)
+    a.on_event, a._inputs = seen.append, {}
+    a._update({"sessionUpdate": "tool_call", "toolCallId": "x", "title": "mcp__mechvane__run", "rawInput": {}})
+    a._update({"sessionUpdate": "tool_call_update", "toolCallId": "x", "rawInput": {"document": "d", "commands": []}})
+    a._update({"sessionUpdate": "tool_call_update", "toolCallId": "x", "status": "completed"})
+    ok("agent: the completed tool event carries the whole input", seen[-1].get("params") == {"document": "d", "commands": []}
+       and "params" not in seen[0], seen)
+    # every event has its time; the session log keeps its own clock string (record_replay reads it)
+    from mechvane.ui import sessionlog
+    logged, orig = [], sessionlog.log
+    sessionlog.log = lambda kind, **d: logged.append(d)
+    try:
+        sess = ag.AgentTurns.__new__(ag.AgentTurns)
+        sess.lock, sess.events, sess.turns = threading.Lock(), [], []
+        sess._event({"type": "user", "text": "x"})
+    finally:
+        sessionlog.log = orig
+    ok("agent: events carry their time, not passed to the session log",
+       isinstance(sess.events[0].get("t"), float) and "t" not in logged[0], (sess.events[0], logged))
+    # the demo build replays the change with Mechvane's own functions: the bracket's finding is gone
+    from mechvane import examples
+    from mechvane.ui.server import collect_findings
+    from mechvane.documents import Workspace
+    ws = Workspace(tempfile.mkdtemp(prefix="replay-"))  # its own folder: other checks use the name bracket
+    doc = examples.bracket(ws)
+    before = collect_findings(ws, doc).get("verdict")
+    rr.apply_change(ws, doc, rec["steps"][5]["event"]["do"])
+    ok("record_replay: replaying the recorded run fixes the bracket", (before, collect_findings(ws, doc).get("verdict")) == ("fail", "ok"),
+       before)
+    ws.close_all()
+
+
+def audit_checks(tmp):
+    """#127: the audit's input without a model (eleven parts, "nicht erhoben" instead of a crash, period from the last
+    audit, git by area) and audit_run.sh's decision (first date, 13 days, quota guard)."""
+    import shutil as _sh
+    import subprocess
+    REPO = Path(__file__).resolve().parents[2]
+    root = Path(tmp) / "audit_repo"
+    (root / "tools").mkdir(parents=True)
+    (root / "docs" / "strategie").mkdir(parents=True)
+    (root / "docs" / "plan").mkdir(parents=True)
+    (root / "build" / "status").mkdir(parents=True)
+    (root / "mechvane" / "ui").mkdir(parents=True)
+    g = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, check=True)
+    g("init", "-q", "-b", "main"); g("config", "user.email", "t@t"); g("config", "user.name", "t")
+    (root / "mechvane" / "ui" / "a.js").write_text("x\n" * 30)
+    (root / "mechvane" / "core.py").write_text("y\n" * 5)
+    g("add", "-A"); g("commit", "-qm", "c")
+    (root / "docs" / "strategie" / "2026-11-02-audit.md").write_text("# Audit\n\n## 6. Vorschläge\n\n- A1 Groq streichen (#105)\n\n## 7. Fragen\n")
+    (root / "docs" / "plan" / "2026-11-09.md").write_text("# Arbeitspaket\n\n## Durchsicht\n\n- geschlossen: #103\n\n## Ergebnis\n\n- fertig\n")
+    (root / "build" / "status" / "events.jsonl").write_text("\n".join(json.dumps(e) for e in [
+        {"at": "2026-11-01T01:00:00+00:00", "kind": "gate", "issue": 1, "cls": "A", "verdict": "green"},  # before S
+        {"at": "2026-11-05T01:00:00+00:00", "kind": "gate", "issue": 7, "cls": "A", "verdict": "merged"},
+        {"at": "2026-11-06T01:00:00+00:00", "kind": "gate", "issue": 8, "cls": "C", "verdict": "red"},
+        {"at": "2026-11-07T01:00:00+00:00", "kind": "gate", "issue": 8, "cls": "C", "verdict": "green"},
+        {"at": "2026-11-07T01:00:00+00:00", "kind": "queue", "step": "agy_done", "issue": 8, "model": "hydrogen", "rc": "124"},
+        {"at": "2026-11-07T02:00:00+00:00", "kind": "queue", "step": "agy_done", "issue": 9, "model": "hydrogen", "rc": "0"},
+    ]) + "\n")
+    out = root / "eingabe.md"
+    r = subprocess.run([sys.executable, str(REPO / "tools" / "audit_input.py"), "--root", str(root), "--offline",
+                        "--out", str(out), "--today", "2026-11-16"], capture_output=True, text=True)
+    text = out.read_text(encoding="utf-8") if out.is_file() else r.stderr
+    heads = [x for x in text.splitlines() if x.startswith("## ")]
+    ok("audit input: eleven parts, period from the last audit", r.returncode == 0 and len(heads) == 11
+       and "ab 2026-11-02" in text, (r.returncode, heads, r.stderr[-300:]))
+    ok("audit input: a source it cannot read says so instead of failing (issues, operations offline; no status page)",
+       text.count("nicht erhoben") >= 3 and "## 7. Issues\nnicht erhoben (offline)" in text, text[:400])
+    ok("audit input: gate since S by class and verdict, self-merged, returned branches",
+       "3 Läufe" in text and "A/merged 1" in text and "selbst gemergt: [7]" in text and "Rückläufer): [8]" in text, text)
+    ok("audit input: queue runs with an error code counted once, rc 0 is no error",
+       "#8 rc 124" in text and "#9 rc" not in text, text)
+    ok("audit input: git by area, the weekly review and the last audit's proposals",
+       "Oberfläche: +30" in text and "Fachlogik: +5" in text and "geschlossen: #103" in text and "A1 Groq streichen" in text, text)
+    ok("audit input: at most 400 lines", len(text.splitlines()) <= 400)
+
+    # audit_run.sh decides without a model: before the first date, 13 days, quota guard (dry run sends nothing)
+    _sh.copy(REPO / "tools" / "audit_run.sh", root / "tools")
+    _sh.copy(REPO / "tools" / "audit_input.py", root / "tools")
+    notify = Path(tmp) / "notify.sh"
+    notify.write_text('notify() { echo "NOTIFY $1"; }\n')
+    def run(day, **env):
+        script = (root / "tools" / "audit_run.sh").read_text().replace("source /root/scripts/notify-ntfy.sh", f"source {notify}")
+        script = script.replace("day=$(TZ=Europe/Zurich date +%F)", f"day={day}")
+        (root / "tools" / "audit_run_t.sh").write_text(script)
+        e = dict(os.environ, MECHVANE_REPO=str(root), AUDIT_DRY_RUN="1", **env)
+        return subprocess.run(["bash", str(root / "tools" / "audit_run_t.sh")], capture_output=True, text=True, env=e,
+                              timeout=120).stdout
+    ok("audit run: nothing before the first date", "before the first audit" in run("2026-11-23", AUDIT_FIRST="2026-11-30"))
+    (root / "docs" / "strategie" / "2026-11-30-audit.md").write_text("# Audit\n")
+    ok("audit run: nothing 7 days after the last audit", "7 days ago" in run("2026-12-07", AUDIT_FIRST="2026-11-30"))
+    no_quota = run("2026-12-14", AUDIT_FIRST="2026-11-30")
+    ok("audit run: 14 days later, but no fresh quota reading: left out", "ausgelassen" in no_quota and "NOTIFY" not in no_quota,
+       no_quota)
+    (root / "tools" / "token_budget.py").write_text('import json; print(json.dumps({"account": {"week_pct": 31.0, "week_current": True}}))\n')
+    ok("audit run: over the quota limit: left out", "31.0 %" in run("2026-12-14", AUDIT_FIRST="2026-11-30"))
+    (root / "tools" / "token_budget.py").write_text('import json; print(json.dumps({"account": {"week_pct": 4.0, "week_current": True}}))\n')
+    go = run("2026-12-14", AUDIT_FIRST="2026-11-30")
+    ok("audit run: due and quota free: gathers the input and would run", "would audit" in go
+       and (root / "build" / "audit" / "2026-12-14" / "eingabe.md").is_file(), go)
+
+
+def heavy_lock_checks(tmp):
+    """Audit A5: one heavy run at a time. A second run waits and gives up after MECHVANE_HEAVY_WAIT; a run started by
+    the holder (MECHVANE_HEAVY_LOCK inherited) goes on; review_branch.sh takes the same lock."""
+    import subprocess
+    tools = Path(__file__).resolve().parents[2] / "tools"
+    env = dict(os.environ, MECHVANE_HEAVY_LOCKFILE=str(Path(tmp) / "heavy.lock"), MECHVANE_HEAVY_WAIT="1")
+    env.pop("MECHVANE_HEAVY_LOCK", None)
+    code = f"import sys, time; sys.path.insert(0, {str(tools)!r}); from heavy_lock import hold; hold('t'); print('got', flush=True); time.sleep(float(sys.argv[1]))"
+    holder = subprocess.Popen([sys.executable, "-c", code, "6"], env=env, stdout=subprocess.PIPE, text=True)
+    holder.stdout.readline()
+    second = subprocess.run([sys.executable, "-c", code, "0"], env=env, capture_output=True, text=True, timeout=30)
+    inner = subprocess.run([sys.executable, "-c", code, "0"], env=dict(env, MECHVANE_HEAVY_LOCK="gate"), capture_output=True,
+                           text=True, timeout=30)
+    shell = subprocess.run(["bash", "-c", f"head -20 {tools / 'review_branch.sh'} | sed -n '/heavy run at a time/,/^fi/p' > {tmp}/lock.sh; "
+                            f"source {tmp}/lock.sh; echo shell-got"], env=env, capture_output=True, text=True, timeout=30)
+    holder.wait(timeout=30)
+    ok("heavy lock: a second heavy run gives up while one holds the lock", second.returncode != 0 and "waiting" in second.stderr,
+       (second.returncode, second.stderr[-200:]))
+    ok("heavy lock: a run started by the holder goes on", inner.returncode == 0 and "got" in inner.stdout, inner.stderr[-200:])
+    ok("heavy lock: review_branch.sh waits for the same lock", "shell-got" not in shell.stdout and "lock not free" in shell.stderr,
+       (shell.stdout, shell.stderr[-200:]))
+
+
+def acceptance_checks(tmp):
+    """Audit A1: coverage counts a frozen command only when the workspace code names it as a string (not as part of a
+    longer id), the other tests keep a value set by hand with its date or say "nicht gemessen"."""
+    tools = Path(__file__).resolve().parents[2] / "tools"
+    sys.path.insert(0, str(tools))
+    import acceptance as acc
+    ui = Path(tmp) / "acc_ui"
+    (ui / "static" / "vendor").mkdir(parents=True)
+    (ui / "static" / "a.js").write_text('run("solid.fillet"); x = `sketch.line`; y = "solid.fillet.extra";')
+    (ui / "srv.py").write_text("cmd('timeline.edit')\n")
+    (ui / "static" / "vendor" / "lib.js").write_text('"solid.chamfer"')
+    named = acc.named_in_ui(["solid.fillet", "sketch.line", "timeline.edit", "solid.chamfer", "solid.fillet.extra2"], ui)
+    ok("acceptance: commands named in the workspace code, quoted, vendor left out",
+       named == {"solid.fillet", "sketch.line", "timeline.edit"}, named)
+    d = Path(tmp) / "acc_docs"
+    d.mkdir()
+    (d / "befehle-0.43.0.txt").write_text("solid.fillet\nsketch.line\nview.fit\nrender.go\n")
+    (d / "messwerte.json").write_text(json.dumps({"eindruck": {"wert": "23/40", "gemessen": "2026-11-06", "quelle": "Sichtung"}}))
+    old = acc.DIR, acc.VALUES
+    acc.DIR, acc.VALUES = d, d / "messwerte.json"
+    try:
+        res = acc.measure(ui)
+    finally:
+        acc.DIR, acc.VALUES = old
+    rows = {r["key"]: r for r in res["pruefungen"]}
+    ok("acceptance: coverage against the frozen list, by domain", res["solidcraft_ziel"] == "0.43.0"
+       and rows["abdeckung"]["wert"].startswith("2 von 4 in der Oberfläche") and rows["abdeckung"]["bereiche"]["view"] == "0/1",
+       rows["abdeckung"])
+    ok("acceptance: a value by hand keeps its date, the others say so",
+       rows["eindruck"]["wert"] == "23/40" and rows["eindruck"]["gemessen"] == "2026-11-06"
+       and rows["konstruieren"]["wert"] == "nicht gemessen", rows)
 
 
 def demo_wasm_split_checks(tmp):
@@ -10496,6 +11044,10 @@ def main():
             speech_cases_checks()
             params_checks(tmp)
             feature_dialog_checks(tmp)
+            command_form_checks()
+            command_dialog_checks(tmp)
+            command_dialog_assembly_checks(tmp)
+            commands_js_checks(tmp)
             assemble_dialog_checks(tmp)
             assemble_joint_dialog_checks(tmp)
             assemble_constraint_checks(tmp)
@@ -10527,8 +11079,6 @@ def main():
                 agent_clone_checks(tmp)
             if _private_tool("review_score.py"):
                 review_score_checks(tmp)
-            if _private_tool("review_seeded.py"):
-                review_seeded_checks()
             orchester_figures_checks()
             command_matrix_checks()
             if (Path(__file__).resolve().parents[1] / "tasks").exists():  # private, not in the public export
@@ -10544,6 +11094,13 @@ def main():
             check_parameters_tool_checks(ws)
             demo_wasm_split_checks(tmp)
             step_signature_checks(ws)
+            record_replay_checks(ws)
+            sketch_face_pick_checks(ws)
+            if _private_tool("audit_run.sh"):
+                audit_checks(tmp)
+            heavy_lock_checks(tmp)
+            if _private_tool("acceptance.py"):
+                acceptance_checks(tmp)
         finally:
             ws.close_all()
     print(f"\n{failures} failure(s)")

@@ -10,6 +10,17 @@ NOT_IN_SESSION = {"sketch.create", "sketch.edit", "sketch.finish", "sketch.finis
 ALSO_IN_SESSION = {"parameters.change"}
 
 
+def face_plane(plane: dict) -> dict:
+    """A picked face as sketch.create takes it: the point, and the body and face index it was picked on when both are
+    given. A point on an edge lies on two faces and SolidCraft refuses it as ambiguous; a tap on a phone often lands
+    there, so the workspace sends the face it hit as well."""
+    out = {"face": plane["face"]}
+    body, index = plane.get("body"), plane.get("index")
+    if isinstance(body, str) and body and isinstance(index, int) and not isinstance(index, bool) and index >= 0:
+        out.update(body=body, index=index)
+    return out
+
+
 def create_params(plane, project_edges: bool = True) -> dict:
     """sketch.create parameters for a new sketch on plane. On XZ SolidCraft's sketch y points to world -Z
     (seen from +Y); flipped, x is +X and y is +Z, seen from the front (-Y) as in Inventor, so world Z is up.
@@ -17,7 +28,7 @@ def create_params(plane, project_edges: bool = True) -> dict:
     if plane == "XZ":
         return {"plane": plane, "flip": True}
     if isinstance(plane, dict) and "face" in plane:
-        return {"plane": {"face": plane["face"]}, "project_edges": bool(project_edges)}
+        return {"plane": face_plane(plane), "project_edges": bool(project_edges)}
     return {"plane": plane}
 
 
@@ -61,7 +72,7 @@ class SketchSession:
             if isinstance(plane, dict) and "face" in plane:
                 if "project_edges" in plane and isinstance(plane["project_edges"], bool):
                     project_edges = plane["project_edges"]
-                plane = {"face": plane["face"]}
+                plane = face_plane(plane)
             if plane not in ("XY", "XZ", "YZ") and not isinstance(plane, dict):
                 raise ValueError("plane: XY, XZ, YZ or {face: [x, y, z]}")
         snap = agent.begin_hand()

@@ -1670,7 +1670,7 @@ function distanceToLineEdge(point, edge) {
 export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl, statusEl, post, get,
                                      showPreview, clearPreview, reload, showModel, restoreModel,
                                      lookAlong = () => {}, originAxisAt = () => null, revealOriginAxes = () => {},
-                                     log = () => {} }) {
+                                     closeOthers = () => {}, log = () => {} }) {
   const pickGroup = new THREE.Group();
   scene.add(pickGroup);
   const emptyHtml = propertiesEl.innerHTML;
@@ -2022,6 +2022,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   async function open(kind, edit = null) {
     const def = DIALOGS[kind];
     if (!def) return;
+    closeOthers();  // the command dialog (Ctrl+K) and its picks in the view end
     // any edit object but a bolted connection's (feature definitions, joints with loadEdit) edits in place
     const isFeatureEdit = Boolean(edit && !edit.boltedEditId);
     const boltedEditId = edit?.boltedEditId || null;
@@ -2153,6 +2154,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
   // Edit a feature from the model browser: its values, and the model as it was before it (Inventor
   // rolls back the same way), so the edges it consumed can be picked again
   async function edit(name) {
+    closeOthers();
     close();
     statusEl.textContent = `Opening ${name}…`;
     let data;

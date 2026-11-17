@@ -1,0 +1,339 @@
+{
+ "title": "Agent fixes a design-check finding",
+ "demo": "bracket",
+ "prompt": "The design check fails on this bracket. Please fix it so the check passes, and keep the change small.",
+ "steps": [
+  {
+   "t": 0.0,
+   "event": {
+    "type": "user",
+    "text": "The design check fails on this bracket. Please fix it so the check passes, and keep the change small.",
+    "selected": 0
+   }
+  },
+  {
+   "t": 2.0,
+   "event": {
+    "type": "tool",
+    "id": "toolu_012GahWyrSDwCq8FcrrWnLs2",
+    "tool": "check_design",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 2.71,
+   "event": {
+    "type": "tool",
+    "id": "toolu_012GahWyrSDwCq8FcrrWnLs2",
+    "status": "failed",
+    "params": {
+     "document": "bracket.solidcraft"
+    },
+    "error": "```\nError executing tool check_design: \"no open document 'bracket.solidcraft' (open: none)\"\n```"
+   }
+  },
+  {
+   "t": 3.52,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01DWHqrm13U7zkuD6fY5EXjV",
+    "tool": "open_document",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 3.83,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01DWHqrm13U7zkuD6fY5EXjV",
+    "status": "completed",
+    "params": {
+     "path": "bracket.solidcraft"
+    }
+   }
+  },
+  {
+   "t": 4.79,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01SuS7X7MLd5yA83D4iLymPt",
+    "tool": "check_design",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 5.41,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01DdpWnm1466biD7gYegDfW4",
+    "tool": "browser",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 5.49,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01SuS7X7MLd5yA83D4iLymPt",
+    "status": "completed",
+    "params": {
+     "document": "bracket"
+    }
+   }
+  },
+  {
+   "t": 5.51,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01DdpWnm1466biD7gYegDfW4",
+    "status": "completed",
+    "params": {
+     "document": "bracket"
+    }
+   }
+  },
+  {
+   "t": 7.35,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01Q9XjDBBi5rkQiu8di2NUc9",
+    "tool": "command",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 7.41,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01Q9XjDBBi5rkQiu8di2NUc9",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "command": "document.inspect"
+    }
+   }
+  },
+  {
+   "t": 8.84,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01J8h9AiK5qScVjWDrzfKM5f",
+    "tool": "list_commands",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 8.86,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01J8h9AiK5qScVjWDrzfKM5f",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "filter": "feature"
+    }
+   }
+  },
+  {
+   "t": 8.86,
+   "event": {
+    "type": "text",
+    "text": "Found the problem: the hole \"Hole\" sits 6 mm from the plate's −X edge, and the rule asks for 9.9 mm. I'm looking at its definition now so I can move it."
+   }
+  },
+  {
+   "t": 10.4,
+   "event": {
+    "type": "tool",
+    "id": "toolu_0197jmCBXRp4m6v1fGDJwfzw",
+    "tool": "command",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 11.1,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01GcHJxLv1dRFgJsQ7Xc1CkX",
+    "tool": "command",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 11.11,
+   "event": {
+    "type": "tool",
+    "id": "toolu_0197jmCBXRp4m6v1fGDJwfzw",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "command": "timeline.inspect",
+     "params": {
+      "feature": "Hole"
+     }
+    }
+   }
+  },
+  {
+   "t": 11.71,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01GcHJxLv1dRFgJsQ7Xc1CkX",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "command": "timeline.inspect",
+     "params": {
+      "feature": "BasePlate"
+     }
+    }
+   }
+  },
+  {
+   "t": 13.71,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01PWfafHrJz5vSsv4Lkf69Pu",
+    "tool": "command",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 13.97,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01PWfafHrJz5vSsv4Lkf69Pu",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "command": "timeline.inspect",
+     "params": {
+      "feature": "Wall"
+     }
+    }
+   }
+  },
+  {
+   "t": 13.97,
+   "event": {
+    "type": "text",
+    "text": "Moving the hole from x = 6 to x = 10 mm (≥ 9.9 required); y and everything else stay the same."
+   }
+  },
+  {
+   "t": 15.23,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01Vx3PVZCzPxPbW1KK62x7z5",
+    "tool": "run",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 16.13,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01Vx3PVZCzPxPbW1KK62x7z5",
+    "status": "completed",
+    "params": {
+     "document": "bracket",
+     "commands": [
+      {
+       "command": "timeline.edit",
+       "params": {
+        "feature": "Hole",
+        "set": {
+         "position": [
+          10,
+          14,
+          8
+         ]
+        }
+       }
+      }
+     ]
+    },
+    "do": {
+     "tool": "run",
+     "params": {
+      "document": "bracket",
+      "commands": [
+       {
+        "command": "timeline.edit",
+        "params": {
+         "feature": "Hole",
+         "set": {
+          "position": [
+           10,
+           14,
+           8
+          ]
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "t": 17.68,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01NihppYvkjYcGPsQQG8Vrze",
+    "tool": "check_design",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 17.7,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01NihppYvkjYcGPsQQG8Vrze",
+    "status": "completed",
+    "params": {
+     "document": "bracket"
+    }
+   }
+  },
+  {
+   "t": 18.47,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01UpPpMxFSKq2fToBmqkvkDJ",
+    "tool": "save_document",
+    "status": "pending"
+   }
+  },
+  {
+   "t": 19.58,
+   "event": {
+    "type": "tool",
+    "id": "toolu_01UpPpMxFSKq2fToBmqkvkDJ",
+    "status": "completed",
+    "params": {
+     "document": "bracket"
+    }
+   }
+  },
+  {
+   "t": 19.58,
+   "event": {
+    "type": "text",
+    "text": "The bracket now passes the design check, and the change is saved.\n\n**Problem:** The Ø6.6 mm hole was only 6 mm from the plate's −X edge. The check (`fdm_0.4` profile) wants at least 1.5 × the diameter, which is 9.9 mm.\n\n**Fix:** I made one edit, to the hole's position in the `Hole` feature: it moved from x = 6 to x = 10 mm. Its y position, diameter and depth are unchanged. Nothing else in the part changed, and the feature can still be edited in the tree.\n\n**Result:** That hole is now 10 mm from the edge and every rule passes. The edit gave a \"no effect\" warning only because moving a hole doesn't change the part's volume or outer size.\n\nTwo things to know:\n- The hole is now 4 mm further from the −X edge. If it has to line up with a mating part or an existing bolt pattern, that part needs the same change. If the hole can't move, the other option is a smaller hole, e.g. Ø5.5 mm for M5, which needs only 8.25 mm.\n- No material is assigned, so the check used its default profile."
+   }
+  },
+  {
+   "t": 21.58,
+   "event": {
+    "type": "done",
+    "reason": "end_turn",
+    "changed": [
+     "bracket.solidcraft"
+    ],
+    "removed": []
+   }
+  }
+ ],
+ "recorded": "2026-11-16, Claude through claude-agent-acp 0.99.1 in mechvane ui, unedited"
+}

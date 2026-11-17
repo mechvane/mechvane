@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
 from .. import geometry as g
-from .. import bolted, bom, design_rules, hole_tables, install, step_import, links, modeling, query, sc_errors, sc_locate, sketch_rule, speech, standard_parts, tree
+from .. import bolted, bom, command_form, design_rules, hole_tables, install, step_import, links, modeling, query, sc_errors, sc_locate, sketch_rule, speech, standard_parts, tree
 from . import agent as agent_mod, selection, sessionlog, sketch_session, webapp
 from .. import METADATA_KEY, read_metadata
 from ..documents import ASSEMBLY, PART, Workspace, _validate_name
@@ -293,7 +293,7 @@ def sketch_commands(doc, params: dict) -> dict:
     sizes are parameters. Runs step by step (the curve ids come from each reply), all or nothing."""
     s = doc.session
     plane = params.get("plane")
-    plane = {"face": plane["face"]} if isinstance(plane, dict) and "face" in plane else plane
+    plane = sketch_session.face_plane(plane) if isinstance(plane, dict) and "face" in plane else plane
     if plane not in ("XY", "XZ", "YZ") and not isinstance(plane, dict):
         raise ValueError("plane: XY, XZ, YZ or {face: [x, y, z]}")
     shapes = params.get("shapes") or []
@@ -346,7 +346,7 @@ def sketch_commands(doc, params: dict) -> dict:
 def sketch_plane(doc, plane) -> dict:
     """The frame of a sketch plane (origin, x_dir, y_dir in world coordinates) without leaving a sketch:
     the dialog draws the shapes on it before anything is made."""
-    plane = {"face": plane["face"]} if isinstance(plane, dict) and "face" in plane else plane
+    plane = sketch_session.face_plane(plane) if isinstance(plane, dict) and "face" in plane else plane
     cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
     try:
         doc.session.cmd("sketch.create", sketch_session.create_params(plane, project_edges=False))
@@ -794,6 +794,100 @@ def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, ed
         label = f"Edit {edit}: {label}"
     out = srv.agent.hand_step(label, apply)
     return {"done": label, "delta": out.get("delta"), "results": out.get("results")}
+
+
+_COMMANDS_CACHE: dict = {}  # SolidCraft version → {"rows": [...], "forms": {id: form}}; the same for every session
+
+
+def _command_cache(doc) -> dict:
+    version = install.VERSION
+    cache = _COMMANDS_CACHE.get(version)
+    if cache is None:
+        raw = doc.session.tool("list_commands", {"limit": 5000}, timeout=120)
+        rows = raw if isinstance(raw, list) else raw.get("commands", [])
+        cache = _COMMANDS_CACHE[version] = {"rows": {r["id"]: r for r in rows}, "forms": {}}
+    return cache
+
+
+def _for_kind(doc, command: str, offered: bool, reason: str | None) -> tuple[bool, str | None]:
+    """A modelling command is not offered in an assembly (as the feature dialogs)."""
+    if offered and doc.kind != PART and command_form.part_only(command):
+        return False, command_form.PART_REASON
+    return offered, reason
+
+
+def command_form_for(doc, command: str) -> dict:
+    """The general dialog's form for one command (describe_command, cached; offered for the document's kind);
+    KeyError for an unknown id."""
+    cache = _command_cache(doc)
+    row = cache["rows"].get(command)
+    if row is None:
+        raise KeyError(command)
+    fm = cache["forms"].get(command)
+    if fm is None:
+        fm = command_form.form(doc.session.tool("describe_command", {"id": command}, timeout=60), row)
+        reason = command_form.why_not(command, fm)
+        fm = cache["forms"][command] = dict(fm, offered=reason is None, reason=reason)
+    offered, reason = _for_kind(doc, command, fm["offered"], fm["reason"])
+    return dict(fm, offered=offered, reason=reason)
+
+
+def command_list(doc) -> dict:
+    """Every SolidCraft command for the command search (Ctrl+K): id, label, tab, panel, and why it is not
+    offered (excepted or deferred; a file path is only known once its form is loaded)."""
+    out = []
+    for cid, row in sorted(_command_cache(doc)["rows"].items()):
+        if command_form.excepted(cid):
+            continue
+        reason = command_form.why_not(cid)
+        offered, reason = _for_kind(doc, cid, reason is None, reason)
+        out.append({"id": cid, "label": row.get("label") or cid, "tab": row.get("tab"), "panel": row.get("panel"),
+                    "offered": offered, **({"reason": reason} if reason else {})})
+    return {"commands": out, "solidcraft": install.VERSION}
+
+
+def run_generic(srv, doc, command: str, params: dict, preview: bool, tmp_dir) -> dict:
+    """Run any offered SolidCraft command from the general dialog (#128), all or nothing. A command that
+    changes the design is saved and becomes one entry of the undo list; one that only reads (inspect,
+    list ...) returns its result and leaves no undo entry (the document revision tells them apart)."""
+    try:
+        fm = command_form_for(doc, command)
+    except KeyError:
+        raise PermissionError(f"unknown command: {command}") from None
+    if not fm["offered"]:
+        raise PermissionError(f"{command} is not offered in the command dialog: {fm['reason']}")
+    commands = [{"command": command, "params": params}]
+
+    def revision():
+        return doc.session.cmd("document.revision").get("revision")
+
+    if preview:
+        cp = doc.session.cmd("edit.checkpoint").get("checkpoint")
+        try:
+            before = revision()
+            out = modeling.run_commands(doc, commands)
+            changed = revision() != before
+            return {"preview": True, "changed": changed, "delta": out.get("delta"), "results": out.get("results"),
+                    "mesh": collect_mesh(doc, tmp_dir=tmp_dir) if changed and doc.kind == PART else None}
+        finally:
+            doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp})
+            try:
+                doc.session.cmd("edit.restore_checkpoint", {"checkpoint": cp, "forget": True})
+            except Exception:
+                pass
+
+    snap = srv.agent.begin_hand()
+    label = None
+    try:
+        before = revision()
+        out = modeling.run_commands(doc, commands)
+        if revision() != before:
+            doc.save()
+            srv.mtime = doc.path.stat().st_mtime
+            label = f"{fm['label']} ({command}) in {doc.name}"
+    finally:
+        srv.agent.end_hand(snap, label)
+    return {"done": label, "changed": label is not None, "delta": out.get("delta"), "results": out.get("results")}
 
 
 def _vec3_or_zero(val, xyz_fallback) -> list[float]:
@@ -2911,8 +3005,11 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(200, result)
                         return
                     try:
-                        result = run_feature(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir,
-                                             edit=body.get("edit") if isinstance(body.get("edit"), str) else None)
+                        if body.get("generic"):
+                            result = run_generic(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir)
+                        else:
+                            result = run_feature(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir,
+                                                 edit=body.get("edit") if isinstance(body.get("edit"), str) else None)
                     except KeyError as e:
                         self._send_json(404, {"error": f"feature not found: {e.args[0]}"})
                         return
@@ -3219,11 +3316,17 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path == "/features.js":
                 self._send_static("features.js", "application/javascript; charset=utf-8")
                 return
+            if path == "/commands.js":
+                self._send_static("commands.js", "application/javascript; charset=utf-8")
+                return
             if path == "/sketchgeom.js":
                 self._send_static("sketchgeom.js", "application/javascript; charset=utf-8")
                 return
             if path == "/sketcher.js":
                 self._send_static("sketcher.js", "application/javascript; charset=utf-8")
+                return
+            if path == "/demo_check.js":
+                self._send_static("demo_check.js", "application/javascript; charset=utf-8")
                 return
             if path == "/newpart.js":
                 self._send_static("newpart.js", "application/javascript; charset=utf-8")
@@ -3305,6 +3408,26 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(409, {"error": "no document open"})
                         return
                     data = collect_version(doc)
+                self._send_json(200, data)
+                return
+
+            if path in ("/api/commands", "/api/command"):
+                with srv.lock:
+                    doc = srv.ensure_current()
+                    if doc is None:
+                        self._send_json(409, {"error": "no document open"})
+                        return
+                    try:
+                        if path == "/api/commands":
+                            data = command_list(doc)
+                        else:
+                            data = command_form_for(doc, (parse_qs(url.query).get("id") or [""])[0])
+                    except KeyError as e:
+                        self._send_json(404, {"error": f"unknown command: {e.args[0]}"})
+                        return
+                    except Exception as e:
+                        self._send_json(502, {"error": str(e)})
+                        return
                 self._send_json(200, data)
                 return
 

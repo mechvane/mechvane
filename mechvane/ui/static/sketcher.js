@@ -1180,12 +1180,27 @@ export function initSketcher(h) {
     document.querySelectorAll("[data-sketch-tool], [data-sketch-action]").forEach((b) => { b.disabled = !on; });
   }
 
+  // Starting a sketch can take a while (in the live demo SolidCraft loads first) and may fail: say so over the view,
+  // where it is seen on a phone too, not only in the status bar at the foot of the page
   async function begin(body) {
+    const note = document.createElement("div");
+    note.className = "sketch-note";
+    note.setAttribute("role", "status");
+    note.textContent = "Starting the sketch…";
+    h.viewportEl.appendChild(note);
+    const follow = new MutationObserver(() => { if (h.statusEl.textContent) note.textContent = h.statusEl.textContent; });
+    follow.observe(h.statusEl, { childList: true, characterData: true, subtree: true });
     try {
       const res = await h.post("api/sketch/begin", body);
+      follow.disconnect();
+      note.remove();
       enter(res);
     } catch (err) {
+      follow.disconnect();
       h.statusEl.textContent = `Sketch: ${err.message}`;
+      note.textContent = `Sketch: ${err.message}`;
+      note.classList.add("error");
+      setTimeout(() => note.remove(), 8000);
     }
   }
 
@@ -1237,7 +1252,10 @@ export function initSketcher(h) {
     h.viewTools.startFacePick((pick) => {
       if (!pick.planar) { h.statusEl.textContent = "That face is not flat: click a flat face or choose a plane"; return; }
       done();
-      begin({ plane: { face: pick.point.toArray().map((c) => +c.toFixed(4)) }, project_edges: autoProject });
+      // the face hit as well: a tap near an edge gives a point on two faces, which SolidCraft refuses as ambiguous
+      const face = { face: pick.point.toArray().map((c) => +c.toFixed(4)) };
+      if (pick.body && Number.isInteger(pick.face)) Object.assign(face, { body: pick.body, index: pick.face });
+      begin({ plane: face, project_edges: autoProject });
     });
     choosing = bar;
     h.statusEl.textContent = "New sketch: click an origin plane or a flat face, or choose XY, XZ or YZ";

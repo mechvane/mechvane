@@ -95,6 +95,7 @@ class AcpAgent:
         self.cwd = str(Path(tempfile.mkdtemp(prefix="mechvane-agent-")).resolve())  # no 8.3 short names
         self._next = 0
         self._replies = {}
+        self._inputs = {}  # tool call id -> its input, which may come only with a later update
         self._cond = threading.Condition()
         self.proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                      cwd=self.cwd, text=True, encoding="utf-8", bufsize=1)
@@ -181,14 +182,22 @@ class AcpAgent:
                 self.on_event({"type": "text", "text": text})
         elif kind == "tool_call":
             title = u.get("title") or ""
+            if u.get("rawInput"):
+                self._inputs[u.get("toolCallId")] = u["rawInput"]
             sessionlog.log("agent_tool_call", id=u.get("toolCallId"), tool=title, params=u.get("rawInput"))
             self.on_event({"type": "tool", "id": u.get("toolCallId"), "tool": title.removeprefix(MECHVANE_TOOL),
                            "status": u.get("status") or "pending"})
-        elif kind == "tool_call_update" and u.get("status") in ("completed", "failed"):
-            ev = {"type": "tool", "id": u.get("toolCallId"), "status": u["status"]}
-            if u["status"] == "failed":
-                ev["error"] = _tool_error(u)
-            self.on_event(ev)
+        elif kind == "tool_call_update":
+            if u.get("rawInput"):
+                self._inputs[u.get("toolCallId")] = u["rawInput"]
+            if u.get("status") in ("completed", "failed"):
+                # the whole input with the result (not cut short as in the session log): a recorded session
+                # can be replayed from these events (tools/record_replay.py, #124)
+                ev = {"type": "tool", "id": u.get("toolCallId"), "status": u["status"],
+                      "params": self._inputs.pop(u.get("toolCallId"), None)}
+                if u["status"] == "failed":
+                    ev["error"] = _tool_error(u)
+                self.on_event(ev)
 
     def prompt(self, text: str) -> str:
         """Send one message and wait for the turn to end; returns the stop reason."""
@@ -345,7 +354,8 @@ class AgentTurns:
 
     def _event(self, e: dict):
         with self.lock:
-            e = {"n": len(self.events) + 1, "turn": len(self.turns), **e}
+            # t: when it happened, so a recorded session plays at its own pace (tools/record_replay.py, #124)
+            e = {"n": len(self.events) + 1, "turn": len(self.turns), "t": round(time.time(), 3), **e}
             self.events.append(e)
             # the session log gets the agent's text as one entry per stretch, not every streamed piece
             if e.get("type") == "text":
@@ -354,7 +364,7 @@ class AgentTurns:
             text, self._text = getattr(self, "_text", ""), ""
         if text:
             sessionlog.log("agent_text", turn=e["turn"], text=text)
-        sessionlog.log("agent_event", **{k: v for k, v in e.items() if k != "n"})
+        sessionlog.log("agent_event", **{k: v for k, v in e.items() if k not in ("n", "t")})  # the log has its own clock
 
     def events_since(self, n: int) -> dict:
         with self.lock:

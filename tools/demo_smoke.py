@@ -1,5 +1,6 @@
 """Click through the feature dialogs of the static live demo (demo_kernel.js) in a headless browser:
-fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint, a sketch.
+fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint, a sketch,
+and the recorded agent session (#124: chat lines, the model changes, the check is green at the end, Reset demo).
 
     tools/build_demo_site.py /tmp/demosite && (cd /tmp/demosite && python3 -m http.server 8811 &)
     <python with playwright> tools/demo_smoke.py [url]   (default http://localhost:8811/demo/?demo=bracket)
@@ -8,6 +9,9 @@ The first dialog starts SolidCraft in the page: about 10 s headless. Exit code 1
 """
 import glob, os, sys, time
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from heavy_lock import hold
+hold("demo_smoke")  # one heavy run at a time (audit 2026-11-16, A5)
 shells = glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=shells[-1], args=["--use-gl=swiftshader","--enable-unsafe-swiftshader"])
@@ -81,6 +85,33 @@ with sync_playwright() as pw:
     print("sketch:", dims, "finished and undone")
     if dims != ["20", "50"]:
         errs.append(f"sketch: dimensions {dims}, expected 20 and 50")
+    # #124: the recorded agent session plays in a fresh page (?replay=1 starts it), from precomputed states
+    r = b.new_page(viewport={"width": 1400, "height": 850})
+    if os.environ.get("DEMO_SLOW"):
+        r.context.new_cdp_session(r).send("Emulation.setCPUThrottlingRate", {"rate": float(os.environ["DEMO_SLOW"])})
+    r.on("pageerror", lambda e: errs.append("replay pageerror " + str(e)))
+    url = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8811/demo/?demo=bracket").split("?")[0]
+    r.goto(url + "?demo=bracket&replay=1", wait_until="load")
+    r.wait_for_selector(".replay-btn:has-text('Watch again')", timeout=180000)
+    lines = r.locator(".chat-log li").all_inner_texts()
+    bar = r.locator("#step-changes").inner_text().replace("\n", " ") if r.locator("#step-changes").count() else ""
+    summary = r.locator("#findings-summary").inner_text()
+    print(f"replay: {len(lines)} chat lines | {bar} | {summary[:60]}")
+    if not (lines and "design check fails" in lines[0] and "run" in lines and lines[-1].startswith("✓ Changed")):
+        errs.append(f"replay: chat lines {lines[:3]} … {lines[-1:]}")
+    if "~ Hole" not in bar:
+        errs.append(f"replay: the model did not change (last step {bar!r})")
+    if "OK" not in summary:
+        errs.append(f"replay: check not green at the end: {summary!r}")
+    # started again from the top bar after the end: from the example as published, so the hole moves again
+    r.click("#btn-replay")
+    r.wait_for_function("!/~ Hole/.test(document.querySelector('#step-changes')?.textContent || '')", timeout=60000)
+    r.wait_for_function("/~ Hole/.test(document.querySelector('#step-changes')?.textContent || '')", timeout=180000)
+    r.wait_for_selector(".replay-btn:has-text('Watch again')", timeout=180000)
+    print("replay again from the top bar ok")
+    r.click(".replay-btn:has-text('Reset demo')")
+    r.wait_for_function("/FAIL/.test(document.querySelector('#findings-summary').textContent)", timeout=60000)
+    print("replay reset ok")
     print("\n".join(errs) or "no errors")
     b.close()
 sys.exit(1 if errs else 0)

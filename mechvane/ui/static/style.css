@@ -1810,3 +1810,58 @@ dialog.request-dialog.bom-dialog { width: min(980px, 94vw); max-width: none; }
 .bom-table th { position: sticky; top: 0; background: var(--panel-bg); color: var(--text-muted); font-weight: 600; }
 .bom-table td.bom-num { text-align: right; font-variant-numeric: tabular-nums; }
 .bom-table tr.bom-sub td { font-weight: 600; }
+
+/* Live demo: a recorded agent session (#124) */
+.replay-start { padding: 3px 10px; font-size: 12px; border: 1px solid var(--selected-border); border-radius: 12px;
+  background: transparent; color: var(--text); cursor: pointer; white-space: nowrap; }
+.replay-start:hover:not(:disabled) { background: var(--hover-bg); }
+.replay-start:disabled { opacity: 0.5; cursor: default; }
+.replay-start[hidden] { display: none; }
+.replay-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted); }
+.replay-bar[hidden] { display: none; }
+.replay-label { margin-right: auto; }
+.replay-btn { white-space: nowrap; }
+.replay-btn[hidden] { display: none; }
+.replaying .ribbon-bar, .replaying .quick-access, .replaying #tree-content, .replaying #params-section { pointer-events: none; opacity: 0.6; }
+.chat-composer[hidden] { display: none; }
+.sketch-note { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); max-width: calc(100% - 24px);
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-bg, #161b22);
+  color: var(--text); font-size: 13px; z-index: 20; pointer-events: none; }
+.sketch-note.error { border-color: var(--fail-fg); color: var(--fail-fg); }
+@media (max-width: 700px) {
+  .sketch-plane-bar { flex-wrap: wrap; justify-content: center; width: calc(100% - 20px); box-sizing: border-box; }
+  .sketch-plane-bar > span { flex-basis: 100%; text-align: center; }
+}
+
+/* General command dialog (Ctrl+K, #128) */
+.cmd-palette { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: 50;
+  width: min(560px, calc(100vw - 32px)); background: var(--panel-bg); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cmd-palette[hidden] { display: none; }
+.cmd-search { font: inherit; font-size: 14px; padding: 7px 10px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; }
+.cmd-search:focus { outline: none; border-color: var(--selected-border); }
+.cmd-results { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.cmd-results li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.cmd-results li.active { background: var(--selected-bg); }
+.cmd-results li:hover { background: var(--hover-bg); }
+.cmd-results li.off .cmd-label { color: var(--text-muted); }
+.cmd-id { color: var(--text-muted); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap; }
+.cmd-palette-note { color: var(--text-muted); font-size: 11px; padding: 0 4px; }
+.cmd-command { color: var(--text-muted); font-family: ui-monospace, monospace; font-size: 11px; }
+.cmd-description { color: var(--text-muted); white-space: pre-wrap; }
+.cmd-description:empty { display: none; }
+.cmd-field { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 6px; align-items: start; }
+.cmd-field > span { overflow: hidden; text-overflow: ellipsis; padding-top: 4px; }
+.cmd-field input, .cmd-field select, .cmd-field textarea { font: inherit; font-size: 12px; min-width: 0; padding: 3px 6px;
+  color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+.cmd-field textarea { font-family: ui-monospace, monospace; resize: vertical; }
+.cmd-field :focus { outline: none; border-color: var(--selected-border); }
+.cmd-point { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.cmd-help summary { cursor: pointer; color: var(--text-muted); }
+.cmd-help pre, .cmd-result { white-space: pre-wrap; font-size: 11px; background: var(--code-bg); padding: 6px; border-radius: 4px;
+  max-height: 240px; overflow: auto; margin: 4px 0 0; }
+.cmd-result[hidden] { display: none; }
+.cmd-pickwrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; align-items: start; }
+.cmd-pick.active { color: var(--bg); background: var(--selected-border); border-radius: 4px; }

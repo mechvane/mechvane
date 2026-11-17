@@ -3,7 +3,9 @@
 
 Usage: python3 tools/build_demo_site.py [out_dir]   (default site/, needs solidcraft-cli)
 The output is a plain static site (GitHub Pages): the website (website/) at the root, the live demo under demo/
-(the UI files plus demo/demos/<name>/{version,mesh,tree,findings}.json), media/ and roadmap/."""
+(the UI files plus demo/demos/<name>/{version,mesh,tree,findings}.json), media/ and roadmap/.
+A recorded agent session in demo/replays/<name>.json (tools/record_replay.py, #124) goes to demos/<name>/replay.json,
+with the model after each of its changes under demos/<name>/replay/<k>/, computed here with the recorded calls."""
 
 import json
 import shutil
@@ -20,6 +22,41 @@ from mechvane.examples import DEMOS  # noqa: E402
 from mechvane.ui.mesh import collect_mesh  # noqa: E402
 from mechvane.ui import webapp  # noqa: E402
 from mechvane.ui.server import STATIC_DIR, collect_findings, collect_tree, collect_version, hole_sizes  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # tools/ also when imported as tools.build_demo_site
+from record_replay import apply_change  # noqa: E402
+
+REPLAYS = REPO / "demo" / "replays"
+
+
+def collect(ws, doc, tmp):
+    data = {"version": collect_version(doc), "mesh": collect_mesh(doc, tmp_dir=tmp),
+            "tree": collect_tree(ws, doc), "findings": collect_findings(ws, doc)}
+    data["version"]["path"] = ""
+    for body in data["mesh"].get("bodies", []):
+        body["positions"] = [round(v, 4) for v in body["positions"]]  # 0.1 µm, halves the download
+    return data
+
+
+def write(d: Path, data: dict):
+    d.mkdir(parents=True, exist_ok=True)
+    for key, value in data.items():
+        (d / f"{key}.json").write_text(json.dumps(value, separators=(",", ":")), encoding="utf-8")
+
+
+def build_replay(ws, doc, rec: dict, d: Path, tmp) -> str:
+    """Run the recording's changes on doc, store the model after each (replay/<k>/) and the recording with the
+    frame numbers; returns the verdict of the design check at the end."""
+    k = 0
+    for step in rec["steps"]:
+        do = step["event"].get("do")
+        if not do:
+            continue
+        apply_change(ws, doc, do)
+        k += 1
+        step["event"]["frame"] = k
+        write(d / "replay" / str(k), collect(ws, doc, tmp))
+    (d / "replay.json").write_text(json.dumps(rec, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    return collect_findings(ws, doc).get("verdict")
 
 
 def make_mechvane_zip(dest: Path):
@@ -105,9 +142,7 @@ def main():
                 doc = build(ws)
                 d = demo / "demos" / name
                 d.mkdir(parents=True)
-                data = {"version": collect_version(doc), "mesh": collect_mesh(doc, tmp_dir=tmp),
-                        "tree": collect_tree(ws, doc), "findings": collect_findings(ws, doc)}
-                data["version"]["path"] = ""
+                data = collect(ws, doc, tmp)
                 # The design files themselves, for the web app: the document and its linked parts
                 files = {doc.path.name: doc.path}
                 if doc.kind == ASSEMBLY:
@@ -118,11 +153,13 @@ def main():
                 for fname, src in files.items():
                     shutil.copyfile(src, d / "files" / fname)
                 data["files"] = {"document": doc.path.name, "kind": doc.kind, "files": sorted(files)}
-                for body in data["mesh"].get("bodies", []):
-                    body["positions"] = [round(v, 4) for v in body["positions"]]  # 0.1 µm, halves the download
-                for key, value in data.items():
-                    (d / f"{key}.json").write_text(json.dumps(value, separators=(",", ":")), encoding="utf-8")
-                index.append({"name": name, "title": title})
+                write(d, data)
+                entry = {"name": name, "title": title}
+                if (REPLAYS / f"{name}.json").is_file():
+                    rec = json.loads((REPLAYS / f"{name}.json").read_text(encoding="utf-8"))
+                    entry["replay"] = rec["title"]
+                    print(f"{name}: replay ends {build_replay(ws, doc, rec, d, tmp)}")
+                index.append(entry)
                 print(f"{name}: {sum((d / f'{k}.json').stat().st_size for k in data) // 1024} KB, "
                       f"{data['findings'].get('verdict')}")
         finally:

@@ -21,7 +21,8 @@ python3 tests/reference/check.py       # reference parts with expected values
 ```
 
 Every change comes with a check in `tests/mechvane/check.py`. Never weaken or skip a check to get to green.
-Headless UI checks: `tools/ui_smoke.py` (needs playwright).
+Headless UI checks: `tools/ui_smoke.py` (needs playwright). Heavy runs (`ui_smoke.py`, `demo_smoke.py`, the gate) take a
+lock (`tools/heavy_lock.py`, `/tmp/mechvane-heavy.lock`) and wait for each other: run them one at a time.
 Nightly and on pushes to `main` in the public repository, `.github/workflows/platforms.yml` runs a clean installation and smoke test (`tools/ci_smoke.py`) across Windows, macOS, and Linux.
 
 ## Where things are

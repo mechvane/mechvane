@@ -7,6 +7,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a23] - 2026-11-17
+
+### Added
+
+- Live demo: **Watch an agent session** plays back a real, recorded agent session on the bracket example: the request, every tool call, the agent's words, the hole moving (with the ghost of the state before and "Last step"), and the design check turning green. Pause, Stop, Watch again, Reset demo; no key and no installation needed. (#124)
+- `tools/record_replay.py`: turns the events of an agent session in `mechvane ui` into such a recording (pauses shortened, paths removed); the demo build computes the model after each change with the same functions as the MCP tools. (#124)
+- Workspace: **Ctrl+K searches every SolidCraft command** (ranked as in SolidCraft's own command box) and opens a form built from the command's description in SolidCraft: expressions, numbers, choices, switches, text, points and lists, with JSON for the rest and for commands without a schema. Preview shows the result without saving; OK saves and puts the step on the same undo list as the other dialogs and the agent. A command that only reads shows its answer in the dialog. Sketch-environment commands, file paths and the joint commands Mechvane owns follow in a later step. (#128)
+- Command dialog: fields for edges, faces and bodies have a **Pick** button: click them in the view (again to remove one from a list); picked edges and points are shown in the view, and faces selected before Ctrl+K fill a faces field. Modelling commands are offered in parts only, as the feature dialogs. (#128)
+- Web UI API: `GET /api/commands`, `GET /api/command?id=…` and `POST /api/feature` with `generic: true`. (#128)
+
+### Changed
+
+- Agent chat events: the finished `tool` event carries the tool's whole input in `params`. (#124)
+
+### Fixed
+
+- Replaced fixed `wait_for_timeout` waits and the F2 rename retry loop in `tools/ui_smoke.py` with condition-based DOM/state waits, added step names to error messages, and added `UI_SLOW` CPU throttling support (#87).
+- "Open in SolidCraft" (Model mode) no longer stays blank on "Loading SolidCraft…": the local server did not serve `demo_check.js`, so the page script stopped at its first import. (#135)
+- Create 2D Sketch on a face: a click or tap close to an edge no longer fails with "face point is ambiguous"; the workspace now sends the face it hit along with the point. Starting the sketch (in the live demo, SolidCraft loads first) and its errors now show over the view, so they are seen on a phone too.
+
 ## [0.1.0a22] - 2026-11-16
 
 ### Added

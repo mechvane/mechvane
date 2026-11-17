@@ -6,6 +6,7 @@ import { openNewPartDialog, openImportStepDialog } from "./newpart.js";
 import { openFolderDialog } from "./folder.js";
 import { initFeatureDialogs, EDITABLE_TYPES, runUpdateLinks, showBom } from "./features.js";
 import { initSketcher } from "./sketcher.js";
+import { initCommandDialog } from "./commands.js";
 import { curvePoints, toWorld } from "./sketchgeom.js";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -1331,6 +1332,7 @@ async function loadAll(initial = false) {
     viewBeforeEdit = null;  // a dialog editing a feature showed an earlier state: the new model replaces it
     updateMeshView(mesh, initial);
     if (featureDialogs) featureDialogs.modelChanged();
+    if (commandDialog) commandDialog.modelChanged();
     updateTreeView(tree);
     // a step in the same document: compare the features before and after, keep the old model as a ghost (#121);
     // a reload without a change (visibility, a second reload of the same step) leaves the last step as it is
@@ -1865,8 +1867,19 @@ async function initStatic() {
     opt.textContent = d.title;
     select.appendChild(opt);
   }
-  const wanted = new URLSearchParams(location.search).get("demo");
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get("demo");
   if (wanted && index.demos.some((d) => d.name === wanted)) select.value = wanted;
+  // a recorded agent session for the example (#124): played from precomputed states, no SolidCraft needed
+  const { initReplay } = await import("./replay.js");
+  const replay = initReplay({
+    button: document.getElementById("btn-replay"),
+    chatRoot: document.getElementById("agent-chat"),
+    setBase: (path) => { demoBase = path; },
+    reload: (fit) => loadAll(fit),
+    kernelChanged: () => !!(demoKernel && demoKernel.changed),
+  });
+  let autostart = params.get("replay") === "1";
   const open = async (fit) => {
     demoBase = `demos/${select.value}/`;
     document.getElementById("mode-model").href = `model?demo=${select.value}`;
@@ -1875,6 +1888,8 @@ async function initStatic() {
       select.dispatchEvent(new Event("change"));
     });
     await loadAll(fit);
+    await replay.update(index.demos.find((d) => d.name === select.value), demoBase, autostart);
+    autostart = false;
   };
   select.addEventListener("change", () => {
     if (fileMenu) fileMenu.open = false;
@@ -2078,6 +2093,32 @@ function lookAlongFrame(frame) {
 }
 
 var featureDialogs = null;
+var commandDialog = null;
+// What the command dialog picked in the view (#128): edges as lines, face points as dots, in the dialogs' pick colour
+const commandPickGroup = new THREE.Group();
+scene.add(commandPickGroup);
+function showCommandPicks(items) {
+  while (commandPickGroup.children.length) {
+    const c = commandPickGroup.children.pop();
+    c.geometry?.dispose();
+    c.material?.dispose();
+  }
+  const r = Math.max(modelRadius / 80, 0.2);
+  for (const it of items) {
+    if (it.kind === "edge" && it.edge?.points) {
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(it.edge.points),
+        new THREE.LineBasicMaterial({ color: 0x58a6ff, depthTest: false }));
+      line.renderOrder = 20;
+      commandPickGroup.add(line);
+    } else if (Array.isArray(it.point) && it.point.length === 3) {
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), new THREE.MeshBasicMaterial({ color: 0x58a6ff, depthTest: false }));
+      dot.position.set(...it.point);
+      dot.renderOrder = 20;
+      commandPickGroup.add(dot);
+    }
+  }
+  renderScene();
+}
 var sketcher = null;
 var viewBeforeEdit = null;
 {
@@ -2098,7 +2139,19 @@ var viewBeforeEdit = null;
     lookAlong: lookAlongFrame,
     originAxisAt,
     revealOriginAxes,
+    closeOthers: () => { if (commandDialog) commandDialog.close(); },
   });
+  // the general command dialog (Ctrl+K, #128): every SolidCraft command with a form from its schema; it needs
+  // the SolidCraft session on the server, so not in the live demo yet
+  if (!STATIC) {
+    commandDialog = initCommandDialog({
+      propertiesEl: document.getElementById("properties-content"),
+      statusEl, post: postJson, get: (url) => fetchJson(url), showPreview, clearPreview, log: clientLog,
+      reload: () => loadAll(false),
+      closeOthers: () => { if (featureDialogs.isOpen()) featureDialogs.close(); },
+      viewTools, showPicks: showCommandPicks, getSelection: () => viewTools.getSelection(),
+    });
+  }
   initTreeActions();
   // the sketch environment (ADR 0005): not in the live demo yet, it needs the SolidCraft session on the server
   // in the live demo the same environment runs on the demo kernel (demo_kernel.js), SolidCraft in the browser
@@ -2110,7 +2163,11 @@ var viewBeforeEdit = null;
       get: (url) => fetchJson(url), post: postJson, reload: () => loadAll(false), activateTab: activateRibbonTab,
       log: clientLog, isDark: () => document.documentElement.dataset.theme !== "light",
       // the sketch being edited is drawn by the sketcher, not twice by the overlay of unused sketches
-      onMode: (on) => { sketchOverlay.visible = !on; renderScene(); },
+      onMode: (on) => {
+        sketchOverlay.visible = !on;
+        if (on && commandDialog) commandDialog.close();  // the sketch environment takes the view and the panel
+        renderScene();
+      },
       originPlaneAt, revealOriginPlanes, hoverOriginPlane,
     });
     if (btnSketch) {
@@ -2201,9 +2258,16 @@ function queueUndoRedo(which) {
   setInterval(refreshHistory, 4000);
   window.addEventListener("keydown", (e) => {
     const t = e.target;
+    const mod = e.ctrlKey || e.metaKey;
+    // Ctrl+K: command search, also from a field (as in SolidCraft); not over a modal dialog or in the sketch environment
+    if (mod && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K") && commandDialog
+        && !document.querySelector("dialog[open]") && !(sketcher && sketcher.isActive())) {
+      e.preventDefault();
+      commandDialog.open();
+      return;
+    }
     if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
     if (document.querySelector("dialog[open]")) return;
-    const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
       e.preventDefault();
       if (e.repeat) return;  // a held key would queue dozens of undos

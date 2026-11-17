@@ -66,6 +66,11 @@ if "--prepare" in sys.argv:
 
 from playwright.sync_api import sync_playwright
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from heavy_lock import hold  # noqa: E402
+
+hold("ui_smoke")  # one heavy run at a time (audit 2026-11-16, A5)
+
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 url = args[0] if len(args) > 0 else "http://127.0.0.1:8799/"
 # Screenshots go to a temp folder by default, never into the checkout (agents committed them, 2026-11-08).
@@ -107,6 +112,8 @@ errors = []
 
 fillet = "skipped (assembly or static demo)"
 fillet_ok = True
+command_dialog = "skipped (assembly or static demo)"
+command_dialog_ok = True
 hole = "skipped (no hole dialog or not a part)"
 hole_ok = True
 extrude = "skipped (no extrude dialog or not a part)"
@@ -135,60 +142,125 @@ section = ""
 closed = False
 edge = ""
 
+def _apply_cpu_throttle(page):
+    raw = os.environ.get("UI_SLOW", "").strip()
+    if not raw or raw.lower() in ("0", "false", "no"):
+        return
+    rate = 4.0 if raw.lower() in ("1", "true", "yes") else float(raw)
+    page.context.new_cdp_session(page).send("Emulation.setCPUThrottlingRate", {"rate": rate})
+
+
+def _wait_frame(page):
+    page.evaluate("() => new Promise(r => requestAnimationFrame(() => r()))")
+
+
+def _wait_ready(page, timeout=30000):
+    page.wait_for_function(
+        """() => {
+            if (document.getElementById('status-indicator')?.textContent !== 'Ready') return false;
+            if (!document.querySelector('#tree-content .tree-row')) return false;
+            let hasMesh = false;
+            window.__scene?.traverse(o => { if (o.isMesh && o.userData?.bodyName) hasMesh = true; });
+            if (!hasMesh) return false;
+            const unusedSketch = document.querySelector('#tree-content > ul.tree-list > li.tree-item > .tree-row[data-type="Sketch"]:not(.tree-hidden)');
+            if (unusedSketch) {
+                const g = window.__scene?.children?.find(c => c.renderOrder === 8);
+                if (!g || !g.children.length) return false;
+            }
+            return true;
+        }""",
+        timeout=timeout,
+    )
+
+
+def _wait_dialog_done(page, timeout=20000):
+    page.wait_for_function(
+        "() => !document.querySelector('.feature-dialog') && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+        timeout=timeout,
+    )
+
+
+def _wait_dialog_closed(page, timeout=5000):
+    page.wait_for_function("!document.querySelector('.feature-dialog')", timeout=timeout)
+
+
+def _wait_sketch_idle(page, timeout=15000):
+    page.wait_for_function(
+        "() => !document.body.classList.contains('sketching') && document.getElementById('status-indicator')?.textContent === 'Ready'",
+        timeout=timeout,
+    )
+
+
+step = "init"
 try:
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=shells[-1] if shells else None,
                                      args=["--no-sandbox", "--use-gl=swiftshader", "--enable-unsafe-swiftshader"])
         page = browser.new_page(viewport={"width": 1300, "height": 750})
+        _apply_cpu_throttle(page)
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("dialog", lambda d: (errors.append(f"browser dialog: {d.message}"), d.dismiss()))
+        step = "initial load"
         page.goto(url)
-        page.wait_for_timeout(5000)
+        _wait_ready(page)
         page.click('.ribbon-tab[data-tab="inspect"]')
         box = page.locator("#viewport canvas").bounding_box()
         cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
         # find the body on screen first: "zoom all" frames unused sketches too, so the part need not be in the
         # middle; then measure between two points a little apart on it
+        step = "measure: find body"
         on_body = None
         for fx, fy in ((0, 0), (-0.08, -0.04), (-0.15, -0.08), (-0.2, 0), (0.08, 0.02), (-0.1, 0.1), (0.15, -0.1)):
             page.click("text=Measure")
             page.mouse.click(cx + fx * box["width"], cy + fy * box["height"])
-            page.wait_for_timeout(200)
+            _wait_frame(page)
             hit = "Point" in page.locator(".measure-readout").inner_text()
             page.keyboard.press("Escape")
+            page.wait_for_selector(".measure-readout", state="hidden", timeout=5000)
             if hit:
                 on_body = (cx + fx * box["width"], cy + fy * box["height"])
                 break
         bx, by = on_body or (cx, cy)
+        step = "measure: distance"
         page.click("text=Measure")
-        for dx, dy in ((0, 0), (0.06 * box["width"], 0.02 * box["height"])):
-            page.mouse.click(bx + dx, by + dy)
-            page.wait_for_timeout(300)
+        page.mouse.click(bx, by)
+        page.wait_for_selector(".measure-readout", state="visible", timeout=5000)
+        page.mouse.click(bx + 0.06 * box["width"], by + 0.02 * box["height"])
+        try:
+            page.wait_for_function("() => (document.querySelector('.measure-readout')?.textContent || '').includes('Distance')", timeout=5000)
+        except Exception:
+            pass
         measured = page.locator(".measure-readout").inner_text()
         page.screenshot(path=os.path.join(out, "measure.png"))
+        step = "measure: section"
         page.click("text=Section")
-        page.wait_for_timeout(300)
+        page.wait_for_function("() => (document.querySelector('.measure-readout')?.textContent || '').includes('Section')", timeout=5000)
         section = page.locator(".measure-readout").inner_text()
         page.screenshot(path=os.path.join(out, "section.png"))
         page.keyboard.press("Escape")
-        page.wait_for_timeout(200)
+        page.wait_for_selector(".measure-readout", state="hidden", timeout=5000)
         closed = page.locator(".measure-readout").is_hidden()
+        step = "measure: edge"
         for dx in range(0, int(box["width"] / 2), 2):
             page.click("text=Measure")
             page.mouse.click(bx + dx, by)
-            page.wait_for_timeout(60)
+            _wait_frame(page)
             text = page.locator(".measure-readout").inner_text()
             page.keyboard.press("Escape")
             if any(w in text for w in ("Edge length", "Circle", "Arc")):
                 edge = text
                 page.click("text=Measure")
                 page.mouse.click(bx + dx, by)
-                page.wait_for_timeout(200)
+                page.wait_for_selector(".measure-readout", state="visible", timeout=5000)
+                _wait_frame(page)
                 page.screenshot(path=os.path.join(out, "measure_edge.png"))
+                page.keyboard.press("Escape")
+                page.wait_for_selector(".measure-readout", state="hidden", timeout=5000)
                 break
 
         # Folder mode only (File -> New part... visible): the app's own dialog, not prompt(). Typing the name of a
         # file that exists shows the error inside the dialog; Cancel closes it. Nothing is created.
+        step = "new part"
         page.click("#file-menu > summary")
         if page.locator("#btn-new-part").is_visible():
             existing = page.locator(".file-doc-item").first.get_attribute("data-value") or ""
@@ -197,7 +269,7 @@ try:
             default = page.locator("#new-part-name").input_value()
             page.fill("#new-part-name", existing.removesuffix(".solidcraft"))
             page.click("#new-part-dialog .btn-submit")
-            page.wait_for_timeout(500)
+            page.wait_for_selector("#new-part-error", state="visible", timeout=5000)
             err = page.locator("#new-part-error")
             shown = dlg.is_visible() and err.is_visible() and err.inner_text().strip() != ""
             page.screenshot(path=os.path.join(out, "new_part.png"))
@@ -215,27 +287,38 @@ try:
             if box_row.count() > 0:
                 rename_ok = False
                 # Test Esc cancels rename without changes
+                step = "rename: esc"
                 box_row.click()
                 page.keyboard.press("F2")
                 page.wait_for_selector(".tree-rename-input", timeout=5000)
                 page.fill(".tree-rename-input", "DiscardMe")
                 page.keyboard.press("Escape")
-                page.wait_for_timeout(300)
+                page.wait_for_selector(".tree-rename-input", state="detached", timeout=5000)
                 esc_cancelled = page.locator(".tree-rename-input").count() == 0 and "DiscardMe" not in page.locator("#tree-content").inner_text()
 
                 # Test typing new name and committing with Enter
+                step = "rename: enter"
                 box_row.click()
                 page.keyboard.press("F2")
                 page.wait_for_selector(".tree-rename-input", timeout=5000)
                 page.fill(".tree-rename-input", "MainBox")
                 page.keyboard.press("Enter")
-                page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('MainBox')", timeout=10000)
+                page.wait_for_function(
+                    "document.querySelector('#tree-content')?.textContent.includes('MainBox')"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    timeout=10000,
+                )
                 renamed_to_main = "MainBox" in page.locator("#tree-content").inner_text() and "Box1" not in page.locator("#tree-content").inner_text()
 
                 # Ctrl+Z reverts rename
+                step = "rename: ctrl+z"
                 page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
                 page.keyboard.press("Control+z")
-                page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Box1')", timeout=10000)
+                page.wait_for_function(
+                    "document.querySelector('#tree-content')?.textContent.includes('Box1')"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    timeout=10000,
+                )
                 reverted_rename = "Box1" in page.locator("#tree-content").inner_text() and "MainBox" not in page.locator("#tree-content").inner_text()
 
                 rename_ok = esc_cancelled and renamed_to_main and reverted_rename
@@ -250,11 +333,17 @@ try:
 
             def pick_edge():
                 page.click("#btn-fillet")
-                for dy in range(0, int(box["height"] / 2) - 10, 6):
-                    page.mouse.click(cx, cy - dy)
-                    page.wait_for_timeout(60)
+                page.wait_for_selector(".feature-dialog", timeout=5000)
+                for px_x in (cx, bx):
+                    for dy in range(0, int(box["height"] / 2) - 10, 6):
+                        page.mouse.click(px_x, cy - dy)
+                        _wait_frame(page)
+                        if "selected" in page.locator(".feature-pick-count").inner_text():
+                            break
                     if "selected" in page.locator(".feature-pick-count").inner_text():
                         break
+                if "selected" not in page.locator(".feature-pick-count").inner_text():
+                    return "", "no edge selected"
                 page.fill('.feature-dialog input[name="radius"]', "0.5")
                 # "Computing preview…" while SolidCraft works; then the volume change or an error
                 page.wait_for_function("/Volume|⚠/.test(document.querySelector('.feature-delta')?.textContent || '')"
@@ -262,27 +351,39 @@ try:
                 return page.locator(".feature-delta").inner_text(), page.locator(".feature-error").inner_text()
 
             tree_before = page.locator("#tree-content").inner_text()
+            step = "fillet: preview"
             delta, err = pick_edge()
             page.screenshot(path=os.path.join(out, "fillet_preview.png"))
+            step = "fillet: esc"
             page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            _wait_dialog_closed(page)
             cancelled = page.locator(".feature-dialog").count() == 0 and page.locator("#tree-content").inner_text() == tree_before
+            step = "fillet: ok"
             pick_edge()
             page.click(".feature-ok")
-            page.wait_for_timeout(2500)
+            _wait_dialog_done(page, timeout=20000)
+            page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Fillet')", timeout=10000)
             added = "Fillet" in page.locator("#tree-content").inner_text() and "Fillet" not in tree_before
             # #121: the step is named above the browser, the new row marked, the old model shown as a ghost
             step_bar = page.locator("#step-changes").inner_text() if page.locator("#step-changes").count() else ""
             step_new = page.locator('.tree-row.tree-step-new[data-type="FilletFeature"]').count() == 1
             # double-click in the model browser opens it again with its edge and radius; Esc leaves it as it is
+            step = "fillet: edit"
             page.dblclick('.tree-row[data-type="FilletFeature"]')
             page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
             reopened = ("1 edge" in page.locator(".feature-pick-count").inner_text()
                         and page.input_value('.feature-dialog input[name="radius"]') == "0.5")
             page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            _wait_dialog_closed(page)
+            step = "fillet: ctrl+z"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2500)
+            page.wait_for_function(
+                "t => document.querySelector('#tree-content')?.innerText === t"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                arg=tree_before,
+                timeout=15000,
+            )
             undone = page.locator("#tree-content").inner_text() == tree_before
             step_undo = page.locator("#step-changes").inner_text() if page.locator("#step-changes").count() else ""
             page.click("#step-changes .step-changes-toggle")
@@ -292,6 +393,54 @@ try:
             fillet = (f"preview {delta!r} {err!r}, esc cancels: {cancelled}, ok adds: {added}, edit reopens: {reopened}, "
                       f"ctrl+z: {undone}, last step: {step_bar!r} / {step_undo!r}, marked: {step_new}, hide: {hidden_marks}")
             fillet_ok = "Volume" in delta and not err and cancelled and added and reopened and undone and step_ok
+
+        # #128 general command dialog: Ctrl+K, search "solid.chamfer", its form from the schema, Pick, click an edge in
+        # the view, distance, OK adds the chamfer, Ctrl+Z takes it back (not in the static demo yet)
+        if (page.locator("#doc-kind").inner_text().strip() == "Part"
+                and page.evaluate("document.documentElement.dataset.static !== '1'")):
+            command_dialog_ok = False
+            tree_before_cmd = page.locator("#tree-content").inner_text()
+            step = "command dialog: search"
+            page.keyboard.press("Control+k")
+            page.wait_for_selector(".cmd-palette:not([hidden]) .cmd-results li", timeout=60000)
+            page.keyboard.type("solid.chamfer")
+            page.wait_for_selector(".cmd-results li.active .cmd-id:text-is('solid.chamfer')", timeout=5000)
+            page.keyboard.press("Enter")
+            page.wait_for_selector(".cmd-dialog", timeout=30000)
+            step = "command dialog: pick"
+            edges_field = page.locator('.cmd-field[data-name="edges"]')
+            edges_field.locator(".cmd-pick").click()
+            page.wait_for_selector(".cmd-pick.active", timeout=5000)
+            box = page.locator("#viewport canvas").bounding_box()
+            cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+            picked = ""
+            for px_x in (cx, bx):
+                for dy in range(0, int(box["height"] / 2) - 10, 6):
+                    page.mouse.click(px_x, cy - dy)
+                    _wait_frame(page)
+                    picked = edges_field.locator("textarea").input_value()
+                    if picked:
+                        break
+                if picked:
+                    break
+            page.locator('.cmd-field[data-name="distance"] [data-field]').fill("0.5")
+            step = "command dialog: ok"
+            page.click(".cmd-dialog .feature-ok")
+            # done: the tree shows the chamfer; refused: the dialog stays open with its error
+            page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Chamfer')"
+                                   " || document.querySelector('.cmd-dialog .feature-error')?.hidden === false", timeout=30000)
+            cmd_err = page.locator(".cmd-dialog .feature-error").inner_text() if page.locator(".cmd-dialog").count() else ""
+            cmd_added = "Chamfer" in page.locator("#tree-content").inner_text() and "Chamfer" not in tree_before_cmd
+            step = "command dialog: ctrl+z"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
+            page.keyboard.press("Control+z")
+            page.wait_for_function(
+                "t => document.querySelector('#tree-content')?.innerText === t"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                arg=tree_before_cmd, timeout=15000)
+            cmd_undone = page.locator("#tree-content").inner_text() == tree_before_cmd
+            command_dialog = f"picked {picked!r}, ok adds: {cmd_added} {cmd_err!r}, ctrl+z: {cmd_undone}"
+            command_dialog_ok = bool(picked) and cmd_added and cmd_undone
 
         # Hole dialog: face click (Hole1), Middle of face (Hole centre sketch), Ctrl+Z twice
         if page.locator("#btn-hole").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
@@ -306,11 +455,12 @@ try:
                     if errors:
                         break
                     page.mouse.click(cx + dx, cy - dy)
-                    page.wait_for_timeout(60)
+                    _wait_frame(page)
                     if page.input_value('.feature-dialog input[name="x"]'):
                         break
 
             # (a) von der Mitte der Ansicht aus klicken, bis input[name="x"] gefüllt ist; OK -> Hole1 im Baum
+            step = "hole: hole1"
             pick_face(0)
             added_hole1 = False
             if not page.locator(".feature-ok").is_enabled():
@@ -318,15 +468,23 @@ try:
                 errors.append(f"Hole 1: OK button disabled (x={x_val!r})")
             else:
                 page.click(".feature-ok")
+                _wait_dialog_done(page, timeout=15000)
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Hole1')", timeout=10000)
                 page.screenshot(path=os.path.join(out, "hole1.png"))
                 added_hole1 = "Hole1" in page.locator("#tree-content").inner_text()
 
             # (b) neu, Häkchen input[name="centre"] („Middle of face“), Statuszeile enthält „Middle of the face“,
             # OK → Skizze Hole centre … im Baum
+            step = "hole: centre"
             pick_face(-30)
             page.check('.feature-dialog input[name="centre"]')
-            page.wait_for_timeout(100)
+            try:
+                page.wait_for_function(
+                    "() => (document.querySelector('.feature-pick-count')?.textContent || '').includes('Middle of the face')",
+                    timeout=5000,
+                )
+            except Exception:
+                pass
             centre_status = page.locator(".feature-pick-count").inner_text()
             has_centre_status = "Middle of the face" in centre_status
             page.screenshot(path=os.path.join(out, "hole_centre.png"))
@@ -337,16 +495,28 @@ try:
                 errors.append(f"Hole 2: OK button disabled (x={x_val!r})")
             else:
                 page.click(".feature-ok")
+                _wait_dialog_done(page, timeout=15000)
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Hole centre')", timeout=10000)
                 added_centre = "Hole centre" in page.locator("#tree-content").inner_text()
 
             # Danach Strg+Z zweimal, Datei wie vorher
+            step = "hole: ctrl+z twice"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2000)
+            page.wait_for_function(
+                "() => !document.querySelector('#tree-content')?.textContent.includes('Hole centre')"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                timeout=15000,
+            )
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
             try:  # #112: the second press must not be lost while the first undo still runs
-                page.wait_for_function("t => document.querySelector('#tree-content')?.innerText === t",
-                                       arg=tree_before_hole, timeout=15000)
+                page.wait_for_function(
+                    "t => document.querySelector('#tree-content')?.innerText === t"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    arg=tree_before_hole,
+                    timeout=15000,
+                )
             except Exception:
                 pass
             undone_holes = page.locator("#tree-content").inner_text() == tree_before_hole
@@ -358,6 +528,7 @@ try:
         # OK -> Extrude1, Doppelklick öffnet Dialog mit Profil-Wert 1, Esc, Ctrl+Z
         if page.locator("#btn-extrude").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
             extrude_ok = False
+            step = "extrude: open"
             page.click('.ribbon-tab[data-tab="3d-model"]')
             tree_before_extrude = page.locator("#tree-content").inner_text()
             page.click("#btn-extrude")
@@ -365,6 +536,7 @@ try:
 
             # Profile werden in der Ansicht angeklickt: bei zwei Profilen ist zuerst keins gewählt (OK gesperrt);
             # die Ansicht absuchen, bis ein Klick genau eins wählt (r 10: +3141 mm³, r 5: +785 mm³)
+            step = "extrude: pick profile"
             count = lambda: page.locator(".feature-pick-count").inner_text()
             profiles_prompt = "Click the profiles" in count() and not page.locator(".feature-ok").is_enabled()
             box = page.locator("#viewport canvas").bounding_box()
@@ -372,7 +544,7 @@ try:
             for fx in (0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55):
                 for fy in (0.5, 0.45, 0.55, 0.4, 0.6, 0.65):
                     page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
-                    page.wait_for_timeout(200)
+                    _wait_frame(page)
                     if "1 of 2" in count():
                         picked_one = True
                         break
@@ -388,27 +560,38 @@ try:
             profiles_three = profiles_prompt
 
             # OK
+            step = "extrude: ok"
             added_extrude = False
             if not page.locator(".feature-ok").is_enabled():
                 errors.append("Extrude: OK button disabled")
             else:
                 page.click(".feature-ok")
+                _wait_dialog_done(page, timeout=15000)
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Extrude1')", timeout=10000)
                 added_extrude = "Extrude1" in page.locator("#tree-content").inner_text()
 
             # Doppelklick auf Extrude1 im Baum öffnet den Dialog mit Profil-Wert 1, Esc
+            step = "extrude: edit"
             page.dblclick('.tree-row[data-type="ExtrudeFeature"]')
             page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
             # the stored single profile comes back as the one picked
-            page.wait_for_timeout(1500)
+            try:
+                page.wait_for_function(
+                    "() => (document.querySelector('.feature-pick-count')?.textContent || '').includes('1 of 2')"
+                    " && document.getElementById('status-indicator')?.textContent === 'Ready'",
+                    timeout=10000,
+                )
+            except Exception:
+                pass
             reopened_ok = "1 of 2" in count()
             page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            _wait_dialog_closed(page)
 
             # Löschen fragt nach verbrauchter Skizze (Issue #66):
             # Extrude1 anwählen, Entf drücken -> Dialog öffnet sich mit Häkchen vorausgewählt;
             # Häkchen entfernen und Löschen bestätigen -> Extrude1 weg, Sketch1 bleibt als ungenutzte Skizze im Baum;
             # Strg+Z holt Extrude1 zurück.
+            step = "extrude: delete"
             page.click('.tree-row[data-feature="Extrude1"]')
             page.keyboard.press("Delete")
             page.wait_for_selector("#delete-feature-dialog[open]", timeout=5000)
@@ -417,18 +600,38 @@ try:
             chk.uncheck()
             page.click("#delete-feature-submit")
             page.wait_for_function("!document.getElementById('delete-feature-dialog')?.open", timeout=5000)
-            page.wait_for_function("!document.querySelector('#tree-content')?.textContent.includes('Extrude1')", timeout=10000)
+            page.wait_for_function(
+                "!document.querySelector('#tree-content')?.textContent.includes('Extrude1')"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                timeout=10000,
+            )
             tree_text_deleted = page.locator("#tree-content").inner_text()
             delete_keeps_sketch = ("Extrude1" not in tree_text_deleted and "Sketch1" in tree_text_deleted)
 
             # Strg+Z holt Extrude1 zurück
+            step = "extrude: undo delete"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Extrude1')", timeout=10000)
+            page.wait_for_function(
+                "document.querySelector('#tree-content')?.textContent.includes('Extrude1')"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                timeout=10000,
+            )
             undo_delete_ok = "Extrude1" in page.locator("#tree-content").inner_text()
 
             # Weiteres Strg+Z, Datei wie vorher
+            step = "extrude: ctrl+z"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2000)
+            try:
+                page.wait_for_function(
+                    "t => document.querySelector('#tree-content')?.innerText === t"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    arg=tree_before_extrude,
+                    timeout=15000,
+                )
+            except Exception:
+                pass
             undone_extrude = page.locator("#tree-content").inner_text() == tree_before_extrude
             extrude = (f"pick prompt: {profiles_three}, one picked: {picked_one}, delta: {extrude_delta!r} (one profile: {vol_785}), "
                        f"ok adds: {added_extrude}, edit keeps it: {reopened_ok}, delete chk: {chk_default}, "
@@ -442,6 +645,7 @@ try:
         # Vorschau prüfen, OK -> Revolve1, Doppelklick zeigt Profil und Achse wieder, Esc, Ctrl+Z
         if page.locator("#btn-revolve").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
             revolve_ok = False
+            step = "revolve: open"
             page.click('.ribbon-tab[data-tab="3d-model"]')
             tree_before_revolve = page.locator("#tree-content").inner_text()
             # Shortcut 'r' outside sketcher opens Revolve dialog (Issue #64)
@@ -456,12 +660,13 @@ try:
                              and "active" in (prof_slot.get_attribute("class") or "")
                              and not page.locator(".feature-ok").is_enabled())
 
+            step = "revolve: pick profile"
             box = page.locator("#viewport canvas").bounding_box()
             rev_prof_picked = False
             for fx in (0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55):
                 for fy in (0.5, 0.45, 0.55, 0.4, 0.6, 0.65):
                     page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
-                    page.wait_for_timeout(150)
+                    _wait_frame(page)
                     if "1 of 2" in prof_slot.inner_text():
                         rev_prof_picked = True
                         break
@@ -469,35 +674,45 @@ try:
                     break
 
             # Tab switches the active selection field from Profile to Axis
+            step = "revolve: tab to axis"
             page.keyboard.press("Tab")
-            page.wait_for_timeout(150)
+            try:
+                page.wait_for_function(
+                    "() => document.querySelector('.feature-slot[data-slot=\"axis\"]')?.classList.contains('active')",
+                    timeout=5000,
+                )
+            except Exception:
+                pass
             tab_switched = "active" in (axis_slot.get_attribute("class") or "")
 
             # Click the Z origin axis in the view -> "Z axis"
+            step = "revolve: pick Z axis"
             origin_axis_picked = False
             for fx in [x / 100.0 for x in range(30, 44)]:
                 page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * 0.33)
-                page.wait_for_timeout(60)
+                _wait_frame(page)
                 if axis_slot.inner_text() == "Z axis":
                     origin_axis_picked = True
                     break
 
             # Click a model edge in the view -> "Clicked edge"
+            step = "revolve: pick edge axis"
             cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
             edge_axis_picked = False
             for dy in range(0, int(box["height"] / 2) - 10, 6):
                 page.mouse.click(cx, cy - dy)
-                page.wait_for_timeout(60)
+                _wait_frame(page)
                 if axis_slot.inner_text() == "Clicked edge":
                     edge_axis_picked = True
                     break
 
             # Then click the sketch line l1 (at x=120 between the two circles) in the view -> "Sketch line l1"
+            step = "revolve: pick sketch axis"
             rev_axis_picked = False
             for fx in (0.67, 0.65, 0.69, 0.63, 0.71, 0.66, 0.68):
                 for fy in (0.64, 0.62, 0.66, 0.60, 0.68, 0.65, 0.63):
                     page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
-                    page.wait_for_timeout(120)
+                    _wait_frame(page)
                     if axis_slot.inner_text() == "Sketch line l1":
                         rev_axis_picked = True
                         break
@@ -513,24 +728,46 @@ try:
             rev_vol = float(m_rev.group(1)) if m_rev else 0.0
             rev_vol_ok = rev_prof_picked and origin_axis_picked and edge_axis_picked and rev_axis_picked and rev_vol > 1000.0
 
+            step = "revolve: ok"
             added_revolve = False
             if not page.locator(".feature-ok").is_enabled():
                 errors.append("Revolve: OK button disabled")
             else:
                 page.click(".feature-ok")
+                _wait_dialog_done(page, timeout=15000)
                 page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Revolve1')", timeout=10000)
                 added_revolve = "Revolve1" in page.locator("#tree-content").inner_text()
 
             # Doppelklick auf Revolve1 im Baum zeigt Profil und Achse wieder
+            step = "revolve: edit"
             page.dblclick('.tree-row[data-type="RevolveFeature"]')
             page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
-            page.wait_for_timeout(1500)
+            try:
+                page.wait_for_function(
+                    "([p, a]) => (document.querySelector('.feature-slot[data-slot=\"profile\"]')?.textContent || '').includes(p)"
+                    " && (document.querySelector('.feature-slot[data-slot=\"axis\"]')?.textContent || '') === a"
+                    " && document.getElementById('status-indicator')?.textContent === 'Ready'",
+                    arg=["1 of 2", picked_axis_label],
+                    timeout=10000,
+                )
+            except Exception:
+                pass
             rev_edit_ok = ("1 of 2" in prof_slot.inner_text() and axis_slot.inner_text() == picked_axis_label)
             page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            _wait_dialog_closed(page)
 
+            step = "revolve: ctrl+z"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2000)
+            try:
+                page.wait_for_function(
+                    "t => document.querySelector('#tree-content')?.innerText === t"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    arg=tree_before_revolve,
+                    timeout=15000,
+                )
+            except Exception:
+                pass
             undone_revolve = page.locator("#tree-content").inner_text() == tree_before_revolve
             revolve = (f"shortcut r: {rev_shortcut_ok}, slots: {slots_initial}, prof: {rev_prof_picked}, tab: {tab_switched}, "
                        f"origin axis: {origin_axis_picked}, edge axis: {edge_axis_picked}, "
@@ -544,85 +781,121 @@ try:
         # a circle, Ctrl+Z takes the circle back, Enter finishes; the tree gets a sketch, Ctrl+Z removes it again
         if page.locator("#btn-sketch").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
             sketch_ok = False
+            step = "sketch: enter XY"
             state = lambda: page.evaluate("fetch('api/sketch/state').then(r => r.json())")
             page.click('.ribbon-tab[data-tab="3d-model"]')
             tree_before_sketch = page.locator("#tree-content").inner_text()
             page.keyboard.press("s")
+            page.wait_for_selector(".sketch-plane-bar [data-plane=XY]", timeout=5000)
             page.click(".sketch-plane-bar [data-plane=XY]")
             page.wait_for_selector('.ribbon-tab[data-tab="sketch"].active', timeout=10000)
             box = page.locator("#viewport canvas").bounding_box()
             cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
             w = box["width"]
+            step = "sketch: line 40"
             page.keyboard.press("l")
             page.mouse.click(cx - 0.15 * w, cy + 0.1 * w)
             page.mouse.move(cx - 0.05 * w, cy + 0.1 * w)
             hud_shown = page.locator(".sketch-hud").is_visible()
             page.keyboard.type("40")
             page.keyboard.press("Enter")
-            page.wait_for_timeout(1500)
+            page.wait_for_selector(".sketch-dim:has-text('40')", timeout=10000)
             page.keyboard.press("Escape")
+            step = "sketch: rectangle"
             page.keyboard.press("r")
             page.mouse.click(cx + 0.02 * w, cy - 0.05 * w)
             page.mouse.click(cx + 0.1 * w, cy - 0.1 * w)
-            page.wait_for_timeout(1500)
+            page.wait_for_function("() => document.querySelectorAll('.sketch-glyph').length >= 4", timeout=10000)
+            step = "sketch: circle"
             page.keyboard.press("c")
             page.mouse.click(cx + 0.08 * w, cy + 0.08 * w)
             page.mouse.click(cx + 0.11 * w, cy + 0.08 * w)
-            page.wait_for_timeout(1500)
+            page.wait_for_function(
+                "() => fetch('api/sketch/state').then(r => r.json()).then(d => Boolean(d.state?.curves?.some(c => c.type === 'circle')))",
+                timeout=10000,
+            )
             # Dimension: the typed length shows as "40" on the line; double-click it and change it to 45
+            step = "sketch: edit dim"
             page.keyboard.press("Escape")
+            page.wait_for_function("!document.querySelector('.sketch-dims.tool-active')", timeout=5000)
             label_40 = page.locator(".sketch-dim", has_text="40")
             dim_label = label_40.count() == 1
             if dim_label:
                 label_40.first.dblclick()
+                page.wait_for_selector(".sketch-dim-edit", timeout=5000)
                 page.keyboard.press("Control+a")
                 page.keyboard.type("45")
                 page.keyboard.press("Enter")
-                page.wait_for_timeout(1500)
+                page.wait_for_selector(".sketch-dim:has-text('45')", timeout=10000)
             st = state()["state"]
             kinds = sorted(c["type"] for c in st["curves"])
             lengths = [c.get("value") for c in st["constraints"] if c.get("type") == "length"]
             page.screenshot(path=os.path.join(out, "sketch.png"))
             page.keyboard.press("Escape")
             # Ctrl+Z goes back one command: first the changed dimension (45 -> 40), then the circle
+            step = "sketch: undo dim & circle"
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(1500)
+            page.wait_for_selector(".sketch-dim:has-text('40')", timeout=10000)
             back_to_40 = 40 in [c.get("value") for c in state()["state"]["constraints"] if c.get("type") == "length"]
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(1500)
+            page.wait_for_function(
+                "() => fetch('api/sketch/state').then(r => r.json()).then(d => !d.state?.curves?.some(c => c.type === 'circle'))",
+                timeout=10000,
+            )
             undone_circle = back_to_40 and "circle" not in [c["type"] for c in state()["state"]["curves"]]
             # Constraints show as symbols (the rectangle's H and V); click one H, Delete removes that constraint
+            step = "sketch: delete constraint"
             page.keyboard.press("Escape")
             n_hv = lambda: sum(c["type"] in ("horizontal", "vertical") for c in state()["state"]["constraints"])
             hv_before = n_hv()
             glyph_h = page.locator(".sketch-glyph", has_text="H")
-            glyphs_shown = glyph_h.count() >= 2
+            h_before = glyph_h.count()
+            glyphs_shown = h_before >= 2
             if glyphs_shown:
                 glyph_h.first.click()
                 page.keyboard.press("Delete")
-                page.wait_for_timeout(1500)
+                page.wait_for_function(
+                    f"() => Array.from(document.querySelectorAll('.sketch-glyph')).filter(e => e.textContent === 'H').length < {h_before}",
+                    timeout=10000,
+                )
             glyph_deleted = glyphs_shown and n_hv() == hv_before - 1
+            step = "sketch: finish"
             page.keyboard.press("Enter")
             page.wait_for_function("document.querySelector('.ribbon-tab[data-tab=\"3d-model\"]').classList.contains('active')",
                                    timeout=10000)
-            page.wait_for_timeout(2000)
+            page.wait_for_function(
+                "t => !document.body.classList.contains('sketching') && document.querySelector('#tree-content')?.innerText !== t"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                arg=tree_before_sketch,
+                timeout=15000,
+            )
             closed_sketch = not state().get("active")
             added_sketch = page.locator("#tree-content").inner_text() != tree_before_sketch
+            step = "sketch: undo sketch"
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
             page.keyboard.press("Control+z")
-            page.wait_for_timeout(2500)
+            page.wait_for_function(
+                "t => document.querySelector('#tree-content')?.innerText === t"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                arg=tree_before_sketch,
+                timeout=15000,
+            )
             undone_sketch = page.locator("#tree-content").inner_text() == tree_before_sketch
             # XZ as in Inventor's front view: sketch x along world +X, y along world +Z (Z up on screen)
+            step = "sketch: XZ plane"
             page.keyboard.press("s")
+            page.wait_for_selector(".sketch-plane-bar [data-plane=XZ]", timeout=5000)
             page.click(".sketch-plane-bar [data-plane=XZ]")
             page.wait_for_selector('.ribbon-tab[data-tab="sketch"].active', timeout=10000)
             xz = state()["state"].get("plane") or {}
             xz_up = ([round(v) for v in xz.get("x_dir", [])] == [1, 0, 0]
                      and [round(v) for v in xz.get("y_dir", [])] == [0, 0, 1])
             page.click('[data-sketch-action="cancel"]')
-            page.wait_for_timeout(1500)
+            _wait_sketch_idle(page)
             undone_sketch = undone_sketch and page.locator("#tree-content").inner_text() == tree_before_sketch
 
             # Create 2D Sketch: planar face hover and selection on the part face (issue #61)
+            step = "sketch: face hover"
             page.keyboard.press("s")
             page.wait_for_selector(".sketch-plane-bar", timeout=5000)
             face_hover_ok = False
@@ -640,7 +913,7 @@ try:
             page.wait_for_selector('.ribbon-tab[data-tab="sketch"].active', timeout=10000)
             face_sketch_active = bool(state().get("active"))
             page.click('[data-sketch-action="cancel"]')
-            page.wait_for_timeout(1500)
+            _wait_sketch_idle(page)
 
             # Ribbon tabs overflow check: tabs must not overflow vertically or have scrollbars (issue #61)
             ribbon_tabs_ok = page.evaluate("() => { const el = document.querySelector('.ribbon-tabs'); return window.getComputedStyle(el).overflowX === 'visible'; }")
@@ -657,6 +930,7 @@ try:
         # Click eye on Sketch1 -> sketch disappears from view, entry dimmed; key V switches it back.
         visibility_ok = False
         visibility = "not tested"
+        step = "visibility"
         try:
             sketch_row = page.locator('.tree-row[data-feature="Sketch1"]')
             sketch_row.wait_for(timeout=10000)
@@ -735,14 +1009,18 @@ try:
             threading.Thread(target=fsrv.serve_forever, daemon=True).start()
             try:
                 fpage = browser.new_page(viewport={"width": 1300, "height": 750})
+                _apply_cpu_throttle(fpage)
                 fpage.on("pageerror", lambda e: errors.append(f"folder mode: {e}"))
+                step = "folder: initial load"
                 fpage.goto(f"http://{host}:{port + 1}/")
+                _wait_ready(fpage, timeout=60000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('End of Part')",
                                         timeout=60000)
                 folder_mode = "tree loaded"
                 folder_ok = True
 
                 # Test File -> Open folder... dialog
+                step = "folder: open folder dialog"
                 fpage.click("#file-menu summary")
                 fpage.wait_for_selector("#btn-open-folder", timeout=5000)
                 fpage.click("#btn-open-folder")
@@ -756,6 +1034,7 @@ try:
                 open_folder_ok = ("Open folder" in folder_dialog_title and has_nav and has_items)
 
                 # Test File -> Import STEP... dialog with Browse...
+                step = "folder: import step browse"
                 fpage.click("#file-menu summary")
                 fpage.wait_for_selector("#btn-import-step", timeout=5000)
                 fpage.click("#btn-import-step")
@@ -774,6 +1053,7 @@ try:
                 import_browse_ok = ("Select STEP file" in step_dialog_title and files_visible)
 
                 # Assemble tab check: disabled in a part ("Open an assembly"), enabled in an assembly
+                step = "assemble: part disabled"
                 fpage.click('.ribbon-tab[data-tab="assemble"]')
                 part_place_disabled = fpage.locator("#btn-place").is_disabled()
                 part_place_title = fpage.locator("#btn-place").get_attribute("title") or ""
@@ -797,11 +1077,16 @@ try:
                     _asm.save()
                 finally:
                     _aws.close_all()
+                step = "assemble: open smoke_asm"
                 fpage.evaluate("""() => fetch('api/open/smoke_asm.solidcraft', {
                   method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
                 })""")
                 fpage.reload()
-                fpage.wait_for_function("document.querySelector('#doc-kind')?.textContent === 'Assembly'", timeout=20000)
+                fpage.wait_for_function(
+                    "document.querySelector('#doc-kind')?.textContent === 'Assembly'"
+                    " && document.getElementById('status-indicator')?.textContent === 'Ready'",
+                    timeout=20000,
+                )
                 fpage.click('.ribbon-tab[data-tab="assemble"]')
                 asm_place_enabled = not fpage.locator("#btn-place").is_disabled()
                 asm_joint_enabled = not fpage.locator("#btn-joint").is_disabled()
@@ -809,38 +1094,43 @@ try:
                 asm_std_enabled = not fpage.locator("#btn-place-standard").is_disabled()
                 asm_bolted_enabled = not fpage.locator("#btn-bolted-connection").is_disabled()
                 asm_upd_enabled = not fpage.locator("#btn-update-links").is_disabled()
+                step = "assemble: place 1"
                 fpage.click("#btn-place")
                 fpage.wait_for_selector(".feature-dialog select[name='file']", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_part')", timeout=20000)
 
                 # With only 1 component placed, Joint dialog disables OK and asks for at least two components
+                step = "assemble: single comp joint"
                 fpage.click("#btn-joint")
                 fpage.wait_for_selector(".feature-dialog select[name='type']", timeout=5000)
                 single_comp_ok_disabled = fpage.locator(".feature-ok").is_disabled()
                 single_comp_status = fpage.locator(".feature-pick-count").inner_text()
                 fpage.click(".feature-cancel")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=5000)
+                _wait_dialog_closed(fpage)
 
                 # Place a second instance (tx=120) and third instance (tx=240)
+                step = "assemble: place 2 & 3"
                 fpage.click("#btn-place")
                 fpage.wait_for_selector(".feature-dialog input[name='tx']", timeout=5000)
                 fpage.fill(".feature-dialog input[name='tx']", "120")
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_part:2')", timeout=20000)
 
                 fpage.click("#btn-place")
                 fpage.wait_for_selector(".feature-dialog input[name='tx']", timeout=5000)
                 fpage.fill(".feature-dialog input[name='tx']", "240")
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_part:3')", timeout=20000)
 
                 # Switch to top view so smoke_part:1 (left), smoke_part:2 (center), smoke_part:3 (right) sit along y=cy
+                step = "assemble: joint pick & create"
                 fpage.evaluate("() => document.querySelector('[data-view=\"top\"]')?.click()")
-                fpage.wait_for_timeout(300)
+                fpage.wait_for_function("() => Math.abs((window.__camera?.up?.y ?? 0) - 1) < 1e-4", timeout=5000)
+                _wait_frame(fpage)
                 fbox = fpage.locator("#viewport canvas").bounding_box()
                 fcx = fbox["x"] + fbox["width"] / 2
                 fcy = fbox["y"] + fbox["height"] / 2
@@ -888,10 +1178,11 @@ try:
                 _click_part_face((0, -20, 20, -40, 40))
                 fpage.wait_for_selector(".feature-ok:not([disabled])", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Revolute1')", timeout=20000)
 
                 # Edit mode: double-click Revolute1 in tree, verify prefilled components, switch comp_b to smoke_part:3
+                step = "assemble: joint edit"
                 fpage.locator('.tree-row[data-joint="Revolute1"]').first.dblclick()
                 fpage.wait_for_selector(".feature-dialog select[name='comp_a']", timeout=5000)
                 edit_comp_a = fpage.locator(".feature-dialog select[name='comp_a']").input_value()
@@ -902,63 +1193,65 @@ try:
                 slot_b3_text = fpage.locator('.feature-slot[data-slot="origin_b"]').inner_text()
                 fpage.wait_for_selector(".feature-ok:not([disabled])", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
 
-                # Rename joint in the browser tree via F2 inline rename
-                # the browser reloads after the joint's OK and can replace the rename field: wait, retry if it went
+                # Rename joint in the browser tree via F2 inline rename (after loadAll completed above)
+                step = "assemble: joint rename"
                 fpage.wait_for_selector('.tree-row[data-joint="Revolute1"]', timeout=20000)
-                for _attempt in range(3):
-                    try:
-                        fpage.locator('.tree-row[data-joint="Revolute1"]').first.click()
-                        fpage.keyboard.press("F2")
-                        fpage.wait_for_selector(".tree-rename-input", timeout=5000)
-                        fpage.fill(".tree-rename-input", "PivotRenamed", timeout=5000)
-                        fpage.keyboard.press("Enter")
-                        break
-                    except Exception:
-                        fpage.wait_for_timeout(500)
-                fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('PivotRenamed')", timeout=20000)
+                fpage.locator('.tree-row[data-joint="Revolute1"]').first.click()
+                fpage.keyboard.press("F2")
+                fpage.wait_for_selector(".tree-rename-input", timeout=5000)
+                fpage.fill(".tree-rename-input", "PivotRenamed", timeout=5000)
+                fpage.keyboard.press("Enter")
+                fpage.wait_for_function(
+                    "document.querySelector('#tree-content')?.textContent.includes('PivotRenamed')"
+                    " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                    timeout=20000,
+                )
                 joint_renamed_ok = (
                     fpage.locator('.tree-row[data-joint="PivotRenamed"]').count() >= 1
                     and fpage.locator('.tree-row[data-joint="Revolute1"]').count() == 0
                 )
 
                 # Constrain dialog (#88 step 3): nine rules (point_on_axis only through MCP), the gap only for mate/flush/distance, the angle only for angle
+                step = "assemble: constrain dialog"
                 fpage.click("#btn-constrain")
                 fpage.wait_for_selector(".feature-dialog select[name='type']", timeout=5000)
                 constrain_rules = fpage.eval_on_selector_all(".feature-dialog select[name='type'] option", "els => els.map(e => e.value)")
                 gap_shown_mate = fpage.locator(".feature-dialog input[name='offset']").is_visible()
                 fpage.select_option(".feature-dialog select[name='type']", "parallel")
-                fpage.wait_for_timeout(200)
+                fpage.wait_for_selector(".feature-dialog input[name='offset']", state="hidden", timeout=5000)
                 gap_hidden_parallel = not fpage.locator(".feature-dialog input[name='offset']").is_visible()
                 fpage.select_option(".feature-dialog select[name='type']", "angle")
-                fpage.wait_for_timeout(200)
+                fpage.wait_for_selector(".feature-dialog input[name='angle']", state="visible", timeout=5000)
                 angle_shown = fpage.locator(".feature-dialog input[name='angle']").is_visible()
                 constrain_title = fpage.locator(".feature-dialog-title").inner_text()
                 fpage.click(".feature-cancel")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=5000)
+                _wait_dialog_closed(fpage)
                 constrain_ok = (len(constrain_rules) == 9 and constrain_rules[0] == "mate" and gap_shown_mate
                                 and gap_hidden_parallel and angle_shown and constrain_title == "Constrain")
 
                 # Place Standard Part (#88 step 3): norms from the catalog, no length for a nut, places a screw
+                step = "assemble: place standard"
                 fpage.click("#btn-place-standard")
                 fpage.wait_for_selector(".feature-dialog select[name='norm']", timeout=10000)
                 std_norms = fpage.eval_on_selector_all(".feature-dialog select[name='norm'] option", "els => els.map(e => e.value)")
                 fpage.select_option(".feature-dialog select[name='norm']", "ISO 4032")
-                fpage.wait_for_timeout(200)
+                fpage.wait_for_selector(".feature-dialog select[name='length']", state="hidden", timeout=5000)
                 std_nut_no_length = not fpage.locator(".feature-dialog select[name='length']").is_visible()
                 fpage.select_option(".feature-dialog select[name='norm']", "ISO 4762")
                 fpage.select_option(".feature-dialog select[name='size']", "M8")
-                fpage.wait_for_timeout(200)
+                fpage.wait_for_selector(".feature-dialog select[name='length'] option[value='25']", state="attached", timeout=5000)
                 std_lengths = fpage.eval_on_selector_all(".feature-dialog select[name='length'] option", "els => els.map(e => e.value)")
                 fpage.select_option(".feature-dialog select[name='length']", "25")
                 fpage.fill(".feature-dialog input[name='tz']", "60")
                 fpage.wait_for_selector(".feature-ok:not([disabled])", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=60000)
+                _wait_dialog_done(fpage, timeout=60000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('ISO_4762_M8x25')", timeout=30000)
                 std_ok = ("ISO 4762" in std_norms and "ISO 4032" in std_norms and std_nut_no_length and "25" in std_lengths)
 
+                step = "assemble: update links"
                 fpage.click("#btn-update-links")
                 fpage.wait_for_selector("#update-links-dialog[open]", timeout=20000)
                 upd_summary = fpage.locator("#update-links-summary").inner_text()
@@ -966,6 +1259,7 @@ try:
                 fpage.wait_for_function("!document.getElementById('update-links-dialog')?.open", timeout=5000)
 
                 # Constrain gets an assembly of its own: in smoke_asm the joint checks stacked the parts in the top view
+                step = "assemble: constrain apply & edit"
                 _cws = _Ws(tmp_dir.name)
                 try:
                     _cws.new(_ASM, "smoke_cons").save()
@@ -975,7 +1269,11 @@ try:
                   method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
                 })""")
                 fpage.reload()
-                fpage.wait_for_function("document.querySelector('#doc-kind')?.textContent === 'Assembly'", timeout=20000)
+                fpage.wait_for_function(
+                    "document.querySelector('#doc-kind')?.textContent === 'Assembly'"
+                    " && document.getElementById('status-indicator')?.textContent === 'Ready'",
+                    timeout=20000,
+                )
                 fpage.click('.ribbon-tab[data-tab="assemble"]')
                 for _file, _tx, _gr in (("smoke_part.solidcraft", "0", "true"), ("smoke_top.solidcraft", "150", "false")):
                     fpage.click("#btn-place")
@@ -984,10 +1282,11 @@ try:
                     fpage.fill(".feature-dialog input[name='tx']", _tx)
                     fpage.select_option(".feature-dialog select[name='grounded']", _gr)
                     fpage.click(".feature-ok")
-                    fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                    _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_top')", timeout=20000)
                 fpage.keyboard.press("F6")
-                fpage.wait_for_timeout(500)
+                fpage.wait_for_function("() => Math.abs((window.__camera?.up?.z ?? 0) - 1) < 1e-4", timeout=5000)
+                _wait_frame(fpage)
                 # Constrain applied by hand: flush between the top faces of smoke_part:1 and smoke_top:1,
                 # shown with its rule in the browser, reopened by double-click as Edit, gap changed to 5 mm
                 fpage.click("#btn-constrain")
@@ -1017,13 +1316,20 @@ try:
                     fpage.mouse.move(*xy)
                     fpage.wait_for_timeout(80)
                     fpage.mouse.click(*xy)
-                    fpage.wait_for_timeout(200)
+                    try:
+                        fpage.wait_for_function(
+                            "([s, prefix]) => (document.querySelector(`.feature-slot[data-slot=\"${s}\"]`)?.textContent || '').startsWith(prefix)",
+                            arg=[slot, occ + " "],
+                            timeout=3000,
+                        )
+                    except Exception:
+                        pass
                     return fpage.locator(f'.feature-slot[data-slot="{slot}"]').inner_text().startswith(occ + " ")
                 c_pick_a = _click_top("smoke_part:1", "origin_a")
                 c_pick_b = _click_top("smoke_top:1", "origin_b")
                 fpage.wait_for_selector(".feature-ok:not([disabled])", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=30000)
+                _wait_dialog_done(fpage, timeout=30000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Flush1')", timeout=20000)
                 c_row_text = fpage.locator('.tree-row[data-joint="Flush1"]').first.inner_text()
                 fpage.locator('.tree-row[data-joint="Flush1"]').first.dblclick()
@@ -1033,7 +1339,7 @@ try:
                 fpage.fill(".feature-dialog input[name='offset']", "5")
                 fpage.wait_for_selector(".feature-ok:not([disabled])", timeout=5000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=30000)
+                _wait_dialog_done(fpage, timeout=30000)
                 c_ctx = fpage.evaluate("() => fetch('api/assembly/context').then(r => r.json())")
                 c_live = next((j for j in c_ctx.get("joints", []) if j.get("name") == "Flush1"), {})
                 constrain_apply_ok = (c_pick_a and c_pick_b and "flush" in c_row_text and c_edit_title == "Edit Flush1"
@@ -1047,6 +1353,7 @@ try:
                 # The bolted connection gets an assembly of its own: after the joint checks above, two instances
                 # of smoke_part.solidcraft sit in the stack under the pick, and a bolted connection refuses to go
                 # through the same part file twice (each plate must be a distinct file)
+                step = "assemble: bolted connection"
                 _bws = _Ws(tmp_dir.name)
                 try:
                     _bws.new(_ASM, "smoke_bolt").save()
@@ -1056,13 +1363,17 @@ try:
                   method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
                 })""")
                 fpage.reload()
-                fpage.wait_for_function("document.querySelector('#doc-kind')?.textContent === 'Assembly'", timeout=20000)
+                fpage.wait_for_function(
+                    "document.querySelector('#doc-kind')?.textContent === 'Assembly'"
+                    " && document.getElementById('status-indicator')?.textContent === 'Ready'",
+                    timeout=20000,
+                )
                 fpage.click('.ribbon-tab[data-tab="assemble"]')
                 fpage.click("#btn-place")
                 fpage.wait_for_selector(".feature-dialog select[name='file']", timeout=5000)
                 fpage.select_option(".feature-dialog select[name='file']", "smoke_part.solidcraft")
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_part')", timeout=20000)
 
                 # Place second plate at z=10 so bolted connection has a 2-plate stack (z=0..20)
@@ -1072,7 +1383,7 @@ try:
                 fpage.fill(".feature-dialog input[name='tz']", "10")
                 fpage.select_option(".feature-dialog select[name='grounded']", "true")
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=20000)
+                _wait_dialog_done(fpage, timeout=20000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('smoke_top')", timeout=20000)
 
                 fpage.click("#btn-bolted-connection")
@@ -1087,7 +1398,7 @@ try:
                 bolted_picked = False
                 for fx, fy in ((0, -0.05), (0, 0), (-0.05, -0.05), (0.05, -0.05), (0, -0.1), (-0.08, -0.08), (0.08, -0.08), (0, 0.05)):
                     fpage.mouse.click(fcx + fx * fbox["width"], fcy + fy * fbox["height"])
-                    fpage.wait_for_timeout(150)
+                    _wait_frame(fpage)
                     z_str = fpage.locator(".feature-dialog input[name='z']").input_value().strip()
                     try:
                         if abs(float(z_str) - 25.0) < 1e-2:
@@ -1112,7 +1423,7 @@ try:
                     timeout=20000,
                 )
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=30000)
+                _wait_dialog_done(fpage, timeout=30000)
                 fpage.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('M10')", timeout=20000)
 
                 # Reopen dialog, click Edit on the existing connection, verify size/length and press OK
@@ -1123,7 +1434,7 @@ try:
                 edit_len_val = fpage.locator(".feature-dialog select[name='length_override']").input_value()
                 fpage.wait_for_function("!document.querySelector('.feature-ok')?.disabled", timeout=20000)
                 fpage.click(".feature-ok")
-                fpage.wait_for_function("!document.querySelector('.feature-dialog')", timeout=30000)
+                _wait_dialog_done(fpage, timeout=30000)
                 bolted_after_edit = fpage.evaluate("() => fetch('api/assembly/bolted').then(r => r.json())")
                 saved_item = (bolted_after_edit.get("items") or [{}])[0]
                 bolted_edit_ok = (
@@ -1136,6 +1447,7 @@ try:
 
                 # Parts list (BOM, #49): the button opens a table with the parts and the M10 screw by its standard;
                 # "Flat" reloads it, Close shuts it
+                step = "assemble: bom"
                 fpage.click("#btn-bom")
                 fpage.wait_for_selector("#bom-dialog[open] .bom-table tbody tr", timeout=30000)
                 bom_text = fpage.locator("#bom-dialog .bom-table").inner_text()
@@ -1178,7 +1490,7 @@ try:
                                 f"bolted edit: {bolted_edit_ok} ({edit_size_val}x{edit_len_val}), upd: {upd_summary!r}, "
                                 f"bom: {bom_ok} ({bom_rows} rows)")
             except Exception as e:
-                folder_mode = f"error: {e}"[:200]
+                folder_mode = f"error at {step}: {e}"[:200]
                 # an exception here must fail the run, not leave the later checks as "skipped"
                 folder_ok = False
                 assemble_tab_ok = False
@@ -1190,7 +1502,7 @@ try:
 except Exception as exc:
     import traceback
     traceback.print_exc()
-    errors.append(f"browser test exception: {exc}")
+    errors.append(f"browser test exception at {step}: {exc}")
 finally:
     if srv:
         srv.shutdown()
@@ -1217,6 +1529,7 @@ if log_file.exists():
 
 print("rename:", rename_status)
 print("fillet:", fillet)
+print("command dialog:", command_dialog)
 print("hole:", hole)
 print("extrude:", extrude)
 print("revolve:", revolve)
@@ -1234,6 +1547,7 @@ print("session log js_errors:", js_errors)
 print("edge:", edge.replace("\n", " | ") or "none found")
 
 all_checks_ok = ("Distance" in measured and "Section" in section and closed and bool(edge) and new_part_ok and fillet_ok
+                 and command_dialog_ok
                  and hole_ok and extrude_ok and revolve_ok and sketch_ok and visibility_ok and folder_ok and open_folder_ok
                  and import_browse_ok and assemble_tab_ok and rename_ok and not errors and not js_errors)
 

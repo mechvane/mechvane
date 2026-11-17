@@ -212,15 +212,15 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "Every SolidCraft command in the workspace",
           "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo. Whatever SolidCraft can do, you and your agent can do in Mechvane, including commands that appear in a new SolidCraft release.",
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Watch an agent session in the live demo",
-          "text": "A recorded session plays in the browser: the request, the steps, the model growing, the check finding something and the agent fixing it. No key and no installation needed.",
+          "text": "A recorded session plays in the browser: the request, the steps, the model changing, the check finding something and the agent fixing it. No key and no installation needed.",
           "milestone": "v0.1"
         },
         {

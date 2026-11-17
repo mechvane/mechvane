@@ -466,7 +466,23 @@ schreibt, neu lädt, prüft und bei Baugruppen `update_links` ausführt. Verknü
 SolidCraft relativ (`path`), daher findet die App die Bauteile im OPFS; `component.links` meldet
 dort trotzdem `found: false`, weil es mit `std::fs` prüft. In der Live-Demo (statisch) liegen die
 Beispieldateien unter `demos/<name>/files/`, Speichern bleibt im Browser, die Befunde sind
-vorberechnet. Browsertest: `node tools/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
+vorberechnet.
+
+**Agenten-Wiedergabe in der Live-Demo (#124):** Knopf „Watch an agent session“ (oder `?demo=<name>&replay=1`) spielt eine
+aufgezeichnete, echte Agent-Sitzung ab: das Chat-Fenster nur lesend, die Werkzeugaufrufe mit ihren Zeiten (Pausen auf 2 s
+gekürzt), das Modell nach jeder Änderung mit Schatten, Markierung und „Last step“, am Ende die Prüfung; Pause, Stop,
+„Watch again“, „Reset demo“; Esc bricht ab, die Dialoge und ihre Tasten ruhen solange. Die Zustände rechnet
+`tools/build_demo_site.py` beim Bauen vor: Es führt die markierten Änderungen (`do`) mit denselben Funktionen wie das
+MCP-Werkzeug aus (`run`, `command`, `delete_feature`, `rename_feature`) und legt `demos/<name>/replay/<k>/` an. Bricht
+eine Aufnahme mit einer neuen SolidCraft-Version, scheitert der Build, nicht die Seite. Abweichung vom Entwurf im Issue
+(Befehle im Demo-Kernel): kein 168-MB-Download zum Zuschauen und derselbe Codepfad wie bei der Aufnahme.
+Aufnehmen: `mechvane ui <ordner>` mit dem Beispiel, `MECHVANE_AGENT` auf `claude-agent-acp`, Auftrag über die Oberfläche
+(oder `POST /api/agent/send`), danach `curl …/api/agent/events?since=0 > ev.json` und
+`python3 tools/record_replay.py ev.json demo/replays/<name>.json --demo <name> --title "…" --note "…"` (`--log` mit dem
+Sitzungsprotokoll, wenn die Ereignisse keine Zeiten haben). Ein Werkzeug, das ändert und nicht nachgespielt werden kann,
+lässt das Skript abbrechen. Die erste Aufnahme (`bracket`, 2026-11-16): Claude über `claude-agent-acp` 0.99.1, unverändert.
+
+Browsertest: `node tools/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
 Chromium; ohne GPU mit `CHROME_FLAGS=--disable-features=WebGPU`, sonst bleibt die Canvas im
 Screenshot leer).
 
@@ -533,7 +549,7 @@ Endpunkte des UI-Servers:
 | Endpunkt | Wirkung |
 |---|---|
 | `POST /api/agent/send` `{text, selection?}` | startet einen Zug (409, solange einer läuft) |
-| `GET /api/agent/events?since=n` | Ereignisse ab n: `text`, `tool`, `declined`, `status`, `done` (geänderte Dateien), `error`; dazu `busy` und `undo` (Text des Zuges, den Rückgängig zurücknimmt) |
+| `GET /api/agent/events?since=n` | Ereignisse ab n: `text`, `tool`, `declined`, `status`, `done` (geänderte Dateien), `error`; dazu `busy` und `undo` (Text des Zuges, den Rückgängig zurücknimmt). Das abschließende `tool`-Ereignis (`completed`/`failed`) trägt seit #124 die ganze Eingabe in `params` (der ACP-Adapter schickt sie erst mit einem Update, im Sitzungsprotokoll ist sie gekürzt) |
 | `POST /api/agent/stop` | bricht ab und stellt den Stand vor dem Zug her |
 | `POST /api/agent/undo` `{force?}` / `redo` | Zug zurücknehmen bzw. wiederherstellen; 409, wenn seitdem von Hand gespeichert wurde (außer `force`) |
 
