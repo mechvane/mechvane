@@ -272,6 +272,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       c.material?.dispose();
     }
     hoveredFace = null;
+    setPickCursor(false);
     renderScene();
   }
 
@@ -295,6 +296,7 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       fillMesh.renderOrder = 9;
       faceHoverGroup.add(fillMesh);
     }
+    setPickCursor(true);
     renderScene();
   }
   const selectBtn = bar.querySelector('[data-tool="select"]');
@@ -533,6 +535,98 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     return best;
   }
 
+  // the sketch plane, not the model: where the pointer meets it, also beside the part ([u, v] in sketch
+  // coordinates), with the pick tolerance in mm on the plane and the model edge near the pointer on request
+  function planeHit(ev, ray, rect) {
+    const { origin, x_dir: xd, y_dir: yd } = planePick.frame;
+    const o = new THREE.Vector3(...origin), x = new THREE.Vector3(...xd), y = new THREE.Vector3(...yd);
+    const n = new THREE.Vector3().crossVectors(x, y).normalize();
+    const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(n, o);
+    const at = ray.ray.intersectPlane(pl, new THREE.Vector3());
+    const uv = at ? [at.clone().sub(o).dot(x), at.clone().sub(o).dot(y)] : null;
+    const px = EDGE_PICK_PX[ev.pointerType] ?? EDGE_PICK_PX.mouse;
+    const mmPerPx = (camera.top - camera.bottom) / Math.max((camera.zoom || 1) * rect.height, 1);
+    const planeTol = (px * mmPerPx) / Math.max(Math.abs(n.dot(ray.ray.direction)), 0.2);
+    return { uv, at, info: { clientX: ev.clientX, clientY: ev.clientY, planeTol, edge: () => pickEdgeAt(ev, ray, rect) } };
+  }
+
+  // Hover feedback while a dialog picks (#133): what a click would take is drawn in the hover colour and the
+  // pointer turns into a hand; over nothing pickable, nothing is drawn and the pointer stays an arrow.
+  // Edge picks (fillet, chamfer, the command dialog) show the edge; plane picks (revolve) ask the dialog's
+  // hover callback, which answers with the points of a line to draw, true (it draws itself) or null.
+  const pickHoverGroup = new THREE.Group();
+  pickHoverGroup.renderOrder = 10;
+  scene.add(pickHoverGroup);
+  let pickHoverKey = null, hoverFrame = 0, hoverEv = null;
+  function setPickCursor(on) {
+    const want = on ? "pointer" : "";
+    if (renderer.domElement.style.cursor !== want) renderer.domElement.style.cursor = want;
+  }
+  function showPickHover(key, pts) {
+    if (key === pickHoverKey) return;
+    pickHoverKey = key;
+    while (pickHoverGroup.children.length) {
+      const c = pickHoverGroup.children.pop();
+      c.geometry?.dispose();
+      c.material?.dispose();
+    }
+    if (pts && pts.length > 1) {
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: 0xd29922, linewidth: 3, depthTest: false, transparent: true });
+      const line = new THREE.Line(geom, mat);
+      line.renderOrder = 10;
+      pickHoverGroup.add(line);
+    }
+    renderScene();
+  }
+  function clearPickHover() {
+    if (hoverFrame) { cancelAnimationFrame(hoverFrame); hoverFrame = 0; }
+    showPickHover(null, null);
+    setPickCursor(false);
+  }
+  function runPickHover() {
+    hoverFrame = 0;
+    const ev = hoverEv;
+    if (!ev || !(edgePick || planePick?.hover)) { clearPickHover(); return; }
+    const rect = renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((ev.clientX - rect.left) / rect.width) * 2 - 1,
+      -((ev.clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, camera);
+    if (planePick?.hover) {
+      const { uv, at, info } = planeHit(ev, ray, rect);
+      const res = planePick.hover(uv, at, info);
+      if (Array.isArray(res)) showPickHover(res.map((p) => (p.isVector3 ? `${p.x},${p.y},${p.z}` : String(p))).join(";"), res);
+      else showPickHover(null, null);
+      setPickCursor(!!res);
+      return;
+    }
+    const hit = edgeOrAlt(ev, ray, rect);
+    showPickHover(hit ? hit.key : null, hit ? (hit.alt ? hit.alt.pts : hit.edge.points) : null);
+    setPickCursor(!!hit);
+  }
+  renderer.domElement.addEventListener("pointermove", (ev) => {
+    if (ev.pointerType === "touch" || ev.buttons) return;  // no hover on touch, none while turning the view
+    if (!(edgePick || planePick?.hover)) {
+      if (pickHoverKey !== null || renderer.domElement.style.cursor) clearPickHover();
+      return;
+    }
+    hoverEv = ev;
+    if (!hoverFrame) hoverFrame = requestAnimationFrame(runPickHover);
+  });
+  renderer.domElement.addEventListener("pointerleave", () => clearPickHover());
+
+  // An edge pick may take something else too (the sketcher's Project takes origin axes, #137): the dialog's
+  // alt(clientX, clientY) answers {dist (px), pts, ...} and wins when nearer than the nearest edge; the pick
+  // then carries it as `alt`.
+  let edgePickAlt = null;
+  function edgeOrAlt(ev, ray, rect) {
+    const edge = meshData ? pickEdgeAt(ev, ray, rect) : null;
+    const alt = edgePickAlt ? edgePickAlt(ev.clientX, ev.clientY) : null;
+    if (alt && (!edge || alt.dist < edge.dist)) return { alt, key: `alt:${alt.key ?? ""}`, dist: alt.dist };
+    return edge;
+  }
+
   function pick(ev) {
     const rect = renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((ev.clientX - rect.left) / rect.width) * 2 - 1,
@@ -540,23 +634,12 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
     if (planePick) {
-      // the sketch plane, not the model: a click anywhere on it, also beside the part
-      const { origin, x_dir: xd, y_dir: yd } = planePick.frame;
-      const o = new THREE.Vector3(...origin), x = new THREE.Vector3(...xd), y = new THREE.Vector3(...yd);
-      const n = new THREE.Vector3().crossVectors(x, y).normalize();
-      const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(n, o);
-      const at = ray.ray.intersectPlane(pl, new THREE.Vector3());
-      const uv = at ? [at.clone().sub(o).dot(x), at.clone().sub(o).dot(y)] : null;
-      const px = EDGE_PICK_PX[ev.pointerType] ?? EDGE_PICK_PX.mouse;
-      const mmPerPx = (camera.top - camera.bottom) / Math.max((camera.zoom || 1) * rect.height, 1);
-      const planeTol = (px * mmPerPx) / Math.max(Math.abs(n.dot(ray.ray.direction)), 0.2);
-      if (uv || planePick.cb.length >= 3) {
-        planePick.cb(uv, at, { clientX: ev.clientX, clientY: ev.clientY, planeTol, edge: () => pickEdgeAt(ev, ray, rect) });
-      }
+      const { uv, at, info } = planeHit(ev, ray, rect);
+      if (uv || planePick.cb.length >= 3) planePick.cb(uv, at, info);
       return;
     }
     if (edgePick) {
-      const picked = pickEdgeAt(ev, ray, rect);
+      const picked = edgeOrAlt(ev, ray, rect);
       if (picked) edgePick(picked);
       return;
     }
@@ -754,16 +837,20 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
       if (mode) setMode(mode);
     },
     // A feature dialog picks edges until stopEdgePick(); measuring and selecting pause meanwhile
-    startEdgePick(onPick) {
+    startEdgePick(onPick, opts = {}) {
       clearFaceHover();
+      clearPickHover();
       if (mode) setMode(mode);
       facePick = null;
       planePick = null;
       edgePick = onPick;
+      edgePickAlt = opts.alt || null;
       if (controls) controls.touches.ONE = null;
     },
     stopEdgePick() {
+      clearPickHover();
       edgePick = null;
+      edgePickAlt = null;
       facePick = null;
       facePickHoles = false;
       planePick = null;
@@ -772,13 +859,14 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
     },
     // The sketch dialog picks points on its plane ([u, v] in sketch coordinates) until stopEdgePick();
     // a face click first (to choose the plane) still goes to startFacePick
-    startPlanePick(frame, onPick) {
+    startPlanePick(frame, onPick, onHover = null) {
       clearFaceHover();
+      clearPickHover();
       if (mode) setMode(mode);
       edgePick = null;
       facePick = null;
       facePickHoles = false;
-      planePick = { frame, cb: onPick };
+      planePick = { frame, cb: onPick, hover: onHover };
       if (controls) controls.touches.ONE = null;
     },
     // A feature dialog picks a point on a face (a hole's position) until stopEdgePick()

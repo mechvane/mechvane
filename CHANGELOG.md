@@ -7,6 +7,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a24] - 2026-11-17
+
+### Added
+
+- Sketch: dimensions are drawn as dimensions. Lengths and distances get extension lines and a dimension line with arrowheads, outside the shape; horizontal and vertical distances run along the sketch axes; a diameter or radius gets a leader through or from the centre; an angle gets an arc between its lines. With the Dimension tool, the dimension shows as a preview right after the first click and follows the pointer until the click that places it. Constraint symbols moved to the inner side of their line, away from the dimension. (#132)
+- Picking in the view shows what a click would take: in Revolve the sketch line, model edge, origin axis or profile under the pointer lights up, and edge picks (fillet, chamfer, the command dialog) highlight the edge. The pointer turns into a hand over anything pickable, also over faces when a dialog picks a face. (#133)
+- Sketch: **Project Geometry takes the origin axes** too. While the tool is on, the X, Y and Z axes are shown; the nearer of model edge and axis is taken, and both light up under the pointer before the click. An axis in the sketch plane comes in as a linked line, the axis across it as a linked point, as in SolidCraft. Projecting something twice now says so instead of an error. (#137)
+- Sketch: line types as in SolidCraft's palette. **Format → Normal / Construction** (or X) turns the selected curves into construction geometry (dashed, no profile) and back in one undo step; with nothing selected it switches the drawing mode, so new curves are drawn as construction geometry. Works in the live demo too. Centerlines follow once SolidCraft reports them in `sketch.inspect`. (#138)
+
+### Fixed
+
+- Design check: the rounded end of a slot or cut-out that is open to an edge, or a half-round notch in an edge, no longer counts as a hole 0 mm from the edge (it failed `min_wall_thickness`, `hole_edge_distance` and `printability`). Such rounds count as walls now, so a real hole next to them is still checked against them. A hole made with the Hole feature that breaks out over an edge is still reported. (#130)
+- File → Open in SolidCraft with a sketch open finishes the sketch first and then opens the part, instead of a blank page on "Loading SolidCraft…". The Model page says why when it cannot open a document, and reloading the Check page during a sketch no longer fails with "the agent is working on the files". (#134)
+
 ## [0.1.0a23] - 2026-11-17
 
 ### Added

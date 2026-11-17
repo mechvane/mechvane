@@ -36,6 +36,28 @@ class SketchError(Exception):
     """A request that does not fit the state of the sketch environment (HTTP 409)."""
 
 
+def _created_curves(result) -> list:
+    """The curves a command made: `created.curves`, also inside a wrapped result (sketch.draw.dimensioned) and
+    per link (`links[].curves`, Project)."""
+    found = []
+
+    def walk(v, depth):
+        if depth > 4 or not isinstance(v, dict):
+            return
+        cr = v.get("created")
+        if isinstance(cr, dict):
+            found.extend(c for c in cr.get("curves") or [] if isinstance(c, str))
+        for link in v.get("links") or []:
+            if isinstance(link, dict):
+                found.extend(c for c in link.get("curves") or [] if isinstance(c, str))
+        for k, sub in v.items():
+            if k not in ("created", "links") and isinstance(sub, dict):
+                walk(sub, depth + 1)
+
+    walk(result, 0)
+    return list(dict.fromkeys(found))
+
+
 def _inspect(doc) -> dict:
     """What the sketcher draws: points, curves, dimensions, constraints, degrees of freedom, profiles, plane."""
     return doc.session.cmd("sketch.inspect", {})
@@ -98,16 +120,22 @@ class SketchSession:
         st = _inspect(self.doc)
         return {"sketch": self.name, "editing": self.editing, "can_undo": bool(self.undo), "state": st}
 
-    def command(self, command: str, params: dict) -> dict:
+    def command(self, command: str, params: dict, line_type: str | None = None) -> dict:
         """One sketch command (sketch.line, sketch.circle.center, sketch.dimension, sketch.constraint.*, ...).
-        A refused command leaves the sketch as it was."""
+        A refused command leaves the sketch as it was. With line_type "construction" the curves the command
+        makes become construction geometry in the same undo step (the drawing mode of SolidCraft's palette, #138)."""
         if not isinstance(command, str) or command in NOT_IN_SESSION or not (
                 command.startswith("sketch.") or command in ALSO_IN_SESSION):
             raise PermissionError(f"not a drawing command in the sketch environment: {command}")
+        if line_type not in (None, "normal", "construction"):
+            raise SketchError(f"unknown line type: {line_type} (normal or construction)")
         s = self.doc.session
         cp = s.cmd("edit.checkpoint").get("checkpoint")
         try:
             result = s.cmd(command, params or {})
+            made = _created_curves(result)
+            if line_type == "construction" and made:
+                s.cmd("sketch.construction", {"curves": made, "value": True})
         except BaseException:
             _restore(self.doc, cp)
             raise

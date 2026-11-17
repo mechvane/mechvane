@@ -2168,7 +2168,17 @@ var viewBeforeEdit = null;
         if (on && commandDialog) commandDialog.close();  // the sketch environment takes the view and the panel
         renderScene();
       },
-      originPlaneAt, revealOriginPlanes, hoverOriginPlane,
+      originPlaneAt, revealOriginPlanes, hoverOriginPlane, originAxisAt, revealOriginAxes,
+    });
+    // File → Open in SolidCraft with a sketch open: finish it first, as leaving the sketch does in Inventor.
+    // An open sketch keeps the files locked, so the Model page could not open the document (#134).
+    document.getElementById("mode-model")?.addEventListener("click", async (ev) => {
+      if (!sketcher || !sketcher.isOpen()) return;
+      ev.preventDefault();
+      const href = ev.currentTarget.href;
+      clientLog?.("sketch_finish_for_model", {});
+      await sketcher.finish();
+      if (!sketcher.isOpen()) location.href = href;  // otherwise the status line says why it could not finish
     });
     if (btnSketch) {
       btnSketch.disabled = false;

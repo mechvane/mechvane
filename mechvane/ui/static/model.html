@@ -249,8 +249,22 @@ async function main() {
     } catch {}
   }
 
+  if (!STATIC) {
+    // an open sketch keeps the files locked: SolidCraft could open them but not save (#134)
+    const st = await fetch("api/sketch/state").then((x) => x.json()).catch(() => null);
+    if (st && st.active) {
+      document.getElementById("doc-name").textContent = docParam || "";
+      throw new Error(`the sketch ${st.sketch || ""} is still open: finish or cancel it on the Check page first`.replace("  ", " "));
+    }
+  }
   if (!STATIC && docParam) {
-    await fetch("api/open/" + encodeURIComponent(docParam), { method: "POST", headers: { "Content-Type": "application/json" } });
+    const r = await fetch("api/open/" + encodeURIComponent(docParam), { method: "POST", headers: { "Content-Type": "application/json" } });
+    if (!r.ok) {
+      // say why instead of staying on "Loading SolidCraft…" (#134)
+      const res = await r.json().catch(() => ({}));
+      document.getElementById("doc-name").textContent = docParam;
+      throw new Error(`cannot open ${docParam}: ${res.error || `HTTP ${r.status}`}`);
+    }
   } else if (!STATIC && project && project.mode === "folder" && !project.current) {
     if (project.documents && project.documents.length > 0) {
       location.replace("?doc=" + encodeURIComponent(project.documents[0].name));

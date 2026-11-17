@@ -860,6 +860,25 @@ def design_rule_checks(ws):
        str(r_fail["summary"]))
     ws.close("rule_fail")
 
+    # 1b. Rounded ends of open cut-outs are no holes (#130): a U-slot open to the edge and a half notch in the
+    # edge used to count as holes 0 mm from the edge; a real hole next to them is still checked
+    doc_u = ws.new(PART, "rule_open_round")
+    doc_u.session.batch([
+        {"command": "solid.box", "params": {"length": 60, "width": 40, "height": 10, "corner": [0, 0, 0], "name": "Box"}},
+        {"command": "solid.box", "params": {"length": 21, "width": 10, "height": 12, "corner": [40, 15, -1], "operation": "cut", "name": "SlotBody"}},
+        {"command": "solid.cylinder", "params": {"radius": 5, "height": 12, "base": [40, 20, -1], "operation": "cut", "name": "SlotEnd"}},
+        {"command": "solid.cylinder", "params": {"radius": 4, "height": 12, "base": [0, 20, -1], "operation": "cut", "name": "Notch"}},
+        {"command": "solid.cylinder", "params": {"diameter": 6, "height": 12, "base": [20, 30, -1], "operation": "cut", "name": "RealHole"}},
+    ])
+    r_u = design_rules.check(doc_u.session, profile="fdm_0.4")
+    u_findings = [f for rule in ("hole_edge_distance", "min_wall_thickness") for f in r_u["rules"][rule]["findings"]]
+    u_texts = " ".join(str(f.get("message", f)) for f in u_findings)
+    ok("design rules: rounded ends of open cut-outs (U-slot, edge notch) are no holes, a real hole still counts",
+       "10.0 mm" not in u_texts and "8.0 mm" not in u_texts and "between holes" not in u_texts
+       and r_u["rules"]["hole_edge_distance"]["status"] == "ok", u_texts[:400] or str(r_u["summary"]))
+    from mechvane import query as _q  # noqa: F401  (find holes uses the same classification)
+    ws.close("rule_open_round")
+
     # 2. All rules satisfied: ok
     doc_ok = ws.new(PART, "rule_ok")
     doc_ok.session.batch([
@@ -7258,6 +7277,27 @@ def sketch_session_checks(tmp):
            st == 200 and st2 == 200 and widths == [55.0] and st4 == 403, f"{st} {st2} {widths} {st4}")
         st, b = call("sketch/state")
         ok("sketch env: state names the open sketch", st == 200 and b.get("active") and b.get("sketch") == "Sketch1", str(b)[:120])
+        # a page reloaded during the sketch opens the same document again: answered, not refused; another stays refused (#134)
+        st_same, b_same = call("open/plate.solidcraft", {})
+        st_other, _ = call("open/other.solidcraft", {})
+        ok("sketch env: reopening the current document during a sketch is answered, another document is refused",
+           st_same == 200 and b_same.get("document") == "plate.solidcraft" and st_other == 409, f"{st_same} {b_same} {st_other}")
+        # line types (#138): a line drawn in construction mode is construction geometry, one undo takes it back;
+        # sketch.construction switches selected curves; an unknown line type is refused
+        n_before = len(call("sketch/state")[1]["state"]["curves"])
+        st_c, b_c = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 30], [20, 30]]}, "line_type": "construction"})
+        new_curves = [c for c in b_c.get("state", {}).get("curves", []) if c.get("id") not in
+                      {x.get("id") for x in b_c.get("state", {}).get("curves", [])[:n_before]}]
+        cons = [c.get("construction") for c in new_curves]
+        _, b_u = call("sketch/undo", {})
+        n_after_undo = len(b_u.get("state", {}).get("curves", []))
+        st_t, b_t = call("sketch/cmd", {"command": "sketch.construction", "params": {"curves": ["l1"], "value": True}})
+        l1_cons = [c.get("construction") for c in b_t.get("state", {}).get("curves", []) if c.get("id") == "l1"]
+        call("sketch/undo", {})
+        st_bad, _ = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 40], [5, 40]]}, "line_type": "zigzag"})
+        ok("sketch env: construction line type for new curves (one undo step), switching selected curves, unknown type refused",
+           st_c == 200 and cons == [True] and n_after_undo == n_before and st_t == 200 and l1_cons == [True] and st_bad == 409,
+           f"{st_c} {cons} {n_after_undo}/{n_before} {st_t} {l1_cons} {st_bad}")
         st, b = call("sketch/finish", {})
         st_s, b_s = call("sketch/state")
         ok("sketch env: finish keeps Sketch1 and closes the environment",

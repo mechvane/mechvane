@@ -1689,6 +1689,18 @@ body.sketching #viewport canvas { cursor: crosshair; }
   background: color-mix(in srgb, var(--panel-bg) 80%, transparent); border: 1px solid var(--border);
 }
 .sketch-dim:hover { border-color: var(--selected-border); }
+/* dimension lines, extension lines and arrowheads under the values (#132) */
+.sketch-dim-geo { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.sketch-dim-geo path { fill: none; stroke-width: 1; }
+.sketch-dim-geo .dim { stroke: var(--text-muted); }
+.sketch-dim-geo .dim.dim-ext, .sketch-dim-geo .dim-picked.dim-ext, .sketch-dim-geo .dim-preview.dim-ext { stroke-opacity: 0.7; }
+.sketch-dim-geo .dim.dim-arrow { fill: var(--text-muted); stroke: none; }
+.sketch-dim-geo .dim-picked { stroke: #f0b429; }
+.sketch-dim-geo .dim-picked.dim-arrow { fill: #f0b429; stroke: none; }
+.sketch-dim-geo .dim-preview { stroke: #58a6ff; }
+.sketch-dim-geo .dim-preview.dim-line { stroke-dasharray: 4 3; }
+.sketch-dim-geo .dim-preview.dim-arrow { fill: #58a6ff; stroke: none; }
+.sketch-dim.preview { pointer-events: none; color: #58a6ff; border-color: #58a6ff; }
 .sketch-dim-edit {
   position: absolute; transform: translate(-50%, -50%); z-index: 6; width: 110px; padding: 1px 4px;
   font: 12px/18px system-ui, sans-serif; color: var(--text); background: var(--bg);

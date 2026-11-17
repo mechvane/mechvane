@@ -78,6 +78,7 @@ export function initSketcher(h) {
   let conSel = [];        // a constraint tool's picked entities
   let picked = [];        // with no tool: selected curves, points, constraints or dimensions (Delete removes them)     // params of the dimension just placed (to place it again as `name = expression`)
   let boxDrag = null;     // { startScreen, startClient, shift, ctrl, raw, active, pointerId }
+  let lineType = "normal"; // the line type new curves get (SolidCraft's palette, #138): "normal" or "construction"
   window.mechvaneSketchPicked = () => picked;
 
   // --- plane geometry ---------------------------------------------------------------------------------------
@@ -285,8 +286,203 @@ export function initSketcher(h) {
     const num2 = `${pre}${fmt(Math.round(val * 100) / 100)}${ang ? "°" : ""}`;
     return plain ? num2 : `${expr.replace(/\s*mm$/, "")} = ${num2}`;
   }
+  // --- dimension drawing (#132): extension lines, dimension line or arc with arrowheads, value on it --------------
+  // All in screen pixels. A linear dimension sits DIM_OFF px off its geometry, on the side away from the middle of
+  // the sketch (outside a rectangle); diameter and radius at 45°, as the text placement before.
+  const DIM_OFF = 22, EXT_GAP = 3, EXT_OVER = 5, ARROW = 8;
+  const v2 = {
+    sub: (a, b) => [a[0] - b[0], a[1] - b[1]], add: (a, b) => [a[0] + b[0], a[1] + b[1]],
+    mul: (a, k) => [a[0] * k, a[1] * k], len: (a) => Math.hypot(a[0], a[1]),
+    unit: (a) => { const l = Math.hypot(a[0], a[1]) || 1; return [a[0] / l, a[1] / l]; },
+    perp: (a) => [-a[1], a[0]], dot: (a, b) => a[0] * b[0] + a[1] * b[1], mid: (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
+  };
+  function sketchMiddle(st) {
+    const pts = (st.points || []).filter((p) => p.id !== "origin" && !p.link).map((p) => screenOf(p.at));
+    if (!pts.length) return screenOf([0, 0]);
+    return v2.mul(pts.reduce((a, b) => v2.add(a, b), [0, 0]), 1 / pts.length);
+  }
+  // A and B (screen) measured along AB, dimension line `off` px to `side` (a unit vector)
+  function alignedGeom(A, B, side, off = DIM_OFF) {
+    const a2 = v2.add(A, v2.mul(side, off)), b2 = v2.add(B, v2.mul(side, off));
+    const d = v2.unit(v2.sub(b2, a2));
+    const sgn = off >= 0 ? 1 : -1;
+    return {
+      lines: [[a2, b2]],
+      ext: [[v2.add(A, v2.mul(side, EXT_GAP * sgn)), v2.add(A, v2.mul(side, off + EXT_OVER * sgn))],
+        [v2.add(B, v2.mul(side, EXT_GAP * sgn)), v2.add(B, v2.mul(side, off + EXT_OVER * sgn))]],
+      arrows: [[a2, v2.mul(d, -1)], [b2, d]], text: v2.mid(a2, b2),
+    };
+  }
+  function awayFrom(A, B, middle) {
+    const n = v2.perp(v2.unit(v2.sub(B, A)));
+    const toMid = v2.sub(middle, v2.mid(A, B));
+    if (v2.len(toMid) < 1) return n[1] <= 0 ? n : v2.mul(n, -1);  // a lone line: above it
+    return v2.dot(n, toMid) > 0 ? v2.mul(n, -1) : n;
+  }
+  // horizontal or vertical (sketch axes) distance between uv points P and Q, the dimension line `offPx` beyond both
+  function axisGeom(P, Q, horizontal, offPx = DIM_OFF) {
+    const k = offPx * mmPerPx(P);
+    const A = horizontal ? [P[0], Math.max(P[1], Q[1]) + k] : [Math.max(P[0], Q[0]) + k, P[1]];
+    const B = horizontal ? [Q[0], A[1]] : [A[0], Q[1]];
+    const sP = screenOf(P), sQ = screenOf(Q), sA = screenOf(A), sB = screenOf(B);
+    const over = (from, to) => v2.add(to, v2.mul(v2.unit(v2.sub(to, from)), EXT_OVER));
+    const d = v2.unit(v2.sub(sB, sA));
+    return { lines: [[sA, sB]], ext: [[sP, over(sP, sA)], [sQ, over(sQ, sB)]], arrows: [[sA, v2.mul(d, -1)], [sB, d]], text: v2.mid(sA, sB) };
+  }
+  // point P to the line through L0, L1 (uv): the dimension line along the perpendicular, the line extended to it
+  function pointLineGeom(P, L0, L1) {
+    const d = [L1[0] - L0[0], L1[1] - L0[1]], l2 = d[0] * d[0] + d[1] * d[1] || 1;
+    const t = ((P[0] - L0[0]) * d[0] + (P[1] - L0[1]) * d[1]) / l2;
+    const F = [L0[0] + t * d[0], L0[1] + t * d[1]];
+    const sP = screenOf(P), sF = screenOf(F);
+    const dir = v2.unit(v2.sub(sF, sP));
+    const ext = t < 0 || t > 1 ? [[screenOf(t < 0 ? L0 : L1), sF]] : [];
+    return { lines: [[sP, sF]], ext, arrows: [[sP, v2.mul(dir, -1)], [sF, dir]], text: v2.mid(sP, sF) };
+  }
+  // diameter (through the centre, arrows on the rim) or radius (from the centre); `dir` a screen direction
+  function circleGeom(C, r, diameter, dir = null) {
+    const sC = screenOf(C);
+    const rim = screenOf([C[0] + r, C[1]]);
+    const R = v2.len(v2.sub(rim, sC));
+    const u = dir ? v2.unit(dir) : v2.unit([Math.SQRT1_2, -Math.SQRT1_2]);
+    const far = v2.add(sC, v2.mul(u, R)), near = diameter ? v2.add(sC, v2.mul(u, -R)) : sC;
+    const leaderEnd = v2.add(far, v2.mul(u, 18));
+    return {
+      lines: [[near, leaderEnd]], ext: [],
+      arrows: diameter ? [[far, u], [near, v2.mul(u, -1)]] : [[far, u]],
+      text: v2.add(far, v2.mul(u, 30)),
+    };
+  }
+  // angle between lines A0A1 and B0B1 (uv): an arc around their crossing, from one line towards the other
+  function angleGeom(A0, A1, B0, B1, radiusPx = 40) {
+    const da = [A1[0] - A0[0], A1[1] - A0[1]], db = [B1[0] - B0[0], B1[1] - B0[1]];
+    const den = da[0] * db[1] - da[1] * db[0];
+    if (Math.abs(den) < 1e-9) return null;
+    const t = ((B0[0] - A0[0]) * db[1] - (B0[1] - A0[1]) * db[0]) / den;
+    const O = [A0[0] + t * da[0], A0[1] + t * da[1]];
+    const sO = screenOf(O);
+    // each leg points from the crossing to the farther end of its line
+    const leg = (P0, P1) => v2.unit(v2.sub(screenOf(Math.hypot(P1[0] - O[0], P1[1] - O[1]) >= Math.hypot(P0[0] - O[0], P0[1] - O[1]) ? P1 : P0), sO));
+    const ua = leg(A0, A1), ub = leg(B0, B1);
+    let a0 = Math.atan2(ua[1], ua[0]), a1 = Math.atan2(ub[1], ub[0]);
+    let sweep = a1 - a0;
+    while (sweep > Math.PI) sweep -= 2 * Math.PI;
+    while (sweep < -Math.PI) sweep += 2 * Math.PI;
+    const pts = [];
+    for (let i = 0; i <= 24; i++) {
+      const a = a0 + (sweep * i) / 24;
+      pts.push(v2.add(sO, [Math.cos(a) * radiusPx, Math.sin(a) * radiusPx]));
+    }
+    const am = a0 + sweep / 2;
+    const tan = (a, sg) => [-Math.sin(a) * sg, Math.cos(a) * sg];
+    const sg = sweep >= 0 ? 1 : -1;
+    return {
+      lines: [], arc: pts, ext: [[sO, v2.add(sO, v2.mul(ua, radiusPx + EXT_OVER))], [sO, v2.add(sO, v2.mul(ub, radiusPx + EXT_OVER))]],
+      arrows: [[pts[0], tan(a0, -sg)], [pts[pts.length - 1], tan(a1, sg)]],
+      text: v2.add(sO, [Math.cos(am) * (radiusPx + 14), Math.sin(am) * (radiusPx + 14)]),
+    };
+  }
+  // the drawing of a placed dimension (a constraint with a value), or null for a kind not drawn yet
+  function dimGeom(c, st, middle) {
+    const P = (i) => st.points?.[i]?.at, C = (i) => st.curves?.[i];
+    const line = (k) => (k?.type === "line" && k.start_at && k.end_at ? k : null);
+    try {
+      if (c.type === "length" && line(C(c.l))) {
+        const k = C(c.l), A = screenOf(k.start_at), B = screenOf(k.end_at);
+        return alignedGeom(A, B, awayFrom(A, B, middle));
+      }
+      if (c.type === "distance" && P(c.p) && P(c.q)) {
+        const A = screenOf(P(c.p)), B = screenOf(P(c.q));
+        return alignedGeom(A, B, awayFrom(A, B, middle));
+      }
+      if ((c.type === "distance_x" || c.type === "distance_y") && P(c.p) && P(c.q)) return axisGeom(P(c.p), P(c.q), c.type === "distance_x");
+      if (c.type === "point_line_distance" && P(c.p) && line(C(c.l))) return pointLineGeom(P(c.p), C(c.l).start_at, C(c.l).end_at);
+      if ((c.type === "diameter" || c.type === "radius") && C(c.c)?.center_at) return circleGeom(C(c.c).center_at, C(c.c).radius, c.type === "diameter");
+      if (c.type === "angle" && line(C(c.a)) && line(C(c.b))) {
+        return angleGeom(C(c.a).start_at, C(c.a).end_at, C(c.b).start_at, C(c.b).end_at);
+      }
+    } catch (_) { /* a half-solved sketch: no drawing, the value stays */ }
+    return null;
+  }
+  // the preview while the Dimension tool has picked something (#132): what a click there would place, at the cursor
+  function dimPreview(st) {
+    if (tool !== "dimension" || !dimSel.length || !cursor) return null;
+    const cur = screenOf(cursor.at);
+    const ents = dimSel;
+    const curveOf = (e) => (e.kind === "curve" ? e.curve : null);
+    const ptOf = (e) => (e.kind === "point" ? e.at : null);
+    const sideTo = (A, B) => {
+      const n = v2.perp(v2.unit(v2.sub(B, A)));
+      const off = v2.dot(n, v2.sub(cur, A));
+      return { side: off >= 0 ? n : v2.mul(n, -1), off: Math.max(Math.abs(off), 12) };
+    };
+    const uvd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (ents.length === 1) {
+      const k = curveOf(ents[0]);
+      if (k?.type === "line") {
+        const A = screenOf(k.start_at), B = screenOf(k.end_at), { side, off } = sideTo(A, B);
+        return { ...alignedGeom(A, B, side, off), value: fmt(Math.round(uvd(k.start_at, k.end_at) * 100) / 100) };
+      }
+      if ((k?.type === "circle" || k?.type === "arc") && k.center_at) {
+        const dia = k.type === "circle";
+        const g = circleGeom(k.center_at, k.radius, dia, v2.sub(cur, screenOf(k.center_at)));
+        return { ...g, text: cur, value: `${dia ? "Ø" : "R"}${fmt(Math.round((dia ? 2 * k.radius : k.radius) * 100) / 100)}` };
+      }
+      return null;
+    }
+    const [e1, e2] = ents;
+    const p1 = ptOf(e1), p2 = ptOf(e2), l1 = curveOf(e1)?.type === "line" ? curveOf(e1) : null, l2 = curveOf(e2)?.type === "line" ? curveOf(e2) : null;
+    if (p1 && p2) {
+      const A = screenOf(p1), B = screenOf(p2), { side, off } = sideTo(A, B);
+      return { ...alignedGeom(A, B, side, off), value: fmt(Math.round(uvd(p1, p2) * 100) / 100) };
+    }
+    const pl = p1 && l2 ? [p1, l2] : p2 && l1 ? [p2, l1] : null;
+    if (pl) {
+      const [P, L] = pl;
+      const g = pointLineGeom(P, L.start_at, L.end_at);
+      const d = [L.end_at[0] - L.start_at[0], L.end_at[1] - L.start_at[1]];
+      const dist = Math.abs((P[0] - L.start_at[0]) * d[1] - (P[1] - L.start_at[1]) * d[0]) / (Math.hypot(...d) || 1);
+      return { ...g, value: fmt(Math.round(dist * 100) / 100) };
+    }
+    if (l1 && l2) {
+      const g = angleGeom(l1.start_at, l1.end_at, l2.start_at, l2.end_at);
+      if (g) {
+        const a = Math.atan2(l1.end_at[1] - l1.start_at[1], l1.end_at[0] - l1.start_at[0]);
+        const b = Math.atan2(l2.end_at[1] - l2.start_at[1], l2.end_at[0] - l2.start_at[0]);
+        let deg = Math.abs(((b - a) * 180) / Math.PI) % 180;
+        if (deg > 90) deg = 180 - deg;
+        return { ...g, value: `${fmt(Math.round(deg * 100) / 100)}°` };
+      }
+      const g2 = pointLineGeom(l1.start_at, l2.start_at, l2.end_at);
+      const d = [l2.end_at[0] - l2.start_at[0], l2.end_at[1] - l2.start_at[1]];
+      const dist = Math.abs((l1.start_at[0] - l2.start_at[0]) * d[1] - (l1.start_at[1] - l2.start_at[1]) * d[0]) / (Math.hypot(...d) || 1);
+      return { ...g2, value: fmt(Math.round(dist * 100) / 100) };
+    }
+    return null;
+  }
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function drawDimGeom(svg, g, cls) {
+    const path = (d, extra) => {
+      const el = document.createElementNS(SVG_NS, "path");
+      el.setAttribute("d", d);
+      el.setAttribute("class", `${cls}${extra ? ` ${extra}` : ""}`);
+      svg.appendChild(el);
+    };
+    const P = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    for (const [a, b] of g.ext || []) path(`M${P(a)}L${P(b)}`, "dim-ext");
+    for (const [a, b] of g.lines || []) path(`M${P(a)}L${P(b)}`, "dim-line");
+    if (g.arc?.length) path(`M${g.arc.map(P).join("L")}`, "dim-line");
+    for (const [tip, dir] of g.arrows || []) {
+      const u = v2.unit(dir), n = v2.perp(u);
+      const back = v2.sub(tip, v2.mul(u, ARROW));
+      path(`M${P(tip)}L${P(v2.add(back, v2.mul(n, ARROW * 0.35)))}L${P(v2.sub(back, v2.mul(n, ARROW * 0.35)))}Z`, "dim-arrow");
+    }
+  }
+
   // where a dimension's text goes, in screen pixels
   function dimSpot(c, st) {
+    const g = dimGeom(c, st, sketchMiddle(st));
+    if (g) return g.text;
     const P = (i) => st.points?.[i]?.at, C = (i) => st.curves?.[i];
     if (c.c !== undefined && C(c.c)?.center_at) {
       const k = C(c.c), a = Math.PI / 4;
@@ -307,9 +503,25 @@ export function initSketcher(h) {
     dimLayer.textContent = "";
     if (!active) return;
     const st = active.state || {};
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "sketch-dim-geo");
+    dimLayer.appendChild(svg);
+    const middle = sketchMiddle(st);
+    const prev = dimPreview(st);
+    if (prev) {
+      drawDimGeom(svg, prev, "dim-preview");
+      const el = document.createElement("span");
+      el.className = "sketch-dim preview";
+      el.textContent = prev.value;
+      el.style.left = `${prev.text[0]}px`;
+      el.style.top = `${prev.text[1]}px`;
+      dimLayer.appendChild(el);
+    }
     for (const c of st.constraints || []) {
       if (c.value === undefined || !c.param) continue;
-      const at = dimSpot(c, st);
+      const g = dimGeom(c, st, middle);
+      if (g) drawDimGeom(svg, g, picked.some((p) => p.id === c.id) || dimEdit?.param === c.param ? "dim-picked" : "dim");
+      const at = g ? g.text : dimSpot(c, st);
       if (!at) continue;
       if (dimEdit?.param === c.param) { dimEdit.input.style.left = `${at[0]}px`; dimEdit.input.style.top = `${at[1]}px`; continue; }
       const el = document.createElement("span");
@@ -544,6 +756,7 @@ export function initSketcher(h) {
   // where a constraint's symbol goes: beside each curve it ties, stacked when a curve has several
   function drawGlyphs(st) {
     const used = {};
+    const glyphMiddle = sketchMiddle(st);
     const spotOf = (curveIdx) => {
       const k = st.curves?.[curveIdx];
       if (!k) return null;
@@ -552,8 +765,10 @@ export function initSketcher(h) {
       if (k.type === "line") {
         const a = screenOf(k.start_at), b = screenOf(k.end_at);
         const d = [b[0] - a[0], b[1] - a[1]], L = Math.hypot(...d) || 1;
-        // on the other side of the line than its dimension text (dimSpot), so the two never cover each other
-        at = [(a[0] + b[0]) / 2 - d[1] / L * 14 + d[0] / L * 16 * n, (a[1] + b[1]) / 2 + d[0] / L * 14 + d[1] / L * 16 * n];
+        // on the other side of the line than its dimension (dimGeom puts that away from the sketch's middle), so the
+        // two never cover each other
+        const inward = v2.mul(awayFrom(a, b, glyphMiddle), -1);
+        at = [(a[0] + b[0]) / 2 + inward[0] * 14 + d[0] / L * 16 * n, (a[1] + b[1]) / 2 + inward[1] * 14 + d[1] / L * 16 * n];
       } else if (k.center_at) {
         const e = screenOf([k.center_at[0] - k.radius * Math.SQRT1_2, k.center_at[1] - k.radius * Math.SQRT1_2]);
         at = [e[0] - 10 - 16 * n, e[1] + 10];
@@ -639,20 +854,33 @@ export function initSketcher(h) {
     draw();
   }
   // Project Geometry: model edges clicked in the view come into the sketch, linked to the model
+  // Project takes model edges and the origin axes (#137), shown while the tool is on; the nearer one wins
+  const AXIS_DIRS = { X: [1, 0, 0], Y: [0, 1, 0], Z: [0, 0, 1] };
+  function originAxisPick(clientX, clientY) {
+    const o = h.originAxisAt?.(clientX, clientY);
+    if (!o || !AXIS_DIRS[o.axis]) return null;
+    const d = new THREE.Vector3(...AXIS_DIRS[o.axis]);
+    return { key: o.axis, axis: o.axis, dist: o.dist, pts: [d.clone().multiplyScalar(-100), d.clone().multiplyScalar(100)] };
+  }
   function startProject() {
+    h.revealOriginAxes?.(true);
     h.viewTools.startEdgePick(async (pick) => {
       if (busy || tool !== "project") return;
       busy = true;
+      const ref = pick.alt ? { axis: pick.alt.axis }
+        : { edge: pick.point.toArray ? pick.point.toArray() : pick.point, body: pick.body };
       try {
-        await send("sketch.project", { refs: [{ edge: pick.point.toArray ? pick.point.toArray() : pick.point, body: pick.body }] });
-        h.log?.("sketch_cmd", { command: "sketch.project" });
+        await send("sketch.project", { refs: [ref] });
+        h.log?.("sketch_cmd", { command: "sketch.project", ref: pick.alt ? `axis ${pick.alt.axis}` : "edge" });
       } catch (err) {
-        h.statusEl.textContent = `Sketch: ${err.message}`;
+        h.statusEl.textContent = /already projected/.test(err.message)
+          ? `Sketch: ${pick.alt ? `the ${pick.alt.axis} axis` : "this edge"} is in the sketch already`
+          : `Sketch: ${err.message}`;
       }
       busy = false;
-      status();
+      if (!/^Sketch: /.test(h.statusEl.textContent)) status();
       draw();
-    });
+    }, { alt: originAxisPick });
   }
 
   async function dimClick(raw) {
@@ -834,8 +1062,8 @@ export function initSketcher(h) {
   }
 
   // --- commands -----------------------------------------------------------------------------------------------
-  async function send(command, params) {
-    const res = await h.post("api/sketch/cmd", { command, params });
+  async function send(command, params, extra = {}) {
+    const res = await h.post("api/sketch/cmd", { command, params, ...extra });
     active.state = res.state;
     return res;
   }
@@ -872,8 +1100,9 @@ export function initSketcher(h) {
     const dims = Object.fromEntries(Object.entries(L).filter(([role]) => (HUD_FIELDS[tool] || []).some((f) => f[0] === role)));
     busy = true;
     try {
-      if (Object.keys(dims).length) await send("sketch.draw.dimensioned", { command, params, dimensions: dims });
-      else await send(command, params);
+      const lt = lineType === "normal" ? {} : { line_type: lineType };
+      if (Object.keys(dims).length) await send("sketch.draw.dimensioned", { command, params, dimensions: dims }, lt);
+      else await send(command, params, lt);
       const mids = [clicks[0], { at: b, snap: cursor?.snap }].filter((c) => c.snap?.kind === "mid").map((c) => ({ at: c.at, line: c.snap.line }));
       await holdMidpoints(mids);
       h.log?.("sketch_cmd", { command, dims: Object.keys(dims) });
@@ -896,7 +1125,7 @@ export function initSketcher(h) {
       boxDrag = null;
       boxEl.hidden = true;
     }
-    if (tool === "project" && next !== "project") h.viewTools.stopEdgePick();
+    if (tool === "project" && next !== "project") { h.viewTools.stopEdgePick(); h.revealOriginAxes?.(false); }
     if (next?.startsWith("con:") && picked.length > 0) {
       const applied = await applyConstraintToPicked(next.slice(4));
       if (applied) return;
@@ -930,17 +1159,55 @@ export function initSketcher(h) {
       trim: "Click the piece of a curve to remove (up to the nearest crossings)",
       extend: "Click near the end of a line or arc to extend it to the next curve",
       offset: offSel ? "Click the side and distance, or type the distance and press Enter" : "Click a curve (its connected chain is offset)",
-      project: "Click model edges to bring them into the sketch (they follow the model)",
+      project: "Click model edges or an origin axis to bring them into the sketch (they follow the model)",
     }[tool] || (tool === "con:fix" ? "Click a point or curve to hold it where it is"
       : tool === "con:coincident" ? "Click two points, or a point and a curve, to join them"
       : tool?.startsWith("con:") ? (["con:horizontal", "con:vertical"].includes(tool)
       ? "Click a line, or two points" : "Click two curves") + ` to make them ${CON[tool.slice(4)].label.toLowerCase()}`
-      : picked.length ? `${picked.length} selected · Delete removes, Esc clears`
-      : "Draw: L R C A · Dimension D · Trim T, Offset O, Project P · click to select · Enter finishes the sketch");
+      : picked.length ? `${picked.length} selected · Delete removes, X construction, Esc clears`
+      : "Draw: L R C A · Dimension D · Trim T, Offset O, Project P · X construction · click to select · Enter finishes the sketch");
     const failing = st.failing || [];
     const conflict = failing.length || (st.status && st.status !== "solved")
       ? ` · ⚠ ${st.status && st.status !== "solved" ? st.status.replace(/_/g, " ") : "conflict"}${failing.length ? `: ${failing.map((f) => f.id || f.name || f).join(", ")}` : ""}` : "";
-    h.statusEl.textContent = `${active.name} · ${dof}${conflict} · ${hint}`;
+    const mode = lineType === "construction" ? " · Construction mode: new curves are construction geometry" : "";
+    h.statusEl.textContent = `${active.name} · ${dof}${conflict}${mode} · ${hint}`;
+  }
+
+  // Line type (#138), as SolidCraft's palette: with curves selected it changes them (one undo step), with
+  // nothing selected it is the drawing mode for new curves. X toggles construction the same way.
+  function showLineType() {
+    document.querySelectorAll("[data-sketch-linetype]").forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.sketchLinetype === lineType));
+      b.classList.toggle("active", b.dataset.sketchLinetype === lineType && lineType !== "normal");
+    });
+  }
+  async function setLineType(kind) {
+    if (!active || busy) return;
+    const curves = picked.filter((p) => p.kind === "curve").map((p) => p.id);
+    if (!curves.length) {
+      lineType = kind;
+      showLineType();
+      h.log?.("sketch_linetype", { mode: kind });
+      status();
+      return;
+    }
+    busy = true;
+    try {
+      await send("sketch.construction", { curves, value: kind === "construction" });
+      h.log?.("sketch_cmd", { command: "sketch.construction", value: kind === "construction", count: curves.length });
+      status();
+    } catch (err) {
+      h.statusEl.textContent = `Sketch: ${err.message}`;
+    } finally {
+      busy = false;
+      draw();
+    }
+  }
+  function toggleConstruction() {
+    const curves = picked.filter((p) => p.kind === "curve").map((p) => p.id);
+    if (!curves.length) return setLineType(lineType === "construction" ? "normal" : "construction");
+    const all = curves.every((id) => (active.state?.curves || []).find((c) => c.id === id)?.construction);
+    return setLineType(all ? "normal" : "construction");
   }
 
   function onMove(ev) {
@@ -1074,6 +1341,8 @@ export function initSketcher(h) {
       deletePicked();
     } else if (mod && (k === "z" || k === "Z") && !ev.shiftKey) {
       undo();
+    } else if (!mod && !ev.altKey && (k === "x" || k === "X") && !tool) {
+      toggleConstruction();
     } else if (!mod && !ev.altKey && /^[lrcdatop]$/i.test(k)) {
       setTool({ l: "line", r: "rectangle", c: "circle", d: "dimension", a: "arc", t: "trim", o: "offset", p: "project" }[k.toLowerCase()]);
     } else if (!mod && !ev.altKey && /^[0-9.,-]$/.test(k) && tool && (clicks.length || offSel) && hud) {
@@ -1114,6 +1383,8 @@ export function initSketcher(h) {
   // --- entering and leaving -----------------------------------------------------------------------------------
   function enter(res) {
     active = { name: res.sketch, editing: res.editing, state: res.state, frame: res.state.plane };
+    lineType = "normal";  // a sketch starts normal, as in SolidCraft
+    showLineType();
     savedView = { pos: h.camera.position.clone(), up: h.camera.up.clone(), target: h.controls.target.clone() };
     savedButtons = { ...h.controls.mouseButtons };
     // left draws; the middle button pans, the right one turns the view
@@ -1142,6 +1413,7 @@ export function initSketcher(h) {
   }
   function leave() {
     h.viewTools.stopEdgePick();
+    if (tool === "project") h.revealOriginAxes?.(false);
     canvas.removeEventListener("pointermove", onMove);
     canvas.removeEventListener("pointerdown", onDown);
     canvas.removeEventListener("pointerup", onUp);
@@ -1177,7 +1449,7 @@ export function initSketcher(h) {
     draw();
   }
   function setButtons(on) {
-    document.querySelectorAll("[data-sketch-tool], [data-sketch-action]").forEach((b) => { b.disabled = !on; });
+    document.querySelectorAll("[data-sketch-tool], [data-sketch-action], [data-sketch-linetype]").forEach((b) => { b.disabled = !on; });
   }
 
   // Starting a sketch can take a while (in the live demo SolidCraft loads first) and may fail: say so over the view,
@@ -1296,6 +1568,9 @@ export function initSketcher(h) {
   document.querySelectorAll("[data-sketch-tool]").forEach((b) => b.addEventListener("click", () => {
     if (active) setTool(tool === b.dataset.sketchTool ? null : b.dataset.sketchTool);
   }));
+  document.querySelectorAll("[data-sketch-linetype]").forEach((b) => b.addEventListener("click", () => {
+    setLineType(b.dataset.sketchLinetype);
+  }));
   document.querySelectorAll("[data-sketch-action]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.sketchAction === "finish") finish();
     else if (b.dataset.sketchAction === "cancel") cancel();
@@ -1314,6 +1589,7 @@ export function initSketcher(h) {
     startOn: (plane) => { if (!active && !choosing) begin({ plane }); },
     edit: (name) => { if (!active) begin({ edit: name }); },
     isActive: () => !!active || !!choosing,
+    isOpen: () => !!active,
     finish,
     cancel,
   };

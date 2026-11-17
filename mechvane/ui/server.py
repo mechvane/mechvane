@@ -2772,7 +2772,7 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 if ss is None:
                     raise sketch_session.SketchError("no sketch is open")
                 if action == "cmd":
-                    out = ss.command(body.get("command"), body.get("params") or {})
+                    out = ss.command(body.get("command"), body.get("params") or {}, line_type=body.get("line_type"))
                 elif action == "undo":
                     out = ss.undo_last()
                 elif action in ("finish", "cancel"):
@@ -2864,6 +2864,15 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path.startswith("/api/sketch/"):
                 self._sketch_post(srv, path[len("/api/sketch/"):])
                 return
+            if srv.agent_busy() and path.startswith("/api/open/"):
+                # the document that is open already (a page reloaded during a sketch or an agent turn): nothing to
+                # reopen, so answer as an open would; another document stays refused below (#134)
+                name = unquote(path[len("/api/open/"):])
+                with srv.lock:
+                    current = srv.file_path.name if srv.file_path is not None and srv.doc is not None else None
+                    if name and name == current:
+                        self._send_json(200, {"document": current, "files": sorted(srv.files())})
+                        return
             if srv.agent_busy() and path.startswith(("/api/file/", "/api/open/", "/api/project/open", "/api/new", "/api/import_step", "/api/params", "/api/rules",
                                                      "/api/feature", "/api/assembly/", "/api/visibility")):
                 self._send_json(409, {"error": "the agent is working on the files; wait or stop it"})

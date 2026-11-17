@@ -709,15 +709,38 @@ try:
             # Then click the sketch line l1 (at x=120 between the two circles) in the view -> "Sketch line l1"
             step = "revolve: pick sketch axis"
             rev_axis_picked = False
+            axis_at = None
             for fx in (0.67, 0.65, 0.69, 0.63, 0.71, 0.66, 0.68):
                 for fy in (0.64, 0.62, 0.66, 0.60, 0.68, 0.65, 0.63):
                     page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
                     _wait_frame(page)
                     if axis_slot.inner_text() == "Sketch line l1":
                         rev_axis_picked = True
+                        axis_at = (box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
                         break
                 if rev_axis_picked:
                     break
+
+            # Hover feedback (#133): over the sketch line the pointer is a hand, over empty space an arrow again
+            step = "revolve: hover cursor"
+            hover_cursor_ok = False
+            hover_cursor_got = None
+            if axis_at:
+                cursor_js = "getComputedStyle(document.querySelector('#viewport canvas')).cursor"
+                page.mouse.move(box["x"] + 5, box["y"] + 5)
+                _wait_frame(page)
+                page.mouse.move(*axis_at)
+                _wait_frame(page)
+                _wait_frame(page)
+                on_line = page.evaluate(cursor_js)
+                page.mouse.move(box["x"] + 5, box["y"] + 5)
+                _wait_frame(page)
+                _wait_frame(page)
+                off_line = page.evaluate(cursor_js)
+                hover_cursor_got = (on_line, off_line)
+                hover_cursor_ok = on_line == "pointer" and off_line != "pointer"
+            if not hover_cursor_ok:
+                errors.append(f"Revolve: hover over the sketch line does not show a pointer cursor: {hover_cursor_got}")
 
             picked_axis_label = axis_slot.inner_text()
             page.wait_for_function("/Volume|⚠/.test(document.querySelector('.feature-delta')?.textContent || '')"

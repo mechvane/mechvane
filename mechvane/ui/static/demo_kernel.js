@@ -540,20 +540,49 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
         || !(command.startsWith("sketch.") || command === "parameters.change")) {
       throw new ApiError(403, `not a drawing command in the sketch environment: ${command}`);
     }
-    let result;
+    const lineType = body?.line_type;
+    if (lineType != null && lineType !== "normal" && lineType !== "construction") {
+      throw new ApiError(409, `unknown line type: ${lineType} (normal or construction)`);
+    }
+    let result, steps = 1;
     try {
       result = await exec(command, params || {});
     } catch (err) {
       throw new ApiError(400, shortError(err));
     }
-    sk.n++;
+    // construction mode (#138): the new curves become construction geometry, undone together with the drawing
+    const made = lineType === "construction" ? createdCurves(result) : [];
+    if (made.length) {
+      try {
+        await exec("sketch.construction", { curves: made, value: true });
+        steps = 2;
+      } catch (err) {
+        await exec("edit.undo");
+        throw new ApiError(400, shortError(err));
+      }
+    }
+    sk.n += steps;
+    (sk.steps ||= []).push(steps);
     return { result, ...(await sketchState()) };
+  }
+  // the curves a command made: created.curves, also inside a wrapped result and per link (Project)
+  function createdCurves(result) {
+    const found = [];
+    const walk = (v, depth) => {
+      if (depth > 4 || !v || typeof v !== "object" || Array.isArray(v)) return;
+      for (const c of v.created?.curves || []) if (typeof c === "string") found.push(c);
+      for (const l of v.links || []) for (const c of l?.curves || []) if (typeof c === "string") found.push(c);
+      for (const [k, sub] of Object.entries(v)) if (k !== "created" && k !== "links") walk(sub, depth + 1);
+    };
+    walk(result, 0);
+    return [...new Set(found)];
   }
   async function sketchUndo() {
     if (!sk) throw new ApiError(409, "no sketch is open");
     if (sk.n <= (sk.editing ? 0 : 1)) throw new ApiError(409, "nothing to undo in this sketch");
-    await exec("edit.undo");
-    sk.n--;
+    const steps = (sk.steps || []).pop() || 1;
+    for (let i = 0; i < steps; i++) await exec("edit.undo");
+    sk.n -= steps;
     return sketchState();
   }
   async function sketchFinish() {

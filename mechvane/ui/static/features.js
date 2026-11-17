@@ -777,6 +777,38 @@ const DIALOGS = {
         }
         h.revealOriginAxes?.(active.slot === "axis");
         syncSlots();
+        // what a click at uv takes as the axis: the nearest of sketch line, model edge and origin axis (also the
+        // hover feedback, #133, so the highlighted one is the one a click takes)
+        const axisAt = (uv, info) => {
+          const line = uv && sketchLineAt(sk, uv, info?.planeTol ?? 3);
+          const edgePick = info?.edge?.();
+          const orig = info && h.originAxisAt?.(info.clientX, info.clientY);
+          const linePx = line ? (line.dist * 10) / Math.max(info?.planeTol || 3, 1e-6) : Infinity;
+          const edgePx = edgePick ? edgePick.dist : Infinity;
+          const origPx = orig ? orig.dist : Infinity;
+          if (line && linePx - 1.5 <= Math.min(edgePx, origPx)) {
+            return { kind: "sketch_line", axis: { type: "sketch_line", curve: line.id }, edge1: null,
+              pts: toWorld(sk.plane, [line.start, line.end]), log: { kind: "sketch_line", curve: line.id } };
+          }
+          if (edgePick && edgePx <= origPx) {
+            return { kind: "edge", axis: { type: "edge", point: edgePick.point }, edge1: edgePick,
+              pts: edgePick.edge.points, log: { kind: "edge", point: edgePick.point } };
+          }
+          if (orig) {
+            const d = new THREE.Vector3(...AXES[orig.axis]);
+            return { kind: "world", axis: { type: "world", axis: orig.axis }, edge1: null,
+              pts: [d.clone().multiplyScalar(-50), d.clone().multiplyScalar(50)], log: { kind: "world", axis: orig.axis } };
+          }
+          return null;
+        };
+        const hover = (uv, _at, info) => {
+          if (!active) return null;
+          if (active.slot === "profile") {
+            const hit = uv && profileAt(active.prof.shapes, uv);
+            return hit ? toWorld(sk.plane, [...hit.outer, hit.outer[0]]) : null;
+          }
+          return axisAt(uv, info)?.pts || null;
+        };
         if (sk?.plane) {
           h.viewTools.startPlanePick(sk.plane, (uv, _at, info) => {
             if (!active) return;
@@ -792,30 +824,14 @@ const DIALOGS = {
               h.update();
               return;
             }
-            const line = uv && sketchLineAt(sk, uv, info?.planeTol ?? 3);
-            const edgePick = info?.edge?.();
-            const orig = info && h.originAxisAt?.(info.clientX, info.clientY);
-            const linePx = line ? (line.dist * 10) / Math.max(info?.planeTol || 3, 1e-6) : Infinity;
-            const edgePx = edgePick ? edgePick.dist : Infinity;
-            const origPx = orig ? orig.dist : Infinity;
-            if (line && linePx - 1.5 <= Math.min(edgePx, origPx)) {
-              active.axis = { type: "sketch_line", curve: line.id };
-              active.edge1 = null;
-              h.log?.("pick_axis", { kind: "sketch_line", curve: line.id });
-            } else if (edgePick && edgePx <= origPx) {
-              active.edge1 = edgePick;
-              active.axis = { type: "edge", point: edgePick.point };
-              h.log?.("pick_axis", { kind: "edge", point: edgePick.point });
-            } else if (orig) {
-              active.axis = { type: "world", axis: orig.axis };
-              active.edge1 = null;
-              h.log?.("pick_axis", { kind: "world", axis: orig.axis });
-            } else {
-              return;
-            }
+            const got = axisAt(uv, info);
+            if (!got) return;
+            active.axis = got.axis;
+            active.edge1 = got.edge1;
+            h.log?.("pick_axis", got.log);
             syncSlots();
             h.update();
-          });
+          }, hover);
         } else h.viewTools.stopEdgePick();
         h.update();
       };
