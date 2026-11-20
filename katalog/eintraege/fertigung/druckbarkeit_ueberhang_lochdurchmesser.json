@@ -1,0 +1,86 @@
+{
+  "id": "druckbarkeit_ueberhang_lochdurchmesser",
+  "aussage": "Überhänge und Mindest-Lochdurchmesser: Im FDM-3D-Druck sind Überhänge bis 45° zur Vertikalen ohne Stützstrukturen druckbar (50 % Schichtüberdeckung, Hubs). Der Mindest-Bohrungsdurchmesser beträgt im FDM-Druck 2,0 mm (Hubs/Protolabs) und beim CNC-Fräsen 1,0 mm als machbare Untergrenze (Hubs; empfohlen >= 2,5 mm zur Vermeidung von Mikrowerkzeugen).",
+  "werte": [
+    {
+      "name": "Maximaler Überhangwinkel ohne Stütze (FDM)",
+      "wert": 45,
+      "einheit": "Grad"
+    },
+    {
+      "name": "Mindest-Bohrungsdurchmesser FDM",
+      "wert": 2.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Machbarer Mindest-Bohrungsdurchmesser CNC (Hubs Holes)",
+      "wert": 1.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlener Mindest-Bohrungsdurchmesser CNC ohne Mikrowerkzeug (Hubs)",
+      "wert": 2.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste",
+      "Metalle",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Überhang",
+      "Bohrung",
+      "Lochdurchmesser"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-fdm-3d-printing/",
+      "stelle": "Abschnitt Overhangs",
+      "zitat": "Depending on the material, an overhang can usually be printed up to 45° without compromising quality. At 45°, the newly printed layer is supported by 50% of the previous layer.",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.hubs.com/3d-printing/fdm/",
+      "stelle": "Abschnitt Recommended size: Minimum hole diameter",
+      "zitat": "Minimum feature size 2.0 mm (0.0787 in) Minimum hole diameter 2.0 mm (0.0787 in)",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.protolabs.com/en-gb/services/3d-printing/fused-deposition-modelling/",
+      "stelle": "Capabilities table: Minimum Hole Diameter",
+      "zitat": "Minimum Hole Diameter 2.0 mm",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitte Holes (Diameter) & Small features (Minimum hole diameter)",
+      "zitat": "Feasible: any diameter larger than 1 mm [...] Most machine shops can accurately machine cavities and holes using tools down to 2.5 mm (0.1 inches) in diameter.",
+      "abgerufen": "2026-11-18"
+    }
+  ],
+  "begruendung": "Bei 45° Überhang liegt jede FDM-Schicht noch zur Hälfte auf der darunterliegenden Bahn auf; steilere Überhänge hängen ohne Stütze durch. Kleine FDM-Bohrungen unter 2,0 mm schließen sich durch Düsenstauchung und Strangbreite. Beim CNC-Bohren unter 1,0 mm bzw. 2,5 mm steigt die Bruchgefahr dünner Bohrer stark an.",
+  "ausnahmen": "Stützstrukturen im FDM-Druck oder gezieltes Aufbohren nach dem Druck; Mikrobohrungen beim CNC-Fräsen (bis 0,05 mm machbar, erfordert Sonderwerkzeuge).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "fdm_liegende_bohrungen_tropfenform"
+    }
+  ]
+}

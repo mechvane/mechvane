@@ -3,11 +3,13 @@ face (or open one again), draw in it with SolidCraft's sketch commands one reque
 or cancel. The whole session is one hand step in the shared undo list; the agent is locked out meanwhile.
 Inside the sketch, undo goes back one command (a checkpoint per command)."""
 
+from .. import command_form
+
 # Commands the sketcher may send while a sketch is open. Opening, closing and leaving go through
 # begin/finish/cancel, so they are not allowed here.
-NOT_IN_SESSION = {"sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain"}
+NOT_IN_SESSION = command_form.SKETCH_LIFECYCLE
 # Besides sketch.*: changing a dimension's value (its parameter), as double-clicking a dimension does
-ALSO_IN_SESSION = {"parameters.change"}
+ALSO_IN_SESSION = command_form.SKETCH_ALSO
 
 
 def face_plane(plane: dict) -> dict:
@@ -132,15 +134,38 @@ class SketchSession:
         s = self.doc.session
         cp = s.cmd("edit.checkpoint").get("checkpoint")
         try:
+            before = s.cmd("document.revision").get("revision")
             result = s.cmd(command, params or {})
             made = _created_curves(result)
             if line_type == "construction" and made:
                 s.cmd("sketch.construction", {"curves": made, "value": True})
+            changed = s.cmd("document.revision").get("revision") != before
         except BaseException:
             _restore(self.doc, cp)
             raise
-        self.undo.append(cp)
-        return {"result": result, **self.state()}
+        if changed:
+            self.undo.append(cp)
+        else:
+            _forget(self.doc, cp)  # a command that only read (sketch.inspect ...) leaves no undo step
+        return {"result": result, "changed": changed, **self.state()}
+
+    def preview(self, command: str, params: dict, line_type: str | None = None) -> dict:
+        """Run a command, read the sketch as it would be, and go back: nothing changes and no undo step is
+        left (the command dialog's Preview in the sketch, #128)."""
+        if not isinstance(command, str) or command in NOT_IN_SESSION or not (
+                command.startswith("sketch.") or command in ALSO_IN_SESSION):
+            raise PermissionError(f"not a drawing command in the sketch environment: {command}")
+        s = self.doc.session
+        cp = s.cmd("edit.checkpoint").get("checkpoint")
+        try:
+            result = s.cmd(command, params or {})
+            made = _created_curves(result)
+            if line_type == "construction" and made:
+                s.cmd("sketch.construction", {"curves": made, "value": True})
+            st = _inspect(self.doc)
+        finally:
+            _restore(self.doc, cp)
+        return {"preview": True, "result": result, "state": st}
 
     def undo_last(self) -> dict:
         if not self.undo:

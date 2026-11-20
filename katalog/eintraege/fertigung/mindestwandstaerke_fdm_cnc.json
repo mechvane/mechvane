@@ -1,0 +1,101 @@
+{
+  "id": "mindestwandstaerke_fdm_cnc",
+  "aussage": "Mindestwandstärke für die Fertigungsprofile: Beim FDM-3D-Druck (0,4-mm-Düse) beträgt die Standard-Wandstärke 1,2 mm (3 Perimeter; Xometry empfiehlt 1,2–1,5 mm für tragende Wände) bei einem druckbaren Minimum von 0,8 mm (Hubs). Beim CNC-Fräsen von Metallen fordert Protolabs eine nominelle Teiledicke über 1,02 mm (0,040 in.) sowie Merkmalsdicken über 0,51 mm (0,020 in.); Hubs empfiehlt 0,8 mm (machbar 0,5 mm).",
+  "werte": [
+    {
+      "name": "Standard-Wandstärke FDM (3 Perimeter)",
+      "wert": 1.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlene Wandstärke FDM Tragstruktur (Xometry)",
+      "bereich": [1.2, 1.5],
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindestwandstärke FDM (Hubs)",
+      "wert": 0.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nominelle Teiledicke CNC-Fräsen (Protolabs)",
+      "wert": 1.02,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindestdicke Merkmale CNC-Fräsen (Protolabs)",
+      "wert": 0.51,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlene Mindestwandstärke CNC Metalle (Hubs)",
+      "wert": 0.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "Machbare Mindestwandstärke CNC Metalle (Hubs)",
+      "wert": 0.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste",
+      "Metalle",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "3D-Druck",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Wand",
+      "Steg",
+      "Wandstärke"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.hubs.com/3d-printing/fdm/",
+      "stelle": "Abschnitte We have high standards for FDM 3D printing & Recommended size",
+      "zitat": "All parts are printed with 3 outline / perimeter shells or a wall thickness of 1.2 mm. [...] Unsupported walls 0.8 mm (0.0315 in)",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.xometry.com/resources/3d-printing/mini-guide-fdm-3d-printing/",
+      "stelle": "Design Tip 1: Wall Thickness",
+      "zitat": "For supporting structures, walls need to be at least 0.047” – 0.06” (1.2 – 1.5 mm) thick for best results by allowing filament to fill between layers.",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.protolabs.com/services/cnc-machining/cnc-milling/design-guidelines/",
+      "stelle": "Abschnitt Nominal Thickness",
+      "zitat": "Part features are recommended to be thicker than 0.020 in. (0.51mm) throughout the part, and a nominal part thickness above 0.040 in. (1.02mm) is required.",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Minimum wall thickness",
+      "zitat": "Minimum wall thickness [...] Recommended: 0.8 mm (metals), 1.5 mm (plastics) [...] Feasible: 0.5 mm (metals), 1.0 mm (plastics)",
+      "abgerufen": "2026-11-18"
+    }
+  ],
+  "begruendung": "Beim FDM-Druck mit 0,4-mm-Düse entsprechen 1,2 mm drei geschlossenen Wandbahnen (Perimetern); dünnere Wände unter 0,8 mm (< 2 Bahnen) reißen leicht oder werden im Slicer lückenhaft. Beim CNC-Fräsen verlieren dünne Metallwände an Steifigkeit, vibrieren unter den Schnittkräften (Rattern) und verziehen sich.",
+  "ausnahmen": "Lokale Verstärkungsrippen oder Sonderaufspannungen beim Fräsen bis 0,5 mm (Metalle); im FDM-Druck einbahnige Dekowände (Spiralvase).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "mindestwandstaerke_fraesen_hubs"
+    }
+  ]
+}

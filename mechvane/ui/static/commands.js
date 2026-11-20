@@ -72,10 +72,20 @@ export function fieldValue(field, raw) {
       try {
         return JSON.parse(t);
       } catch (err) {
+        // a field that offers ids (the sketch's curves, points ...) takes a bare id as text: l1, l1.end
+        if (field.choices && /^[A-Za-z_][\w.]*$/.test(t)) return t;
         throw new Error(`${name}: not valid JSON (${err.message})`);
       }
     default: return raw;
   }
+}
+
+// A click on a sketch entity for a field (#128): a list field toggles the id in its comma list, any other
+// field takes the id.
+export function sketchPickValue(field, current, id) {
+  if (field.kind !== "list") return id;
+  const ids = String(current || "").split(",").map((x) => x.trim()).filter(Boolean);
+  return (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]).join(", ");
 }
 
 // The command's params from the form's values ({field name: raw}); refuses a missing required field.
@@ -143,6 +153,11 @@ export function ontoFace(point, info) {
 
 const PICK_LABEL = { edges: "edges", faces: "faces", bodies: "bodies" };
 
+// A field that names a feature, sketch or joint (field.choices, from the open document) offers the names as a list.
+const choiceAttr = (f, i) => (f.choices && f.choices.length ? ` list="cmd-choices-${i}"` : "");
+const choiceList = (f, i) => (f.choices && f.choices.length
+  ? `<datalist id="cmd-choices-${i}">${f.choices.map((c) => `<option value="${esc(c)}"></option>`).join("")}</datalist>` : "");
+
 function controlHtml(f, i) {
   const ph = (t) => (t ? ` placeholder="${esc(t)}"` : "");
   const dflt = f.default !== undefined ? `default ${JSON.stringify(f.default)}` : (f.required ? "required" : "");
@@ -156,16 +171,28 @@ function controlHtml(f, i) {
     case "point":
       return `<span class="cmd-point">${["x", "y", "z"].map((a) => `<input data-field="${i}" data-axis="${a}"${ph(a)} spellcheck="false" autocomplete="off">`).join("")}</span>`;
     case "json":
+      // with ids to choose from (a sketch's curves and points): one line with the list; JSON still works
+      if (f.choices && f.choices.length) {
+        return `<input data-field="${i}"${ph("an id from the list, or JSON")}${choiceAttr(f, i)} spellcheck="false" autocomplete="off">${choiceList(f, i)}`;
+      }
       return `<textarea data-field="${i}" rows="${f.name ? 2 : 5}" spellcheck="false"${ph(f.pick ? `JSON: ${PICK_HINT[f.pick] || f.pick}` : (f.name ? "JSON" : "{ … }"))}></textarea>`;
     case "list":
-      return `<input data-field="${i}"${ph(dflt || "a, b, …")} spellcheck="false" autocomplete="off">`;
+      return `<input data-field="${i}"${ph(dflt || "a, b, …")}${choiceAttr(f, i)} spellcheck="false" autocomplete="off">${choiceList(f, i)}`;
     default:
-      return `<input data-field="${i}"${ph(dflt)} spellcheck="false" autocapitalize="off" autocomplete="off">`;
+      // a file field (#128): a name in the project folder, picked from its files or typed (to write a new one)
+      if (f.file) {
+        const hint = `${f.file.mode === "write" ? "new or existing" : "a"} ${f.file.types.join(" / ")} file in the project folder`;
+        return `<input data-field="${i}"${ph(hint)}${choiceAttr(f, i)} spellcheck="false" autocapitalize="off" autocomplete="off">${choiceList(f, i)}`;
+      }
+      return `<input data-field="${i}"${ph(dflt)}${choiceAttr(f, i)} spellcheck="false" autocapitalize="off" autocomplete="off">${choiceList(f, i)}`;
   }
 }
 
 export function initCommandDialog({ propertiesEl, statusEl, post, get, showPreview, clearPreview, reload, closeOthers = () => {},
-                                    viewTools = null, showPicks = () => {}, getSelection = () => [], log = () => {} }) {
+                                    viewTools = null, showPicks = () => {}, getSelection = () => [], log = () => {},
+                                    sketch = null }) {
+  // sketch: {isOpen(), run(command, params)} of the sketch environment; while a sketch is open the dialog offers
+  // its commands and runs them there, each one step of the sketch's own undo (Ctrl+Z in the sketch, #128)
   let list = null;          // [{id, label, tab, panel, offered, reason}] of the open document's SolidCraft
   let active = null;        // {form, el} of the open command form
   const emptyHtml = () => propertiesEl.dataset.emptyHtml;
@@ -263,8 +290,12 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
     log("command_dialog_open", { command: id });
     const fields = form.fields.map((f, i) => `<label class="cmd-field" data-name="${esc(f.name)}" title="${esc(f.description)}">`
       + `<span>${esc(f.name || "parameters")}${f.required ? " *" : ""}</span>`
-      + (f.pick ? `<span class="cmd-pickwrap">${controlHtml(f, i)}<button type="button" class="btn-text cmd-pick" data-pick="${i}"`
-        + ` title="Click ${PICK_LABEL[f.pick]} in the view${f.multi ? " (again to remove)" : ""}">Pick</button></span>` : controlHtml(f, i))
+      + (f.pick && !form.sketch ? `<span class="cmd-pickwrap">${controlHtml(f, i)}<button type="button" class="btn-text cmd-pick" data-pick="${i}"`
+        + ` title="Click ${PICK_LABEL[f.pick]} in the view${f.multi ? " (again to remove)" : ""}">Pick</button></span>`
+        : form.sketch && f.choices && f.choices.length && f.choose && f.choose !== "constraints"
+          ? `<span class="cmd-pickwrap">${controlHtml(f, i)}<button type="button" class="btn-text cmd-skpick" data-skpick="${i}"`
+            + ` title="Click curves or points in the sketch${f.kind === "list" ? " (again to remove)" : ""}">Pick</button></span>`
+          : controlHtml(f, i))
       + "</label>").join("");
     propertiesEl.innerHTML = `
       <form class="feature-dialog cmd-dialog" autocomplete="off">
@@ -294,6 +325,7 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
     el.addEventListener("input", (e) => {
       if (!active) return;
       clearPreview();
+      if (active.form.sketch) sketch?.clearPreview?.();  // the sketch's preview no longer fits the fields
       setText(".feature-delta", "");
       // typed by hand: the text is the value now, the picks shown for it are gone
       const i = e.target.dataset?.field;
@@ -307,6 +339,23 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
       const i = Number(b.dataset.pick);
       if (active.pickField === i) stopPick();
       else startPick(i);
+    }));
+    // in a sketch: Pick takes curve and point ids from clicks in the sketch (a list field toggles them)
+    el.querySelectorAll(".cmd-skpick").forEach((b) => b.addEventListener("click", (e) => {
+      e.preventDefault();
+      const i = Number(b.dataset.skpick);
+      const on = !b.classList.contains("active");
+      el.querySelectorAll(".cmd-skpick").forEach((x) => x.classList.remove("active"));
+      if (!on || !sketch?.pick) { sketch?.pick?.(null); return; }
+      b.classList.add("active");
+      const f = active.form.fields[i];
+      sketch.pick((id) => {
+        if (active?.el !== el) return;
+        if (id === null) { b.classList.remove("active"); return; }  // Esc in the sketch ended it
+        const inp = el.querySelector(`[data-field="${i}"]`);
+        inp.value = sketchPickValue(active.form.fields[i], inp.value, id);
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+      }, f.choose === "points" ? "points" : f.choose === "curves" ? "curves" : "both");
     }));
     prefill();
     el.querySelector("[data-field]")?.focus();
@@ -327,7 +376,8 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
     return out;
   }
 
-  async function run(preview) {
+  // overwrite: the user confirmed that a file command may replace an existing file in the project folder
+  async function run(preview, overwrite = false) {
     if (!active || active.busy) return;
     const dlg = active;
     let params;
@@ -343,13 +393,32 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
     setText(".feature-delta", preview ? "Computing preview…" : "Running…");
     log(preview ? "command_dialog_preview" : "command_dialog_ok", { command: dlg.form.id, params });
     try {
-      const res = await post("api/feature", { command: dlg.form.id, params, generic: true, preview });
+      if (dlg.form.sketch) {
+        if (!sketch?.isOpen()) throw new Error("the sketch was closed");
+        const res = await sketch.run(dlg.form.id, params, preview);
+        if (active !== dlg) return;
+        if (preview) {
+          setText(".feature-delta", "Preview: drawn in the sketch (nothing changed yet).");
+          return;
+        }
+        if (res.changed) {
+          close();
+          statusEl.textContent = `${dlg.form.label}: done (Ctrl+Z takes it back)`;
+        } else {
+          setText(".feature-delta", "Done; the sketch is unchanged.");
+          setText(".cmd-result", JSON.stringify(res.result, null, 1));
+        }
+        return;
+      }
+      const res = await post("api/feature", { command: dlg.form.id, params, generic: true, preview, ...(overwrite ? { overwrite: true } : {}) });
       if (active !== dlg) return;
       if (preview) {
         if (res.mesh) showPreview(res.mesh);
         else clearPreview();
-        setText(".feature-delta", res.changed ? "Preview: the design changes (nothing saved)." : "Preview: the design stays as it is.");
-        if (!res.changed) setText(".cmd-result", JSON.stringify(res.results, null, 1));
+        // a routed command or one that writes a file has no preview: the server says why
+        setText(".feature-delta", res.note ? `Preview: ${res.note}.`
+          : res.changed ? "Preview: the design changes (nothing saved)." : "Preview: the design stays as it is.");
+        if (!res.changed && !res.note) setText(".cmd-result", JSON.stringify(res.results, null, 1));
       } else if (res.changed) {
         close();
         await reload();
@@ -361,6 +430,14 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
       }
     } catch (err) {
       if (active !== dlg) return;
+      if (err.exists && !preview && !overwrite) {
+        // the file is there already: replace it only when the user says so (no undo for files)
+        dlg.busy = false;
+        if (confirm(`${err.message}\nThe old file cannot be restored with Undo.`)) return await run(false, true);
+        setText(".feature-delta", "Not written: choose another file name.");
+        return;
+      }
+      if (dlg.form.sketch) sketch?.clearPreview?.();  // a failed run or preview leaves no old preview behind
       log("command_dialog_error", { command: dlg.form.id, error: String(err.message).split("\n")[0] });
       setText(".feature-delta", "");
       setText(".feature-error", err.message);
@@ -452,6 +529,7 @@ export function initCommandDialog({ propertiesEl, statusEl, post, get, showPrevi
   function close() {
     if (!active) return;
     stopPick();
+    if (active.form.sketch) { sketch?.pick?.(null); sketch?.clearPreview?.(); }
     const { el } = active;
     active = null;
     showPicks([]);

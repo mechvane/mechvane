@@ -761,6 +761,16 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
       Arcus-Client. Hürde: Das geplante SolidCraft-Plugin-System sieht keine
       eigene Plugin-UI vor, der Slicer-Tab braucht also eine
       UI-Erweiterung upstream oder eine Mechvane-eigene Hülle (ADR 0001).
+      *Upstream 2026-11-17:* Antwort auf unsere Frage vom 19.10. (eigene Panels, Neuslicen bei Änderung,
+      [Kommentar raykholo](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6962627263)): „Design changed“-Listener
+      für offene Plugin-Panels stehen in RFC 0015 für Phase 3 ([PR #18727](https://github.com/tangency-labs/solidcraft/pull/18727), offen):
+      im Manifest deklariert und bei der Freigabe gezeigt, nur lesend (Lesebefehle und das eigene Panel), nur solange Panel oder
+      Arbeitsbereich offen ist, entprellt auf einen Aufruf je fertigem Änderungsblock, kann die auslösende Änderung nie scheitern
+      lassen. Zuerst nur ein schlichtes „geändert“-Signal, typisierte Ereignisse vielleicht später. Reicht für „Parameter ändern
+      → neu slicen“; das Slicen selbst (Schreiben, Prozess) muss das Panel dann außerhalb des Listeners anstoßen.
+      Unsere Antwort (Nutzer-OK, 2026-11-17, [Kommentar](https://github.com/tangency-labs/solidcraft/issues/1221#issuecomment-6963401344)):
+      passt; nachgefragt, ob das Panel die schwere Arbeit danach über seine freigegebenen Einstiege startet (Satz im RFC), und
+      die zwei Generator-Fragen vom 14.11. (Joints, Ziele in eingefügten Teilen) in Erinnerung gebracht.
 - [ ] **Regeln/Konfiguration** (iLogic neu gedacht): Parameter-Regeln als
       lesbares Skript plus natürlichsprachliche Regeln, die ein Agent in
       Code übersetzt und testet. **Konfigurationstabellen** wie Onshape: je Eigenschaft eine eigene, unabhängige
@@ -805,6 +815,10 @@ Reihenfolge nach Nutzen für den eigenen Alltag:
          eigener Prozess. Ergebnis gegen ein Lehrbuchbeispiel und CalculiX prüfen.
       2. **Erweiterte Analyse mit CalculiX** (GPL, eigener Prozess, Lizenzregel siehe Phase 0): Kontakt, Plastizität,
          große Verformungen, Eigenfrequenzen, Temperatur.
+      **Vor dem Start FieldCraft prüfen** (Nutzer-Hinweis 2026-11-20, [Notiz](docs/research/2026-11-20-fieldcraft.md)): CAE von
+      Tangency Labs (0.8.1, MIT/Apache-2.0, Rust, Fenster, Kommandozeile, Agenten), öffnet SolidCraft-Teile mit festen
+      Flächennamen, Lasten und Lager hängen daran. Deckt beide Stufen bis auf Kontakt (geplant) ab. Passt zum Weg neben
+      SolidCraft: dann nur Bedienung und Agentenfrage in Mechvane, kein eigener Löser. Entscheidung nach eigener Probe.
 - [ ] **Benannte Anschlüsse (Ports)**: Features exportieren benannte Bezüge (`motor_mount_face`, `shaft_axis`),
       im UI als Fangpunkte, für Agent und Gelenke als stabile Anker. Baut auf den Mechvane-Flächennamen auf,
       Grundlage für die adaptive Projektion. Vorbild Onshape (Nutzer 2026-11-02, [Onshape-Recherche](docs/research/2026-11-02-onshape-features-flash.md)): Mate Connectors als

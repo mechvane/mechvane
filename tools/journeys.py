@@ -561,8 +561,10 @@ def run_journey_2(browser, ctx: JourneyContext):
                     "(t) => { const b = document.querySelector('#btn-redo'); return b && !b.disabled && b.title !== t; }",
                     arg=redo_before, timeout=20000,
                 )
-                page.wait_for_function("() => document.querySelector('#status-indicator')?.textContent === 'Ready'",
-                                       timeout=20000)
+                page.wait_for_function(
+                    "() => ['Ready', 'Undone'].includes(document.querySelector('#status-indicator')?.textContent)",
+                    timeout=20000,
+                )
             else:
                 page.keyboard.press("Control+z")
                 page.wait_for_timeout(300)
@@ -622,65 +624,63 @@ def run_journey_3(browser, ctx: JourneyContext):
             issue_cards = page.locator("#findings-content .finding-card.severity-fail, #findings-content .finding-card.severity-warn")
             ctx.snap(page, "3", 1, "demo-befund")
 
-            if issue_cards.count() == 0:
-                # Known Mechvane/SolidCraft-0.41 bug (#96/#109): bracket.solidcraft no longer triggers countersink_clearance
-                ctx.mark_known(
-                    "3", "befund_vorhanden",
-                    f"Demo-Teil bracket.solidcraft zeigt keinen Fehlerbefund ({verdict!r} statt FAIL/WARN; bekanntes Problem #96/#109)",
-                )
+            if not ctx.check("3", "befund_vorhanden", issue_cards.count() > 0,
+                             f"{issue_cards.count()} finding(s), verdict={verdict!r}", ">= 1 finding"):
                 return
 
-            # If a finding is present (e.g. after #109 is fixed): click it, verify face highlight, fix via form, reload
-            ctx.check("3", "befund_vorhanden", True, f"{issue_cards.count()} finding(s)", ">= 1 finding")
+            # updateFindingsView auto-selects the first failing finding on initial load; clicking an active
+            # card toggles it off, so deselect first if active, then click to verify selection + highlight.
+            if "active" in (issue_cards.first.get_attribute("class") or ""):
+                issue_cards.first.click()
+                page.wait_for_function("() => Boolean(document.getElementById('selection-banner')?.hidden)", timeout=5000)
             issue_cards.first.click()
             page.wait_for_selector("#selection-banner:not([hidden])", timeout=5000)
             banner = page.locator("#selection-banner").inner_text().strip()
             highlighted = page.evaluate(
-                "() => (window.__scene?.children?.find(c => c.children?.some(m => m.isMesh && m.material?.emissive))?.children?.length || 0) > 0 "
-                "|| !document.getElementById('selection-banner')?.hidden"
+                "() => window.__scene?.children?.some("
+                "c => c.children?.some(m => m.isMesh && m.material?.emissive?.getHex?.() > 0)) || false"
             )
             ctx.check("3", "flaeche_markiert", highlighted and banner != "", banner, "highlighted face banner")
             ctx.snap(page, "3", 2, "befund-markiert")
 
-            # Try candidate parameter adjustments until the failing finding disappears
-            fixed_param = None
-            candidates = [("d11", "8"), ("d9", "4"), ("d5", "5")]
-            for pname, pval in candidates:
-                inp = page.locator(f'#params-form input[name="{pname}"]')
-                if inp.count() == 0:
-                    continue
-                # Expand parent <details> if collapsed
-                inp.evaluate("el => { const d = el.closest('details'); if (d) d.open = true; }")
-                inp.fill(pval)
-                page.click("#params-apply")
-                page.wait_for_function(
-                    "() => document.querySelector('#status-indicator')?.textContent === 'Ready' "
-                    "|| document.querySelector('#status-indicator')?.textContent === 'Error'",
-                    timeout=20000,
-                )
-                page.wait_for_timeout(500)
-                if issue_cards.count() == 0:
-                    fixed_param = (pname, pval)
-                    break
+            # Fix the hole_edge_distance finding by moving Hole from x=6 to x=12 via the Edit dialog
+            page.dblclick('.tree-row[data-feature="Hole"]')
+            page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
+            page.fill('.feature-dialog input[name="x"]', "12")
+            page.wait_for_function(
+                "() => !document.querySelector('.feature-ok')?.disabled",
+                timeout=20000,
+            )
+            page.click(".feature-ok")
+            page.wait_for_function(
+                "() => !document.querySelector('.feature-dialog') "
+                "&& document.querySelector('#verdict-badge')?.textContent.trim() === 'Check: OK'",
+                timeout=20000,
+            )
+            verdict_after = page.locator("#verdict-badge").inner_text().strip()
+            ctx.check("3", "befund_behoben", issue_cards.count() == 0 and verdict_after == "Check: OK",
+                      f"findings={issue_cards.count()}, verdict={verdict_after!r}", "0 findings, 'Check: OK'")
+            ctx.snap(page, "3", 3, "befund-behoben")
 
-            ctx.check("3", "befund_behoben", fixed_param is not None and issue_cards.count() == 0,
-                      f"findings={issue_cards.count()}, param={fixed_param}", "0 findings")
-            ctx.snap(page, "3", 3, "parameter-geaendert")
-
-            if fixed_param:
-                pname, pval = fixed_param
-                page.reload(wait_until="load")
-                page.wait_for_function(
-                    "() => document.querySelector('#verdict-badge')?.textContent.includes('Check:') "
-                    "&& document.querySelector('#params-form input') !== null",
-                    timeout=30000,
-                )
-                reloaded_val = page.locator(f'#params-form input[name="{pname}"]').input_value()
-                ctx.check("3", "wert_nach_neuladen",
-                          issue_cards.count() == 0 and reloaded_val.startswith(pval),
-                          f"findings={issue_cards.count()}, {pname}={reloaded_val!r}",
-                          f"0 findings, {pname}={pval!r}")
-                ctx.snap(page, "3", 4, "neu-geladen")
+            page.reload(wait_until="load")
+            page.wait_for_function(
+                "() => document.querySelector('#doc-name')?.textContent.includes('bracket') "
+                "&& document.querySelector('#verdict-badge')?.textContent.includes('Check:') "
+                "&& document.querySelector('.tree-row[data-feature=\"Hole\"]') !== null",
+                timeout=30000,
+            )
+            verdict_reloaded = page.locator("#verdict-badge").inner_text().strip()
+            page.dblclick('.tree-row[data-feature="Hole"]')
+            page.wait_for_selector(".feature-dialog-title:has-text('Edit')", timeout=10000)
+            reloaded_x = page.locator('.feature-dialog input[name="x"]').input_value().strip()
+            page.click(".feature-cancel")
+            page.wait_for_function("() => !document.querySelector('.feature-dialog')", timeout=10000)
+            ctx.check("3", "wert_nach_neuladen",
+                      issue_cards.count() == 0 and verdict_reloaded == "Check: OK"
+                      and _rel_close(float(reloaded_x or 0), 12.0),
+                      f"findings={issue_cards.count()}, verdict={verdict_reloaded!r}, Hole.x={reloaded_x!r}",
+                      "0 findings, 'Check: OK', Hole.x='12'")
+            ctx.snap(page, "3", 4, "neu-geladen")
         finally:
             page.close()
             srv.shutdown()

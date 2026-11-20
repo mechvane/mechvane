@@ -1876,4 +1876,4 @@ dialog.request-dialog.bom-dialog { width: min(980px, 94vw); max-width: none; }
   max-height: 240px; overflow: auto; margin: 4px 0 0; }
 .cmd-result[hidden] { display: none; }
 .cmd-pickwrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; align-items: start; }
-.cmd-pick.active { color: var(--bg); background: var(--selected-border); border-radius: 4px; }
+.cmd-pick.active, .cmd-skpick.active { color: var(--bg); background: var(--selected-border); border-radius: 4px; }

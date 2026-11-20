@@ -3,7 +3,7 @@
 // cancel. The server keeps the sketch open in the part's SolidCraft session (/api/sketch/*, sketch_session.py);
 // this module only draws what `sketch.inspect` returns and turns clicks into SolidCraft sketch commands.
 import * as THREE from "three";
-import { boxFromDrag, boxTakesCurve } from "./sketchgeom.js";
+import { boxFromDrag, boxTakesCurve, dimAutoOrientation, angleSector } from "./sketchgeom.js";
 
 // Snap radii in screen pixels (SolidCraft's viewport uses 8 for points, 7 for inference; research #53)
 const SNAP_POINT_PX = 8;
@@ -320,9 +320,10 @@ export function initSketcher(h) {
     return v2.dot(n, toMid) > 0 ? v2.mul(n, -1) : n;
   }
   // horizontal or vertical (sketch axes) distance between uv points P and Q, the dimension line `offPx` beyond both
-  function axisGeom(P, Q, horizontal, offPx = DIM_OFF) {
+  function axisGeom(P, Q, horizontal, offPx = DIM_OFF, level = null) {
     const k = offPx * mmPerPx(P);
-    const A = horizontal ? [P[0], Math.max(P[1], Q[1]) + k] : [Math.max(P[0], Q[0]) + k, P[1]];
+    // level: where the dimension line runs (v for horizontal, u for vertical), e.g. at the pointer
+    const A = horizontal ? [P[0], level ?? Math.max(P[1], Q[1]) + k] : [level ?? Math.max(P[0], Q[0]) + k, P[1]];
     const B = horizontal ? [Q[0], A[1]] : [A[0], Q[1]];
     const sP = screenOf(P), sQ = screenOf(Q), sA = screenOf(A), sB = screenOf(B);
     const over = (from, to) => v2.add(to, v2.mul(v2.unit(v2.sub(to, from)), EXT_OVER));
@@ -354,16 +355,17 @@ export function initSketcher(h) {
     };
   }
   // angle between lines A0A1 and B0B1 (uv): an arc around their crossing, from one line towards the other
-  function angleGeom(A0, A1, B0, B1, radiusPx = 40) {
+  function angleGeom(A0, A1, B0, B1, radiusPx = 40, sector = null) {
     const da = [A1[0] - A0[0], A1[1] - A0[1]], db = [B1[0] - B0[0], B1[1] - B0[1]];
     const den = da[0] * db[1] - da[1] * db[0];
     if (Math.abs(den) < 1e-9) return null;
     const t = ((B0[0] - A0[0]) * db[1] - (B0[1] - A0[1]) * db[0]) / den;
     const O = [A0[0] + t * da[0], A0[1] + t * da[1]];
     const sO = screenOf(O);
-    // each leg points from the crossing to the farther end of its line
+    // each leg points from the crossing to the farther end of its line, or along the rays of a chosen sector
     const leg = (P0, P1) => v2.unit(v2.sub(screenOf(Math.hypot(P1[0] - O[0], P1[1] - O[1]) >= Math.hypot(P0[0] - O[0], P0[1] - O[1]) ? P1 : P0), sO));
-    const ua = leg(A0, A1), ub = leg(B0, B1);
+    const ray = (r) => v2.unit(v2.sub(screenOf([O[0] + r[0], O[1] + r[1]]), sO));
+    const ua = sector ? ray(sector.ra) : leg(A0, A1), ub = sector ? ray(sector.rb) : leg(B0, B1);
     let a0 = Math.atan2(ua[1], ua[0]), a1 = Math.atan2(ub[1], ub[0]);
     let sweep = a1 - a0;
     while (sweep > Math.PI) sweep -= 2 * Math.PI;
@@ -433,6 +435,13 @@ export function initSketcher(h) {
     const [e1, e2] = ents;
     const p1 = ptOf(e1), p2 = ptOf(e2), l1 = curveOf(e1)?.type === "line" ? curveOf(e1) : null, l2 = curveOf(e2)?.type === "line" ? curveOf(e2) : null;
     if (p1 && p2) {
+      // what a click here places: SolidCraft's auto turns horizontal or vertical when pulled past an end
+      const o = dimAutoOrientation(p1, p2, cursor.at);
+      if (o !== "distance") {
+        const h = o === "horizontal";
+        return { ...axisGeom(p1, p2, h, DIM_OFF, h ? cursor.at[1] : cursor.at[0]),
+                 value: fmt(Math.round(Math.abs(h ? p2[0] - p1[0] : p2[1] - p1[1]) * 100) / 100) };
+      }
       const A = screenOf(p1), B = screenOf(p2), { side, off } = sideTo(A, B);
       return { ...alignedGeom(A, B, side, off), value: fmt(Math.round(uvd(p1, p2) * 100) / 100) };
     }
@@ -445,14 +454,10 @@ export function initSketcher(h) {
       return { ...g, value: fmt(Math.round(dist * 100) / 100) };
     }
     if (l1 && l2) {
-      const g = angleGeom(l1.start_at, l1.end_at, l2.start_at, l2.end_at);
-      if (g) {
-        const a = Math.atan2(l1.end_at[1] - l1.start_at[1], l1.end_at[0] - l1.start_at[0]);
-        const b = Math.atan2(l2.end_at[1] - l2.start_at[1], l2.end_at[0] - l2.start_at[0]);
-        let deg = Math.abs(((b - a) * 180) / Math.PI) % 180;
-        if (deg > 90) deg = 180 - deg;
-        return { ...g, value: `${fmt(Math.round(deg * 100) / 100)}°` };
-      }
+      // the angle of the sector the pointer is in, as SolidCraft places it with text_at (not always the acute one)
+      const sec = angleSector(l1.start_at, l1.end_at, l2.start_at, l2.end_at, cursor.at);
+      const g = sec && angleGeom(l1.start_at, l1.end_at, l2.start_at, l2.end_at, 40, sec);
+      if (g) return { ...g, value: `${fmt(Math.round((sec.span * 180) / Math.PI * 100) / 100)}°` };
       const g2 = pointLineGeom(l1.start_at, l2.start_at, l2.end_at);
       const d = [l2.end_at[0] - l2.start_at[0], l2.end_at[1] - l2.start_at[1]];
       const dist = Math.abs((l1.start_at[0] - l2.start_at[0]) * d[1] - (l1.start_at[1] - l2.start_at[1]) * d[0]) / (Math.hypot(...d) || 1);
@@ -561,7 +566,7 @@ export function initSketcher(h) {
         if (/^#?[A-Za-z_][A-Za-z0-9_]*\s*=/.test(v)) {
           if (!fresh) throw new Error("a name can only be given while placing the dimension");
           // place it again with the name: one undo step back, then the same dimension with `name = expression`
-          await h.post("api/sketch/undo", {}).then((r) => { active.state = r.state; });
+          await h.post("api/sketch/undo", {}).then((r) => { active.state = r.state; previewState = null; });
           await send("sketch.dimension", { ...lastDim.params, value: v });
         } else {
           const ang = ANGLE_TYPES.has(c.type) && /^-?[0-9.]+$/.test(v);
@@ -869,16 +874,21 @@ export function initSketcher(h) {
       busy = true;
       const ref = pick.alt ? { axis: pick.alt.axis }
         : { edge: pick.point.toArray ? pick.point.toArray() : pick.point, body: pick.body };
+      let failed = false;
       try {
-        await send("sketch.project", { refs: [ref] });
+        // Project is a Create command: in construction mode its curves are construction geometry, as in
+        // SolidCraft (sketch_palette::apply_mode; Offset and the other Modify commands keep their type)
+        await send("sketch.project", { refs: [ref] }, lineType === "normal" ? {} : { line_type: lineType });
         h.log?.("sketch_cmd", { command: "sketch.project", ref: pick.alt ? `axis ${pick.alt.axis}` : "edge" });
       } catch (err) {
+        failed = true;
         h.statusEl.textContent = /already projected/.test(err.message)
           ? `Sketch: ${pick.alt ? `the ${pick.alt.axis} axis` : "this edge"} is in the sketch already`
           : `Sketch: ${err.message}`;
       }
       busy = false;
-      if (!/^Sketch: /.test(h.statusEl.textContent)) status();
+      // a projection that worked replaces an earlier error in the status line (review of #139)
+      if (!failed) status();
       draw();
     }, { alt: originAxisPick });
   }
@@ -914,10 +924,19 @@ export function initSketcher(h) {
     }
   }
 
+  // the command dialog's Preview (#128): the sketch as the command would leave it, drawn until the dialog runs
+  // or closes; picks and tools keep working on the real state
+  let previewState = null;
+  // the command dialog's Pick (#128): a click on a curve or point hands its id to the dialog instead of the tools
+  let entityPick = null, entityPickWant = "both";
+  function pickPointOnly(scr) {
+    const ent = pickEntity(scr);
+    return ent?.kind === "point" ? ent : null;
+  }
   function draw() {
     clearGroup();
     if (!active) { h.renderScene(); return; }
-    const st = active.state || {};
+    const st = previewState || active.state || {};
     addLine([[0, 0], [25, 0]].map((p) => p), COLORS.axisX);
     addLine([[0, 0], [0, 25]], COLORS.axisY);
     for (const c of st.curves || []) {
@@ -1065,6 +1084,7 @@ export function initSketcher(h) {
   async function send(command, params, extra = {}) {
     const res = await h.post("api/sketch/cmd", { command, params, ...extra });
     active.state = res.state;
+    previewState = null;  // a step of the sketch's own makes a dialog's preview stale
     return res;
   }
   // a click held at a line's midpoint keeps it there (SolidCraft connects equal points by itself)
@@ -1170,7 +1190,8 @@ export function initSketcher(h) {
     const conflict = failing.length || (st.status && st.status !== "solved")
       ? ` · ⚠ ${st.status && st.status !== "solved" ? st.status.replace(/_/g, " ") : "conflict"}${failing.length ? `: ${failing.map((f) => f.id || f.name || f).join(", ")}` : ""}` : "";
     const mode = lineType === "construction" ? " · Construction mode: new curves are construction geometry" : "";
-    h.statusEl.textContent = `${active.name} · ${dof}${conflict}${mode} · ${hint}`;
+    const pickHint = entityPick ? `Pick for the command dialog: click a ${entityPickWant === "curves" ? "curve" : entityPickWant === "points" ? "point" : "curve or point"} (Esc ends)` : null;
+    h.statusEl.textContent = `${active.name} · ${dof}${conflict}${mode} · ${pickHint || hint}`;
   }
 
   // Line type (#138), as SolidCraft's palette: with curves selected it changes them (one undo step), with
@@ -1251,6 +1272,13 @@ export function initSketcher(h) {
     ev.preventDefault();
     const raw = planeAt(ev);
     if (!raw) return;
+    if (entityPick) {
+      // only what the field takes: a curve field ignores the ends near it, a point field the curves
+      const ent = entityPickWant === "curves" ? pickCurve(raw.screen, 8)
+        : entityPickWant === "points" ? pickPointOnly(raw.screen) : pickEntity(raw.screen);
+      if (ent) entityPick(ent.id, ent.kind);
+      return;
+    }
     if (!tool) {
       canvas.setPointerCapture?.(ev.pointerId);
       boxDrag = {
@@ -1317,8 +1345,14 @@ export function initSketcher(h) {
     if (other || document.querySelector("dialog[open]")) return;
     const k = ev.key;
     const mod = ev.ctrlKey || ev.metaKey;
+    if (mod && !ev.altKey && !ev.shiftKey && (k === "k" || k === "K")) return;  // Ctrl+K: the command dialog (#128)
     let handled = true;
-    if (k === "Escape") {
+    if (k === "Escape" && entityPick) {
+      const cb = entityPick;
+      entityPick = null;
+      cb(null);
+      status();
+    } else if (k === "Escape") {
       if (boxDrag) {
         if (boxDrag.pointerId != null) { try { canvas.releasePointerCapture(boxDrag.pointerId); } catch (_) {} }
         boxDrag = null;
@@ -1369,6 +1403,7 @@ export function initSketcher(h) {
     try {
       const res = await h.post("api/sketch/undo", {});
       active.state = res.state;
+      previewState = null;
       clicks = [];
       if (tool) openHud();
       status();
@@ -1412,6 +1447,8 @@ export function initSketcher(h) {
     h.log?.("sketch_begin", { sketch: active.name, editing: active.editing });
   }
   function leave() {
+    previewState = null;
+    entityPick = null;
     h.viewTools.stopEdgePick();
     if (tool === "project") h.revealOriginAxes?.(false);
     canvas.removeEventListener("pointermove", onMove);
@@ -1533,19 +1570,27 @@ export function initSketcher(h) {
     h.statusEl.textContent = "New sketch: click an origin plane or a flat face, or choose XY, XZ or YZ";
   }
 
+  // true when the sketch was finished; false when it could not be (the status line says why: still open, or
+  // cancelled by the server) or a step is still running
   async function finish() {
-    if (!active || busy) return;
+    if (!active) return false;
+    if (busy) {
+      h.statusEl.textContent = "Sketch: a step is still running, try again in a moment";
+      return false;
+    }
     busy = true;
     try {
       const res = await h.post("api/sketch/finish", {});
       leave();
       h.statusEl.textContent = `${res.done}`;
       await h.reload();
+      return true;
     } catch (err) {
       h.statusEl.textContent = `Sketch: ${err.message}`;
       // the server cancels a sketch it cannot finish; follow it
       const st = await h.get("api/sketch/state").catch(() => null);
       if (st && !st.active) { leave(); await h.reload(); }
+      return false;
     } finally {
       busy = false;
     }
@@ -1584,7 +1629,47 @@ export function initSketcher(h) {
     if (st && st.active) enter(st);
   }).catch(() => {});
 
+  // A command from the general command dialog (Ctrl+K, #128): sent like the tools' own, in the drawing line type,
+  // one step of the sketch's undo; the sketch is drawn again from the answer
+  async function runCommand(command, params, preview = false) {
+    if (!active) throw new Error("no sketch is open");
+    if (busy) throw new Error("a sketch step is still running");
+    busy = true;
+    try {
+      const res = await h.post("api/sketch/cmd", { command, params, generic: true, ...(preview ? { preview: true } : {}),
+                                                   ...(lineType === "normal" ? {} : { line_type: lineType }) });
+      if (preview) {
+        previewState = res.state;
+        return res;
+      }
+      previewState = null;
+      active.state = res.state;
+      h.log?.("sketch_cmd", { command, from: "command_dialog" });
+      return res;
+    } finally {
+      busy = false;
+      status();
+      draw();
+    }
+  }
+
+  function clearCommandPreview() {
+    if (!previewState) return;
+    previewState = null;
+    draw();
+  }
+  // cb(id, kind) for each click on a curve or point (want: curves, points or both); null stops it. Esc stops it too,
+  // calling cb(null) so the dialog can show it
+  function pickEntities(cb, want = "both") {
+    entityPick = cb;
+    entityPickWant = want;
+    status();
+  }
+
   return {
+    runCommand,
+    clearCommandPreview,
+    pickEntities,
     start,
     startOn: (plane) => { if (!active && !choosing) begin({ plane }); },
     edit: (name) => { if (!active) begin({ edit: name }); },

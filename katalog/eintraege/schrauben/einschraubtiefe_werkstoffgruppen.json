@@ -1,0 +1,112 @@
+{
+  "id": "einschraubtiefe_werkstoffgruppen",
+  "aussage": "Erforderliche Mindesteinschraubtiefe je Werkstoff (Schraubenklasse 8.8, metrisches Regelgewinde): Allgemeiner CNC-Mindestwert ohne Werkstoffangabe 1,5 × d (Hubs; empfohlen 3 × d). Nach Bossard-Versuchswerten (Blatt 052): Baustahl S235 1,0 × d, Grauguss GJL 250 1,0 × d, weiches Aluminium AlMg3 F18 2,0 × d (VDI 2230: 3,0 × d), höherfestes Knetaluminium AlMgSi1 F32 1,4 × d. Für Messing nennen Online-Richtwerttabellen (EcomFasteners, Tameson) 1,5 × d (bis 2,0 × d).",
+  "werte": [
+    {
+      "name": "Mindest-Gewindelänge CNC allgemein (Hubs)",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Stahl S235, 8.8 (Bossard)",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Grauguss GJL 250, 8.8 (Bossard)",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Aluminium weich AlMg3 F18, 8.8 (Bossard)",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Knetaluminium AlMgSi1 F32, 8.8 (Bossard)",
+      "wert": 1.4,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Richtwert Einschraubtiefe Messing / Grauguss (EcomFasteners)",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Richtwert Einschraubtiefe Kunststoffe allgemein (EcomFasteners)",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Grauguss",
+      "Aluminium",
+      "Knetaluminium",
+      "Messing",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Gewindeschneiden",
+      "Schraubmontage",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": [
+      "8.8"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
+      "stelle": "Bossard Technische Informationen Blatt 052 (01/2025), Tabelle 8.8 Regelgewinde",
+      "zitat": "S235 (St37-2) > 360 (Ferrit / Perlit-Gefüge) 1,0 · d [...] GJL 250 (GG-25) > 220 1,0 · d [...] AlMg3 F18 > 180 2 · d [3 · d]1) [...] AlMgSi1 F32 > 330 1,4 · d",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-design-parts-cnc-machining/",
+      "stelle": "Abschnitt Thread length",
+      "zitat": "Minimum: 1.5 times nominal diameter [...] Recommended: 3 times nominal diameter",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.ecomfasteners.com/pages/thread-engagement-chart",
+      "stelle": "Thread Engagement Chart / Rule of Thumb",
+      "zitat": "As a rule of thumb, engage at least 1x the bolt's nominal diameter in steel (10 mm for an M10). Softer materials need more: about 1.5x in cast iron, brass or bronze, and about 2x in aluminum, zinc or plastics.",
+      "abgerufen": "2026-11-18"
+    }
+  ],
+  "begruendung": "Die Mindesteinschraubtiefe stellt Bruchgleichheit sicher: Bei Überlastung muss die Schraube im freien Gewinde reißen, bevor das Mutterngewinde des Bauteils durch Abscheren ausreißt. Werkstoffe mit geringerer Scherfestigkeit erfordern entsprechend größere Einschraubtiefen.",
+  "ausnahmen": "Für direktverschraubte Thermoplaste und 3D-gedruckte Bauteile sind gewindefurchende Schrauben oder Einschmelz-Gewindeeinsätze vorzusehen; bei Aluguss mit niedriger Festigkeit ggf. Drahtgewindeeinsätze (HELICOIL).",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "leitet_ab",
+      "ziel": "einschraubtiefe_stahl_grauguss_bossard"
+    },
+    {
+      "typ": "leitet_ab",
+      "ziel": "einschraubtiefe_aluminium_bossard"
+    },
+    {
+      "typ": "leitet_ab",
+      "ziel": "sackloch_gewindelaenge_auslauf_hubs"
+    }
+  ]
+}

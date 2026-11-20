@@ -608,7 +608,9 @@ export function initViewTools({ scene, camera, renderer, modelGroup, renderScene
   renderer.domElement.addEventListener("pointermove", (ev) => {
     if (ev.pointerType === "touch" || ev.buttons) return;  // no hover on touch, none while turning the view
     if (!(edgePick || planePick?.hover)) {
-      if (pickHoverKey !== null || renderer.domElement.style.cursor) clearPickHover();
+      // a face pick keeps its own hover and pointer (the listener below): clearing here would take the hand
+      // back after one move over the same face (review of #139)
+      if (!facePick && (pickHoverKey !== null || renderer.domElement.style.cursor)) clearPickHover();
       return;
     }
     hoverEv = ev;

@@ -14,8 +14,9 @@ can fill it with clicks in the view. A command without a
 schema gets one json field for all its parameters, with SolidCraft's one-line parameter text as help
 (as SolidCraft's own command box takes `id {json}`).
 
-Which commands the dialog offers: all except EXCEPTED (app commands with no meaning in the workspace) and
-DEFERRED (not offered yet; each with its reason). The acceptance test counts the offered ones (tools/acceptance.py).
+Which commands the dialog offers: all except EXCEPTED (app commands with no meaning in the workspace),
+PROVISIONAL (act only on SolidCraft's hidden window; left out of the count for now) and DEFERRED (not offered
+yet; each with its reason). The acceptance test counts the offered ones (tools/acceptance.py).
 """
 
 import re
@@ -29,7 +30,7 @@ EXCEPTED = {
 
 # Commands the general dialog does not offer yet. They count as not reachable until their reason is solved.
 DEFERRED = {
-    "sketch.": "runs inside the sketch environment, which has its own undo (second step of #128)",
+    "sketch.": "runs in the sketch environment: open a sketch first (Create 2D Sketch, or double-click a sketch)",
     "joint.create": "made with Mechvane's add_joint so the joint can be checked later",
     "joint.edit": "changed with Mechvane's edit_joint so the joint can be checked later",
     "file.": "reads or writes a path, sends to a slicer or uploads: needs a file picker",
@@ -46,26 +47,93 @@ DEFERRED = {
     "canvas.insert": "reads an image from a path",
     "canvas.decal": "reads an image from a path",
     # Mechvane wraps these with checks of its own: the raw command would skip them
-    "timeline.edit": "changed in the feature dialogs, which refuse an edit that breaks a later feature",
-    "timeline.delete": "deleted from the model browser, which takes the feature's own sketch along",
-    "timeline.rename": "renamed from the model browser, which keeps names unique",
-    "timeline.roll_to": "Mechvane's part_end rolls the part and back",
-    "timeline.rollback": "Mechvane's part_end rolls the part and back",
-    "joint.delete": "Mechvane's delete_joint also drops what Mechvane keeps about the joint",
+    "timeline.roll_to": "the workspace shows no rolled-back part yet (Mechvane's part_end rolls it only for the agent)",
+    "timeline.rollback": "the workspace shows no rolled-back part yet (Mechvane's part_end rolls it only for the agent)",
     "joint.as_built": "Mechvane's adopt_joint keeps the joint checkable",
-    "assembly.constraint.": "Mechvane's add_constraint and edit_constraint keep the rule checkable",
-    "component.update_links": "Mechvane's update_links reports joints that moved to another face",
+    "assembly.constraint.create": "its two references are taken with the workspace's own picker (component, face), not as raw references",
     "component.delete": "removes a part from the assembly: Mechvane's joints and bolted connections must follow",
     "component.break_link": "turns a linked part into a copy: Mechvane's links must follow",
     "selection.delete": "deletes through SolidCraft's selection: Mechvane's delete keeps owned sketches and joints",
-    # These only act on SolidCraft's hidden window: nothing shows in the workspace (user to decide: excepted?)
-    "view.": "acts only on SolidCraft's hidden window, not on the workspace's view",
-    "render.": "renders in SolidCraft's hidden window; the picture does not reach the workspace yet",
-    "select.": "selects in SolidCraft's hidden window, not in the workspace",
     "selection.get": "reads SolidCraft's hidden selection, not the workspace's",
     "browser.collapse_all": "acts only on SolidCraft's hidden model browser",
     "browser.expand_all": "acts only on SolidCraft's hidden model browser",
 }
+
+# Commands that only act on SolidCraft's hidden window while Mechvane drives it headless: nothing shows in the
+# workspace. Not offered, and left out of the acceptance count for now, each with its reason (decision A, user
+# 2026-11-19); the audit of 2026-11-30 looks at them again (a workspace connected to the running app, --connect).
+PROVISIONAL = {
+    "view.": "acts only on SolidCraft's hidden window, not on the workspace's view",
+    "render.": "renders in SolidCraft's hidden window; the picture does not reach the workspace",
+    "select.": "selects in SolidCraft's hidden window, not in the workspace",
+}
+
+# Commands the dialog offers, but runs through Mechvane's own handler instead of the raw command: the handler
+# keeps what Mechvane records (owned sketches, joint records, links) and refuses what would break the design.
+# Each id needs its handler in ui/server.py (ROUTES); a routed id without one is refused, never run raw.
+# value: True when a preview cannot be taken back (it changes Mechvane's own records, not only SolidCraft's).
+ROUTED = {
+    "timeline.edit": False,
+    "timeline.delete": True,
+    "timeline.rename": True,
+    "joint.delete": True,
+    "assembly.constraint.edit": True,
+    "component.update_links": True,
+}
+
+
+def routed(command: str) -> bool:
+    return command in ROUTED
+
+
+def no_preview(command: str) -> bool:
+    """A routed command that changes Mechvane's records, or one that writes a file."""
+    return bool(ROUTED.get(command)) or (FILE_COMMANDS.get(command) or ("", "", ()))[1] == "write"
+
+
+# Commands that read or write a file, offered with a file choice in the project folder (#128): the field that
+# takes the path, read (the file must exist there) or write, and the file types. Design files are never written.
+# A command that writes has no preview (the preview would write the file). The server resolves the name inside
+# the project folder and refuses anything else; SolidCraft's session allows only that folder, too.
+FILE_COMMANDS = {
+    "parameters.import": ("path", "read", (".csv", ".json")),
+    "inspect.compare_picture": ("reference", "read", (".png", ".jpg", ".jpeg")),
+    "pointcloud.insert": ("path", "read", (".ply", ".xyz", ".pts")),
+    "file.insert_mesh": ("path", "read", (".stl", ".obj", ".3mf", ".ply", ".glb", ".gltf")),
+    "canvas.insert": ("path", "read", (".png", ".jpg", ".jpeg")),
+    "canvas.decal": ("path", "read", (".png", ".jpg", ".jpeg")),
+    "library.inspect": ("path", "read", (".json",)),
+    "library.apply": ("path", "read", (".json",)),
+    "parameters.export": ("path", "write", (".csv", ".json")),
+    "assembly.bom": ("path", "write", (".csv", ".json")),
+    "motion.export": ("path", "write", (".csv", ".json")),
+    "motion.export_animation": ("path", "write", (".gif",)),
+    "sheet.export_bend_table": ("path", "write", (".csv", ".json")),
+    "sheet.export_dxf": ("path", "write", (".dxf",)),
+    "timeline.export_script": ("path", "write", (".json",)),
+    "file.export": ("path", "write", (".step", ".stp", ".stl", ".3mf", ".obj", ".glb")),
+    "file.export_step": ("path", "write", (".step", ".stp")),
+    "file.export_stl": ("path", "write", (".stl",)),
+    "file.export_3mf": ("path", "write", (".3mf",)),
+    "file.export_obj": ("path", "write", (".obj",)),
+    "file.save_mesh": ("path", "write", (".stl", ".3mf")),
+    "library.export": ("path", "write", (".json",)),
+}
+
+
+# Parameters of a file command the dialog does not take: they would start another program (a slicer) or
+# write somewhere else than the chosen file.
+FILE_REFUSED_PARAMS = {
+    "file.save_mesh": ("slicer", "single_instance"),
+    "library.export": ("overwrite",),  # the dialog asks before overwriting instead
+}
+# file.export: the formats it may write (not urdf, which writes meshes beside the file, nor json, the design)
+EXPORT_FORMATS = ("stl", "stla", "obj", "step", "3mf", "3mf-tagged", "glb")
+
+
+def file_command(command: str) -> tuple[str, str, tuple] | None:
+    """(field, read|write, file types) for a command offered with a file choice, or None."""
+    return FILE_COMMANDS.get(command)
 
 
 def _match(command: str, table: dict) -> str | None:
@@ -90,9 +158,14 @@ def excepted(command: str) -> str | None:
     return _match(command, EXCEPTED)
 
 
+def provisional(command: str) -> str | None:
+    """Why a command is left out of the acceptance count for now (PROVISIONAL), or None. It is not offered."""
+    return _match(command, PROVISIONAL)
+
+
 def deferred(command: str) -> str | None:
-    """Why the dialog does not offer a command yet, or None."""
-    return _match(command, DEFERRED)
+    """Why the dialog does not offer a command yet, or None. A routed command is offered (it has a handler)."""
+    return None if command in ROUTED or command in FILE_COMMANDS else _match(command, DEFERRED)
 
 
 FILE_FIELDS = re.compile(r"\.(sc|solidcraft|json|csv|png|jpe?g|ply|xyz|pts|hdr|dxf|svg|glb|gltf|step|stl|3mf|obj|zip)\b"
@@ -113,10 +186,43 @@ def file_field(fm: dict) -> str | None:
     return None
 
 
-def why_not(command: str, fm: dict | None = None) -> str | None:
-    """Why the general dialog does not offer a command (excepted, deferred, a file path), or None."""
-    reason = excepted(command) or deferred(command)
-    if reason is None and fm is not None and file_field(fm):
+# The sketch environment (#128): while a sketch is open the dialog offers sketch.* (and changing a dimension's
+# parameter) and runs them in the sketch session, one undo step each in the sketch's own undo; opening and
+# closing sketches stay with the workspace, and the model waits until the sketch is finished.
+SKETCH_LIFECYCLE = {"sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain", "sketch.cancel"}
+SKETCH_ALSO = {"parameters.change"}
+SKETCH_LIFECYCLE_REASON = "the workspace opens and finishes sketches itself (Finish Sketch, Esc to cancel)"
+SKETCH_OPEN_REASON = "a sketch is open: finish it first (Finish Sketch), the model waits until then"
+SKETCH_3D = {
+    "sketch.line3d",
+    "sketch.arc3d",
+    "sketch.point3d",
+    "sketch.spline3d",
+    "sketch.move3d",
+    "sketch.include_3d",
+}
+SKETCH_3D_HINT = "3D sketch command: switch the sketch to 3D first (sketch.options with sketch_3d: true)."
+
+
+def in_sketch_command(command: str) -> bool:
+    """A command the sketch session runs (it refuses the rest)."""
+    return (command.startswith("sketch.") and command not in SKETCH_LIFECYCLE) or command in SKETCH_ALSO
+
+
+def why_not(command: str, fm: dict | None = None, in_sketch: bool = False) -> str | None:
+    """Why the general dialog does not offer a command (excepted, deferred, a file path), or None. in_sketch:
+    a sketch is open, so only the sketch environment's commands are offered."""
+    if in_sketch:
+        if command in SKETCH_LIFECYCLE:
+            return SKETCH_LIFECYCLE_REASON
+        if not in_sketch_command(command):
+            return SKETCH_OPEN_REASON
+        reason = excepted(command)
+        if reason is None and fm is not None and file_field(fm):
+            reason = FILE_REASON
+        return reason
+    reason = excepted(command) or provisional(command) or deferred(command)
+    if reason is None and fm is not None and command not in FILE_COMMANDS and file_field(fm):
         reason = FILE_REASON
     return reason
 
@@ -352,6 +458,11 @@ def form(describe: dict, row: dict | None = None) -> dict:
     defs = schema.get("$defs") or {}
     required = set(schema.get("required") or [])
     fields = [field(name, node, defs, name in required) for name, node in schema["properties"].items()]
+    fc = FILE_COMMANDS.get(cid)
+    if fc:
+        # the path field becomes a file choice in the project folder (the server fills `choices`)
+        fields = [dict(f, kind="text", file={"mode": fc[1], "types": list(fc[2])}) if f["name"] == fc[0] else f
+                  for f in fields]
     return dict(out, description=(schema.get("description") or "").strip(), fields=fields, raw=False)
 
 

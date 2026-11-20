@@ -364,7 +364,95 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     }
   }
 
+  // General command dialog (#128): list and forms come from commands.json (tools/build_demo_site.py, made like the
+  // server's /api/commands and /api/command); a sketch is drawn with the sketch tools in the demo, not this dialog
+  let commandData = null;
+  const SKETCH_REASON = "in the live demo a sketch is drawn with the sketch tools; the command dialog works on the model";
+  const ASM_REASON = "in the live demo the command dialog works in a part: open one of the parts";
+  const CHOOSE = new Set(["feature", "features", "sketch"]);
+  async function commandsJson() {
+    if (!commandData) commandData = await (await fetch("commands.json")).json();
+    return commandData;
+  }
+  function demoReason(reason) {
+    return sk ? SKETCH_REASON : files?.kind === "assembly" ? ASM_REASON : reason || null;
+  }
+  async function commandList() {
+    const d = await commandsJson();
+    return {
+      commands: d.commands.map((c) => {
+        const reason = demoReason(c.reason);
+        return { id: c.id, label: c.label, tab: c.tab, panel: c.panel, offered: !reason, ...(reason ? { reason } : {}) };
+      }),
+      solidcraft: d.solidcraft, sketch: !!sk,
+    };
+  }
+  async function commandForm(id) {
+    const fm = (await commandsJson()).forms[id];
+    if (!fm) throw new ApiError(404, `unknown command: ${id}`);
+    const reason = demoReason(fm.reason);
+    let fields = fm.fields;
+    // a field that names a feature or sketch offers the names in the model, as on the server
+    if (!reason && fields.some((f) => CHOOSE.has(f.name) && ["expr", "text", "list"].includes(f.kind))) {
+      const names = (await timeline()).map((f) => f.name);
+      if (names.length) fields = fields.map((f) => (CHOOSE.has(f.name) && ["expr", "text", "list"].includes(f.kind) ? { ...f, choices: names } : f));
+    }
+    return { ...fm, fields, offered: !reason, reason };
+  }
+  // Any offered command, all or nothing: one that changes the model is one undo entry, one that only reads
+  // returns its result and leaves none (the document revision tells them apart, as on the server)
+  async function runGeneric(body) {
+    const { command, params = {}, preview } = body;
+    const fm = (await commandsJson()).forms[command];
+    if (!fm) throw new ApiError(403, `unknown command: ${command}`);
+    const reason = demoReason(fm.reason);
+    if (reason) throw new ApiError(403, `${command} is not offered in the command dialog: ${reason}`);
+    const revision = async () => { try { return (await exec("document.revision")).revision; } catch (_) { return null; } };
+    // without document.revision: compare what a command can change (timeline, volume, parameters)
+    const state = async () => JSON.stringify([await timeline(), await measure(),
+                                              await exec("parameters.list", {}).catch(() => null)]);
+    const before = await measure();
+    const r0 = await revision();
+    const sBefore = r0 === null ? await state() : null;
+    const cp = (await exec("edit.checkpoint")).checkpoint;
+    const drop = async () => {
+      await exec("edit.restore_checkpoint", { checkpoint: cp }).catch(() => {});
+      await exec("edit.restore_checkpoint", { checkpoint: cp, forget: true }).catch(() => {});
+    };
+    let result, changed;
+    try {
+      result = await exec(command, params);
+      const r1 = await revision();
+      changed = r0 !== null && r1 !== null ? r0 !== r1 : (await state()) !== sBefore;
+    } catch (err) {
+      await drop();
+      throw new ApiError(400, shortError(err));
+    }
+    if (preview) {
+      // the model goes back whatever happens while reading the preview (as the server's finally)
+      try {
+        const d = changed ? delta(before, await measure()) : null;
+        const m = changed ? await mesh() : null;
+        return { preview: true, changed, delta: d, results: [result], mesh: m };
+      } finally {
+        await drop();
+      }
+    }
+    if (!changed) {
+      await drop();
+      return { done: null, changed: false, results: [result] };
+    }
+    await exec("edit.restore_checkpoint", { checkpoint: cp, forget: true }).catch(() => {});
+    const label = `${fm.label} (${command})`;
+    done.push({ label });
+    undone.length = 0;
+    version++;
+    stepped = true;
+    return { done: label, changed: true, delta: delta(before, await measure()), results: [result] };
+  }
+
   async function feature(body) {
+    if (body.generic) return runGeneric(body);
     const { command, params, preview } = body;
     if (!COMMANDS[command]) throw new ApiError(403, `command not available in the workspace: ${command}`);
     if (command === "mechvane.sketch") {
@@ -505,7 +593,7 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
   // The sketch environment as mechvane/ui/sketch_session.py has it on the server. SolidCraft keeps one undo
   // entry per sketch command (sketch.create too, not sketch.edit or sketch.finish), so the session counts them:
   // undo inside the sketch takes one back, the finished sketch is one hand step of n entries.
-  const SKETCH_NOT = new Set(["sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain"]);
+  const SKETCH_NOT = new Set(["sketch.create", "sketch.edit", "sketch.finish", "sketch.finish_auto_constrain", "sketch.cancel"]);
   let sk = null;           // {name, editing, n: SolidCraft undo entries of this session}
   let autoProject = true;  // Inventor's "Autoproject edges for sketch creation" (default on)
   async function sketchState() {
@@ -671,7 +759,9 @@ export function createDemoKernel({ base, onStatus = () => {} }) {
     if (files.kind === "assembly" && /^feature|^sketch/.test(route)) {
       throw new ApiError(403, "features are added in a part: open one of the parts in Model by hand");
     }
+    if (route === "commands") return commandList();
     await boot();
+    if (route === "command") return commandForm(url.searchParams.get("id") || "");
     if (route === "version") return { version, name: files.document.replace(/\.solidcraft$/, ""), kind: files.kind || "part" };
     if (route === "mesh") return mesh();
     if (route === "tree") return tree();

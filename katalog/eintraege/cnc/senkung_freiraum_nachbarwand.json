@@ -1,0 +1,58 @@
+{
+  "id": "senkung_freiraum_nachbarwand",
+  "aussage": "Eine Senkung benötigt freien Werkzeugzugang über ihren gesamten Außendurchmesser (Major Diameter). Steht eine Nachbarwand oder ein Steg zu nah an der Bohrungsachse, schneidet das Senkwerkzeug in die Wand ein oder kollidiert mit ihr; der Freiraum ist vom größten Senkdurchmesser aus zu bemessen (TZR empfiehlt zur Kante mindestens 1,5 × Senkdurchmesser).",
+  "werte": [
+    {
+      "name": "Mindestabstand Senkungsmitte zu Kante (TZR)",
+      "wert": 1.5,
+      "einheit": "x Senkdurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "Bohren",
+      "Senken",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Senkung",
+      "Kegelsenkung",
+      "Flachsenkung",
+      "Werkzeugfreiraum"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/resources/blog/cnc-hole-design-through-blind-tapped-and-more/",
+      "stelle": "Abschnitte Tool Access & Edge Distance",
+      "zitat": "Holes inside deep pockets or close to tall walls may require longer, less rigid tools, which can hurt accuracy and increase machining time. Give the tool a clear path to the feature whenever possible. [...] When checking edge distance, consider the largest diameter of the entire feature, including counterbores and countersinks.",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://tzrmetal.com/countersink-holes/",
+      "stelle": "Abschnitt Edge and Bend Clearance",
+      "zitat": "Furthermore, placing a countersink too close to a bend line creates tooling interference: the angled cutter will strike the vertical flange, damaging both the tool and the workpiece. Always calculate clearance from the major diameter of the countersink, not the center point of the pilot hole. [...] As a standard rule of thumb, the minimum distance from the edge of the part to the center of the countersink should be at least 1.5 times the major diameter.",
+      "abgerufen": "2026-11-18"
+    }
+  ],
+  "begruendung": "Kegelsenker besitzen an ihrer Oberkante einen deutlich größeren Durchmesser als das Kern- oder Durchgangsloch. Reicht eine Nachbarwand in den Bereich des Senkkegels hinein, wird sie beim Senken angekerbt, der Schraubenkopf liegt nicht bündig auf oder das Senkwerkzeug kollidiert mit dem Bauteil.",
+  "ausnahmen": "Bohrung von der Wand wegrücken, Schraubendurchmesser verkleinern oder auf eine zylindrische Flachsenkung mit kleinerem Kopfdurchmesser ausweichen.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din74_iso15065_senkungen_senkschrauben"
+    }
+  ]
+}

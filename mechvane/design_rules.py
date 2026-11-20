@@ -213,6 +213,11 @@ def _load_katalog_verfahrensregeln() -> dict:
 # Rule -> knowledge catalog entry that states the rule's threshold (katalog/eintraege). A rule without an
 # entry here has no entry in the catalog that states its value yet: its findings carry no `source`.
 RULE_SOURCES = {
+    "min_wall_thickness": "mindestwandstaerke_fdm_cnc",
+    "hole_edge_distance": "randabstand_bohrung_kante",
+    "thread_depth": "einschraubtiefe_werkstoffgruppen",
+    "printability": "druckbarkeit_ueberhang_lochdurchmesser",
+    "countersink_clearance": "senkung_freiraum_nachbarwand",
     "horizontal_hole": "fdm_liegende_bohrungen_tropfenform",
     "heat_set_insert": "gewindeeinsaetze_3ddruck_ruthex",
     "pocket_corner_radius": "innenradius_vertikale_kanten_hubs",
@@ -290,8 +295,10 @@ _eval_length = g.eval_length
 
 
 def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
-                   timeline_map: dict, threads: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Group cylindrical faces sharing an axis and radius into logical holes and external cylinders."""
+                   timeline_map: dict, threads: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    """Group cylindrical faces sharing an axis and radius into logical holes, external cylinders and open
+    rounds: the concave half of a slot end or an edge notch. Open rounds are no holes (#130), but the wall
+    behind them is measured like a hole's, towards their closed side only (`closed_side`)."""
     cyl_faces = [f for f in faces if f.get("cylinder")]
     feat_cyl_faces = {}
     for f in cyl_faces:
@@ -303,10 +310,11 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
     for f_list in feat_cyl_faces.values():
         groups.extend(g.group_cylindrical_faces(f_list))
 
-    is_hole_list = g.classify_hole_groups(session, body_name, groups, timeline_map, threads, bbox)
+    is_hole_list = g.classify_hole_groups(session, body_name, groups, timeline_map, threads, bbox, keep_open=True)
 
     holes = []
     ext_cylinders = []
+    open_rounds = []
     for grp, is_hole in zip(groups, is_hole_list):
         r = grp[0]["cylinder"]["radius"]
         d = 2.0 * r
@@ -358,7 +366,9 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
             if end_caps:
                 is_blind = True
 
-        holes.append({
+        closed_side = g.cylinder_group_closed_side(grp)
+        (open_rounds if closed_side else holes).append({
+            "closed_side": closed_side,
             "faces": [f["name"] for f in grp],
             "representative_point": grp[0]["point"],
             "radius": r,
@@ -409,7 +419,7 @@ def _extract_holes(session, body_name: str, faces: list[dict], bbox: dict,
             used_holes.add(h_idx)
             used_threads.add(th_idx)
 
-    return holes, ext_cylinders
+    return holes, ext_cylinders, open_rounds
 
 
 def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cfg: dict) -> dict:
@@ -419,7 +429,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
     except Exception:
         edges = []
     bbox = body["bbox"]
-    holes, ext_cyls = _extract_holes(session, body["name"], faces, bbox, timeline_map, threads)
+    holes, ext_cyls, open_rounds = _extract_holes(session, body["name"], faces, bbox, timeline_map, threads)
 
     rules = {
         "min_wall_thickness": {"status": "ok", "findings": []},
@@ -449,9 +459,14 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
     min_wall = cfg["min_wall_thickness"]
     edge_factor = cfg["hole_edge_distance_factor"]
 
-    # 1. Hole edge distance and wall thickness to boundaries
-    for h in holes:
+    # 1. Hole edge distance and wall thickness to boundaries; an open round (slot end, notch) only towards the
+    # side its wall is on: its open side faces the cut-out it belongs to, not material (#130)
+    for h in holes + open_rounds:
         c, r, d, axis = h["center"], h["radius"], h["diameter"], h["axis"]
+        closed = h.get("closed_side")
+
+        def towards_wall(direction) -> bool:
+            return closed is None or g.dot(direction, closed) > 0.1  # not across (perpendicular to) the opening
 
         # Axial range of the hole along its cylinder axis
         hole_edges = [e for e in edges if any(g.edge_touches(e.get("name", ""), fn) for fn in h["faces"])]
@@ -473,7 +488,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             v_to_plane = g.sub(sf["point"], c)
             signed_dist = g.dot(v_to_plane, n)
             # Face normal must point outward from the hole, not inward as in interior steps/pockets
-            if signed_dist < -1e-4:
+            if signed_dist < -1e-4 or not towards_wall(n):
                 continue
 
             f_edges = [e for e in edges if g.edge_touches(e.get("name", ""), sf["name"])]
@@ -505,6 +520,8 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if d_axes < 0.05:
                 # Coaxial cylinder (Dom): handled in wall thickness check below
                 continue
+            if not towards_wall(g.unit(g.sub(g.sub(ec["center"], c), g.scale(axis, g.dot(g.sub(ec["center"], c), axis))))):
+                continue
             ec_edges = [e for e in edges if any(g.edge_touches(e.get("name", ""), fn) for fn in ec["faces"])]
             if ec_edges:
                 ec_pts = [e["start"] for e in ec_edges] + [e["end"] for e in ec_edges]
@@ -529,7 +546,12 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
         d_box = []
         for i in (0, 1, 2):
             if abs(axis[i]) < 0.5:
-                d_box.append(min(abs(c[i] - bbox["min"][i]), abs(c[i] - bbox["max"][i])))
+                e = [0.0, 0.0, 0.0]
+                e[i] = 1.0
+                sides = [abs(c[i] - bbox["min"][i])] if towards_wall(g.scale(e, -1.0)) else []
+                sides += [abs(c[i] - bbox["max"][i])] if towards_wall(e) else []
+                if sides:
+                    d_box.append(min(sides))
         dist_bbox = min(d_box) if d_box else float("inf")
 
         if dist_faces:
@@ -539,6 +561,8 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             min_dist, nearest_face = dist_bbox, "bbox"
 
         req_edge = edge_factor * d
+        if min_dist == float("inf"):
+            continue  # an open round with no wall in reach of the check (nothing on its closed side)
         if any(":cbore:" in fn for fn in h["faces"]):
             pass  # a counterbore is the head recess of its bore: the bore's own edge distance and the wall count
         elif min_dist < req_edge - 1e-4:
@@ -546,7 +570,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             rules["hole_edge_distance"]["findings"].append({
                 "status": "fail",
                 "location": {"point": h["representative_point"], "face": h["faces"][0]},
-                "message": (f"Hole edge distance {min_dist:.2f} mm < {req_edge:.2f} mm "
+                "message": (f"{'Slot end' if closed else 'Hole'} edge distance {min_dist:.2f} mm < {req_edge:.2f} mm "
                             f"({edge_factor:.1f} × d for Ø {d:.1f} mm) to face {nearest_face}"),
                 "value": round(min_dist, 4),
                 "threshold": round(req_edge, 4),
@@ -555,7 +579,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             rules["hole_edge_distance"]["findings"].append({
                 "status": "ok",
                 "location": {"point": h["representative_point"], "face": h["faces"][0]},
-                "message": (f"Hole edge distance {min_dist:.2f} mm >= {req_edge:.2f} mm "
+                "message": (f"{'Slot end' if closed else 'Hole'} edge distance {min_dist:.2f} mm >= {req_edge:.2f} mm "
                             f"({edge_factor:.1f} × d for Ø {d:.1f} mm)"),
                 "value": round(min_dist, 4),
                 "threshold": round(req_edge, 4),
@@ -583,6 +607,8 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
             if overlap < 1e-3:
                 continue
 
+            if d_axes >= 0.05 and not towards_wall(g.unit(g.sub(g.sub(ec["center"], c), g.scale(axis, g.dot(g.sub(ec["center"], c), axis))))):
+                continue
             if d_axes < 0.05:
                 # Coaxial hollow cylinder / Dom: wall = R_outer - r_inner
                 w_cyl = max(0.0, ec["radius"] - r)
@@ -601,7 +627,7 @@ def _check_body(session, body: dict, timeline_map: dict, threads: list[dict], cf
                 "status": "fail",
                 "location": {"point": h["representative_point"], "face": h["faces"][0]},
                 "message": (f"Wall thickness to edge is {w_edge:.2f} mm < {min_wall:.2f} mm "
-                            f"for hole Ø {d:.1f} mm"),
+                            f"for {'slot end' if closed else 'hole'} Ø {d:.1f} mm"),
                 "value": round(w_edge, 4),
                 "threshold": round(min_wall, 4),
             })

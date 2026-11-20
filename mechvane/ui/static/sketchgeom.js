@@ -236,3 +236,44 @@ export function boxTakesCurve(box, curve, crossing = box.crossing, project = nul
   return false;
 }
 
+
+// SolidCraft's choice for an `auto` dimension between two points a, b ([u, v]) with its text at t
+// (engine cmd/sketch.rs auto_orientation): across from them (between the perpendiculars through them, or a
+// tenth of their distance past) the distance between them; pulled further past an end, up or down from it
+// horizontal, sideways vertical. Points on one axis line keep the distance.
+export function dimAutoOrientation(a, b, t) {
+  const d = [b[0] - a[0], b[1] - a[1]];
+  const len = Math.hypot(d[0], d[1]);
+  if (!t || !(len > 0)) return "distance";
+  const along = ((t[0] - a[0]) * d[0] + (t[1] - a[1]) * d[1]) / len;
+  const margin = len / 10;
+  if (Math.abs(d[0]) <= 1e-9 * len || Math.abs(d[1]) <= 1e-9 * len || !Number.isFinite(along)
+      || (along >= -margin && along <= len + margin)) return "distance";
+  const end = along < 0 ? a : b;
+  const pull = [t[0] - end[0], t[1] - end[1]];
+  return Math.abs(pull[1]) >= Math.abs(pull[0]) ? "horizontal" : "vertical";
+}
+
+// The angle between two lines (a0-a1, b0-b1) in the sector the text t sits in (engine angle_by_sector): the
+// lines' crossing O, the two rays that bound that sector (unit [u, v]) and its span in radians; null for
+// parallel lines.
+export function angleSector(a0, a1, b0, b1, t) {
+  const unit = (p, q) => { const d = [q[0] - p[0], q[1] - p[1]], l = Math.hypot(d[0], d[1]); return l > 0 ? [d[0] / l, d[1] / l] : null; };
+  const da = unit(a0, a1), db = unit(b0, b1);
+  if (!da || !db) return null;
+  const den = da[0] * db[1] - da[1] * db[0];
+  if (Math.abs(den) < 1e-12) return null;
+  const s = ((b0[0] - a0[0]) * db[1] - (b0[1] - a0[1]) * db[0]) / den;
+  const O = [a0[0] + da[0] * s, a0[1] + da[1] * s];
+  const ang = (v) => Math.atan2(v[1], v[0]);
+  const TAU = 2 * Math.PI, mod = (x) => ((x % TAU) + TAU) % TAU;
+  const ta = ang([t[0] - O[0], t[1] - O[1]]);
+  const rays = [[da, 0], [[-da[0], -da[1]], 0], [db, 1], [[-db[0], -db[1]], 1]].map(([v, l]) => ({ v, l, a: ang(v) }))
+    .sort((p, q) => p.a - q.a);
+  for (let k = 0; k < 4; k++) {
+    const r0 = rays[k], r1 = rays[(k + 1) % 4];
+    const span = mod(r1.a - r0.a);
+    if (mod(ta - r0.a) <= span && r0.l !== r1.l) return { O, ra: r0.v, rb: r1.v, span };
+  }
+  return null;
+}

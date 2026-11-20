@@ -63,6 +63,38 @@ with sync_playwright() as p:
     c = st()["curves"]
     if len(c) <= nproj: fails.append("project")
     print("project: curves", nproj, "->", len(c), c[-1].get("start_at"), c[-1].get("end_at"), c[-1].get("construction"))
+    # project an origin axis (#137): the X axis in the view, right of the box where no model edge competes
+    pg.keyboard.press("Escape"); pg.keyboard.press("p"); pg.wait_for_timeout(300)
+    nax = len(st()["curves"])
+    for ddx in [0, 4, -4, 8]:
+        pg.mouse.click(sx(55 + ddx), sy(0)); pg.wait_for_timeout(1200)
+        if len(st()["curves"]) > nax:
+            break
+    ax = st()["curves"][nax:]
+    ax_ok = len(ax) == 1 and ax[0]["type"] == "line" and abs(ax[0]["start_at"][1]) < 1e-6 and abs(ax[0]["end_at"][1]) < 1e-6
+    if not ax_ok: fails.append("project_origin_axis")
+    print("project origin axis:", [(c["type"], c.get("start_at"), c.get("end_at")) for c in ax], "ok:", ax_ok)
+    # construction mode (#138): X with nothing selected; a drawn line and a projected edge are construction
+    # (Create commands, as in SolidCraft); X again leaves the mode
+    pg.keyboard.press("Escape"); pg.keyboard.press("Escape"); pg.keyboard.press("x"); pg.wait_for_timeout(300)
+    mode_text = pg.locator("#status-indicator").inner_text()
+    pg.keyboard.press("l"); pg.keyboard.down("Control")
+    pg.mouse.click(sx(-30), sy(-45)); pg.mouse.click(sx(30), sy(-45)); pg.keyboard.up("Control"); pg.wait_for_timeout(1200)
+    pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
+    cl = [c for c in st()["curves"] if c["type"] == "line" and abs(c["start_at"][1] + 45) < 0.5 and abs(c["end_at"][1] + 45) < 0.5]
+    pg.keyboard.press("p"); npc = len(st()["curves"])
+    for dy in [0, 2, -2, 4, -4, 6, 8, 10, 12]:
+        pg.mouse.click(sx(10), sy(-25) + dy); pg.wait_for_timeout(1200)
+        if len(st()["curves"]) > npc:
+            break
+    pc = st()["curves"][npc:]
+    pg.keyboard.press("Escape"); pg.keyboard.press("x"); pg.wait_for_timeout(300)
+    left_mode = "Construction mode" not in pg.locator("#status-indicator").inner_text()
+    cons_ok = (left_mode and "Construction" in mode_text and len(cl) == 1 and cl[0].get("construction") is True
+               and len(pc) >= 1 and all(c.get("construction") is True for c in pc))
+    if not cons_ok: fails.append("construction_mode")
+    print("construction mode:", repr(mode_text[:60]), "left:", left_mode, "line:", [c.get("construction") for c in cl],
+          "projected:", [c.get("construction") for c in pc], "ok:", cons_ok)
     pg.keyboard.press("Escape"); pg.mouse.move(cx, cy + 330); pg.wait_for_timeout(300)
     pg.screenshot(path="/tmp/shots/12-stutzen-versatz-projizieren.png")
 
@@ -153,8 +185,56 @@ with sync_playwright() as p:
         fails.append("face_snap_corner")
     print("face corner snap: visible:", snap_vis, "drawn:", [c["start_at"] for c in drawn], "coincident:", len(coinc), "ok:", snap_ok)
     pg.screenshot(path="/tmp/shots/14-flaechenkanten-projiziert.png")
+    # command dialog in the sketch (#128): Ctrl+K, sketch.delete, the drawn line from the sketch's ids, OK removes
+    # it as one step of the sketch's undo, Ctrl+Z brings it back
+    n_cmd = len(st()["curves"])
+    target = drawn[0]["id"] if drawn else None
+    pg.keyboard.press("Control+k")
+    pg.wait_for_selector(".cmd-palette:not([hidden]) .cmd-results li", timeout=60000)
+    pg.keyboard.type("sketch.delete")
+    pg.wait_for_selector(".cmd-results li.active .cmd-id:text-is('sketch.delete')", timeout=10000)
+    pg.keyboard.press("Enter")
+    pg.wait_for_selector(".cmd-dialog", timeout=30000)
+    offered_ids = [o.get_attribute("value") for o in pg.locator('.cmd-field[data-name="entities"] datalist option').all()]
+    # part 2: Pick takes the line from a click in the sketch; Preview draws the result and changes nothing
+    pg.click('.cmd-field[data-name="entities"] .cmd-skpick')
+    pg.mouse.click(sx(-25), sy(-12.5)); pg.wait_for_timeout(300)
+    picked_val = pg.locator('.cmd-field[data-name="entities"] [data-field]').input_value()
+    pg.click('.cmd-field[data-name="entities"] .cmd-skpick')  # Pick off again
+    if picked_val.strip() != (target or ""):
+        pg.locator('.cmd-field[data-name="entities"] [data-field]').fill(target or "")
+    pg.click(".cmd-dialog .cmd-preview"); pg.wait_for_timeout(1200)
+    preview_text = pg.locator(".cmd-dialog .feature-delta").inner_text()
+    n_preview = len(st()["curves"])
+    preview_ok = "Preview: drawn" in preview_text and n_preview == n_cmd
+    pg.click(".cmd-dialog .feature-ok"); pg.wait_for_timeout(1500)
+    n_del = len(st()["curves"])
+    pg.mouse.move(cx, cy + 300); pg.keyboard.press("Control+z"); pg.wait_for_timeout(1500)
+    n_back = len(st()["curves"])
+    cmd_ok = (target in offered_ids and picked_val.strip() == target and preview_ok and n_del == n_cmd - 1 and n_back == n_cmd
+              and pg.locator(".cmd-dialog").count() == 0)
+    if not cmd_ok: fails.append("command_dialog_in_sketch")
+    print("command dialog in sketch: ids", offered_ids[:6], "| deleted", n_cmd, "->", n_del, "| ctrl+z ->", n_back,
+          "| pick", repr(picked_val), "| preview", repr(preview_text[:40]), "ok:", cmd_ok)
 
     pg.evaluate("fetch('api/sketch/cancel', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})")
+    # #134: with a sketch open, the Model page link finishes the sketch first, then opens the Model page
+    pg.reload(); pg.wait_for_timeout(4000)
+    pg.keyboard.press("s"); pg.click(".sketch-plane-bar [data-plane=XY]"); pg.wait_for_timeout(2500)
+    pg.keyboard.press("l"); pg.keyboard.down("Control")
+    pg.mouse.click(sx(-20), sy(40)); pg.mouse.click(sx(20), sy(40)); pg.keyboard.up("Control"); pg.wait_for_timeout(1200)
+    pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
+    was_open = pg.evaluate("fetch('api/sketch/state').then(r=>r.json())").get("active")
+    pg.evaluate("document.getElementById('mode-model').click()")
+    try:
+        pg.wait_for_url("**/model**", timeout=20000)
+        on_model = True
+    except Exception:
+        on_model = False
+    after = pg.evaluate("fetch('/api/sketch/state').then(r=>r.json())") if on_model else {}
+    model_ok = bool(was_open) and on_model and not after.get("active")
+    if not model_ok: fails.append("model_mode_with_sketch")
+    print("model mode with sketch open:", "was open", was_open, "| model page", on_model, "| sketch active after", after.get("active"), "ok:", model_ok)
     print("errors:", errs, "| failed:", fails or "none")
     b.close()
 sys.exit(1 if errs or fails else 0)

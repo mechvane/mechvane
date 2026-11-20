@@ -9,6 +9,8 @@
 
 **[Website](https://mechvane.dev/)** · **[Live demo](https://mechvane.dev/demo/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
 
+> **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent. The browser workspace and the live demo stay available as they are.
+
 Parametric 3D CAD for everyday mechanical engineering (individual engineers, makers,
 small and medium-sized companies), following the workflow of classic mechanical CAD systems.
 Model by hand, hand a step to an AI agent, or both: you work on the same parts and get the

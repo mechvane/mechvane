@@ -37,6 +37,34 @@ def collect(ws, doc, tmp):
     return data
 
 
+DEMO_REASON = "not in the live demo: it needs Mechvane's own handling on the server (install Mechvane to use it)"
+
+
+def demo_command_forms(doc, only=None) -> dict:
+    """The general command dialog for the live demo (#128): every command's list entry and form, made once at build
+    time from this SolidCraft session as the server makes them (list_commands, describe_command, command_form).
+    Commands with a Mechvane handler on the server or a file path are not offered in the demo. only: these ids
+    (tests)."""
+    from mechvane import command_form
+    from mechvane.ui import server as srvmod
+    rows, forms = [], {}
+    for cid, row in sorted(srvmod._command_cache(doc)["rows"].items()):
+        if command_form.excepted(cid) or (only is not None and cid not in only):
+            continue
+        demo_only = command_form.routed(cid) or command_form.file_command(cid)
+        try:
+            fm = srvmod.command_form_for(doc, cid)
+        except Exception as e:  # noqa: BLE001 - one command without a form must not stop the build
+            print(f"commands: {cid}: {e}")
+            continue
+        reason = DEMO_REASON if demo_only else command_form.why_not(cid, fm)
+        forms[cid] = dict(fm, fields=[{k: v for k, v in f.items() if k != "choices"} for f in fm["fields"]],
+                          offered=reason is None, reason=reason)
+        rows.append({"id": cid, "label": row.get("label") or cid, "tab": row.get("tab"), "panel": row.get("panel"),
+                     **({"reason": reason} if reason else {})})
+    return {"solidcraft": install.VERSION, "commands": rows, "forms": forms}
+
+
 def write(d: Path, data: dict):
     d.mkdir(parents=True, exist_ok=True)
     for key, value in data.items():
@@ -135,11 +163,18 @@ def main():
     shutil.copytree(webapp.webapp_dir(), demo / "sc")
     split_large_wasm(demo / "sc")
     index = []
+    commands = None
     with tempfile.TemporaryDirectory() as tmp:
         ws = Workspace(tmp)
         try:
             for name, title, build in DEMOS:
                 doc = build(ws)
+                if commands is None and doc.kind != ASSEMBLY:
+                    commands = demo_command_forms(doc)
+                    (demo / "commands.json").write_text(json.dumps(commands, separators=(",", ":")), encoding="utf-8")
+                    print(f"commands: {len(commands['commands'])}, offered "
+                          f"{sum(1 for c in commands['commands'] if 'reason' not in c)}, "
+                          f"{(demo / 'commands.json').stat().st_size // 1024} KB")
                 d = demo / "demos" / name
                 d.mkdir(parents=True)
                 data = collect(ws, doc, tmp)

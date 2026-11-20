@@ -158,6 +158,20 @@ def cylinder_group_length(grp: list[dict]) -> float:
     return area / (math.pi * r) if lone_half else area / (2.0 * math.pi * r)
 
 
+def cylinder_group_closed_side(grp: list[dict]) -> list[float] | None:
+    """Unit vector from the axis towards the area-weighted centroid of an open round (the side its wall is on,
+    the material side of a slot end), or None for a closed cylinder or without centroids."""
+    if not cylinder_group_is_open(grp):
+        return None
+    c = grp[0]["cylinder"]
+    axis = unit(c["axis"])
+    area = sum(f["area"] for f in grp)
+    cen = [sum(f["area"] * f["centroid"][i] for f in grp) / area for i in range(3)]
+    v = sub(cen, c["origin"])
+    radial = sub(v, scale(axis, dot(v, axis)))
+    return unit(radial)
+
+
 def cylinder_group_is_open(grp: list[dict], tol: float = 0.3) -> bool:
     """True if a group of coaxial cylinder faces does not go all the way round (the rounded end of a slot, a
     notch in an edge, a corner radius of a cut-out). A closed cylinder, however its faces are split, has its
@@ -174,10 +188,11 @@ def cylinder_group_is_open(grp: list[dict], tol: float = 0.3) -> bool:
 
 def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
                          timeline_map: dict, threads: list[dict] = None,
-                         bbox: dict = None, probe: bool = True) -> list[bool]:
+                         bbox: dict = None, probe: bool = True, keep_open: bool = False) -> list[bool]:
     """Determine for each cylindrical face group whether it is an internal hole (material outside,
     surface normal pointing to axis) versus an external boss / pin / standoff wall (material inside,
-    surface normal pointing away from axis)."""
+    surface normal pointing away from axis). An open round (slot end, edge notch) is no hole unless keep_open:
+    then it is classified like any other group, so the design check can still measure its wall (#130)."""
     is_hole = [False] * len(groups)
     ambiguous = []
 
@@ -202,7 +217,7 @@ def classify_hole_groups(session, body_name: str, groups: list[list[dict]],
             continue
         # A round that does not close (slot end, edge notch) is a wall of a cut-out, not a hole (#130); a hole
         # feature that breaks out over an edge stays a hole above, the edge-distance rule should catch it
-        if cylinder_group_is_open(grp):
+        if not keep_open and cylinder_group_is_open(grp):
             is_hole[idx] = False
             continue
         if op == "cut":

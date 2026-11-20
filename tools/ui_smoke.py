@@ -31,6 +31,33 @@ from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
+def _arm_undo_watch(page):
+    """Before Ctrl+Z: note when the status line says Undone or Redone. undoRedo writes that only after its own
+    reload, and a reload from the version poll can end earlier with Ready, so Ready is no proof (#156)."""
+    page.evaluate("""() => {
+        const el = document.getElementById('status-indicator');
+        window.__undoSeen = false;
+        el.textContent = '';
+        new MutationObserver((_, obs) => {
+            if (/^(Undone|Redone)$/.test(el.textContent)) { window.__undoSeen = true; obs.disconnect(); }
+        }).observe(el, { childList: true, characterData: true, subtree: true });
+    }""")
+
+
+def _wait_undo_done(page, timeout=30.0):
+    """The undo armed with _arm_undo_watch has finished (#156): the workspace said Undone after its reload and the
+    server has a redo entry. Polled from Python: page.evaluate waits for the fetch, wait_for_function would not."""
+    end = time.time() + timeout
+    while True:
+        seen = page.evaluate("window.__undoSeen === true")
+        h = page.evaluate("fetch('api/history').then(r => r.json()).catch(() => ({}))") if seen else {}
+        if seen and h.get("redo"):
+            return
+        if time.time() > end:
+            raise TimeoutError(f"undo not finished after {timeout:.0f} s: status seen {seen}, history {h}")
+        time.sleep(0.25)
+
+
 def prepare_part(path: str | Path):
     """Create a test part with a box 80x50x10 and a sketch with two separate circles (r 10 and r 5)."""
     from mechvane.documents import Workspace, PART
@@ -55,6 +82,45 @@ def prepare_part(path: str | Path):
     finally:
         ws.close_all()
     print(f"Prepared test part: {p}")
+    return p
+
+
+def prepare_edit_part(path: str | Path):
+    """Create a part holding one of every EDITABLE feature type (each kept independent for roundtrip edits)."""
+    from mechvane.documents import Workspace, PART
+
+    p = Path(path).resolve()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    ws = Workspace(p.parent)
+    try:
+        if p.stem in ws.docs:
+            ws.close(p.stem)
+        doc = ws.new(PART, p.stem)
+        s = doc.session
+        s.cmd("parameters.add", {"name": "P_VAL", "expression": "1.5"})
+        s.cmd("solid.box", {"length": 80, "width": 50, "height": 10, "corner": [-40, -25, 0], "body_name": "Body1", "name": "Box1"})
+        s.cmd("solid.hole", {"position": [-16, -6, 10], "direction": [0, 0, -1], "diameter": 3, "name": "SeedHole"})
+        s.cmd("solid.hole", {"position": [-8, -6, 10], "direction": [0, 0, -1], "diameter": 4, "name": "AxisHole"})
+        s.cmd("sketch.create", {"plane": {"face": [0, 0, 10]}, "project_edges": False, "name": "SkExt"})
+        s.cmd("sketch.rectangle.two_point", {"p0": [-34, -12], "p1": [-24, -4]})
+        s.cmd("sketch.rectangle.two_point", {"p0": [-34, 4], "p1": [-24, 14]})
+        s.cmd("sketch.finish", {})
+        s.cmd("solid.extrude", {"sketch": "SkExt", "profiles": [0], "distance": 5, "operation": "join", "direction": "positive", "name": "Ext1"})
+        s.cmd("solid.hole", {"position": [20, 12, 10], "direction": [0, 0, -1], "diameter": 5.5, "depth": 6, "name": "Hole1"})
+        s.cmd("solid.pattern.rectangular", {"features": ["SeedHole"], "dir1": [1, 0, 0], "count1": 2, "spacing1": 16, "name": "Rect1"})
+        s.cmd("solid.pattern.circular", {"features": ["SeedHole"], "axis": "Z", "count": 2, "angle": "90 deg", "name": "Circ1"})
+        s.cmd("solid.mirror", {"features": ["SeedHole"], "plane": "YZ", "name": "Mirror1"})
+        s.cmd("solid.fillet", {"edges": [[-40, 0, 10]], "radius": 1, "name": "Fillet1"})
+        s.cmd("solid.chamfer", {"edges": [[40, 0, 10]], "distance": 1, "name": "Chamfer1"})
+        s.cmd("sketch.create", {"plane": "XY", "name": "SkRev"})
+        s.cmd("sketch.circle.center", {"center": [50, 0], "radius": 4})
+        s.cmd("sketch.circle.center", {"center": [60, 0], "radius": 3})
+        s.cmd("sketch.line", {"points": [[45, -12], [45, 12]], "construction": True})
+        s.cmd("sketch.finish", {})
+        s.cmd("solid.revolve", {"sketch": "SkRev", "profiles": [0], "axis": "l1", "angle": "180 deg", "operation": "new", "name": "Rev1"})
+        doc.save()
+    finally:
+        ws.close_all()
     return p
 
 
@@ -137,6 +203,10 @@ import_browse = "skipped (no folder)"
 import_browse_ok = True
 assemble_tab = "skipped (no folder)"
 assemble_tab_ok = True
+edit_roundtrip_server = "skipped (server given)"
+edit_roundtrip_server_ok = True
+edit_roundtrip_demo = "skipped (server given)"
+edit_roundtrip_demo_ok = True
 measured = ""
 section = ""
 closed = False
@@ -189,6 +259,253 @@ def _wait_sketch_idle(page, timeout=15000):
         "() => !document.body.classList.contains('sketching') && document.getElementById('status-indicator')?.textContent === 'Ready'",
         timeout=timeout,
     )
+
+
+def _build_edit_demo(part_path: Path, demo_dir: Path):
+    """Build and serve a minimal static live-demo site containing part_path for edit-dialog roundtrips."""
+    import http.server
+    import shutil
+    from mechvane.documents import Workspace
+    from mechvane.ui import server as ui_srv, webapp
+    from mechvane.ui.mesh import collect_mesh
+    from build_demo_site import make_mechvane_zip
+
+    shutil.copytree(ui_srv.STATIC_DIR, demo_dir)
+    make_mechvane_zip(demo_dir / "mechvane.zip")
+    (demo_dir / "hole_sizes.json").write_text(json.dumps(ui_srv.hole_sizes()), encoding="utf-8")
+    idx = demo_dir / "index.html"
+    idx.write_text(idx.read_text(encoding="utf-8").replace('<html lang="en">', '<html lang="en" data-static="1">', 1), encoding="utf-8")
+    os.symlink(webapp.webapp_dir(), demo_dir / "sc")
+    d = demo_dir / "demos" / part_path.stem
+    (d / "files").mkdir(parents=True)
+    shutil.copyfile(part_path, d / "files" / part_path.name)
+    ws = Workspace(part_path.parent)
+    try:
+        doc = ws.open(part_path)
+        data = {"version": dict(ui_srv.collect_version(doc), path=""), "mesh": collect_mesh(doc),
+                "tree": ui_srv.collect_tree(ws, doc), "findings": ui_srv.collect_findings(ws, doc),
+                "files": {"document": part_path.name, "kind": doc.kind, "files": [part_path.name]}}
+        for k, v in data.items():
+            (d / f"{k}.json").write_text(json.dumps(v, separators=(",", ":")), encoding="utf-8")
+    finally:
+        ws.close_all()
+    (demo_dir / "demos" / "index.json").write_text(json.dumps({"demos": [{"name": part_path.stem, "title": part_path.stem}]}), encoding="utf-8")
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                          ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm"}
+        def __init__(self, *a, **kw): super().__init__(*a, directory=str(demo_dir), **kw)
+        def log_message(self, *a): pass
+
+    return http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+
+
+def _run_edit_roundtrip(page, label: str, target_url: str, *, is_demo: bool = False):
+    """Open every EDITABLE feature by double-click, confirm unchanged, then edit every field type & 3D pick."""
+    from mechvane.ui import server as ui_srv
+
+    fjs = (ui_srv.STATIC_DIR / "features.js").read_text(encoding="utf-8")
+    djs = (ui_srv.STATIC_DIR / "demo_kernel.js").read_text(encoding="utf-8")
+    f_keys = sorted(re.findall(r"(\w+Feature)\s*:", re.search(r"export const EDITABLE_TYPES = \{([^}]+)\}", fjs).group(1)))
+    d_keys = sorted(re.findall(r"(\w+Feature)\s*:", re.search(r"const EDITABLE = \{([^}]+)\}", djs).group(1)))
+    tested = ["FilletFeature", "ChamferFeature", "HoleFeature", "RectangularPatternFeature",
+              "CircularPatternFeature", "MirrorFeature", "ExtrudeFeature", "RevolveFeature"]
+    assert f_keys == d_keys == sorted(ui_srv.EDITABLE) == sorted(tested), f"EDITABLE mismatch: {f_keys} / {d_keys}"
+
+    step = f"{label}: load"
+    page.goto(target_url)
+    _wait_ready(page, timeout=60000)
+
+    def mesh_geom():
+        return page.evaluate("""() => {
+            let vol = 0, cx = 0, cy = 0, cz = 0, bodies = 0;
+            window.__scene?.traverse(o => {
+                if (!o.isMesh || !o.userData?.bodyName || !o.visible) return;
+                bodies++;
+                const pos = o.geometry.attributes.position, idx = o.geometry.index;
+                if (!pos || !idx) return;
+                const a = pos.array, x = idx.array;
+                for (let i = 0; i < x.length; i += 3) {
+                    const p = x[i]*3, q = x[i+1]*3, r = x[i+2]*3;
+                    const ax=a[p], ay=a[p+1], az=a[p+2], bx=a[q], by=a[q+1], bz=a[q+2], dx=a[r], dy=a[r+1], dz=a[r+2];
+                    const v = (ax*(by*dz-bz*dy) - ay*(bx*dz-bz*dx) + az*(bx*dy-by*dx)) / 6;
+                    vol += v; cx += v*(ax+bx+dx)/4; cy += v*(ay+by+dy)/4; cz += v*(az+bz+dz)/4;
+                }
+            });
+            return { vol: Math.abs(vol), c: Math.abs(vol) > 1e-9 ? [cx/vol, cy/vol, cz/vol] : [0,0,0], bodies };
+        }""")
+
+    def geom_same(a, b):
+        return (a["bodies"] == b["bodies"] and abs(a["vol"] - b["vol"]) < 1e-2
+                and sum((x - y) ** 2 for x, y in zip(a["c"], b["c"])) ** 0.5 < 1e-2)
+
+    def open_edit(feat, first=False):
+        page.evaluate("() => { window.__editDef = null; }")
+        page.dblclick(f'.tree-row[data-feature="{feat}"]')
+        page.wait_for_function(
+            "() => !!document.querySelector('.feature-dialog-title')?.textContent.includes('Edit')"
+            " && window.__editDef !== null && document.getElementById('status-indicator')?.textContent === 'Ready'",
+            timeout=180000 if (first and is_demo) else 60000)
+        return page.evaluate("() => window.__editDef")
+
+    def submit_edit(feat):
+        page.evaluate("""() => {
+            const el = document.getElementById('status-indicator');
+            window.__editDone = false;
+            new MutationObserver((_, obs) => {
+                if (/^(Edit |Done)/.test(el.textContent || '')) { window.__editDone = true; obs.disconnect(); }
+            }).observe(el, { childList: true, characterData: true, subtree: true });
+        }""")
+        page.wait_for_selector(".feature-ok:not([disabled])", timeout=10000)
+        page.click(".feature-ok")
+        page.wait_for_function(
+            "() => (!document.querySelector('.feature-dialog') && window.__editDone === true"
+            " && document.getElementById('status-indicator')?.textContent !== 'Computing…')"
+            " || document.querySelector('.feature-error')?.hidden === false",
+            timeout=120000 if is_demo else 30000)
+        if page.locator(".feature-dialog").count() and page.locator(".feature-error").is_visible():
+            raise AssertionError(f"{feat} edit error: {page.locator('.feature-error').inner_text()}")
+        _wait_frame(page)
+        return mesh_geom()
+
+    val = lambda k: page.input_value(f'.feature-dialog [name="{k}"]')
+    chk = lambda k: page.is_checked(f'.feature-dialog input[name="{k}"]')
+    slot = lambda k: page.locator(f'.feature-slot[data-slot="{k}"]')
+
+    def put(**kw):
+        for k, v in kw.items():
+            if isinstance(v, bool):
+                page.set_checked(f'.feature-dialog input[name="{k}"]', v)
+            elif page.locator(f'.feature-dialog select[name="{k}"]').count():
+                page.select_option(f'.feature-dialog select[name="{k}"]', v)
+            else:
+                page.fill(f'.feature-dialog input[name="{k}"]', v)
+
+    def verify_step(feat, prev_def, prev_geom, *, changed=True, dom=None, defn=None, keep_open=True):
+        cur_geom = submit_edit(feat)
+        assert (not geom_same(cur_geom, prev_geom)) if changed else geom_same(cur_geom, prev_geom), (
+            f"{feat}: geom mismatch ({prev_geom} -> {cur_geom})")
+        cur_def = open_edit(feat)
+        assert (cur_def != prev_def) if changed else (cur_def == prev_def), f"{feat}: def mismatch ({cur_def})"
+        for k, want in (dom or {}).items():
+            got = chk(k) if isinstance(want, bool) else val(k)
+            assert got == want, f"{feat}: field {k}={got!r}, expected {want!r}"
+        if defn and not defn(cur_def):
+            raise AssertionError(f"{feat}: reopened state mismatch ({cur_def})")
+        if not keep_open:
+            page.keyboard.press("Escape")
+            _wait_dialog_closed(page)
+        return cur_def, cur_geom
+
+    def click_3d(pt3, cond_js, view=None):
+        if view:
+            set_view(view)
+        xy = page.evaluate("""([x, y, z]) => {
+            const p = window.__camera.position.clone().set(x, y, z).project(window.__camera);
+            const r = document.querySelector('#viewport canvas').getBoundingClientRect();
+            return [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height];
+        }""", pt3)
+        hit = False
+        for dx, dy in ((0, 0), (-2, 0), (2, 0), (0, -2), (0, 2)):
+            page.mouse.click(xy[0] + dx, xy[1] + dy)
+            _wait_frame(page)
+            if page.evaluate(cond_js):
+                hit = True
+                break
+        if view:
+            set_view("iso")
+        if not hit:
+            raise AssertionError(f"3D click at {pt3} did not satisfy {cond_js}")
+
+    def set_view(name):
+        if name == "iso":
+            page.keyboard.press("F6")
+            page.wait_for_function("() => Math.abs((window.__camera?.up?.z ?? 0) - 1) < 1e-4", timeout=5000)
+        else:
+            page.evaluate(f"() => document.querySelector('[data-view=\"{name}\"]')?.click()")
+            page.wait_for_function("() => Math.abs((window.__camera?.up?.y ?? 0) - 1) < 1e-4", timeout=5000)
+        _wait_frame(page)
+
+    def start(feat, first=False):
+        nonlocal step, g0
+        step, g0 = f"{label}: {feat}", mesh_geom()
+        return verify_step(feat, open_edit(feat, first=first), g0, changed=False)
+
+    try:
+        d0, g0 = start("Fillet1", first=True)
+        put(radius="1.2"); d0, g0 = verify_step("Fillet1", d0, g0, dom={"radius": "1.2"})
+        put(radius="P_VAL"); d0, g0 = verify_step("Fillet1", d0, g0, dom={"radius": "P_VAL"}, defn=lambda d: d.get("radius") == "P_VAL")
+        click_3d([0, -25, 10], "() => (document.querySelector('.feature-pick-count')?.textContent || '').includes('2 edges')")
+        verify_step("Fillet1", d0, g0, keep_open=False, defn=lambda d: "2 edges" in page.locator(".feature-pick-count").inner_text() and len(d.get("edges", [])) == 2)
+
+        d0, g0 = start("Chamfer1")
+        put(distance="1.2"); d0, g0 = verify_step("Chamfer1", d0, g0, dom={"distance": "1.2"})
+        put(distance="0.5 + 1"); d0, g0 = verify_step("Chamfer1", d0, g0, dom={"distance": "0.5 + 1"}, defn=lambda d: d.get("distance") == "0.5 + 1")
+        click_3d([0, 25, 10], "() => (document.querySelector('.feature-pick-count')?.textContent || '').includes('2 edges')")
+        verify_step("Chamfer1", d0, g0, keep_open=False, defn=lambda d: "2 edges" in page.locator(".feature-pick-count").inner_text() and len(d.get("edges", [])) == 2)
+
+        d0, g0 = start("Hole1")
+        put(spec="diameter", diameter="6", depth="5", type="counterbore", cb_diameter="8", cb_depth="2.5")
+        d0, g0 = verify_step("Hole1", d0, g0, dom={"spec": "diameter", "diameter": "6", "depth": "5", "type": "counterbore"},
+                             defn=lambda d: d.get("hole", {}).get("cb_diameter") == "8")
+        put(diameter="3 + 1", through=True)
+        d0, g0 = verify_step("Hole1", d0, g0, dom={"diameter": "3 + 1", "through": True},
+                             defn=lambda d: d.get("diameter") == "3 + 1" and d.get("depth") is None)
+        click_3d([0, 25, 10], "() => document.querySelector('.feature-dialog select[name=\"edge1\"]')?.value === 'edge'")
+        put(dist1="10")
+        d0, g0 = verify_step("Hole1", d0, g0, dom={"edge1": "edge", "dist1": "10"}, defn=lambda d: len(d.get("references") or []) == 1)
+        page.click(".feature-clear")
+        click_3d([22, -25, 5], "() => Math.abs(Number(document.querySelector('.feature-dialog input[name=\"y\"]')?.value) + 25) < 0.2")
+        put(type="simple", through=False, depth="6")
+        verify_step("Hole1", d0, g0, keep_open=False,
+                    defn=lambda d: abs(float(val("y")) + 25) < 0.2 and d.get("direction", [0, 0, 0])[1] > 0.9 and not d.get("references"))
+
+        d0, g0 = start("Rect1")
+        put(dir1="Y", flip1=True, spacing1="4 + 4", two=True, dir2="X", spacing2="16")
+        d0, g0 = verify_step("Rect1", d0, g0, dom={"dir1": "Y", "flip1": True, "spacing1": "4 + 4", "two": True},
+                             defn=lambda d: d.get("pattern", {}).get("spacing1") == "4 + 4")
+        put(two=False)
+        click_3d([0, -25, 10], "() => document.querySelector('.feature-dialog select[name=\"dir1\"]')?.value === 'edge'")
+        verify_step("Rect1", d0, g0, dom={"two": False}, keep_open=False, defn=lambda d: abs(d.get("pattern", {}).get("dir1", [0])[0]) > 0.99)
+
+        d0, g0 = start("Circ1")
+        put(axis="Z", count="3", angle="60 + 30")
+        d0, g0 = verify_step("Circ1", d0, g0, dom={"count": "3", "angle": "60 + 30"}, defn=lambda d: d.get("pattern", {}).get("angle") == "60 + 30")
+        click_3d([-8, -4, 10], "() => document.querySelector('.feature-dialog select[name=\"axis\"]')?.value === 'edge'", view="top")
+        verify_step("Circ1", d0, g0, dom={"axis": "edge"}, keep_open=False, defn=lambda d: (d.get("pattern", {}).get("axis_ref") or {}).get("type") == "edge")
+
+        d0, g0 = start("Mirror1")
+        put(plane="XZ")
+        d0, g0 = verify_step("Mirror1", d0, g0, dom={"plane": "XZ"}, defn=lambda d: d.get("plane", {}).get("name") == "XZ")
+        click_3d([-29, -12, 12.5], "() => document.querySelector('.feature-dialog select[name=\"plane\"]')?.value === 'face'")
+        verify_step("Mirror1", d0, g0, dom={"plane": "face"}, keep_open=False, defn=lambda d: d.get("plane", {}).get("type") == "custom")
+
+        d0, g0 = start("Ext1")
+        put(distance="8"); d0, g0 = verify_step("Ext1", d0, g0, dom={"distance": "8"})
+        put(operation="cut", distance="3 + 3")
+        d0, g0 = verify_step("Ext1", d0, g0, dom={"operation": "cut", "direction": "negative", "distance": "3 + 3"},
+                             defn=lambda d: d.get("extent", {}).get("distance") == "3 + 3")
+        put(through=True)
+        click_3d([-29, 9, 10], "() => (document.querySelector('.feature-pick-count')?.textContent || '').includes('2 of 2')", view="top")
+        verify_step("Ext1", d0, g0, dom={"through": True}, keep_open=False, defn=lambda d: (
+            "2 of 2" in page.locator(".feature-pick-count").inner_text()
+            and d.get("extent", {}).get("through_all") is True and d.get("profiles", {}).get("type") == "all"))
+
+        d0, g0 = start("Rev1")
+        put(angle="120"); d0, g0 = verify_step("Rev1", d0, g0, dom={"angle": "120"})
+        put(angle="90 + 45")
+        slot("profile").click(); page.wait_for_selector('.feature-slot[data-slot="profile"].active', timeout=5000)
+        click_3d([60, 0, 0], "() => (document.querySelector('.feature-slot[data-slot=\"profile\"]')?.textContent || '').includes('2 of 2')")
+        slot("axis").click(); page.wait_for_selector('.feature-slot[data-slot="axis"].active', timeout=5000)
+        click_3d([40, 0, 0], "() => document.querySelector('.feature-slot[data-slot=\"axis\"]')?.textContent === 'Clicked edge'")
+        d0, g0 = verify_step("Rev1", d0, g0, dom={"angle": "90 + 45"}, defn=lambda d: (
+            "2 of 2" in slot("profile").inner_text() and slot("axis").inner_text() == "Clicked edge"
+            and d.get("profiles", {}).get("type") == "all" and d.get("axis", {}).get("type") == "model"))
+        put(operation="join")
+        verify_step("Rev1", d0, g0, dom={"operation": "join"}, keep_open=False, defn=lambda d: d.get("operation") == "join")
+        return True, f"all {len(tested)} types ok"
+    except Exception as exc:
+        return False, f"error at {step}: {exc}"[:220]
 
 
 step = "init"
@@ -308,17 +625,33 @@ try:
                     " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
                     timeout=10000,
                 )
+                # the rename's own message comes after its reload, which refreshes Undo (#156)
+                page.wait_for_function("/^(Renamed |Ready$)/.test(document.getElementById('status-indicator')?.textContent || '')",
+                                       timeout=15000)
                 renamed_to_main = "MainBox" in page.locator("#tree-content").inner_text() and "Box1" not in page.locator("#tree-content").inner_text()
 
                 # Ctrl+Z reverts rename
                 step = "rename: ctrl+z"
-                page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
+                try:
+                    page.wait_for_selector("#btn-undo:not([disabled])", timeout=10000)
+                except Exception:
+                    # what the workspace saw (#156): the history the server reports, the button, the status line
+                    diag = page.evaluate("""async () => ({
+                        history: await fetch('api/history').then(r => r.json()).catch(e => String(e)),
+                        undo_disabled: document.getElementById('btn-undo')?.disabled,
+                        undo_title: document.getElementById('btn-undo')?.title,
+                        status: document.getElementById('status-indicator')?.textContent,
+                    })""")
+                    print("rename ctrl+z diag:", json.dumps(diag), flush=True)
+                    raise
+                _arm_undo_watch(page)
                 page.keyboard.press("Control+z")
                 page.wait_for_function(
                     "document.querySelector('#tree-content')?.textContent.includes('Box1')"
                     " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
                     timeout=10000,
                 )
+                _wait_undo_done(page)
                 reverted_rename = "Box1" in page.locator("#tree-content").inner_text() and "MainBox" not in page.locator("#tree-content").inner_text()
 
                 rename_ok = esc_cancelled and renamed_to_main and reverted_rename
@@ -441,6 +774,33 @@ try:
             cmd_undone = page.locator("#tree-content").inner_text() == tree_before_cmd
             command_dialog = f"picked {picked!r}, ok adds: {cmd_added} {cmd_err!r}, ctrl+z: {cmd_undone}"
             command_dialog_ok = bool(picked) and cmd_added and cmd_undone
+
+            # a routed command (Mechvane's own handler): timeline.rename from Ctrl+K, the feature chosen from the
+            # names of the open part, OK renames it (one undo step), Ctrl+Z takes it back
+            step = "command dialog: routed rename"
+            tree_before_rn = page.locator("#tree-content").inner_text()
+            page.keyboard.press("Control+k")
+            page.wait_for_selector(".cmd-palette:not([hidden]) .cmd-results li", timeout=60000)
+            page.keyboard.type("timeline.rename")
+            page.wait_for_selector(".cmd-results li.active .cmd-id:text-is('timeline.rename')", timeout=5000)
+            page.keyboard.press("Enter")
+            page.wait_for_selector(".cmd-dialog", timeout=30000)
+            choice = page.locator('.cmd-field[data-name="feature"] datalist option').first.get_attribute("value")
+            page.locator('.cmd-field[data-name="feature"] input').fill(choice or "")
+            page.locator('.cmd-field[data-name="name"] [data-field]').fill("RoutedName")
+            page.click(".cmd-dialog .feature-ok")
+            page.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('RoutedName')"
+                                   " || document.querySelector('.cmd-dialog .feature-error')?.hidden === false", timeout=30000)
+            rn_done = "RoutedName" in page.locator("#tree-content").inner_text()
+            page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
+            page.keyboard.press("Control+z")
+            page.wait_for_function(
+                "t => document.querySelector('#tree-content')?.innerText === t"
+                " && document.getElementById('status-indicator')?.textContent !== 'Computing…'",
+                arg=tree_before_rn, timeout=15000)
+            rn_undone = page.locator("#tree-content").inner_text() == tree_before_rn
+            command_dialog += f"; routed rename of {choice!r}: {rn_done}, ctrl+z: {rn_undone}"
+            command_dialog_ok = command_dialog_ok and bool(choice) and rn_done and rn_undone
 
         # Hole dialog: face click (Hole1), Middle of face (Hole centre sketch), Ctrl+Z twice
         if page.locator("#btn-hole").is_enabled() and page.locator("#doc-kind").inner_text().strip() == "Part":
@@ -781,6 +1141,7 @@ try:
 
             step = "revolve: ctrl+z"
             page.wait_for_selector("#btn-undo:not([disabled])", timeout=5000)
+            _arm_undo_watch(page)
             page.keyboard.press("Control+z")
             try:
                 page.wait_for_function(
@@ -791,6 +1152,9 @@ try:
                 )
             except Exception:
                 pass
+            # the undo is done only when the workspace says so (after its reload) and the server is no longer busy:
+            # a sketch begun while it still runs loses its first line (#156)
+            _wait_undo_done(page)
             undone_revolve = page.locator("#tree-content").inner_text() == tree_before_revolve
             revolve = (f"shortcut r: {rev_shortcut_ok}, slots: {slots_initial}, prof: {rev_prof_picked}, tab: {tab_switched}, "
                        f"origin axis: {origin_axis_picked}, edge axis: {edge_axis_picked}, "
@@ -822,7 +1186,25 @@ try:
             hud_shown = page.locator(".sketch-hud").is_visible()
             page.keyboard.type("40")
             page.keyboard.press("Enter")
-            page.wait_for_selector(".sketch-dim:has-text('40')", timeout=10000)
+            try:
+                page.wait_for_selector(".sketch-dim:has-text('40')", timeout=10000)
+            except Exception:
+                # what the sketcher saw (#156): tab, status line, HUD, focus, curves on the server
+                diag = page.evaluate("""async () => ({
+                    tab: document.querySelector('.ribbon-tab.active')?.dataset.tab,
+                    status: document.getElementById('status-indicator')?.textContent,
+                    statusline: document.getElementById('statusbar')?.textContent?.replace(/\\s+/g, ' ').slice(0, 300),
+                    sketching: document.body.classList.contains('sketching'),
+                    hud: !!document.querySelector('.sketch-hud'), hud_hidden: document.querySelector('.sketch-hud')?.hidden,
+                    hud_values: [...document.querySelectorAll('.sketch-hud input')].map(i => i.value),
+                    focus: document.activeElement?.tagName + '.' + (document.activeElement?.className || ''),
+                    dialog: !!document.querySelector('dialog[open]'),
+                    dims: [...document.querySelectorAll('.sketch-dim')].map(d => d.textContent),
+                    curves: await fetch('api/sketch/state').then(r => r.json()).then(j => (j.state?.curves || []).length).catch(e => String(e)),
+                })""")
+                print("sketch line 40 diag:", json.dumps(diag), "hud shown after first click:", hud_shown, flush=True)
+                page.screenshot(path=os.path.join(out, "sketch_line40_fail.png"))
+                raise
             page.keyboard.press("Escape")
             step = "sketch: rectangle"
             page.keyboard.press("r")
@@ -1521,6 +1903,30 @@ try:
                 fsrv.shutdown()
                 fsrv.server_close()
 
+            # Edit-dialog roundtrip across all 8 EDITABLE feature types on Server and Live-Demo (#129)
+            edit_part = prepare_edit_part(Path(tmp_dir.name) / "edit_part.solidcraft")
+            dsrv = _build_edit_demo(edit_part, Path(tmp_dir.name) / "edit_demo")
+            for mode_lbl, is_d, srv_obj, base_url in (
+                ("edit roundtrip server", False, _cs(str(edit_part), port=port + 2), f"http://{host}:{port + 2}/"),
+                ("edit roundtrip demo", True, dsrv, None),
+            ):
+                step = mode_lbl
+                threading.Thread(target=srv_obj.serve_forever, daemon=True).start()
+                ep = browser.new_page(viewport={"width": 1300, "height": 750})
+                _apply_cpu_throttle(ep)
+                ep.on("pageerror", lambda e, lbl=mode_lbl: errors.append(f"{lbl}: {e}"))
+                try:
+                    turl = base_url or f"http://127.0.0.1:{srv_obj.server_address[1]}/?demo={edit_part.stem}"
+                    ok_flag, msg = _run_edit_roundtrip(ep, mode_lbl, turl, is_demo=is_d)
+                    if is_d:
+                        edit_roundtrip_demo_ok, edit_roundtrip_demo = ok_flag, msg
+                    else:
+                        edit_roundtrip_server_ok, edit_roundtrip_server = ok_flag, msg
+                finally:
+                    ep.close()
+                    srv_obj.shutdown()
+                    srv_obj.server_close()
+
         browser.close()
 except Exception as exc:
     import traceback
@@ -1562,6 +1968,8 @@ print("folder mode:", folder_mode)
 print("open folder:", open_folder)
 print("import step browse:", import_browse)
 print("assemble tab:", assemble_tab)
+print("edit roundtrip server:", edit_roundtrip_server)
+print("edit roundtrip demo:", edit_roundtrip_demo)
 print("new part:", new_part)
 print("measure:", measured.replace("\n", " | "))
 print("section:", section)
@@ -1572,7 +1980,8 @@ print("edge:", edge.replace("\n", " | ") or "none found")
 all_checks_ok = ("Distance" in measured and "Section" in section and closed and bool(edge) and new_part_ok and fillet_ok
                  and command_dialog_ok
                  and hole_ok and extrude_ok and revolve_ok and sketch_ok and visibility_ok and folder_ok and open_folder_ok
-                 and import_browse_ok and assemble_tab_ok and rename_ok and not errors and not js_errors)
+                 and import_browse_ok and assemble_tab_ok and rename_ok
+                 and edit_roundtrip_server_ok and edit_roundtrip_demo_ok and not errors and not js_errors)
 
 if errors:
     for e in errors:

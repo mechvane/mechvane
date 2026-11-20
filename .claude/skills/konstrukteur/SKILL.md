@@ -123,18 +123,21 @@ Aus dem Praxistest Klappscharnier (zwei Laschen 40 × 20 × 5, Bolzen Ø 6 × 14
 1. **Randabstand-Falle:**
    - Im Ursprungsentwurf lagen zwei Bohrungen Ø 6 bei $x = 8$ und $x = 32$.
    - **Befund von `check_design`:** Randabstand Lochmitte zur Kante $x = 0$ beträgt $8{,}0\text{ mm}$. Gefordert bei $d = 6\text{ mm}$ sind jedoch $1{,}5 \times 6 = 9{,}0\text{ mm}$!
-   - **Lösung:** Entweder Laschenlänge auf 42 mm verlängern (Bohrung bei $x = 9$) oder bei fixer Länge 40 mm die Bohrung auf $x = 9$ rücken (Mittenabstand 22 mm).
+   - **Lösung:** Den Randabstand als Parameter `e = 1.5 * D` führen und die Bohrungen daran binden, nicht an eine ausgerechnete Koordinate. Dann entweder die Lasche auf 42 mm verlängern (Mittenabstand bleibt 24 mm) oder bei fixer Länge 40 mm den Mittenabstand auf 22 mm verkürzen.
 2. **Kompakte Modellierung der Lasche:**
    ```json
    [
      {"command": "parameters.add", "params": {"name": "L", "expression": "42 mm"}},
      {"command": "parameters.add", "params": {"name": "W", "expression": "20 mm"}},
      {"command": "parameters.add", "params": {"name": "T", "expression": "5 mm"}},
+     {"command": "parameters.add", "params": {"name": "D", "expression": "6 mm"}},
+     {"command": "parameters.add", "params": {"name": "e", "expression": "1.5 * D"}},
      {"command": "solid.box", "params": {"length": "L", "width": "W", "height": "T", "corner": [0, 0, 0], "name": "Basis"}},
-     {"command": "solid.cylinder", "params": {"diameter": 6, "height": "T + 2 mm", "base": [9, 10, -1], "operation": "cut", "name": "Bohrung1"}},
-     {"command": "solid.cylinder", "params": {"diameter": 6, "height": "T + 2 mm", "base": [33, 10, -1], "operation": "cut", "name": "Bohrung2"}}
+     {"command": "solid.cylinder", "params": {"diameter": "D", "height": "T + 2 mm", "base": ["e", "W/2", "-1 mm"], "operation": "cut", "name": "Bohrung1"}},
+     {"command": "solid.cylinder", "params": {"diameter": "D", "height": "T + 2 mm", "base": ["L - e", "W/2", "-1 mm"], "operation": "cut", "name": "Bohrung2"}}
    ]
    ```
+   Die Positionen sind Ausdrücke, also folgen die Bohrungen `L` und `D` (geprüft 2026-11-18 mit SolidCraft 0.43: L = 60, D = 8 ergibt x = 12 und 48). Ohne Primitive gilt Regel 5 wie oben: Abhängigkeiten in der Skizze an projizierten Kanten.
 3. **Baugruppe & Gelenke (`add_joint`):**
    - Teile separat speichern (`save_document`).
    - Baugruppe anlegen (`new_assembly`), Teile mit `insert_part` referenzieren.

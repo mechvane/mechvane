@@ -2141,15 +2141,17 @@ var viewBeforeEdit = null;
     revealOriginAxes,
     closeOthers: () => { if (commandDialog) commandDialog.close(); },
   });
-  // the general command dialog (Ctrl+K, #128): every SolidCraft command with a form from its schema; it needs
-  // the SolidCraft session on the server, so not in the live demo yet
-  if (!STATIC) {
+  // the general command dialog (Ctrl+K, #128): every SolidCraft command with a form from its schema; in the live
+  // demo the demo kernel answers it from commands.json (made at build time) and SolidCraft in the browser
+  {
     commandDialog = initCommandDialog({
       propertiesEl: document.getElementById("properties-content"),
       statusEl, post: postJson, get: (url) => fetchJson(url), showPreview, clearPreview, log: clientLog,
       reload: () => loadAll(false),
       closeOthers: () => { if (featureDialogs.isOpen()) featureDialogs.close(); },
       viewTools, showPicks: showCommandPicks, getSelection: () => viewTools.getSelection(),
+      sketch: { isOpen: () => !!(sketcher && sketcher.isOpen()), run: (c, p, preview) => sketcher.runCommand(c, p, preview),
+                pick: (cb, want) => sketcher.pickEntities(cb, want), clearPreview: () => sketcher.clearCommandPreview() },
     });
   }
   initTreeActions();
@@ -2165,7 +2167,8 @@ var viewBeforeEdit = null;
       // the sketch being edited is drawn by the sketcher, not twice by the overlay of unused sketches
       onMode: (on) => {
         sketchOverlay.visible = !on;
-        if (on && commandDialog) commandDialog.close();  // the sketch environment takes the view and the panel
+        // the sketch environment takes the view; a dialog of the other side (model or sketch) closes
+        if (commandDialog) commandDialog.close();
         renderScene();
       },
       originPlaneAt, revealOriginPlanes, hoverOriginPlane, originAxisAt, revealOriginAxes,
@@ -2177,8 +2180,9 @@ var viewBeforeEdit = null;
       ev.preventDefault();
       const href = ev.currentTarget.href;
       clientLog?.("sketch_finish_for_model", {});
-      await sketcher.finish();
-      if (!sketcher.isOpen()) location.href = href;  // otherwise the status line says why it could not finish
+      // only a finished sketch opens the Model page: one the server could not finish (and cancelled) or a step
+      // still running keeps this page, so the status line can say why (review of #139)
+      if (await sketcher.finish()) location.href = href;
     });
     if (btnSketch) {
       btnSketch.disabled = false;
@@ -2269,9 +2273,10 @@ function queueUndoRedo(which) {
   window.addEventListener("keydown", (e) => {
     const t = e.target;
     const mod = e.ctrlKey || e.metaKey;
-    // Ctrl+K: command search, also from a field (as in SolidCraft); not over a modal dialog or in the sketch environment
+    // Ctrl+K: command search, also from a field (as in SolidCraft); not over a modal dialog or while a sketch plane is
+    // being chosen; in an open sketch it offers the sketch's commands (#128)
     if (mod && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K") && commandDialog
-        && !document.querySelector("dialog[open]") && !(sketcher && sketcher.isActive())) {
+        && !document.querySelector("dialog[open]") && !(sketcher && sketcher.isActive() && !sketcher.isOpen())) {
       e.preventDefault();
       commandDialog.open();
       return;

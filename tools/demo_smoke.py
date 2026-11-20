@@ -1,6 +1,6 @@
 """Click through the feature dialogs of the static live demo (demo_kernel.js) in a headless browser:
 fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint, a sketch,
-and the recorded agent session (#124: chat lines, the model changes, the check is green at the end, Reset demo).
+the command dialog (Ctrl+K, #128) and the recorded agent session (#124: chat lines, the model changes, the check is green at the end, Reset demo).
 
     tools/build_demo_site.py /tmp/demosite && (cd /tmp/demosite && python3 -m http.server 8811 &)
     <python with playwright> tools/demo_smoke.py [url]   (default http://localhost:8811/demo/?demo=bracket)
@@ -85,6 +85,73 @@ with sync_playwright() as pw:
     print("sketch:", dims, "finished and undone")
     if dims != ["20", "50"]:
         errs.append(f"sketch: dimensions {dims}, expected 20 and 50")
+    # #128: the general command dialog on the demo kernel: Ctrl+K, solid.chamfer, Pick an edge in the view, OK adds
+    # the chamfer as one undo step, Ctrl+Z takes it back; a command that only reads leaves no undo entry; a command
+    # with Mechvane's own handler says it is not in the live demo
+    tree_before = p.locator("#tree-content").inner_text()
+    def open_cmd(cid):
+        p.keyboard.press("Control+k")
+        p.wait_for_selector(".cmd-palette:not([hidden]) .cmd-results li", timeout=60000)
+        p.keyboard.type(cid)
+        p.wait_for_selector(f".cmd-results li.active .cmd-id:text-is('{cid}')", timeout=5000)
+        p.keyboard.press("Enter")
+    open_cmd("solid.chamfer"); p.wait_for_selector(".cmd-dialog", timeout=60000)
+    edges = p.locator('.cmd-field[data-name="edges"]')
+    p.locator('.cmd-field[data-name="distance"] [data-field]').fill("0.5")
+    box = p.locator("#viewport canvas").bounding_box(); cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    # walk down from the centre (the fillet step above rounded the edges above it) and try each picked edge: a
+    # smooth edge (between a face and a fillet) is refused by SolidCraft, the next sharp one takes the chamfer
+    picked, tried, cmd_err, added = "", set(), "", False
+    for dy in range(0, int(box["height"] / 2) - 10, 6):
+        if len(tried) >= 6:
+            break
+        edges.locator("textarea").fill("")
+        if not p.locator(".cmd-pick.active").count():
+            edges.locator(".cmd-pick").click(); p.wait_for_selector(".cmd-pick.active", timeout=5000)
+        p.mouse.click(cx, cy + dy); p.wait_for_timeout(50)
+        picked = edges.locator("textarea").input_value()
+        if not picked or picked in tried:
+            continue
+        tried.add(picked)
+        p.click(".cmd-dialog .feature-ok")
+        p.wait_for_function("document.querySelector('#tree-content')?.textContent.includes('Chamfer')"
+                            " || document.querySelector('.cmd-dialog .feature-error')?.hidden === false", timeout=60000)
+        added = "Chamfer" in p.locator("#tree-content").inner_text()
+        cmd_err = p.locator(".cmd-dialog .feature-error").inner_text() if p.locator(".cmd-dialog").count() else ""
+        if added:
+            break
+        open_cmd("solid.chamfer"); p.wait_for_selector(".cmd-dialog", timeout=60000)
+        edges = p.locator('.cmd-field[data-name="edges"]')
+        p.locator('.cmd-field[data-name="distance"] [data-field]').fill("0.5")
+    # the Undo title after the chamfer: from a history poll after it (every 4 s), not one still under way
+    if added:
+        p.wait_for_function("/chamfer/i.test(document.getElementById('btn-undo')?.title || '')", timeout=15000)
+    undo_title = p.locator("#btn-undo").get_attribute("title")
+    open_cmd("parameters.list"); p.wait_for_selector(".cmd-dialog", timeout=60000)
+    p.click(".cmd-dialog .feature-ok")
+    # the read ran (its result is shown), then two history polls later Undo still names the chamfer
+    p.wait_for_function("(document.querySelector('.cmd-dialog .cmd-result')?.textContent || '').trim().length > 0", timeout=60000)
+    p.wait_for_timeout(8500)
+    read_only = p.locator("#btn-undo").get_attribute("title") == undo_title
+    p.click(".cmd-dialog .feature-cancel"); p.wait_for_function("!document.querySelector('.cmd-dialog')", timeout=10000)
+    p.keyboard.press("Control+k"); p.wait_for_selector(".cmd-palette:not([hidden]) .cmd-results li", timeout=60000)
+    p.fill(".cmd-palette input", "timeline.rename")
+    # offered commands come first in the list, so it is clicked rather than the first row taken
+    p.locator(".cmd-results li:has(.cmd-id:text-is('timeline.rename'))").click(timeout=5000)
+    try:
+        p.wait_for_function("/not in the live demo/.test(document.querySelector('.cmd-palette-note')?.textContent || '')", timeout=5000)
+        routed = True
+    except Exception:
+        routed = False
+    p.keyboard.press("Escape")
+    if added:  # only then: otherwise Undo would take back an earlier step; the button, as the focus may still be in
+        # the closed search box, where Ctrl+Z belongs to the text
+        p.click("#btn-undo")
+        p.wait_for_function("t => document.querySelector('#tree-content')?.innerText === t", arg=tree_before, timeout=60000)
+    print(f"command dialog: picked {picked!r}, ok adds: {added} {cmd_err!r}, read-only no undo entry: {read_only}, "
+          f"routed refused: {routed}, undo ok")
+    if not (picked and added and read_only and routed):
+        errs.append(f"command dialog: picked {picked!r} added {added} {cmd_err!r} read-only {read_only} routed {routed}")
     # #124: the recorded agent session plays in a fresh page (?replay=1 starts it), from precomputed states
     r = b.new_page(viewport={"width": 1400, "height": 850})
     if os.environ.get("DEMO_SLOW"):

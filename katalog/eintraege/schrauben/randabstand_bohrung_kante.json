@@ -1,0 +1,69 @@
+{
+  "id": "randabstand_bohrung_kante",
+  "aussage": "Mindestrandabstand von Bohrungsmitte zur Bauteilkante: Nach AS 4100 beträgt der Mindestabstand für maschinell geschnittene, gesägte, gehobelte oder gewalzte Plattenkanten 1,50 × Schraubendurchmesser. Eurocode 3 (EN 1993-1-8, Tab. 3.3) fordert für runde Standardlöcher mindestens 1,2 × Lochdurchmesser d0 (e1, e2) und für Langlöcher 1,5 × d0 (e3).",
+  "werte": [
+    {
+      "name": "Mindestrandabstand maschinell geschnittene/gesägte Plattenkante (AS 4100)",
+      "wert": 1.5,
+      "einheit": "x Schraubendurchmesser"
+    },
+    {
+      "name": "Mindestrandabstand e1, e2 Standardloch (EN 1993-1-8)",
+      "wert": 1.2,
+      "einheit": "x Lochdurchmesser d0"
+    },
+    {
+      "name": "Mindestrandabstand e3 Langloch (EN 1993-1-8)",
+      "wert": 1.5,
+      "einheit": "x Lochdurchmesser d0"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Aluminium",
+      "Metalle",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "Bohren",
+      "FDM-Druck",
+      "Stahlbau"
+    ],
+    "feature": [
+      "Bohrung",
+      "Durchgangsloch",
+      "Randabstand",
+      "Schraubverbindung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://blog.draftsperson.net/edge-distance-for-bolts/",
+      "stelle": "AS 4100 Minimum Edge Distance",
+      "zitat": "Edge distance is the distance from the centre of a bolt hole to the edge of the steel. [...] 1.50 × bolt diameter — a rolled plate edge, machine flame cut, sawn or planed.",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube_ec3/schraubenverbindung_ec3.php",
+      "stelle": "Minimaler und Maximaler Rand- und Lochabstand von Schrauben im Stahlbau (EN 1993-1-8)",
+      "zitat": "Minimaler und Maximaler Rand- und Lochabstand von Schrauben im Stahlbau. [...] Randabstand: e1 ≥ 1,2 * d0 [...] Randabstand: e2 ≥ 1,2 * d0 [...] Randabstand: e3 ≥ 1,5 * d0",
+      "abgerufen": "2026-11-18"
+    },
+    {
+      "url": "https://structuralsteelcomponents.com/steelspec-data-hub/connection-design-rules/",
+      "stelle": "BS EN 1993-1-8:2005 Table 3.3 & Table 3.4",
+      "zitat": "All distances measured to the centre of the bolt hole. [...] End distance e1 ≥ 1.2 × d0 [...] Edge distance e2 ≥ 1.2 × d0",
+      "abgerufen": "2026-11-18"
+    }
+  ],
+  "begruendung": "Sitzt eine Bohrung zu nah am Bauteilrand, reißt der verbleibende Werkstoffsteg unter Lochleibungs- oder Querbelastung vorzeitig durch Abscheren aus (End Tearout). Zudem verhindert ein ausreichender Randabstand Ausbeulen beim Bohren, Gewindeschneiden oder Fügen.",
+  "ausnahmen": "Unbelastete Pass- oder Sensorbohrungen, für die nur die fertigungstechnische Mindestrestwandstärke maßgebend ist.",
+  "haerte": "fehler",
+  "pruefstatus": "automatisch",
+  "beziehungen": []
+}

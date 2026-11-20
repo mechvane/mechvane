@@ -476,6 +476,13 @@ gekürzt), das Modell nach jeder Änderung mit Schatten, Markierung und „Last 
 MCP-Werkzeug aus (`run`, `command`, `delete_feature`, `rename_feature`) und legt `demos/<name>/replay/<k>/` an. Bricht
 eine Aufnahme mit einer neuen SolidCraft-Version, scheitert der Build, nicht die Seite. Abweichung vom Entwurf im Issue
 (Befehle im Demo-Kernel): kein 168-MB-Download zum Zuschauen und derselbe Codepfad wie bei der Aufnahme.
+**Befehlsdialog in der Live-Demo (#128):** Strg+K gilt auch dort. `tools/build_demo_site.py` schreibt `demo/commands.json`
+(Liste und Formulare aller Befehle, etwa 1 MB, aus der SolidCraft-Sitzung des Builds mit denselben Funktionen wie am
+Server: `_command_cache`, `command_form_for`, `command_form.why_not`). Der Demo-Kernel (`demo_kernel.js`) beantwortet
+`api/commands` und `api/command` daraus und führt `api/feature` mit `generic` selbst aus (Prüfpunkt davor, Vorschau stellt
+immer zurück, `document.revision` trennt ändernde von lesenden Befehlen). Befehle mit Mechvane-Handler oder Dateipfad sind
+dort „nicht angeboten“ mit Begründung, in einer Skizze oder einer Baugruppe gar keiner. Offen: #161 (Rückgängig zählt
+SolidCraft-Einträge nicht). Geprüft von `tools/demo_smoke.py` (Strg+K, Fase mit Kantenwahl, lesender Befehl ohne Eintrag).
 Aufnehmen: `mechvane ui <ordner>` mit dem Beispiel, `MECHVANE_AGENT` auf `claude-agent-acp`, Auftrag über die Oberfläche
 (oder `POST /api/agent/send`), danach `curl …/api/agent/events?since=0 > ev.json` und
 `python3 tools/record_replay.py ev.json demo/replays/<name>.json --demo <name> --title "…" --note "…"` (`--log` mit dem

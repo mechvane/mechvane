@@ -3,7 +3,7 @@
   "tagline": "You and your agent on the same model.",
   "milestone": {
     "name": "v0.1",
-    "goal": "The foundations run, with a good web UI for working together with your agent: the agent builds, you see, point and check."
+    "goal": "Mechvane's engineering knowledge works with the SolidCraft app you already use: design checks with their sources in the open SolidCraft window, bolted connections as one step, and your agent building and checking on the same model."
   },
   "statuses": {
     "done": "Available",
@@ -40,6 +40,23 @@
           "title": "MCP server for your agent",
           "text": "Parts, assemblies, joints, standard parts and design checks as tools for Claude and other agents.",
           "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Works with the running SolidCraft app",
+          "text": "Mechvane connects to the SolidCraft app you have open, so you and your agent work on the same design in SolidCraft's own window.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "planned",
+          "title": "Design checks in the open SolidCraft window",
+          "text": "Run Mechvane's design checks on the part you have open in SolidCraft and get every finding with its rule, value and source.",
+          "milestone": "v0.1"
+        },
+        {
+          "status": "later",
+          "title": "Engineering plugins inside SolidCraft",
+          "text": "Design checks, bolted connections and standard parts as SolidCraft plugins: a ribbon entry and a form for you, the same entry as a tool for your agent."
         },
         {
           "status": "done",
@@ -83,10 +100,9 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Windows installer with its own window",
-          "text": "Mechvane as a Windows program with an installer and its own window, no Python or browser setup needed, with SolidCraft included.",
-          "milestone": "v0.1"
+          "text": "Mechvane as a Windows program with an installer and its own window, no Python or browser setup needed, with SolidCraft included."
         },
         {
           "status": "planned",
@@ -126,7 +142,7 @@
     },
     {
       "title": "Web UI",
-      "intro": "Model by hand, let your agent take a step, check the result: all on the same model.",
+      "intro": "The Mechvane workspace in the browser, with the live demo. It stays available as it is, while new work goes into Mechvane inside SolidCraft's own app. Model by hand, let your agent take a step, check the result: all on the same model.",
       "items": [
         {
           "status": "done",
@@ -201,7 +217,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Direct editing",
           "text": "Move, offset, rotate or delete faces and change a hole's diameter right on the body, with handles and typed values, as one step in the history, as in Inventor. Especially useful for imported bodies without a history. Builds on SolidCraft's face operations."
         },
@@ -212,9 +228,9 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "next",
           "title": "Every SolidCraft command in the workspace",
-          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo. Whatever SolidCraft can do, you and your agent can do in Mechvane, including commands that appear in a new SolidCraft release.",
+          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo, in the app and in the live demo. What SolidCraft can do to your design, you and your agent can do in Mechvane, including commands that appear in a new SolidCraft release. Commands that act on the SolidCraft window itself, such as its view and renderer, stay with SolidCraft.",
           "milestone": "v0.1"
         },
         {
@@ -224,10 +240,9 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "What comes next, inside the app",
-          "text": "The next roadmap items right in the workspace, next to the button for your own feature request.",
-          "milestone": "v0.1"
+          "text": "The next roadmap items right in the workspace, next to the button for your own feature request."
         },
         {
           "status": "done",
@@ -266,13 +281,12 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "later",
           "title": "Point and speak",
-          "text": "Select a face and say what should happen there, e.g. \"chamfer 1 × 45°\". Speech input works; testing on devices.",
-          "milestone": "v0.1"
+          "text": "Select a face and say what should happen there, e.g. \"chamfer 1 × 45°\". Speech input works; testing on devices."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Lock what you decided",
           "text": "Mark parameters, features or faces as fixed; your agent works around them and tells you when a request would need them changed."
         },
@@ -283,37 +297,37 @@
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Why a value is what it is",
           "text": "Values your agent or an assistant calculates keep their derivation and source, shown when you hover over them."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Versions, branches and variants",
           "text": "Named versions you can compare side by side, branches to try a variant (also by your agent, for you to pick), later merged back feature by feature. Your agent can sweep parameters and lay out the variants in a table to choose from."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Comments and tasks on the model",
           "text": "Pin notes and tasks to a face, edge or feature. Check findings and requests for your agent live in the same place, and finished tasks stay with the part."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Follow your agent",
           "text": "Watch live where your agent is working: camera, selection and the feature it is editing. When you point and speak, your agent sees your view."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Keep working while your agent works",
           "text": "Your agent prepares its changes on a copy while you go on modelling, and you take them over when they are ready."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Own interface, SolidCraft in the background",
           "text": "After the workspace: an own sketcher with live preview, so modelling never leaves Mechvane. SolidCraft keeps computing underneath and stays named in the app."
         },
         {
-          "status": "planned",
+          "status": "later",
           "title": "Online version and Android app",
           "text": "Look at and change your models on the go. The web UI also becomes comfortable on tablets with touch and pen."
         }

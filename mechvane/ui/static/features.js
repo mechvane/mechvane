@@ -203,7 +203,7 @@ const STD_LENGTH_OPTIONS = (v) => (standardCache?.details?.[v?.norm]?.sizes?.[v?
   .map((l) => [String(l), `${l} mm`]);
 const stdHasLength = (v) => Boolean(standardCache?.details?.[v?.norm]?.has_length);
 
-const DIALOGS = {
+export const DIALOGS = {
   sketch: {
     title: "Sketch",
     command: "mechvane.sketch",
@@ -572,11 +572,20 @@ const DIALOGS = {
     },
     // timeline.edit merges into the definition: same fields, the hole type under "hole", null removes
     editSet(v, picks) {
+      const hasVal = (x) => x !== null && x !== undefined && String(x).trim() !== "";
       const hole = { type: v.type };
-      if (v.type === "counterbore") Object.assign(hole, { cb_diameter: v.cb_diameter, cb_depth: v.cb_depth });
-      if (v.type === "countersink") Object.assign(hole, { cs_diameter: v.cs_diameter, cs_angle: v.cs_angle });
-      const set = { diameter: v.diameter, depth: v.through ? null : v.depth,
-                    thread: v.spec === "tapped" ? v.size : null, hole };
+      if (v.type === "counterbore") {
+        if (hasVal(v.cb_diameter)) hole.cb_diameter = String(v.cb_diameter);
+        if (hasVal(v.cb_depth)) hole.cb_depth = String(v.cb_depth);
+      }
+      if (v.type === "countersink") {
+        if (hasVal(v.cs_diameter)) hole.cs_diameter = String(v.cs_diameter);
+        if (hasVal(v.cs_angle)) hole.cs_angle = String(v.cs_angle);
+      }
+      const set = { thread: v.spec === "tapped" ? v.size : null, hole };
+      if (hasVal(v.diameter)) set.diameter = String(v.diameter);
+      if (v.through) set.depth = null;
+      else if (hasVal(v.depth)) set.depth = String(v.depth);
       if (v.centre) {
         set.centre = true;
       } else {
@@ -586,11 +595,11 @@ const DIALOGS = {
         const edgeList = (picks.edgePicks || []);
         const refs = [];
         const pt = (q) => (Array.isArray(q) ? q : [q.x, q.y, q.z].map((c) => +c.toFixed(6)));
-        if (v.edge1 === "edge" && edgeList[0] && v.dist1 !== null && v.dist1 !== "") {
-          refs.push({ edge: pt(edgeList[0].point), distance: v.dist1 });
+        if (v.edge1 === "edge" && edgeList[0] && hasVal(v.dist1)) {
+          refs.push({ edge: pt(edgeList[0].point), distance: String(v.dist1) });
         }
-        if (v.edge2 === "edge" && edgeList[1] && v.dist2 !== null && v.dist2 !== "") {
-          refs.push({ edge: pt(edgeList[1].point), distance: v.dist2 });
+        if (v.edge2 === "edge" && edgeList[1] && hasVal(v.dist2)) {
+          refs.push({ edge: pt(edgeList[1].point), distance: String(v.dist2) });
         }
         set.references = refs;  // an empty list removes them; SolidCraft takes no null here (#111)
       }
@@ -598,7 +607,10 @@ const DIALOGS = {
     },
     fromDefinition(d) {
       const h = d.hole || {};
-      const dia = parseFloat(d.diameter);
+      const rawDia = d.diameter;
+      const diaNum = typeof rawDia === "number" ? rawDia
+        : (typeof rawDia === "string" && rawDia.trim() !== "" ? Number(rawDia) : NaN);
+      const dia = Number.isFinite(diaNum) ? diaNum : (rawDia ?? "");
       const isCentred = !!(d.centre || (d.points && d.points.sketch && Array.isArray(d.points.ids) && d.points.ids.includes("c")));
       const v = { x: d.position?.[0], y: d.position?.[1], z: d.position?.[2], diameter: dia, type: h.type || "simple",
                   through: d.depth === undefined || d.depth === null, depth: d.depth ?? "10",
@@ -609,8 +621,10 @@ const DIALOGS = {
       if (d.thread) Object.assign(v, { spec: "tapped", size: d.thread });
       else {
         let match = null;
-        for (const [size, t] of Object.entries(holeTables?.sizes || {})) {
-          for (const [fit, val] of Object.entries(t.clearance)) if (!match && Math.abs(val - dia) < 1e-6) match = { size, fit };
+        if (Number.isFinite(diaNum)) {
+          for (const [size, t] of Object.entries(holeTables?.sizes || {})) {
+            for (const [fit, val] of Object.entries(t.clearance)) if (!match && Math.abs(val - diaNum) < 1e-6) match = { size, fit };
+          }
         }
         Object.assign(v, match ? { spec: "clearance", ...match } : { spec: "diameter" });
       }
@@ -1992,6 +2006,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     clearTimeout(active.timer);
     const wasEdit = active.edit, wasSketch = active.def.view === "sketch";
     active = null;
+    if (typeof window !== "undefined") window.__editDef = null;
     revealOriginAxes(false);
     if (wasEdit) restoreModel();
     if (wasSketch) lookAlong(null); // back to the usual view, as Inventor does after Finish Sketch
@@ -2183,6 +2198,7 @@ export function initFeatureDialogs({ scene, viewTools, renderScene, propertiesEl
     }
     showModel(data.before);
     await open(data.dialog, data);
+    if (typeof window !== "undefined") window.__editDef = data.definition;
     statusEl.textContent = "Ready";
   }
 

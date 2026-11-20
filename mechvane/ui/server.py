@@ -23,6 +23,9 @@ from ..solidcraft import Session
 from .mesh import collect_mesh
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+# a top-level script or style sheet of static/ (STATIC_TOP) and its content type
+STATIC_TOP = re.compile(r"/[A-Za-z0-9_][A-Za-z0-9_-]*\.(js|css)")
+STATIC_TYPES = {"js": "application/javascript; charset=utf-8", "css": "text/css; charset=utf-8"}
 MAX_UPLOAD = 64 * 1024 * 1024
 
 _JOINT_PRIO = ("joint_missing", "file_missing", "face_missing", "origin_lost", "moved", "unverifiable", "ok")
@@ -796,6 +799,7 @@ def run_feature(srv, doc, command: str, params: dict, preview: bool, tmp_dir, ed
     return {"done": label, "delta": out.get("delta"), "results": out.get("results")}
 
 
+_AGENT_LOCK = threading.Lock()  # first use of UIServer.agent (#156)
 _COMMANDS_CACHE: dict = {}  # SolidCraft version → {"rows": [...], "forms": {id: form}}; the same for every session
 
 
@@ -816,7 +820,111 @@ def _for_kind(doc, command: str, offered: bool, reason: str | None) -> tuple[boo
     return offered, reason
 
 
-def command_form_for(doc, command: str) -> dict:
+# what SolidCraft reads as a font file (fonts.rs is_path): the rest of a font value is an installed font's name
+FONT_FILES = (".ttf", ".otf", ".ttc", ".otc")
+# sketch command fields that name what is in the open sketch (#128): curves, points, both, or anything
+SKETCH_CHOOSE = {"curve": "curves", "curves": "curves", "curve2": "curves", "line": "curves", "lines": "curves",
+                 "circle": "curves", "arc": "curves", "point": "points", "points": "points", "a": "both", "b": "both",
+                 "entity": "all", "entities": "all", "constraint": "constraints", "constraints": "constraints"}
+# fields of these names that take coordinates or something else than the sketch's ids (review of #145)
+SKETCH_NOT_CHOOSE = {
+    "sketch.line": {"points"}, "sketch.line3d": {"points"}, "sketch.trim.path": {"points"},
+    "sketch.point": {"point"}, "sketch.drag_end": {"constraint"}, "sketch.project_to_surface": {"curves"},
+    "sketch.intersection_curve": {"a", "b"},  # bodies, faces or another sketch
+}
+
+
+def _sketch_choices(state: dict, fields: list[dict], command: str = "") -> list[dict]:
+    """Fields of a sketch command that name curves, points or constraints carry the ids of the open sketch as
+    `choices` (the sketch origin and a curve's ends such as l1.start, l1.end and c1.center are points too)."""
+    def ids(key):
+        return [str(e["id"]) for e in state.get(key) or [] if isinstance(e, dict) and e.get("id") not in (None, "")]
+    curves, points, cons = ids("curves"), ids("points"), ids("constraints")
+    ends = [f"{c['id']}.{end}" for c in state.get("curves") or [] if isinstance(c, dict) and c.get("id")
+            for end in ("start", "end", "center") if c.get(f"{end}_at") is not None]
+    names = {"curves": curves, "points": points + [e for e in ends if e not in points],
+             "constraints": cons}
+    names["both"] = names["curves"] + names["points"]
+    names["all"] = names["both"] + cons
+    kinds = ("expr", "text", "list", "json")
+    skip = SKETCH_NOT_CHOOSE.get(command, set()) | ({"points"} if command.startswith("sketch.spline") else set())
+    return [dict(f, choices=names[SKETCH_CHOOSE[f["name"]]][:300], choose=SKETCH_CHOOSE[f["name"]])
+            if f["name"] in SKETCH_CHOOSE and f["name"] not in skip and f["kind"] in kinds
+            and names[SKETCH_CHOOSE[f["name"]]] else f
+            for f in fields]
+
+
+CHOOSE = {"feature": "feature", "features": "feature", "sketch": "feature", "joint": "joint", "constraint": "joint"}
+
+
+def _project_files(root: Path, types, limit: int = 300) -> list[str]:
+    """Files of the project folder with one of the types, as names relative to it: no hidden files or folders
+    (.git, .mechvane, venvs), no symbolic links (one may point outside), at most `limit`."""
+    out = []
+    for here, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and not os.path.islink(os.path.join(here, d))
+                         and d not in ("node_modules", "__pycache__"))
+        for f in sorted(files):
+            p = Path(here) / f
+            if f.startswith(".") or p.is_symlink() or p.suffix.lower() not in types:
+                continue
+            out.append(p.relative_to(root).as_posix())
+            if len(out) >= limit:
+                return out
+    return out
+
+
+class FileExists(Exception):
+    """A command would overwrite a file in the project folder: the dialog asks first (HTTP 409)."""
+
+
+def project_file(root: Path, value, mode: str, types) -> str:  # noqa: C901
+    """The absolute path for a file the command dialog names (#128): a name relative to the project folder that
+    stays inside it, with one of the types; to read, it must exist; to write, its folder must. PermissionError
+    otherwise (the dialog never reads or writes elsewhere)."""
+    if not isinstance(value, str) or not value.strip() or "\x00" in value:
+        raise PermissionError("choose a file in the project folder")
+    name = value.strip().replace("\\", "/")
+    if Path(name).is_absolute() or name.startswith("/") or ":" in name:
+        raise PermissionError("the file must be in the project folder: give its name, not a full path")
+    root = Path(root).resolve()
+    target = (root / name).resolve()
+    if root not in target.parents:
+        raise PermissionError("the file must be in the project folder")
+    if any(part.startswith(".") for part in target.relative_to(root).parts):
+        raise PermissionError("hidden files and folders are not offered")
+    if target.suffix.lower() not in types:
+        raise PermissionError(f"this command takes {', '.join(types)} files")
+    if mode == "read" and not target.is_file():
+        raise PermissionError(f"no such file in the project folder: {name}")
+    if mode == "write" and not target.parent.is_dir():
+        raise PermissionError(f"no such folder in the project folder: {Path(name).parent.as_posix()}")
+    if target.is_dir():
+        raise PermissionError(f"{name} is a folder: choose a file")
+    return str(target)
+
+
+def _with_choices(doc, fields: list[dict], root: Path | None = None) -> list[dict]:
+    """A field that names a feature, sketch, joint or constraint carries `choices` (the names in the open
+    document), so the dialog offers them as a list; typing a name or id still works."""
+    kinds = ("expr", "text", "list")
+    if root is not None and any(f.get("file") for f in fields):
+        fields = [dict(f, choices=_project_files(Path(root), tuple(f["file"]["types"]))) if f.get("file") else f
+                  for f in fields]
+    if not any(f["name"] in CHOOSE and f["kind"] in kinds for f in fields):
+        return fields
+    try:
+        if doc.kind == PART:
+            names = {"feature": [f["name"] for f in _timeline(doc)]}
+        else:
+            names = {"joint": [j["name"] for j in doc.session.cmd("joint.list", {}).get("joints") or [] if j.get("name")]}
+    except Exception:
+        return fields
+    return [dict(f, choices=names[CHOOSE[f["name"]]]) if f["name"] in CHOOSE and names.get(CHOOSE[f["name"]]) and f["kind"] in kinds else f
+            for f in fields]
+
+
+def command_form_for(doc, command: str, root: Path | None = None, sketch_state: dict | None = None) -> dict:
     """The general dialog's form for one command (describe_command, cached; offered for the document's kind);
     KeyError for an unknown id."""
     cache = _command_cache(doc)
@@ -828,25 +936,117 @@ def command_form_for(doc, command: str) -> dict:
         fm = command_form.form(doc.session.tool("describe_command", {"id": command}, timeout=60), row)
         reason = command_form.why_not(command, fm)
         fm = cache["forms"][command] = dict(fm, offered=reason is None, reason=reason)
+    if sketch_state is not None:
+        # a sketch is open: its commands are offered, their fields choose among the sketch's own ids
+        reason = command_form.why_not(command, fm, in_sketch=True)
+        fields = _sketch_choices(sketch_state, fm["fields"], command)
+        if root is not None and command in ("sketch.text", "sketch.edit_text"):
+            # a font: an installed font's name, or a .ttf/.otf file of the project folder (offered as choices)
+            fonts = _project_files(Path(root), FONT_FILES)
+            fields = [dict(f, choices=fonts) if f["name"] == "font" and fonts else f for f in fields]
+        if command == "parameters.change":
+            try:
+                pnames = [p["name"] for p in doc.session.cmd("parameters.list", {}).get("parameters") or []
+                          if p.get("name")]
+                if pnames:
+                    fields = [dict(f, choices=pnames) if f["name"] == "name" else f for f in fields]
+            except Exception:
+                pass
+        desc = fm.get("description") or ""
+        if command in command_form.SKETCH_3D:
+            desc = f"{command_form.SKETCH_3D_HINT}\n\n{desc}" if desc else command_form.SKETCH_3D_HINT
+        return dict(fm, offered=reason is None, reason=reason, sketch=True, fields=fields, description=desc)
     offered, reason = _for_kind(doc, command, fm["offered"], fm["reason"])
-    return dict(fm, offered=offered, reason=reason)
+    return dict(fm, offered=offered, reason=reason, fields=_with_choices(doc, fm["fields"], root))
 
 
-def command_list(doc) -> dict:
+def command_list(doc, in_sketch: bool = False) -> dict:
     """Every SolidCraft command for the command search (Ctrl+K): id, label, tab, panel, and why it is not
-    offered (excepted or deferred; a file path is only known once its form is loaded)."""
+    offered (excepted or deferred; a file path is only known once its form is loaded). in_sketch: a sketch is
+    open, so the sketch environment's commands are offered and the rest waits."""
     out = []
     for cid, row in sorted(_command_cache(doc)["rows"].items()):
         if command_form.excepted(cid):
             continue
-        reason = command_form.why_not(cid)
-        offered, reason = _for_kind(doc, cid, reason is None, reason)
+        reason = command_form.why_not(cid, in_sketch=in_sketch)
+        offered, reason = (reason is None, reason) if in_sketch else _for_kind(doc, cid, reason is None, reason)
         out.append({"id": cid, "label": row.get("label") or cid, "tab": row.get("tab"), "panel": row.get("panel"),
                     "offered": offered, **({"reason": reason} if reason else {})})
-    return {"commands": out, "solidcraft": install.VERSION}
+    return {"commands": out, "solidcraft": install.VERSION, "sketch": in_sketch}
 
 
-def run_generic(srv, doc, command: str, params: dict, preview: bool, tmp_dir) -> dict:
+def _feature_name(doc, ref) -> str:
+    """A feature given by id or name (as the schema takes it) → its name."""
+    tl = _timeline(doc)
+    for f in tl:
+        if f["name"] == ref or (not isinstance(ref, bool) and isinstance(ref, int) and f["id"] == ref):
+            return f["name"]
+    raise KeyError(ref)
+
+
+def _joint_name(doc, ref) -> str:
+    for j in doc.session.cmd("joint.list", {}).get("joints") or []:
+        if j.get("name") == ref or (isinstance(ref, int) and not isinstance(ref, bool) and j.get("id") == ref):
+            return j["name"]
+    raise ValueError(f"unknown joint {ref!r}")
+
+
+def _route_timeline_edit(srv, doc, params, preview, tmp_dir):
+    name = _feature_name(doc, params.get("feature"))
+    fields = params.get("set")
+    if not isinstance(fields, dict) or not fields:
+        raise ValueError("`set` needs the fields to change")
+    kind = next(f["type"] for f in _timeline(doc) if f["name"] == name)
+    if kind not in EDITABLE:
+        raise PermissionError(f"{name} ({kind}) is not edited from the command dialog yet; use its feature dialog")
+    return dict(run_feature(srv, doc, EDITABLE[kind][1], fields, preview, tmp_dir, edit=name), changed=not preview)
+
+
+def _route_timeline_delete(srv, doc, params, preview, tmp_dir):
+    if params.get("groups"):
+        raise PermissionError("a timeline folder is not deleted from the command dialog")
+    refs = params.get("features") if params.get("features") is not None else [params.get("feature")]
+    if isinstance(refs, str) or not isinstance(refs, list):
+        refs = [refs]
+    if len(refs) != 1:
+        raise PermissionError("delete one feature at a time: each deletion is one undo step")
+    return dict(delete_feature(srv, doc, _feature_name(doc, refs[0])), changed=True)
+
+
+def _route_timeline_rename(srv, doc, params, preview, tmp_dir):
+    return dict(rename_feature(srv, doc, _feature_name(doc, params.get("feature")), params.get("name")), changed=True)
+
+
+def _route_joint_delete(srv, doc, params, preview, tmp_dir):
+    if params.get("origin") is not None or params.get("link") is not None:
+        raise PermissionError("delete a joint by its name; its origin or link index is not offered")
+    return dict(assembly_delete_joint(srv, doc, {"joint": _joint_name(doc, params.get("joint"))}), changed=True)
+
+
+def _route_constraint_edit(srv, doc, params, preview, tmp_dir):
+    body = dict(params, constraint=_joint_name(doc, params.get("constraint")))
+    return dict(assembly_edit_constraint(srv, doc, body), changed=True)
+
+
+def _route_update_links(srv, doc, params, preview, tmp_dir):
+    if params.get("component") is not None or params.get("components") is not None:
+        raise PermissionError("Update links reads every linked part: choosing some is not offered")
+    return dict(assembly_update_links(srv, doc), changed=True)
+
+
+# command_form.ROUTED id → handler(srv, doc, params, preview, tmp_dir) → result. A routed id without a handler is
+# refused (never run as the raw command); a mutating handler takes its own undo step.
+ROUTES = {
+    "timeline.edit": _route_timeline_edit,
+    "timeline.delete": _route_timeline_delete,
+    "timeline.rename": _route_timeline_rename,
+    "joint.delete": _route_joint_delete,
+    "assembly.constraint.edit": _route_constraint_edit,
+    "component.update_links": _route_update_links,
+}
+
+
+def run_generic(srv, doc, command: str, params: dict, preview: bool, tmp_dir, overwrite: bool = False) -> dict:
     """Run any offered SolidCraft command from the general dialog (#128), all or nothing. A command that
     changes the design is saved and becomes one entry of the undo list; one that only reads (inspect,
     list ...) returns its result and leaves no undo entry (the document revision tells them apart)."""
@@ -856,6 +1056,42 @@ def run_generic(srv, doc, command: str, params: dict, preview: bool, tmp_dir) ->
         raise PermissionError(f"unknown command: {command}") from None
     if not fm["offered"]:
         raise PermissionError(f"{command} is not offered in the command dialog: {fm['reason']}")
+    fc = command_form.file_command(command)
+    if fc:
+        field_name, mode, types = fc
+        if not isinstance(params, dict):
+            raise ValueError("parameters must be an object")
+        refused = command_form.FILE_REFUSED_PARAMS.get(command, ())
+        for key in refused:
+            if key in params:  # any value, also 0 or false: the dialog never sends these
+                raise PermissionError(f"`{key}` is not offered in the command dialog ({command} only writes the file)")
+        fmt = params.get("format")
+        if command == "file.export" and fmt not in (None, "") and fmt not in command_form.EXPORT_FORMATS:
+            raise PermissionError(f"format {fmt!r} is not offered here: {', '.join(command_form.EXPORT_FORMATS)}")
+        if preview and mode == "write":
+            return {"preview": True, "changed": False, "results": None, "mesh": None,
+                    "note": "no preview: this command writes a file; OK writes it"}
+        value = params.get(field_name)
+        if value in (None, "") and mode == "write":
+            params = {k: v for k, v in params.items() if k != field_name}  # no file: the reply holds the result
+        else:
+            target = project_file(srv.ws.root, value, mode, types)
+            # OBJ writes its materials beside it (name.mtl): that file counts, too
+            objlike = command == "file.export_obj" or (command == "file.export" and (fmt == "obj" or (not fmt and target.lower().endswith(".obj"))))
+            hit = [p for p in [Path(target)] + ([Path(target).with_suffix(".mtl")] if objlike else []) if p.exists()]
+            if mode == "write" and hit and not overwrite and not preview:
+                raise FileExists(f"{', '.join(p.name for p in hit)} exists in the project folder: overwrite it?")
+            params = dict(params, **{field_name: target})
+            if command == "library.export" and overwrite:
+                params["overwrite"] = True  # the user confirmed it in the dialog
+    if command_form.routed(command):
+        handler = ROUTES.get(command)
+        if handler is None:
+            raise PermissionError(f"{command} has no Mechvane handler: it is not run as the raw command")
+        if preview and command_form.no_preview(command):
+            return {"preview": True, "changed": False, "results": None, "mesh": None,
+                    "note": "no preview: this command changes what Mechvane records; OK runs it as one undo step"}
+        return handler(srv, doc, params, preview, tmp_dir)
     commands = [{"command": command, "params": params}]
 
     def revision():
@@ -2268,9 +2504,13 @@ class UIServer(ThreadingHTTPServer):
 
     @property
     def agent(self) -> "agent_mod.AgentTurns":
-        """The chat with the user's agent (ADR 0003), started on first use."""
+        """The chat with the user's agent (ADR 0003), started on first use. Created under a lock: the page's first
+        requests come in parallel and the constructor is slow (it prunes the snapshot history), so two of them made
+        two instances, and a hand step recorded in the first was lost when the second replaced it (#156)."""
         if getattr(self, "_agent", None) is None:
-            self._agent = agent_mod.AgentTurns(self.ws.root, on_files_changed=self._files_changed)
+            with _AGENT_LOCK:
+                if getattr(self, "_agent", None) is None:
+                    self._agent = agent_mod.AgentTurns(self.ws.root, on_files_changed=self._files_changed)
         return self._agent
 
     def agent_busy(self) -> bool:
@@ -2772,7 +3012,29 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                 if ss is None:
                     raise sketch_session.SketchError("no sketch is open")
                 if action == "cmd":
-                    out = ss.command(body.get("command"), body.get("params") or {}, line_type=body.get("line_type"))
+                    if body.get("generic"):
+                        # from the command dialog: only what its sketch list offers (no file paths, #128)
+                        try:
+                            fm = command_form_for(ss.doc, str(body.get("command")), None, sketch_state={})
+                        except KeyError:
+                            raise PermissionError(f"unknown command: {body.get('command')}") from None
+                        if not fm["offered"]:
+                            raise PermissionError(f"{body.get('command')} is not offered in the sketch: {fm['reason']}")
+                        font = (body.get("params") or {}).get("font") if isinstance(body.get("params"), dict) else None
+                        if isinstance(font, str) and "%" in font:
+                            raise PermissionError("a font name with % is not offered (SolidCraft would expand it)")
+                        if isinstance(font, str) and ("/" in font or "\\" in font or "~" in font
+                                                      or font.lower().endswith(FONT_FILES)):
+                            # a font by name is fine; a font file only from the project folder (#128, part 2)
+                            body = dict(body, params=dict(body["params"], font=project_file(
+                                srv.ws.root, font, "read", FONT_FILES)))
+                        if fm.get("panel") != "CREATE":
+                            # the drawing line type goes to Create commands only, as in SolidCraft (apply_mode)
+                            body = dict(body, line_type=None)
+                    if body.get("generic") and body.get("preview"):
+                        out = ss.preview(body.get("command"), body.get("params") or {}, line_type=body.get("line_type"))
+                    else:
+                        out = ss.command(body.get("command"), body.get("params") or {}, line_type=body.get("line_type"))
                 elif action == "undo":
                     out = ss.undo_last()
                 elif action in ("finish", "cancel"):
@@ -3015,12 +3277,16 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         return
                     try:
                         if body.get("generic"):
-                            result = run_generic(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir)
+                            result = run_generic(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir,
+                                                 overwrite=body.get("overwrite") is True)
                         else:
                             result = run_feature(srv, doc, command, params, bool(body.get("preview")), srv.tmp_dir,
                                                  edit=body.get("edit") if isinstance(body.get("edit"), str) else None)
                     except KeyError as e:
                         self._send_json(404, {"error": f"feature not found: {e.args[0]}"})
+                        return
+                    except FileExists as e:
+                        self._send_json(409, {"error": str(e), "exists": True})
                         return
                     except PermissionError as e:
                         self._send_json(403, {"error": str(e)})
@@ -3310,41 +3576,11 @@ class UIRequestHandler(BaseHTTPRequestHandler):
             if path in ("/", "/index.html"):
                 self._send_static("index.html", "text/html; charset=utf-8")
                 return
-            if path == "/app.js":
-                self._send_static("app.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/chat.js":
-                self._send_static("chat.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/viewtools.js":
-                self._send_static("viewtools.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/request.js":
-                self._send_static("request.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/features.js":
-                self._send_static("features.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/commands.js":
-                self._send_static("commands.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/sketchgeom.js":
-                self._send_static("sketchgeom.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/sketcher.js":
-                self._send_static("sketcher.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/demo_check.js":
-                self._send_static("demo_check.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/newpart.js":
-                self._send_static("newpart.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/folder.js":
-                self._send_static("folder.js", "application/javascript; charset=utf-8")
-                return
-            if path == "/style.css":
-                self._send_static("style.css", "text/css; charset=utf-8")
+            # every script and style sheet at the top of static/ by its own name, as the pages import them
+            # ("./x.js"): one rule, so a new module cannot be forgotten here (#135, #141). Only a plain file name
+            # (no folder, no dot file); _send_static keeps the path inside STATIC_DIR.
+            if STATIC_TOP.fullmatch(path):
+                self._send_static(path[1:], STATIC_TYPES[path.rsplit(".", 1)[1]])
                 return
             if path in ("/model", "/model.html"):
                 self._send_static("model.html", "text/html; charset=utf-8")
@@ -3427,10 +3663,12 @@ class UIRequestHandler(BaseHTTPRequestHandler):
                         self._send_json(409, {"error": "no document open"})
                         return
                     try:
+                        ss = getattr(srv, "sketch", None)
                         if path == "/api/commands":
-                            data = command_list(doc)
+                            data = command_list(doc, in_sketch=ss is not None)
                         else:
-                            data = command_form_for(doc, (parse_qs(url.query).get("id") or [""])[0])
+                            data = command_form_for(doc, (parse_qs(url.query).get("id") or [""])[0], srv.ws.root,
+                                                    sketch_state=ss.state()["state"] if ss is not None else None)
                     except KeyError as e:
                         self._send_json(404, {"error": f"unknown command: {e.args[0]}"})
                         return
