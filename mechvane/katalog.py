@@ -10,7 +10,10 @@ import re
 from typing import Any, Dict, List, Optional, Union
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CATALOG_DIR = REPO_ROOT / "katalog" / "eintraege"
+# In a checkout the catalog sits at katalog/ next to the package; in an installed package the wheel carries the entries as
+# mechvane/katalog_data/eintraege (pyproject.toml, package-dir "mechvane.katalog_data" = "katalog").
+_CHECKOUT_DIR = REPO_ROOT / "katalog" / "eintraege"
+DEFAULT_CATALOG_DIR = _CHECKOUT_DIR if _CHECKOUT_DIR.is_dir() else Path(__file__).resolve().parent / "katalog_data" / "eintraege"
 
 VALID_HERKUNFT = {
     "norm_sekundaer",

@@ -1,0 +1,111 @@
+{
+ "commands": [
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "L",
+    "expression": "60 mm",
+    "comment": "plate length"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "W",
+    "expression": "40 mm",
+    "comment": "plate width"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "T",
+    "expression": "8 mm",
+    "comment": "plate thickness"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "d_edge",
+    "expression": "8 mm",
+    "comment": "hole near edge (center 6 mm from x=0, < 1.5 * d)"
+   }
+  },
+  {
+   "command": "parameters.add",
+   "params": {
+    "name": "d_web",
+    "expression": "6 mm",
+    "comment": "pair of holes leaving a 0.8 mm web between them"
+   }
+  },
+  {
+   "command": "solid.box",
+   "params": {
+    "length": "L",
+    "width": "W",
+    "height": "T",
+    "corner": [
+     0,
+     0,
+     0
+    ],
+    "operation": "new",
+    "name": "Plate",
+    "body_name": "Fehlerplatte"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     6,
+     20,
+     8
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ],
+    "diameter": "d_edge",
+    "name": "Randbohrung"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     28,
+     20,
+     8
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ],
+    "diameter": "d_web",
+    "name": "Wandbohrung1"
+   }
+  },
+  {
+   "command": "solid.hole",
+   "params": {
+    "position": [
+     34.8,
+     20,
+     8
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ],
+    "diameter": "d_web",
+    "name": "Wandbohrung2"
+   }
+  }
+ ]
+}

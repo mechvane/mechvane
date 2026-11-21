@@ -10,6 +10,7 @@ Usage:
   python3 tools/check_sources.py                       # check all docs/research/*flash*.md
   python3 tools/check_sources.py docs/research/*.md    # check specific files
   python3 tools/check_sources.py --json                # machine-readable output
+  python3 tools/check_sources.py katalog/eintraege/<bereich>/<id>.json   # catalog entry: zitat per source, werte in any
   python3 tools/check_sources.py --no-cache            # bypass disk cache
 """
 
@@ -613,6 +614,47 @@ def check_number_in_text(num_str: str, doc_text: str) -> bool:
     return bool(re.search(pattern, doc_text))
 
 
+def _plain_number(v) -> str:
+    """1.2 -> "1.2", 8.0 -> "8", 2100000 -> "2100000", 5e-05 -> "0.00005" (no exponent, no float noise)."""
+    from decimal import Decimal
+    t = format(Decimal(repr(v)), "f")
+    return t.rstrip("0").rstrip(".") if "." in t else t
+
+
+def json_entry_numbers(data: dict) -> list[str]:
+    """Numbers an catalog entry states in `werte` (`wert`, and both ends of `bereich`), as plain strings."""
+    out = []
+    for w in data.get("werte") or []:
+        vals = [w.get("wert")] + list(w.get("bereich") or [])
+        for v in vals:
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                out.append(_plain_number(v))
+    return list(dict.fromkeys(out))
+
+
+def verify_json_entry(filepath: Path, fetcher: "SourceFetcher") -> list[dict]:
+    """Catalog entry (katalog/eintraege/*/*.json): every source's literal `zitat` must be in its page; every number of
+    `werte` must be found in at least one of the entry's pages (reported on the first reachable source)."""
+    data = json.loads(filepath.read_text(encoding="utf-8"))
+    results, texts = [], []
+    for i, q in enumerate(data.get("quellen") or []):
+        entry = Entry(file_path=filepath, title=f"{data.get('id', filepath.stem)} / Quelle {i + 1}", line=0,
+                      urls=[q.get("url", "")], quotes=[q["zitat"]] if q.get("zitat") else [])
+        res = verify_entry_url(entry, q.get("url", ""), fetcher)
+        results.append(res)
+        if res["status_code"] == 200:
+            texts.append(fetcher.fetch(q["url"]).get("text", ""))
+    numbers = json_entry_numbers(data)
+    reachable = [r for r in results if r["status_code"] == 200]
+    if numbers and reachable:
+        missing = [n for n in numbers if not any(check_number_in_text(n, t) for t in texts)]
+        first = reachable[0]
+        first["numbers_total"], first["numbers_found"] = len(numbers), len(numbers) - len(missing)
+        first["numbers"] = f"{first['numbers_found']} von {first['numbers_total']}"
+        first["missing_numbers"] = missing
+    return results
+
+
 def verify_entry_url(entry: Entry, url: str, fetcher: SourceFetcher) -> dict:
     """Verify an entry against a specific URL."""
     fetch_res = fetcher.fetch(url)
@@ -825,6 +867,9 @@ def main():
 
     for file_path in files:
         if not file_path.is_file():
+            continue
+        if file_path.suffix == ".json":
+            results_by_file[str(file_path)] = verify_json_entry(file_path, fetcher)
             continue
         entries = parse_markdown_entries(file_path)
         file_results = []

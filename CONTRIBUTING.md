@@ -20,7 +20,7 @@ standard values help most.
 - Every change comes with a check in `tests/mechvane/check.py`, and all checks pass
   (`python3 tests/mechvane/check.py`, `python3 tests/reference/check.py`). Do not weaken
   checks to get to green.
-- User-facing changes: add a changelog snippet in `changelog.d/<issue>.md` (first line
+- User-facing changes (research notes and catalog entries need none): add a changelog snippet in `changelog.d/<issue>.md` (first line
   `Added`/`Changed`/`Fixed`/`Removed`, then bullet list in English; do not edit `CHANGELOG.md`
   directly; see `changelog.d/README.md`).
 - Larger decisions as an ADR under `docs/adr/`.
@@ -29,7 +29,8 @@ standard values help most.
 
 Entries in the knowledge catalog (`katalog/eintraege/`, schema `katalog/schema.json`) need
 a freely accessible source with a verbatim quote. `python3 tools/check_sources.py
-<note.md>` checks that quotes and numbers really appear in the source. Do not copy values
+<note.md>` (or `katalog/eintraege/<area>/<id>.json` for a catalog entry) checks that quotes and numbers
+really appear in the source. Do not copy values
 from paid standards documents.
 
 ## License

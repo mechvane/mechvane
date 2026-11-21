@@ -7,6 +7,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a25] - 2026-11-21
+
+### Added
+
+- Sourced knowledge catalog entries and `RULE_SOURCES` mappings for the five remaining design check rules: `min_wall_thickness`, `hole_edge_distance`, `thread_depth`, `printability`, and `countersink_clearance`.
+- Design-rule reference baselines for `flansch`, `gehaeuse`, `rippenplatte`, and `fehlerplatte` (`fdm_0.4`, `cnc_alu`) with comparison script `tests/reference/check_design_rules.py` (`--update`).
+- The live demo has the command dialog too (Ctrl+K): every SolidCraft command with a form from its schema, a pick in the view, preview and undo, computed by SolidCraft in your browser. Commands that need Mechvane on your machine (file import and export, its own handling of renames, deletes and joints) say so and are available after installing Mechvane.
+- The command dialog (Ctrl+K) now runs commands that read or write a file: import and export of parameters, bill of materials, motion data, DXF and bend tables, STEP/STL/3MF/OBJ export, meshes, images and point clouds. The file is chosen from the project folder or named there; nothing outside it is read or written, and design files are never overwritten.
+- In a sketch, Ctrl+K offers all of SolidCraft's sketch commands (draw, constrain, modify, pattern, inspect). Each one is a step of the sketch's own undo, and fields for curves, points and constraints offer the ids of the open sketch.
+- In a sketch, the command dialog previews a command in the sketch before you run it, and its Pick button takes curves and points from clicks in the sketch. Text can use a font file from the project folder.
+
+### Changed
+
+- In the sketch command dialog, 3D sketch commands (`sketch.line3d`, `sketch.arc3d`, `sketch.point3d`, `sketch.spline3d`, `sketch.move3d`, `sketch.include_3d`) now prepend a hint to switch the sketch to 3D first (`sketch.options` with `sketch_3d: true`).
+- The command dialog names a reason for `view.*`, `render.*` and `select.*`: they act only on SolidCraft's own window, which Mechvane drives in the background, so they stay with SolidCraft.
+
+### Fixed
+
+- Edit Hole dialog now preserves diameter expressions (such as `4 + 1` or parameter names) when reopening, omits empty fields instead of serializing them as strings, and sends numeric values as string expressions so editing holes with edge references succeeds.
+- The design check measures the wall behind the rounded ends of a closed slot again: a slot end too close to an edge is reported, while open slots and edge notches still give no false hole findings.
+- The pointer stays a hand while you hover a face to pick it (hole position, face choice).
+- The dimension preview shows what a click places: horizontal or vertical when pulled past an end of two points, and the angle of the sector the pointer is in for two lines.
+- Switching to the Model page with a sketch open only leaves the page once the sketch is finished; otherwise the status line says why.
+- A successful projection in the sketcher replaces an earlier error message in the status line.
+- The local workspace serves every script of its pages by name, including the ones loaded on demand (agent replay, demo kernel), so no module is missing any more.
+- Command dialog: previewing a command that writes a file now shows the no-preview note even while the file name is still incomplete (path validation runs when you confirm with OK).
+- Command dialog in a sketch: `parameters.change` now offers existing parameter names as choices in its `name` field.
+- Undo was sometimes missing right after the workspace opened: the first requests of the page created the list of steps twice, and a step made in the first list was lost when the second replaced it. The list is now created once.
+- The knowledge catalog is now part of the installed package. Before, design-check findings in a `pip install` showed no source ("Failed to load rule sources from katalog"); `mechvane/katalog_data/` now carries all catalog entries.
+- In construction mode, edges and origin axes you project into a sketch become construction geometry, as in SolidCraft.
+
 ## [0.1.0a24] - 2026-11-17
 
 ### Added

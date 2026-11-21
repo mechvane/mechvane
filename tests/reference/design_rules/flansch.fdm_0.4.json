@@ -1,0 +1,111 @@
+{
+  "part": "flansch",
+  "profile": "fdm_0.4",
+  "verdict": "ok",
+  "findings": [
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 14.0901,
+      "threshold": 9.9,
+      "point": [
+        -19.0932,
+        -15.04,
+        4.3112
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F4:side@F5.2"
+    },
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 14.0901,
+      "threshold": 9.9,
+      "point": [
+        -15.04,
+        19.0932,
+        4.3112
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F4:side@F5.1"
+    },
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 14.0901,
+      "threshold": 9.9,
+      "point": [
+        14.9846,
+        -19.0775,
+        7.6888
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F4:side@F5.3"
+    },
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 14.0901,
+      "threshold": 9.9,
+      "point": [
+        19.0932,
+        15.04,
+        4.3112
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F4:side"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 10.7901,
+      "threshold": 1.2,
+      "point": [
+        -19.0932,
+        -15.04,
+        4.3112
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F4:side@F5.2"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 10.7901,
+      "threshold": 1.2,
+      "point": [
+        -15.04,
+        19.0932,
+        4.3112
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F4:side@F5.1"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 10.7901,
+      "threshold": 1.2,
+      "point": [
+        14.9846,
+        -19.0775,
+        7.6888
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F4:side@F5.3"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 10.7901,
+      "threshold": 1.2,
+      "point": [
+        19.0932,
+        15.04,
+        4.3112
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F4:side"
+    }
+  ]
+}

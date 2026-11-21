@@ -5,7 +5,8 @@ Verifies:
 1. `mechvane setup` (download and unpack pinned SolidCraft CLI and web app).
 2. Python interface: create a part (plate with hole), check_design, save, reopen,
    and verify volume against expected value.
-3. UI server: launch `mechvane ui --demo --no-browser --port <free>`, query
+3. Wheel: contains the knowledge catalog, installs into a fresh venv and finds the rule sources there (#169).
+4. UI server: launch `mechvane ui --demo --no-browser --port <free>`, query
    /api/project and /api/mesh, and terminate cleanly via /api/quit.
 
 Standard library only, plus mechvane.
@@ -267,10 +268,51 @@ def test_ui_server() -> None:
                 proc.wait()
 
 
+def test_wheel_ships_catalog() -> None:
+    """The wheel carries the knowledge catalog (#169): 0.1.0a24 shipped without it, so installed packages showed findings
+    without their source. Builds the wheel, compares its catalog entries and the other package data with the source tree,
+    installs it into a fresh venv and asks for the rule sources there."""
+    import shutil
+    import zipfile
+    print("Testing wheel contents (catalog)...", flush=True)
+    # a leftover build/lib from an earlier build would be packed again and could hide a broken configuration
+    shutil.rmtree(REPO / "build" / "lib", ignore_errors=True)
+    with tempfile.TemporaryDirectory() as td:
+        r = subprocess.run([sys.executable, "-m", "pip", "wheel", ".", "--no-deps", "-q", "-w", td], cwd=REPO,
+                           capture_output=True, text=True, timeout=600)
+        assert r.returncode == 0, f"pip wheel failed: {(r.stdout + r.stderr)[-500:]}"
+        wheel = next(Path(td).glob("mechvane-*.whl"))
+        names = set(zipfile.ZipFile(wheel).namelist())
+
+        def tree(sub: str) -> set:
+            return {p.relative_to(REPO / sub).as_posix() for p in (REPO / sub).rglob("*") if p.is_file()}
+
+        prefix = "mechvane/katalog_data/eintraege/"
+        shipped = {n[len(prefix):] for n in names if n.startswith(prefix)}
+        expected = {n for n in tree("katalog/eintraege") if n.endswith(".json")}
+        assert shipped == expected and len(expected) >= 100, (
+            f"wheel catalog differs from katalog/eintraege: missing {sorted(expected - shipped)[:3]}, extra {sorted(shipped - expected)[:3]}")
+        for sub, pat in (("mechvane/data", ".json"), ("mechvane/ui/static", "")):  # other package data must survive the explicit package list
+            want = {f"{sub}/{n}" for n in tree(sub) if n.endswith(pat)}
+            assert want and want <= names, f"wheel misses package data under {sub}: {sorted(want - names)[:3]}"
+        # install into a fresh venv and ask for the sources there (no SolidCraft needed); -I keeps the checkout out of sys.path
+        venv = Path(td) / "venv"
+        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, timeout=300)
+        py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        r = subprocess.run([str(py), "-m", "pip", "install", "--no-deps", "-q", str(wheel)], capture_output=True, text=True, timeout=600)
+        assert r.returncode == 0, f"pip install failed: {(r.stdout + r.stderr)[-500:]}"
+        r = subprocess.run([str(py), "-I", "-c", "from mechvane import design_rules, katalog; "
+                            "s = design_rules.rule_sources(); assert len(s) >= 10 and all(v.get('zitat') for v in s.values()), s; "
+                            "print(len(katalog.load()), len(s))"], capture_output=True, text=True, cwd=td, timeout=120)
+        assert r.returncode == 0, f"installed wheel finds no rule sources: {(r.stdout + r.stderr)[-500:]}"
+    print(f"  ok: {len(shipped)} catalog entries in the wheel; installed copy reports {r.stdout.strip()} (entries, rule sources)", flush=True)
+
+
 def main() -> None:
     print("=== Mechvane CI Smoke Test ===\n", flush=True)
     t0 = time.time()
     run_setup()
+    test_wheel_ships_catalog()
     test_part_modeling()
     test_ui_server()
     elapsed = time.time() - t0

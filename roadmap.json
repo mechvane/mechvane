@@ -228,7 +228,7 @@
           "milestone": "v0.1"
         },
         {
-          "status": "next",
+          "status": "done",
           "title": "Every SolidCraft command in the workspace",
           "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo, in the app and in the live demo. What SolidCraft can do to your design, you and your agent can do in Mechvane, including commands that appear in a new SolidCraft release. Commands that act on the SolidCraft window itself, such as its view and renderer, stay with SolidCraft.",
           "milestone": "v0.1"

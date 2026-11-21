@@ -24,6 +24,14 @@
     {
       "number": 20008,
       "follow_up": "Namensnutzung (LICENSE-BRAND §3d): Antwort lesen, Untertitel auf Website, README, GitHub-Beschreibung und roadmap.json anpassen; Entscheidung im Strategiepapier vermerken"
+    },
+    {
+      "number": 20295,
+      "follow_up": "PR #20300 (design.links_changed) in review: when merged, switch mechvane/links.py (update_links, poll of component.links changed) to the event; test the part, sub-assembly, assembly chain on a nightly first"
+    },
+    {
+      "number": 20301,
+      "follow_up": "inspect.classify_points is merged (nightlies), not yet in a stable release: when it ships, switch the probing cut in mechvane/geometry.py to the read command"
     }
   ]
 }

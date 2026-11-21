@@ -25,9 +25,34 @@ from tools.check_sources import (
     parse_markdown_entries,
     check_quote_in_text,
     check_number_in_text,
+    json_entry_numbers,
+    verify_json_entry,
     html_to_text,
     normalize_text_for_matching
 )
+
+
+def test_json_catalog_entry():
+    """Catalog entries (#168): numbers of `werte` (wert, both ends of bereich), zitat per source, no network."""
+    import json, tempfile
+    data = {"id": "x", "werte": [{"name": "a", "wert": 1.2, "einheit": "mm"}, {"name": "b", "bereich": [1.2, 1.5]},
+                                 {"name": "c", "wert": 8}, {"name": "d", "wert": True}],
+            "quellen": [{"url": "https://a.example/1", "zitat": "Wanddicke 1,2 mm"},
+                        {"url": "https://b.example/2", "zitat": "erfunden"}]}
+    assert json_entry_numbers(data) == ["1.2", "1.5", "8"], json_entry_numbers(data)
+
+    class Fetcher:
+        pages = {"https://a.example/1": "Die Wanddicke 1,2 mm genügt, 8 Stück.", "https://b.example/2": "Nichts dazu."}
+
+        def fetch(self, url):
+            return {"status_code": 200, "text": self.pages[url]}
+
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "x.json"
+        f.write_text(json.dumps(data), encoding="utf-8")
+        res = verify_json_entry(f, Fetcher())
+    assert [r["quote"] for r in res] == ["ja", "nein"], res
+    assert res[0]["missing_numbers"] == ["1.5"] and res[0]["numbers"] == "2 von 3", res[0]
 
 
 def test_markdown_link_extraction():
@@ -206,6 +231,8 @@ def main():
     print("  ✓ German decimal comma")
     test_number_range()
     print("  ✓ Number range")
+    test_json_catalog_entry()
+    print("  ✓ JSON catalog entry")
     print("All unit tests passed successfully!")
     sys.exit(0)
 

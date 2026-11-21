@@ -1,0 +1,98 @@
+{
+  "part": "fehlerplatte",
+  "profile": "fdm_0.4",
+  "verdict": "fail",
+  "findings": [
+    {
+      "rule": "hole_edge_distance",
+      "status": "fail",
+      "value": 6.0,
+      "threshold": 12.0,
+      "point": [
+        2.0057,
+        20.2142,
+        3.0165
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F2:bore:side:0"
+    },
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 20.0,
+      "threshold": 9.0,
+      "point": [
+        25.0049,
+        20.172,
+        2.9403
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F3:bore:side:0"
+    },
+    {
+      "rule": "hole_edge_distance",
+      "status": "ok",
+      "value": 20.0,
+      "threshold": 9.0,
+      "point": [
+        34.0179,
+        17.1037,
+        2.9403
+      ],
+      "source": "randabstand_bohrung_kante",
+      "face": "F4:bore:side:0"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "fail",
+      "value": 0.8,
+      "threshold": 1.2,
+      "point": [
+        25.0049,
+        20.172,
+        2.9403
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F3:bore:side:0"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 2.0,
+      "threshold": 1.2,
+      "point": [
+        2.0057,
+        20.2142,
+        3.0165
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F2:bore:side:0"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 17.0,
+      "threshold": 1.2,
+      "point": [
+        25.0049,
+        20.172,
+        2.9403
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F3:bore:side:0"
+    },
+    {
+      "rule": "min_wall_thickness",
+      "status": "ok",
+      "value": 17.0,
+      "threshold": 1.2,
+      "point": [
+        34.0179,
+        17.1037,
+        2.9403
+      ],
+      "source": "mindestwandstaerke_fdm_cnc",
+      "face": "F4:bore:side:0"
+    }
+  ]
+}

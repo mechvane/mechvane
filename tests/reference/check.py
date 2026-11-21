@@ -266,6 +266,23 @@ def rippenplatte():
     ]
 
 
+# --- fehlerplatte: plate with edge-distance violation and thin web between holes ------------
+
+def fehlerplatte_volume(L=60, W=40, T=8, d_edge=8, d_web=6):
+    return L * W * T - math.pi * (d_edge / 2) ** 2 * T - 2 * math.pi * (d_web / 2) ** 2 * T
+
+
+def fehlerplatte():
+    walk = [inspect()] + change(T="10 mm") + [inspect()] + change(T="8 mm") + [inspect()]
+    return walk, [
+        ("default", 0, "volume", fehlerplatte_volume()),
+        ("default", 0, "bbox", [[0, 0, 0], [60, 40, 8]]),
+        ("T=10", 2, "volume", fehlerplatte_volume(T=10)),
+        ("T=10", 2, "bbox", [[0, 0, 0], [60, 40, 10]]),
+        ("back", 4, "volume", fehlerplatte_volume()),
+    ]
+
+
 PARTS = {
     "flansch": flange,
     "gehaeuse": gehaeuse,
@@ -274,6 +291,7 @@ PARTS = {
     "welle": welle,
     "rohrhalter": rohrhalter,
     "rippenplatte": rippenplatte,
+    "fehlerplatte": fehlerplatte,
 }
 
 

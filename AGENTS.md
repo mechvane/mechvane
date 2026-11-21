@@ -11,6 +11,12 @@ Parametric CAD for everyday mechanical engineering, built on
 Mechvane is its own layer on top – Python package `mechvane/`, an MCP server, a web UI and a sourced
 knowledge catalog. Tagline: "You and your agent on the same model."
 
+Direction (see the README): Mechvane's engineering knowledge – design checks with their sources, bolted connections, standard
+parts, ISO fits – is moving into SolidCraft's own app, first by connecting to the app you have open, later as SolidCraft
+plugins. The browser workspace and the live demo stay available as they are. For contributions this means: put new engineering
+work into the design checks, the catalog and the MCP tools; please do not start new web-UI features without asking in an issue
+first.
+
 ## Setup and checks
 
 ```sh
@@ -20,9 +26,9 @@ python3 tests/mechvane/check.py        # all checks, a few minutes; must end wit
 python3 tests/reference/check.py       # reference parts with expected values
 ```
 
-Every change comes with a check in `tests/mechvane/check.py`. Never weaken or skip a check to get to green.
-Headless UI checks: `tools/ui_smoke.py` (needs playwright). Heavy runs (`ui_smoke.py`, `demo_smoke.py`, the gate) take a
-lock (`tools/heavy_lock.py`, `/tmp/mechvane-heavy.lock`) and wait for each other: run them one at a time.
+Every code change comes with a check in `tests/mechvane/check.py` (research notes and catalog entries need none; `check.py` validates every entry). Never weaken or skip a check to get to green.
+Headless UI checks: `tools/ui_smoke.py` (needs playwright). Heavy runs (`ui_smoke.py`, `demo_smoke.py`) take a
+lock (`tools/heavy_lock.py`) and wait for each other: run them one at a time.
 Nightly and on pushes to `main` in the public repository, `.github/workflows/platforms.yml` runs a clean installation and smoke test (`tools/ci_smoke.py`) across Windows, macOS, and Linux.
 
 ## Where things are
@@ -40,8 +46,11 @@ Nightly and on pushes to `main` in the public repository, `.github/workflows/pla
 
 - **Code and comments in English**, docs mostly German (English is welcome). Match the surrounding code.
 - **Values need a source.** Numbers in the catalog or in design rules come from a freely accessible source
-  with a verbatim quote; `python3 tools/check_sources.py <note.md>` must find them. No values from paid
-  standards documents, no copied standard texts.
+  with a verbatim quote; `python3 tools/check_sources.py <note.md>` (or a catalog entry,
+  `katalog/eintraege/<area>/<id>.json`) must find them. No values from paid standards documents, no copied
+  standard texts. A new catalog entry has `pruefstatus` `offen`, a file name equal to its `id`, and every source with `url`,
+  `stelle`, a verbatim `zitat` and `abgerufen`. Changing an existing entry can move a design-check threshold or the source shown
+  with a finding (`mechvane/design_rules.py`): do it in its own change, with a test.
 - **No GPL/LGPL/AGPL code in Mechvane.** Mechvane stays MIT OR Apache-2.0, so nothing copied, ported or
   linked from (L/A)GPL sources goes into this repository.
 - **GPL programs may run as separate programs** (input file in, result file out, e.g. CuraEngine, later
@@ -52,7 +61,7 @@ Nightly and on pushes to `main` in the public repository, `.github/workflows/pla
 - In assemblies use Mechvane's tools (`insert_part`, `add_joint`, `edit_joint`, `update_links`,
   `bolted_connection`), not raw SolidCraft joint commands, so joints stay checkable.
 - A sketch used by one feature sits directly before it (`sketch_rule`).
-- Changing behaviour users see: add a changelog snippet in `changelog.d/<issue>.md` (first line
+- Changing behaviour users see (research notes and catalog entries need no snippet): add a changelog snippet in `changelog.d/<issue>.md` (first line
   one of `Added`/`Changed`/`Fixed`/`Removed`, then bullet list in English; do not edit `CHANGELOG.md`
   directly) and update `roadmap.json` (`next` for done but unreleased).
 - Public texts: encouraging and factual, no hype, always credit SolidCraft.

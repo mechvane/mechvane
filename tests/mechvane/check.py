@@ -3656,6 +3656,26 @@ def iso286_checks():
        and any(e["id"] == "passung_h7_k6_waelzlager" for e in r["katalog"]), str([e["id"] for e in r["katalog"]]))
 
 
+def katalog_installed_layout_checks():
+    """#169: in an installed package there is no katalog/ next to mechvane/; the catalog is found in mechvane/katalog_data/."""
+    import importlib.util, shutil, tempfile, tomllib
+    root = Path(__file__).resolve().parents[2]
+    meta = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["setuptools"]
+    ok("katalog: pyproject ships the catalog entries as mechvane.katalog_data",
+       meta.get("package-dir", {}).get("mechvane.katalog_data") == "katalog" and "mechvane.katalog_data" in meta.get("packages", [])
+       and "eintraege/**/*.json" in meta.get("package-data", {}).get("mechvane.katalog_data", []), str(meta))
+    with tempfile.TemporaryDirectory() as td:  # site-packages layout: <td>/mechvane/katalog.py and <td>/mechvane/katalog_data/eintraege
+        pkg = Path(td).resolve() / "mechvane"  # resolved: the module path below is, and a temp dir may sit behind a symlink (macOS /var)
+        shutil.copytree(root / "katalog" / "eintraege", pkg / "katalog_data" / "eintraege")
+        shutil.copy(root / "mechvane" / "katalog.py", pkg / "katalog.py")
+        spec = importlib.util.spec_from_file_location("katalog_installed", pkg / "katalog.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ok("katalog: an installed layout finds its entries in mechvane/katalog_data",
+           mod.DEFAULT_CATALOG_DIR == pkg / "katalog_data" / "eintraege" and len(mod.load(validate_entries=False)) == len(katalog.load(validate_entries=False)),
+           str(mod.DEFAULT_CATALOG_DIR))
+
+
 def katalog_checks():
     entries = katalog.load(validate_entries=False)
     ok("katalog: load finds entries", len(entries) >= 86, f"count={len(entries)}")
@@ -11585,6 +11605,7 @@ def main():
         ws = Workspace(tmp)
         try:
             katalog_checks()
+            katalog_installed_layout_checks()
             iso286_checks()
             legacy_metadata_checks(ws)
             sketch_rule_and_browser(ws)

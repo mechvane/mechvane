@@ -137,8 +137,10 @@ projiziert und der Bohrungsmittelpunkt mit `sketch.constraint.concentric` daran 
 SolidCraft speichert verknüpfte Bauteile als STEP. Dabei gehen die
 Flächennamen aus der Bauteildatei verloren, und ein Gelenk kann nach „Update
 Links“ still auf eine andere Fläche springen
-([#3330](https://github.com/tangency-labs/solidcraft/issues/3330)). Bis das
-upstream behoben ist:
+([#3330](https://github.com/tangency-labs/solidcraft/issues/3330)).
+SolidCraft hat das ab 0.22 behoben (ein Gelenk bleibt auf seiner Fläche, auch wenn davor eine gleich große Bohrung
+entsteht); die Verankerung unten bleibt als Sicherung und meldet echte Änderungen (`face_missing`, `moved` bei
+tatsächlich verschobener Geometrie). Sie umfasst:
 
 1. `add_joint` rechnet jeden Gelenkrahmen auf einem verknüpften Bauteil in
    dessen Koordinaten um und sucht in der Bauteildatei die Fläche, auf der er
