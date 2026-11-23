@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build the static live demo of the web UI: example models with precomputed mesh, tree and findings.
 
-Usage: python3 tools/build_demo_site.py [out_dir]   (default site/, needs solidcraft-cli)
+Usage: python3 tools/build_demo_site.py [out_dir] [--with-demo]   (default site/)
+Without --with-demo (the default since 2026-11-23, the live demo is offline, #186) the output is the website, media/ and
+roadmap/ only. With --with-demo it needs solidcraft-cli and builds the live demo too.
 The output is a plain static site (GitHub Pages): the website (website/) at the root, the live demo under demo/
 (the UI files plus demo/demos/<name>/{version,mesh,tree,findings}.json), media/ and roadmap/.
 A recorded agent session in demo/replays/<name>.json (tools/record_replay.py, #124) goes to demos/<name>/replay.json,
@@ -144,12 +146,26 @@ def split_large_wasm(sc: Path) -> None:
 
 
 def main():
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "site"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    with_demo = "--with-demo" in sys.argv[1:]
+    out = Path(args[0]) if args else REPO / "site"
     if out.exists():
         shutil.rmtree(out)
-    # Website at the root (website/), the live demo under /demo/, images under /media/, roadmap under /roadmap/
+    # Website at the root (website/), the live demo under /demo/ (only with --with-demo), images under /media/,
+    # roadmap under /roadmap/
     shutil.copytree(REPO / "website", out, ignore=shutil.ignore_patterns("README.md"))
     shutil.copytree(REPO / "docs" / "media", out / "media")
+    (out / ".nojekyll").write_text("")
+    if with_demo:
+        build_demo(out)
+    # Roadmap page: reads roadmap.json live from the public main branch, this copy is the fallback
+    (out / "roadmap").mkdir()
+    shutil.copyfile(REPO / "tools" / "roadmap_page.html", out / "roadmap" / "index.html")
+    shutil.copyfile(REPO / "roadmap.json", out / "roadmap" / "roadmap.json")
+    print(f"wrote {out}" + ("" if with_demo else " (without the live demo)"))
+
+
+def build_demo(out: Path):
     demo = out / "demo"
     shutil.copytree(STATIC_DIR, demo)
     make_mechvane_zip(demo / "mechvane.zip")
@@ -201,17 +217,11 @@ def main():
             ws.close_all()
     (demo / "demos" / "index.json").write_text(json.dumps({"demos": index}, indent=1), encoding="utf-8")
     (demo / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": install.VERSION}, indent=1), encoding="utf-8")
-    (out / ".nojekyll").write_text("")
     # Old live-demo addresses (before the website moved in) forward to /demo/, keeping ?demo=…
     (out / "model.html").write_text(
         '<!doctype html><meta charset="utf-8"><title>Mechvane live demo</title>'
         '<script>location.replace("demo/model.html" + location.search)</script>'
         '<a href="demo/model.html">Mechvane live demo</a>', encoding="utf-8")
-    # Roadmap page: reads roadmap.json live from the public main branch, this copy is the fallback
-    (out / "roadmap").mkdir()
-    shutil.copyfile(REPO / "tools" / "roadmap_page.html", out / "roadmap" / "index.html")
-    shutil.copyfile(REPO / "roadmap.json", out / "roadmap" / "roadmap.json")
-    print(f"wrote {out}")
 
 
 if __name__ == "__main__":

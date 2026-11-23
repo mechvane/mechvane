@@ -5,7 +5,7 @@ von Claude. Wird von `tools/build_demo_site.py` an die Wurzel der Pages-Seite ko
 
 - `/` diese Website (`website/index.html`, `website/assets/`)
 - `/media/` Bilder aus `docs/media/`
-- `/demo/` die bisherige Live-Demo (Prüfseite, „Model by hand“)
+- `/demo/` die frühere Live-Demo: **seit 2026-11-23 nicht mehr veröffentlicht** (#186), Bau nur mit `tools/build_demo_site.py --with-demo`
 - `/roadmap/` die Roadmap-Seite (`tools/roadmap_page.html`, liest `roadmap.json` live)
 
 Entwurf von Argon (Issue #20, über agy, 8 % Argon-Wochenkontingent), von Claude geprüft: Grauguss-Einschraubtiefe

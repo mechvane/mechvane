@@ -13,7 +13,7 @@ knowledge catalog. Tagline: "You and your agent on the same model."
 
 Direction (see the README): Mechvane's engineering knowledge – design checks with their sources, bolted connections, standard
 parts, ISO fits – is moving into SolidCraft's own app, first by connecting to the app you have open, later as SolidCraft
-plugins. The browser workspace and the live demo stay available as they are. For contributions this means: put new engineering
+plugins. The browser workspace stays available as a local preview as it is; the public live demo is offline since 2026-11-23. For contributions this means: put new engineering
 work into the design checks, the catalog and the MCP tools; please do not start new web-UI features without asking in an issue
 first.
 
@@ -40,7 +40,7 @@ Nightly and on pushes to `main` in the public repository, `.github/workflows/pla
   library for SolidCraft (`tools/katalog_to_solidcraft.py`)
 - `docs/adr/` – architecture decisions; `docs/mechvane-mcp.md` – tools and data model (German)
 - `roadmap.json` – public roadmap at mechvane.dev/roadmap (statuses: done, next, progress, planned, later)
-- `website/` – the website at mechvane.dev; `tools/build_demo_site.py` builds the Pages site
+- `website/` – the website at mechvane.dev; `tools/build_demo_site.py` builds the Pages site (the live demo only with `--with-demo`)
 
 ## Rules
 

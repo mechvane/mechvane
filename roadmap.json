@@ -143,7 +143,7 @@
     },
     {
       "title": "Web UI",
-      "intro": "The Mechvane workspace in the browser stays as a preview while the work continues inside SolidCraft itself. Model by hand, let your agent take a step, check the result: all on the same model.",
+      "intro": "The Mechvane workspace in the browser stays as a preview on your own computer (mechvane ui) while the work continues inside SolidCraft itself. Model by hand, let your agent take a step, check the result: all on the same model.",
       "items": [
         {
           "status": "done",
@@ -161,12 +161,6 @@
           "status": "done",
           "title": "Model by hand",
           "text": "The SolidCraft web app embedded in Mechvane, saving back into your project.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Live demo in the browser",
-          "text": "Example models at mechvane.dev, nothing to install.",
           "milestone": "v0.1"
         },
         {
@@ -232,13 +226,7 @@
         {
           "status": "done",
           "title": "Every SolidCraft command in the workspace",
-          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo, in the app and in the live demo. What SolidCraft can do to your design, you and your agent can do in Mechvane. Commands that act on the SolidCraft window itself, such as its view and renderer, stay with SolidCraft.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Watch an agent session in the live demo",
-          "text": "A recorded session plays in the browser: the request, the steps, the model changing, the check finding something and the agent fixing it. No key and no installation needed.",
+          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo, in the workspace. What SolidCraft can do to your design, you and your agent can do in Mechvane. Commands that act on the SolidCraft window itself, such as its view and renderer, stay with SolidCraft.",
           "milestone": "v0.1"
         },
         {
@@ -257,12 +245,6 @@
           "status": "done",
           "title": "Edit centred holes",
           "text": "Holes placed with 'Middle of face' (centred on rectangular faces or concentric on circular faces) can be edited from the model browser, keeping their centred position and sketch constraints when part parameters change.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Live demo checks your changes",
-          "text": "Model a part by hand in the browser demo, save, and the design check runs again right there, no install needed. The feature dialogs of the workspace work in the demo too. Assembly checks in the demo are precomputed.",
           "milestone": "v0.1"
         },
         {

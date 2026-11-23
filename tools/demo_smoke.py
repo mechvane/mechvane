@@ -2,7 +2,7 @@
 fillet with preview, OK, edit by double-click, Ctrl+Z / Ctrl+Y, hole with the tables, extrude hint, a sketch,
 the command dialog (Ctrl+K, #128) and the recorded agent session (#124: chat lines, the model changes, the check is green at the end, Reset demo).
 
-    tools/build_demo_site.py /tmp/demosite && (cd /tmp/demosite && python3 -m http.server 8811 &)
+    tools/build_demo_site.py /tmp/demosite --with-demo && (cd /tmp/demosite && python3 -m http.server 8811 &)
     <python with playwright> tools/demo_smoke.py [url]   (default http://localhost:8811/demo/?demo=bracket)
 
 The first dialog starts SolidCraft in the page: about 10 s headless. Exit code 1 on a failed step or page error.

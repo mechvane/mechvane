@@ -118,7 +118,7 @@ vom 2026-10-24) steht im [Verlauf](docs/roadmap-verlauf.md).
 Weitere Bausteine von Phase 1:
 
 - [ ] **Website mechvane.dev** (Nutzerwunsch 2026-10-29): online, Startseite am 2026-11-23 neu (Fokus SolidCraft-Plugin und
-      Harness). Offen: Auftritt mit U5, Archiv-Hinweis in `/demo/` (`tools/build_demo_site.py`), Namensfrage #20008
+      Harness). Live-Demo seit 2026-11-23 nicht mehr veröffentlicht (#186). Offen: Auftritt mit U5, Namensfrage #20008
       (`docs/website/ARGON-PROMPT.md`, `docs/website/FAKTEN.md`, `website/`).
 - [x] **Mechvane-Schicht als MCP-Server** (nach ADR 0001): Python-MCP für getrennte Dateien, `update_links`,
       Skizzenregel, Unterbaugruppen und semantische Abfragen ([Doku](docs/mechvane-mcp.md)). *Stand 2026-11-23:* Grundbau

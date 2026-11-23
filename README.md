@@ -9,7 +9,7 @@
 
 **[Website](https://mechvane.dev/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
 
-> **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent. The browser workspace and the live demo stay available as they are.
+> **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent. The browser workspace stays available as a local preview.
 
 The mechanical engineering layer for [SolidCraft](https://github.com/tangency-labs/solidcraft), for
 individual engineers, makers and small and medium-sized companies: design checks with cited sources,

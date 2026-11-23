@@ -111,7 +111,7 @@ jobs:
       - name: Run demo smoke test
         if: steps.ui.outputs.run == '1'
         run: |
-          python tools/build_demo_site.py /tmp/demosite
+          python tools/build_demo_site.py /tmp/demosite --with-demo
           python -m http.server 8811 --directory /tmp/demosite &
           SERVER_PID=$!
           sleep 2

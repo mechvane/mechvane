@@ -428,3 +428,7 @@ auf dem Steuer-Container; ein Paket mit eingebautem Python löst die Installatio
 *Gestrichen: Demo eingefroren, die Wasm wird in Teilen geladen (`wasm-parts.js`).*
 
 | Live-Demo hängt an einer 96-MB-wasm (Limit 100 MB je Datei beim heutigen Hosting) | Größe bei jedem SolidCraft-Wechsel messen; Ausweichort vorher prüfen (Dateigrößen-Limits der Anbieter) |
+
+## Live-Demo vom Netz (2026-11-23, #186)
+
+Die öffentliche Live-Demo (mechvane.dev/demo/) ist nicht mehr veröffentlicht. Aus `roadmap.json` entfielen „Live demo in the browser“ (#20), „Watch an agent session in the live demo“ (#124) und „Live demo checks your changes“ (#35, #96, #109). Der Bau bleibt mit `tools/build_demo_site.py --with-demo` erhalten (für `demo_smoke` und eine mögliche Rückkehr).
