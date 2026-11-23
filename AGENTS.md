@@ -8,7 +8,7 @@ Humans: see [CONTRIBUTING.md](CONTRIBUTING.md); everything there applies to agen
 
 Parametric CAD for everyday mechanical engineering, built on
 [SolidCraft](https://github.com/tangency-labs/solidcraft). **SolidCraft stays unchanged** (ADR 0001):
-Mechvane is its own layer on top – Python package `mechvane/`, an MCP server, a web UI and a sourced
+Mechvane is its own layer on top – Python package `mechvane/`, an MCP server, a web UI (frozen, see below) and a sourced
 knowledge catalog. Tagline: "You and your agent on the same model."
 
 Direction (see the README): Mechvane's engineering knowledge – design checks with their sources, bolted connections, standard
@@ -27,7 +27,7 @@ python3 tests/reference/check.py       # reference parts with expected values
 ```
 
 Every code change comes with a check in `tests/mechvane/check.py` (research notes and catalog entries need none; `check.py` validates every entry). Never weaken or skip a check to get to green.
-Headless UI checks: `tools/ui_smoke.py` (needs playwright). Heavy runs (`ui_smoke.py`, `demo_smoke.py`) take a
+Headless checks of the frozen web UI: `tools/ui_smoke.py` (needs playwright; only needed when a change touches `mechvane/ui/`). Heavy runs (`ui_smoke.py`, `demo_smoke.py`) take a
 lock (`tools/heavy_lock.py`) and wait for each other: run them one at a time.
 Nightly and on pushes to `main` in the public repository, `.github/workflows/platforms.yml` runs a clean installation and smoke test (`tools/ci_smoke.py`) across Windows, macOS, and Linux.
 
@@ -35,7 +35,7 @@ Nightly and on pushes to `main` in the public repository, `.github/workflows/pla
 
 - `mechvane/` – MCP server (`server.py`), documents and workspace, joints and links (`links.py`), standard
   parts, bolted connections, design rules, glTF export; `mechvane/ui/` – web UI (Check page, "Model by hand",
-  agent chat), static files in `mechvane/ui/static/`
+  agent chat; frozen, kept as it is), static files in `mechvane/ui/static/`
 - `katalog/` – knowledge catalog (schema `katalog/schema.json`, entries `katalog/eintraege/`), material
   library for SolidCraft (`tools/katalog_to_solidcraft.py`)
 - `docs/adr/` – architecture decisions; `docs/mechvane-mcp.md` – tools and data model (German)

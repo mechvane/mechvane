@@ -1,0 +1,69 @@
+{
+  "id": "fdm_liegende_bohrungen_tropfenform_zweitquelle",
+  "aussage": "Zweitquellen zu liegenden Bohrungen im FDM-Druck: EduFacturing empfiehlt bereits ab 4 mm Durchmesser eine Tropfenform im oberen Halbkreis (2–3 mm drucken kreisförmig noch ausreichend); der RepRap-Ursprungsbeitrag begründet die Tropfenform geometrisch mit dem 45°-Überhanglimit ohne Stützstruktur. Damit liegt die Grenze bei EduFacturing niedriger als der Hubs-/Mechvane-Schwellwert (5 mm bis 6 mm).",
+  "werte": [
+    {
+      "name": "Grenzdurchmesser für Tropfenform bei liegenden Bohrungen (EduFacturing)",
+      "wert": 4,
+      "einheit": "mm"
+    },
+    {
+      "name": "Kreisförmig druckbarer Durchmesserbereich ohne Tropfenform (EduFacturing)",
+      "bereich": [2, 3],
+      "einheit": "mm"
+    },
+    {
+      "name": "Scheitelwinkel der Tropfenform (Überhangwinkel)",
+      "wert": 45,
+      "einheit": "°"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Bohrung",
+      "Liegende Bohrung",
+      "Tropfenform",
+      "Horizontale Achse",
+      "Überhang"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://edufacturing.com/design-for-am/teardrop-profile/",
+      "stelle": "Abschnitt Theory & Application",
+      "zitat": "Use teardrop profiles for any hole with diameter ≥4 mm on horizontal faces in FDM. For smaller holes (2–3 mm) a simple circular hole prints adequately due to bridging. Add the teardrop only to the top half of the circle: the bottom half remains circular.",
+      "abgerufen": "2026-11-21"
+    },
+    {
+      "url": "http://blog.reprap.org/2005/06/strength-of-objects-made-by-layered.html",
+      "stelle": "Kommentar von Adrian Bowyer (28. Juni 2005)",
+      "zitat": "In answer to Steve's question about angle of overhang, our Stratasys machine will build a 45 degree overhang without support.  That is the source of the teardrop RepRap logo that Ed Sells designed - it's the profile of a horizontal 'cylinder' that doesn't need support and which, in the vast majority of cases, works just as well as a circular cylinder for things like bolt holes.",
+      "abgerufen": "2026-11-21"
+    }
+  ],
+  "begruendung": "Am oberen Scheitel einer waagrecht gedruckten Kreisbohrung sinkt der Überhangwinkel lokal gegen 0° zur Horizontalen, sodass der Strang absackt oder die Bohrung verengt. Eine 45°-Spitze auf der Oberhälfte hält den Überhang im selbsttragenden Bereich, während die kreisförmige Unterhälfte als Auflage für Schrauben oder Bolzen erhalten bleibt.",
+  "ausnahmen": "Bohrungen, die eine exakt kreiszylindrische Innenwand erfordern (z. B. Lagerpresssitze), sollten als Kreis gedruckt und anschließend aufgerieben bzw. gebohrt werden; bei SLA, SLS und DMLS ist die Tropfenform nicht erforderlich.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "fdm_liegende_bohrungen_tropfenform"
+    }
+  ]
+}

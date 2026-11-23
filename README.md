@@ -7,18 +7,16 @@
 
 **You and your agent on the same model.**
 
-**[Website](https://mechvane.dev/)** · **[Live demo](https://mechvane.dev/demo/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
+**[Website](https://mechvane.dev/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
 
 > **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent. The browser workspace and the live demo stay available as they are.
 
-Parametric 3D CAD for everyday mechanical engineering (individual engineers, makers,
-small and medium-sized companies), following the workflow of classic mechanical CAD systems.
-Model by hand, hand a step to an AI agent, or both: you work on the same parts and get the
-same design checks either way. The core stays small; domain modules (sheet metal, standard
-parts, frames, drawings …) load only when a document or the user needs them.
-
-**[Try it in your browser](https://mechvane.dev/demo/)**: the Mechvane workspace with example models,
-the feature dialogs and the design check, nothing to install (SolidCraft runs in the page).
+The mechanical engineering layer for [SolidCraft](https://github.com/tangency-labs/solidcraft), for
+individual engineers, makers and small and medium-sized companies: design checks with cited sources,
+bolted connections, standard parts and assemblies whose joints stay where you put them. Model by hand
+in SolidCraft, hand a step to an AI agent, or both: you work on the same parts and get the same
+design checks either way. The core stays small; domain modules (sheet metal, frames, drawings …) load
+only when a document or the user needs them.
 
 ![A joint jumps to the wrong bore after a part edit, update_links puts it back](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/update_links.gif)
 
@@ -60,14 +58,11 @@ rendering works headless too.
 ```sh
 pip install mechvane
 mechvane setup        # SolidCraft CLI and web app, about 90 MB, once
-mechvane ui --demo    # example models in their own app window
-mechvane ui my-project/   # your own .solidcraft files
-mechvane shortcut     # optional: start menu entry for ~/Mechvane (Windows, Linux)
+mechvane mcp          # MCP server for your agent (see below)
 ```
 
-`mechvane ui` opens an app window when Chrome, Edge, Chromium or Brave is installed (no tabs, no
-address bar; closing it stops Mechvane), otherwise a tab in your default browser. `--browser`
-always uses a tab. Everything runs locally and offline after `mechvane setup`.
+Everything runs locally and offline after `mechvane setup`. The browser workspace stays available as a
+preview (`mechvane ui my-project/`); development now goes into working inside SolidCraft's own window.
 
 Alpha: tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
 If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and
@@ -106,27 +101,17 @@ Windows: [docs/installation-windows.md](https://github.com/mechvane/mechvane/blo
 
 ## Status
 
-Alpha, Phase 1: Mechvane runs as a Python layer on top of SolidCraft, as an MCP server for your agent and as a
-web UI on your computer.
+Alpha: Mechvane runs as a Python layer on top of SolidCraft and as an MCP server for your agent. The next
+step is connecting to the SolidCraft app you have open (see the note at the top and the
+[roadmap](https://mechvane.dev/roadmap/)).
 
-- **Workspace** in the layout of classic mechanical CAD (`mechvane ui`): ribbon, model browser, properties and
-  design check. Dialogs with live preview for extrude, revolve, hole (clearance, tapped, counterbore, countersink
-  from ISO/DIN tables), fillet, chamfer, rectangular and circular pattern and mirror; double-click a feature to
-  edit it, right-click to delete it. One Undo list for your own steps and your agent's.
-- **Your agent in the app**: a chat next to the model; select faces and say what should happen there.
-- **Parts and assemblies** as separate files, joints across files that `update_links` checks and repairs,
-  standard parts (screws, nuts, washers, ball bearings) and a bolted connection assistant.
-- **Design check** with sourced rules, ISO 286 fits and an open knowledge catalog.
-- **Expert mode**: the SolidCraft web app embedded for everything the workspace does not have yet.
-
-Sketching in the workspace is being reworked to work like Inventor and Fusion (a sketch environment with its own
-tools); until then, sketches come from your agent or the expert mode. See the
-[roadmap](https://mechvane.dev/roadmap/).
-
-![Mechvane workspace: a bracket with one picked edge and the Fillet dialog showing radius 3 mm and the volume change of the preview](https://raw.githubusercontent.com/mechvane/mechvane/main/docs/media/web-workspace-fillet.png)
-
-*Pick an edge, type a radius, and the preview shows the fillet before you press OK. SolidCraft computes it
-underneath.*
+- **Parts and assemblies** as separate files, joints across files that `update_links` checks and repairs.
+- **Standard parts** (screws, nuts, washers, ball bearings) and a **bolted connection assistant**.
+- **Design check** with sourced rules, ISO 286 fits and an open knowledge catalog; every finding shows
+  its source and quoted passage.
+- **MCP server** for your agent with clear error messages, a short report after every step and
+  `verify_view` to check its work against a picture.
+- **Browser preview** (`mechvane ui`): parameters, measuring, section view and the design check on your files.
 
 ## Contents
 

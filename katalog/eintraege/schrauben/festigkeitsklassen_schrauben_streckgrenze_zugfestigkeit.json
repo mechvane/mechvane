@@ -1,0 +1,134 @@
+{
+  "id": "festigkeitsklassen_schrauben_streckgrenze_zugfestigkeit",
+  "aussage": "Mechanische Mindestkennwerte gängiger Schrauben-Festigkeitsklassen nach ISO 898-1 (Stahl) und ISO 3506 (nichtrostender austenitischer Stahl bis M24): 8.8 besitzt eine Nenn-Zugfestigkeit Rm von 800 N/mm² (min. 800 N/mm² bis M16, 830 N/mm² über M16) und eine 0,2-%-Dehngrenze Rp0,2 von nominal 640 N/mm² (min. 640 N/mm² bis M16, 660 N/mm² über M16). 10.9 erreicht Nennwerte Rm = 1000 N/mm² (min. 1040 N/mm²) und Rp0,2 = 900 N/mm² (min. 940 N/mm²). 12.9 erreicht Nennwerte Rm = 1200 N/mm² (min. 1220 N/mm²) und Rp0,2 = 1080 N/mm² (min. 1100 N/mm²). A2-70 (kaltverfestigt, bis M24) erreicht mindestens Rm = 700 N/mm² und Rp0,2 = 450 N/mm².",
+  "werte": [
+    {
+      "name": "Zugfestigkeit Rm Nennwert 8.8",
+      "wert": 800,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min. 8.8 (> M16)",
+      "wert": 830,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 Nennwert 8.8",
+      "wert": 640,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 min. 8.8 (> M16)",
+      "wert": 660,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm Nennwert 10.9",
+      "wert": 1000,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min. 10.9",
+      "wert": 1040,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 Nennwert 10.9",
+      "wert": 900,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 min. 10.9",
+      "wert": 940,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm Nennwert 12.9",
+      "wert": 1200,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min. 12.9",
+      "wert": 1220,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 Nennwert 12.9",
+      "wert": 1080,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 min. 12.9",
+      "wert": 1100,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zugfestigkeit Rm min. A2-70 (<= M24)",
+      "wert": 700,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "0,2-%-Dehngrenze Rp0,2 min. A2-70 (<= M24)",
+      "wert": 450,
+      "einheit": "N/mm²"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Vergütungsstahl",
+      "Edelstahl",
+      "A2",
+      "austenitischer nichtrostender Stahl"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Schraube",
+      "Schraubverbindung"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seiten TI-231 (Tabelle 1: ISO 898-1) und TI-236 (Tabelle 9: ISO 3506)",
+      "zitat": "Die erste Zahl gibt 1/100 der Mindestzugfestigkeit in N/mm2 Spannungsquerschnitt an. Zugfestigkeit 8 x 100 = 800 N/mm2.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.schrauben-lexikon.de/td3-werkstoffe-stahl.asp",
+      "stelle": "Kapitel 3.4.6 Zusammenfassung (mech. Eigenschaften Stahlschrauben), Tabelle 25",
+      "zitat": "Die zweite Zahl gibt das 10fache des Verhältnisses der unteren Streckgrenze (Rel bzw. Rp=0,2) zur Nennzugfestigkeit Rm (Streckgrenzenverhältnis) an. Multiplikation beider Zahlen ergibt 1/10 der Mindeststreckgrenze in N/mm2.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.schrauben-lexikon.de/td4-werkstoffe-edelstahl.asp",
+      "stelle": "Kapitel 4.4 / Tabelle 34: Festigkeit von Edelstahl (A2-70)",
+      "zitat": "Ist lediglich A2 aufgeprägt, gilt die Festigkeit A2-70, bei A4 die Festigkeit A4-70.",
+      "abgerufen": "2026-11-22"
+    }
+  ],
+  "begruendung": "Bei Stahlschrauben ab Festigkeitsklasse 8.8 (vergütete Stähle ohne ausgeprägte Streckgrenze) bemisst die 0,2-%-Dehngrenze Rp0,2 die Grenze bis zu bleibender plastischer Verformung; bei nichtrostenden austenitischen Stählen wie A2-70 entsteht die höhere Dehngrenze (450 N/mm² gegenüber 210 N/mm² bei weichem A2-50) durch Kaltverfestigung beim Pressen bis 8 × d.",
+  "ausnahmen": "Für Senkkopfschrauben und Schrauben mit niedriger Kopfhöhe (reduzierte Belastbarkeit, Kennzeichnung mit vorangestellter 0 wie 08.8) sowie bei erhöhten Betriebstemperaturen (+100 °C bis +400 °C) gelten reduzierte Werte; A2-70-Werte gelten nur für kaltverfestigte Schrauben bis M24 und Längen bis 8 × d.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "vdi2230_anziehdrehmoment_m4_m12_reyher"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "a2_70_anziehdrehmoment_m4_m10_reyher"
+    }
+  ]
+}

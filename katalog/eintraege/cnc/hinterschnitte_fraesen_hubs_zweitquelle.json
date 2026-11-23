@@ -1,0 +1,65 @@
+{
+  "id": "hinterschnitte_fraesen_hubs_zweitquelle",
+  "aussage": "Zweitquellen zu Hinterschnitten beim CNC-Fräsen: Xometry betont, dass es keine starre Grenzformel für die Hinterschnitttiefe gibt („the shallower the better“) und Standardwerkzeug-Radien (z. B. 1/16 Zoll) die Werkzeugkosten gegenüber Sonderwerkzeugen auf unter die Hälfte senken. WayKen nennt Standard-Schwalbenschwanzwinkel von 45° und 60° (sowie seltenere 10°-Schritte bis 120°) und hebt den nötigen Werkzeugfreiraum bei einseitigen Hinterschnitten hervor. Damit ergänzen bzw. relativieren beide Quellen die pauschalen Hubs-Richtwerte (Freiraum 4 × Hinterschnitttiefe, Werkzeug-zu-Schaft-Verhältnis 2:1).",
+  "werte": [
+    {
+      "name": "Standard-Schwalbenschwanzwinkel klein (WayKen)",
+      "wert": 45,
+      "einheit": "°"
+    },
+    {
+      "name": "Standard-Schwalbenschwanzwinkel groß (WayKen)",
+      "wert": 60,
+      "einheit": "°"
+    },
+    {
+      "name": "Maximaler Sonderwinkel Schwalbenschwanzfräser (WayKen)",
+      "wert": 120,
+      "einheit": "°"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Hinterschnitt",
+      "T-Nut",
+      "Schwalbenschwanz",
+      "Undercut"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.xometry.com/resources/machining/quick-tips-for-cnc-machined-parts-with-undercuts/",
+      "stelle": "Abschnitt Quick Tips for CNC Machined Parts with Undercuts",
+      "zitat": "Because the tool required has a horizontal cutting blade attached to a vertical shaft, there are limits to the depth of the cut. There is no hard and fast rule as to the depth of the undercut, but the shallower the better.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.waykenrm.com/blogs/undercut-machining/",
+      "stelle": "Abschnitt Special Cuts in Undercut Parts Machining – Dovetail",
+      "zitat": "Dovetail cutting tools have angled blades designed at standard angles of 45 and 60 degrees. However, other grades in the multiples of 10 degrees, ranging up to 120 degrees, are less employed.",
+      "abgerufen": "2026-11-22"
+    }
+  ],
+  "begruendung": "Scheiben-, T-Nuten-, Lollipop- und Schwalbenschwanzfräser besitzen einen im Vergleich zum Schneiddurchmesser verjüngten Schaft bzw. Hals. Mit zunehmender Hinterschnitttiefe sinkt die Werkzeugsteifigkeit stark, was zu Rattern, Maßabweichungen und Werkzeugbruch führt; Standardwerkzeugabmessungen und -winkel vermeiden zudem teure Sonderanfertigungen.",
+  "ausnahmen": "Wenn tiefe oder verdeckte Hinterschnitte unverzichtbar sind, können Mehrachs-Bearbeitungszentren (5-Achs), geteilte Baugruppen oder Senkerodieren (EDM) eingesetzt werden.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "hinterschnitte_fraesen_hubs"
+    }
+  ]
+}

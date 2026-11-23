@@ -1,0 +1,117 @@
+{
+  "id": "gewindetoleranzen_metrisch_6h_6g",
+  "aussage": "Metrische ISO-Gewindetoleranzen (ISO 965-1) bestehen aus Toleranzgrad (Ziffer; Innengewinde 4–8, Außengewinde 4, 6, 8; kleiner = enger) und Toleranzfeldlage (Großbuchstaben G/H für Innen-, Kleinbuchstaben e/f/g/h für Außengewinde). Ohne Sonderangabe gilt ab M 1,6 die mittlere Toleranzklasse 6H (Innengewinde, Grundabmaß 0 auf Nulllinie) mit 6g (Außengewinde, negatives Grundabmaß mit Spiel für dünne galvanische Überzüge); für große Spiele oder dicke Überzüge dienen z. B. 6e/6G bzw. in der Klasse „grob“ 8g/7H und 8e/7G, für enge Passungen („fein“) kleinere Toleranzgrade wie 4 oder 5. Beim CNC-Fräsen bildet 6H/6g die Standardauslegung: Gewindebohrer schneiden fest auf die Nenn-Toleranzklasse (z. B. 6H), während Gewindefräsen die Gewindegröße über die CNC-Steuerung feinjustieren kann. Im 3D-Druck sind direkt gedruckte Gewinde nach 6H/6g unterhalb von M5 ungeeignet (FDM-Maßtoleranz ca. 0,3 mm in X/Y und 0,1 mm in Z); für belastbare oder kleine Gewinde sind Nachschneiden oder Gewindeeinsätze vorzuziehen.",
+  "werte": [
+    {
+      "name": "Standard-Toleranzgrad mittel (6H/6g)",
+      "wert": 6,
+      "einheit": ""
+    },
+    {
+      "name": "Toleranzgrade Innengewinde ISO 965-1",
+      "bereich": [4, 8],
+      "einheit": ""
+    },
+    {
+      "name": "Mindest-Gewindedurchmesser für Standard 6H/6g (mittel)",
+      "wert": 1.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindest-Nenngröße für direkt gedruckte Gewinde im 3D-Druck (M5)",
+      "wert": 5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Maßtoleranz FDM in X/Y (Prusa)",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Maßtoleranz FDM in Z (Prusa)",
+      "wert": 0.1,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Aluminium",
+      "Edelstahl",
+      "Messing",
+      "Thermoplaste",
+      "PLA",
+      "PETG",
+      "ABS"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "Gewindebohren",
+      "Gewindefräsen",
+      "FDM-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Außengewinde",
+      "Regelgewinde",
+      "Feingewinde",
+      "Gewindetoleranz"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.gewindeaufschneider.de/blog/gewindetoleranzen",
+      "stelle": "Abschnitte Was bedeutet 6 H und 6 g... & Was ist, wenn die Angaben zur Toleranz fehlen?",
+      "zitat": "Es gilt hierbei die Toleranzklasse (mittel): Ab einem Gewindenennmaß M 1,6 und größer gilt für Innengewinde 6 H . Wohingegen für Außengewinde ab einem Gewindenennmaß von M1,6 6 g gilt.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-220, Tabelle 2 (Empfohlene Toleranzfelder für Einschraublängen N) & Hinweis unten",
+      "zitat": "Vergrößerungen der Toleranz-Lagen Felder führen verständlicherweise zu einer Reduzierung der Belastbarkeit im Gewindebereich!",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.hubs.com/knowledge-base/thread-types/",
+      "stelle": "Abschnitt Class fit for metric threads",
+      "zitat": "The default thread engagement length considered is N, which denotes a typical screw/screw hole connection. Therefore, the class fits default to “medium” which is 6H for (internal threads) and 6g (for external threads), and these are the most common.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.xometry.com/resources/machining/tapped-hole-vs-threaded-hole/",
+      "stelle": "Abschnitt Threading vs. Tapping: Controlling the fit",
+      "zitat": "One main advantage of a threaded hole compared to tapp is controlling the fit. A threaded hole is milled at a high RPM. The drill tool helixes into an already made hole. So, the machine operator can adjust thread size using a strategy similar to an end mill rather than a drill bit.",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://www.hubs.com/knowledge-base/how-assemble-3d-printed-parts-threaded-fasteners/",
+      "stelle": "Abschnitt What are threaded fasteners for 3D printing?",
+      "zitat": "Not suited for small threads (less than M5) and requires high printer detail/resolution to print accurately",
+      "abgerufen": "2026-11-22"
+    },
+    {
+      "url": "https://help.prusa3d.com/article/faq-frequently-asked-questions_1932",
+      "stelle": "FAQ Tolerances",
+      "zitat": "According to our testing, the precision tolerance of a well-assembled Original Prusa printer is 0,1 mm on the Z-axis and 0,3 mm on X and Y.",
+      "abgerufen": "2026-11-22"
+    }
+  ],
+  "begruendung": "Die Lage 6g unterhalb der Nulllinie schafft gegenüber 6H ein gezieltes Flankenspiel für leichte Montierbarkeit und dünne Schutzschichten, ohne die Tragfähigkeit im Normbereich zu gefährden. Während spanende CNC-Verfahren Mikrometer-Toleranzfelder prozesssicher einhalten (und Gewindefräsen sogar korrigierbar bleibt), liegen Schichtstufen, Schwindung und Strangaufweitung beim FDM-Druck in derselben Größenordnung wie ganze Gewindetoleranzfelder, sodass feine gedruckte Gewinde klemmen.",
+  "ausnahmen": "Bei dicken Korrosionsschutzschichten (z. B. Feuerverzinkung) oder langen Einschraublängen (L) müssen größere Toleranzspiele bzw. -grade gewählt werden; im 3D-Druck können große Gewinde ab M5 mit vergrößertem Flankenspiel direkt gedruckt und anschließend durch mehrfaches Ein- und Ausdrehen gängig gemacht werden.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din336_kernlochbohrer_regelgewinde"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "gewindeeinsaetze_3ddruck_ruthex"
+    }
+  ]
+}

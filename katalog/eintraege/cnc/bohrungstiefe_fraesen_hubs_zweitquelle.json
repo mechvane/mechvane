@@ -1,0 +1,70 @@
+{
+  "id": "bohrungstiefe_fraesen_hubs_zweitquelle",
+  "aussage": "Zweitquellen zum Tiefen-Durchmesser-Verhältnis beim Bohren: Xometry bestätigt die Hubs-Werte (Begrenzung auf 4 × d empfohlen, bis 10 × d gegen Mehrkosten machbar). RapidDirect empfiehlt strenger höchstens 3:1 (3 × d) als Standardbohrtiefe, während Fictiv als absolute Obergrenze beim Bohren das 12-fache des Bohrerdurchmessers angibt.",
+  "werte": [
+    {
+      "name": "Empfohlene Standard-Bohrtiefe zu Durchmesser (RapidDirect)",
+      "wert": 3,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Machbare maximale Bohrtiefe mit Mehrkosten (Xometry)",
+      "wert": 10,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Maximale Bohrtiefe absolut (Fictiv)",
+      "wert": 12,
+      "einheit": "x Bohrdurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Bohren",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Bohrung",
+      "Bohrtiefe"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.fictiv.com/articles/cnc-machining-design-guide",
+      "stelle": "Abschnitt Drilling",
+      "zitat": "The maximum depth of drilling should be 12 times the nearest bit diameter. Drill bits at this length or longer decrease the stiffness and ability to keep to a tight tolerance, as well as increasing the chance of the bit breaking.",
+      "abgerufen": "2026-11-21"
+    },
+    {
+      "url": "https://www.xometry.com/resources/machining/10-tips-improve-cad-cnc-design/",
+      "stelle": "Tip #9: Design Holes With Standard Sizes",
+      "zitat": "You should also limit the depth of holes to four times the diameter it is possible to machine deeper holes up to 10 times the diameter, but this will increase costs.",
+      "abgerufen": "2026-11-21"
+    },
+    {
+      "url": "https://www.rapiddirect.com/blog/common-cnc-design-mistakes-guide/",
+      "stelle": "Abschnitt 3. Hole Depths and Threading",
+      "zitat": "Standard Hole Depth: Keep the depth-to-diameter ratio at 3:1 or less.",
+      "abgerufen": "2026-11-21"
+    }
+  ],
+  "begruendung": "Mit steigendem Verhältnis von Bohrtiefe zu Bohrerdurchmesser sinkt die Biege- und Torsionssteifigkeit des Bohrers; zugleich verschlechtert sich die Späneabfuhr, wodurch der Bohrer verläuft, Toleranzen nicht hält oder durch verklemmende Späne bricht.",
+  "ausnahmen": "Größere Bohrtiefen erfordern Tieflochbohrverfahren (z. B. Einlippenbohrer), beidseitiges Bohren in zwei Aufspannungen oder Sonderwerkzeuge.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "bohrungstiefe_fraesen_hubs"
+    }
+  ]
+}

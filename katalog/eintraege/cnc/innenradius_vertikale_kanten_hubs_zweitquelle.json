@@ -1,0 +1,64 @@
+{
+  "id": "innenradius_vertikale_kanten_hubs_zweitquelle",
+  "aussage": "Zweitquellen zu vertikalen Taschen-Innenradien beim CNC-Fräsen: Xometry empfiehlt für Inneneckenradien ein Längen-Durchmesser-Verhältnis (Taschentiefe zu Werkzeugdurchmesser) von höchstens 3:1 (entspricht einem Eckenradius von mindestens 1/6 der Taschentiefe, weniger streng als Hubs mit 1/3). Fictiv nennt einen praktischen Mindestinnenradius von 0,8 mm (kleiner als Hubs mit 1,5 mm) und empfiehlt einen Eckenradius knapp oberhalb des Fräserradius.",
+  "werte": [
+    {
+      "name": "Maximales Tiefen-Durchmesser-Verhältnis L:D des Eckfräsers (Xometry)",
+      "wert": 3,
+      "einheit": ":1 (L:D)"
+    },
+    {
+      "name": "Empfohlener absoluter Mindest-Innenradius (Fictiv)",
+      "wert": 0.8,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Tasche",
+      "Vertikale Innenecke",
+      "Kavität",
+      "Innenradius"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.xometry.com/resources/machining/cnc-machining-cost-reduction/",
+      "stelle": "Tip 1: Rounded Internal Corners",
+      "zitat": "For optimum design, use an inside corner radius that has a L:D ratio (length to diameter) of 3:1 or less. In addition, try to keep internal corner radii the same, if possible. This helps eliminate tool changes, which adds complexity and can increase run time significantly.",
+      "abgerufen": "2026-11-21"
+    },
+    {
+      "url": "https://www.fictiv.com/articles/cnc-machining-design-guide",
+      "stelle": "Abschnitt CNC Milling – Design with the Largest Possible Internal Radii",
+      "zitat": "Always design with the largest allowable internal radii. Avoid radii less than 0.8mm whenever possible.Pro Tip: Make your fillets slightly larger than the radius of the endmill, for example, a radius of .130” (3.3mm) instead of .125” (3.175mm). This will produce a smoother path for the mill to take, resulting in a nicer finish.",
+      "abgerufen": "2026-11-21"
+    }
+  ],
+  "begruendung": "Kleine Inneneckenradien erzwingen schlanke Schaftfräser mit großer Auskraglänge, was bei tiefen Taschen zu Werkzeugauslenkung, Rattern, niedrigeren Vorschüben und Bruchgefahr führt. Ein einheitlicher Radius knapp über dem Standardfräserradius vermeidet Werkzeugwechsel und erlaubt einen stetigen Bahnverlauf ohne abruptes Abstoppen in der Ecke.",
+  "ausnahmen": "Wenn scharfe 90°-Innenecken für ein Fügeteil nötig sind, sollten Eckenfreistiche (Dog-Bone/T-Bone) oder Erodieren (EDM) eingesetzt werden.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "innenradius_vertikale_kanten_hubs"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "innenradius_werkzeugradius_xometry"
+    }
+  ]
+}

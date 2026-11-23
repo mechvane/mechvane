@@ -491,7 +491,7 @@ Aufnehmen: `mechvane ui <ordner>` mit dem Beispiel, `MECHVANE_AGENT` auf `claude
 Sitzungsprotokoll, wenn die Ereignisse keine Zeiten haben). Ein Werkzeug, das ändert und nicht nachgespielt werden kann,
 lässt das Skript abbrechen. Die erste Aufnahme (`bracket`, 2026-11-16): Claude über `claude-agent-acp` 0.99.1, unverändert.
 
-Browsertest: `node tools/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
+Browsertest (archiviert, Web-UI eingefroren seit 2026-11-20): `node tools/archiv/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
 Chromium; ohne GPU mit `CHROME_FLAGS=--disable-features=WebGPU`, sonst bleibt die Canvas im
 Screenshot leer).
 

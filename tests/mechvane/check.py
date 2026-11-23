@@ -10034,11 +10034,22 @@ def gate_class_checks():
                                    "tests/tasks/scharnier/grade.py", "tools/status_collect.py", "tools/systemd/x.timer")))
     ok("gate: a count of ok( calls is read from a revision", gt.count_checks("HEAD") > 500, str(gt.count_checks("HEAD")))
     # #115: a branch that touches nothing the UI runs on is checked against main before it goes back
-    ok("gate: grader-only or doc branches are UI-independent, product code and the UI tests are not (#115)",
-       gt.ui_independent(["tests/tasks/welle/grade.py", "docs/x.md", "katalog/a.json"])
-       and not gt.ui_independent(["tests/tasks/a.py", "mechvane/ui/static/app.js"])
-       and not gt.ui_independent(["mechvane/links.py"]) and not gt.ui_independent(["tools/ui_smoke.py"])
-       and not gt.ui_independent(["pyproject.toml"]))
+    ok("gate: only the frozen UI, the live demo and their smokes count as UI paths; kernel code and pyproject.toml do not (#115, #179)",
+       gt.ui_independent(["tests/tasks/welle/grade.py", "docs/x.md", "katalog/a.json", "mechvane/links.py", "pyproject.toml"])
+       and not gt.ui_independent(["mechvane/ui/static/app.js"]) and not gt.ui_independent(["tools/ui_smoke.py"])
+       and not gt.ui_independent(["demo/replays/a.json"]) and not gt.ui_independent(["tools/build_demo_site.py"])
+       and not gt.ui_independent(["tools/demo_site/x.js"]))
+    # #179: the UI path list lives in three places (gate.py, review_branch.sh, the workflow); they must not drift
+    import re as _re
+    sh_text = (gt.REPO / "tools/review_branch.sh").read_text()
+    wf_text = (gt.REPO / ".github/workflows/platforms.yml").read_text()
+
+    def _alts(text):
+        m = _re.search(r"\^\(((?:mechvane/ui/)[^)]*)\)", text)
+        return sorted(x.replace("\\.", ".").rstrip("$") for x in m.group(1).split("|")) if m else None
+    want = sorted(gt.UI_PATHS)
+    ok("gate: UI path list is the same in gate.py, review_branch.sh and platforms.yml (#179)",
+       _alts(sh_text) == want and _alts(wf_text) == want, (want, _alts(sh_text), _alts(wf_text)))
     head = gt.sh(["git", "rev-parse", "origin/main"])[1].strip()
     cache = gt.REPO / "build/status" / f"main_ui_{head[:12]}.json"
     had = cache.read_text() if cache.exists() else None
@@ -10316,7 +10327,8 @@ def acceptance_checks(tmp):
     d = Path(tmp) / "acc_docs"
     d.mkdir()
     (d / "befehle-0.43.0.txt").write_text("solid.fillet\nsketch.line\nview.fit\nrender.go\nselect.set\n")
-    (d / "messwerte.json").write_text(json.dumps({"eindruck": {"wert": "23/40", "gemessen": "2026-11-06", "quelle": "Sichtung"}}))
+    (d / "messwerte.json").write_text(json.dumps({"installation": {"wert": "12 Minuten", "gemessen": "2026-11-06", "quelle": "Sichtung"},
+                                                    "konstruieren": {"wert": "80", "gemessen": "2026-11-23", "quelle": "Headless", "status": "vorwert"}}))
     old = acc.DIR, acc.VALUES
     acc.DIR, acc.VALUES = d, d / "messwerte.json"
     try:
@@ -10334,9 +10346,14 @@ def acceptance_checks(tmp):
        and prov.get("befehle") == ["render.go", "view.fit"] and set(prov.get("gruppen", {})) == {"render.", "view."}
        and all(g["grund"] and g["anzahl"] == 1 for g in prov["gruppen"].values())
        and "60,0 %" in rows["abdeckung"]["wert"] and "100,0 %" in rows["abdeckung"]["wert"], rows["abdeckung"])
-    ok("acceptance: a value by hand keeps its date, the others say so",
-       rows["eindruck"]["wert"] == "23/40" and rows["eindruck"]["gemessen"] == "2026-11-06"
-       and rows["konstruieren"]["wert"] == "nicht gemessen", rows)
+    ok("acceptance: a value by hand keeps its date, the others say so; a provisional value shows apart from a measured one; "
+       "Abdeckung is information only (#180)",
+       rows["installation"]["wert"] == "12 Minuten" and rows["installation"]["gemessen"] == "2026-11-06"
+       and rows["installation"]["status"] == "gemessen"
+       and rows["konstruieren"]["status"] == "vorwert" and "Vorwert" in rows["konstruieren"]["wert"]
+       and rows["verschraubung"]["wert"] == "nicht gemessen" and rows["verschraubung"]["status"] == "offen"
+       and rows["abdeckung"]["status"] == "information" and "eindruck" not in rows and "zusammenarbeit" not in rows
+       and [r["art"] for r in res["pruefungen"]].count("abnahme") == 4, rows)
 
 
 def demo_wasm_split_checks(tmp):

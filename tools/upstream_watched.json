@@ -27,11 +27,11 @@
     },
     {
       "number": 20295,
-      "follow_up": "PR #20300 (design.links_changed) in review: when merged, switch mechvane/links.py (update_links, poll of component.links changed) to the event; test the part, sub-assembly, assembly chain on a nightly first"
+      "follow_up": "PR #20300 (design.links_changed) shipped in 0.46.2 / 0.47.0: switch mechvane/links.py (update_links, poll of component.links changed) to the event after the version change in U1 (#181); test the part, sub-assembly, assembly chain first"
     },
     {
       "number": 20301,
-      "follow_up": "inspect.classify_points is merged (nightlies), not yet in a stable release: when it ships, switch the probing cut in mechvane/geometry.py to the read command"
+      "follow_up": "inspect.classify_points shipped in 0.46.2 / 0.47.0: when U1 (#181) moves Mechvane to that version, switch the probing cut in mechvane/geometry.py to the read command"
     }
   ]
 }
