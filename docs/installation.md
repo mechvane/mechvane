@@ -4,21 +4,21 @@ Mechvane ist die Maschinenbau-Schicht auf [SolidCraft](https://github.com/tangen
 
 ## 1. Voraussetzungen
 - **Python ≥ 3.11** (Windows: `python`, Linux: `python3`) und **MCP-fähiger Agent** (z. B. Claude Code)
-- **SolidCraft-App** in der Version **0.43.0** ([Release v0.43.0](https://github.com/tangency-labs/solidcraft/releases/tag/v0.43.0), Windows x64: `solidcraft-0.43.0-windows-x64-portable.zip` oder Installer `.msi`, Linux x86_64: [`solidcraft-0.43.0-linux-x86_64.tar.gz`](https://github.com/tangency-labs/solidcraft/releases/download/v0.43.0/solidcraft-0.43.0-linux-x86_64.tar.gz) (die App ist `bin/solidcraft` darin) oder `.AppImage`). Nicht die neueste Version nehmen: Mechvane v0.1 ist auf 0.43.0 abgenommen, und SolidCraft ab 0.49 stürzt auf Windows mit Intel-Grafik beim Start ab (SolidCraft-Issue #22110, der Fix steckt noch in keinem stabilen Release).
+- **SolidCraft-App** in der Version **0.43.0** ([Release v0.43.0](https://github.com/tangency-labs/solidcraft/releases/tag/v0.43.0), Windows x64: `solidcraft-0.43.0-windows-x64-portable.zip` oder Installer `.msi`, Linux x86_64: [`solidcraft-0.43.0-linux-x86_64.tar.gz`](https://github.com/tangency-labs/solidcraft/releases/download/v0.43.0/solidcraft-0.43.0-linux-x86_64.tar.gz) (entpackt in den Ordner `solidcraft-0.43.0-linux-x86_64/`, die App ist `bin/solidcraft` darin) oder `.AppImage`). Nicht die neueste Version nehmen: Mechvane v0.1 ist auf 0.43.0 abgenommen, und SolidCraft ab 0.49 stürzt auf Windows mit Intel-Grafik beim Start ab (SolidCraft-Issue #22110, der Fix steckt noch in keinem stabilen Release).
 
-## 2. Installation in einer venv (`pip install --pre mechvane`)
-`--pre` ist nötig, solange Mechvane als Alpha erscheint. Unter PowerShell steht `&` vor `$HOME`-Pfaden:
+## 2. Installation in einer venv (`pip install mechvane`)
+Unter PowerShell steht `&` vor `$HOME`-Pfaden:
 
 ```powershell
 # Windows (PowerShell)
 python -m venv $HOME\mechvane-venv
-& $HOME\mechvane-venv\Scripts\pip install --pre mechvane
+& $HOME\mechvane-venv\Scripts\pip install mechvane
 ```
 
 ```sh
 # Linux
 python3 -m venv ~/mechvane-venv
-~/mechvane-venv/bin/pip install --pre mechvane
+~/mechvane-venv/bin/pip install mechvane
 ```
 
 ## 3. `mechvane setup`
@@ -89,11 +89,11 @@ Lädt `solidcraft-cli` (**0.43.0**, samt Web-App) mit SHA256-Prüfung herunter. 
 *(Im geklonten Repo liegt die Referenz `tests/reference/flansch.build.json`, und `python3 tests/reference/check.py flansch` prüft zudem Volumen und Bounding-Box; nutzt `SOLIDCRAFT_CLI` oder `PATH`.)*
 
 ## 7. Häufige Fehler
-- **`invalid choice: 'check'` oder `connect_window` fehlt:** Mechvane ist zu alt (0.1.0a25 und älter kennen beides nicht). `pip install --upgrade --pre mechvane` in der venv, danach `mechvane --help` zeigt `check`.
+- **`invalid choice: 'check'` oder `connect_window` fehlt:** Mechvane ist zu alt (0.1.0a25 und älter kennen beides nicht). `pip install --upgrade mechvane` in der venv, danach `mechvane --help` zeigt `check`.
 - **`no running SolidCraft window found`:** In SolidCraft **Let AI agents connect** einschalten oder App mit `--control PORT` starten.
 - **`stale files from an app that was force-quit`:** Verwaiste `.token`/`.pid`-Dateien im Steuerordner → App neu starten oder alte Dateien dort löschen.
 - **`several SolidCraft windows are open`:** Mehrere Fenster offen → `connect_window` mit `address="127.0.0.1:PORT"` aufrufen.
 - **`another tab is in front`:** Tab gewechselt → ursprünglichen Tab wieder öffnen oder `close_document` + `connect_window`.
 - **PowerShell `Unerwartetes Token` / Befehl nicht gefunden:** `&` vor `$HOME\...` setzen; ohne `PATH`-Eintrag `python -m mechvane <unterbefehl>`.
-- **Windows-Grafik (`WGPU_BACKEND`):** Bei reiner Intel-Grafik setzt Mechvane für die CLI-Prozesse, die es selbst startet, `WGPU_BACKEND=dx12` gegen Vulkan-Abstürze bei runden Flächen; bei NVIDIA/AMD bleibt Vulkan aktiv. Manuell gesetztes `WGPU_BACKEND` wird nicht überschrieben.
+- **Windows-Grafik (`WGPU_BACKEND`):** Bei reiner Intel-Grafik setzt Mechvane für die CLI-Prozesse, die es selbst startet, `WGPU_BACKEND=dx12` als Behelf gegen Vulkan-Abstürze bei runden Flächen (ein Workaround, die Ursache liegt im Intel-Vulkan-Treiber und in SolidCraft); bei NVIDIA/AMD bleibt Vulkan aktiv. Manuell gesetztes `WGPU_BACKEND` wird nicht überschrieben.
 - **Befehl am Fenster abgelehnt:** Datei-, Speicher- und Baugruppenbefehle arbeiten nicht im ungesicherten Fenster (`save_document` lehnt ab, `add_joint`/`bolted_connection` brauchen Dateien).

@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-27
+
+### Changed
+
+- First release without the alpha label. Version 0.1 is for working with the SolidCraft app you have open: your agent and you on the same design (`connect_window`), `mechvane check` with the source behind every finding, a bolted connection that comes and goes in one call, and a step-by-step install guide for Windows and Linux. Built and tested with SolidCraft 0.43.0.
+
 ## [0.1.0a26] - 2026-11-27
 
 ### Added

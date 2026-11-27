@@ -2,8 +2,8 @@
   "title": "Mechvane roadmap",
   "tagline": "You and your agent on the same model.",
   "milestone": {
-    "name": "v0.1",
-    "goal": "Mechvane's engineering knowledge works with the SolidCraft app you already use: design checks with their sources in the open SolidCraft window, bolted connections as one step, and your agent building and checking on the same model."
+    "name": "v0.2",
+    "goal": "Mechvane's engineering knowledge moves into SolidCraft's own app as plugins: design checks and bolted connections as entries in SolidCraft for you and as tools for your agent, on the same model."
   },
   "statuses": {
     "done": "Available",
@@ -91,11 +91,11 @@
         {
           "status": "done",
           "title": "Install in one step",
-          "text": "pip install --pre mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
+          "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Install in under 15 minutes",
           "text": "A short guide for Windows and Linux: someone new to Mechvane installs it and builds the example flange in under 15 minutes.",
           "milestone": "v0.1"
@@ -106,7 +106,7 @@
           "text": "Mechvane reports events such as a saved part, a failed check or a finished agent task to a URL of your choice."
         },
         {
-          "status": "planned",
+          "status": "done",
           "title": "Stable 0.1 release",
           "text": "A release you can rely on, checked by four tests: your agent builds a set task in the open SolidCraft app, design checks run in that window with their sources, a bolted connection comes and goes in one call, and a newcomer installs Mechvane and builds the flange in under 15 minutes.",
           "milestone": "v0.1"

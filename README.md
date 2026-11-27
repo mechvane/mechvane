@@ -56,7 +56,7 @@ pinned `solidcraft-cli` and SolidCraft web app (v0.43.0) from the
 rendering works headless too.
 
 ```sh
-pip install --pre mechvane   # alpha releases only, until 0.1.0
+pip install mechvane
 mechvane setup        # SolidCraft CLI and web app, about 170 MB, once
 mechvane mcp          # MCP server for your agent (see below)
 ```
@@ -64,7 +64,7 @@ mechvane mcp          # MCP server for your agent (see below)
 Everything runs locally and offline after `mechvane setup`. The browser workspace stays available as a
 preview (`mechvane ui my-project/`); development now goes into working inside SolidCraft's own window.
 
-Alpha: tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
+Tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
 If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and
 `ui`, `mcp`) instead.
 
@@ -106,7 +106,7 @@ Step by step for Windows and Linux: [docs/installation.md](https://github.com/me
 
 ## Status
 
-Alpha: Mechvane runs as a Python layer on top of SolidCraft and as an MCP server for your agent, and it connects to the
+Version 0.1: Mechvane runs as a Python layer on top of SolidCraft and as an MCP server for your agent, and it connects to the
 SolidCraft app you have open (see the note at the top and the [roadmap](https://mechvane.dev/roadmap/)).
 
 - **Parts and assemblies** as separate files, joints across files that `update_links` checks and repairs.

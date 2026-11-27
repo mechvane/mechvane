@@ -4,9 +4,9 @@
 
 What works today, what comes next and what is planned. The same list is on [mechvane.dev/roadmap](https://mechvane.dev/roadmap/).
 
-## Next milestone: v0.1
+## Next milestone: v0.2
 
-Mechvane's engineering knowledge works with the SolidCraft app you already use: design checks with their sources in the open SolidCraft window, bolted connections as one step, and your agent building and checking on the same model.
+Mechvane's engineering knowledge moves into SolidCraft's own app as plugins: design checks and bolted connections as entries in SolidCraft for you and as tools for your agent, on the same model.
 
 ## Foundation
 
@@ -24,10 +24,10 @@ Mechvane builds on SolidCraft, an open parametric CAD kernel and app where every
 - **A short report after every step** (Available): After each change your agent learns how size, centre of mass, volume and number of bodies moved, and gets a warning when a cut hit nothing or the part fell apart.
 - **A picture to check against** (Available): One image with iso, front, top and a section, with axes and sizes, the last change highlighted: a quick visual check for agents that can see images.
 - **Roll back to find a problem** (Available): Your agent can move the end of part before a failing feature, repair it there and step forward again, as you would in Inventor.
-- **Install in one step** (Available): pip install --pre mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.
-- **Install in under 15 minutes** (In progress): A short guide for Windows and Linux: someone new to Mechvane installs it and builds the example flange in under 15 minutes.
+- **Install in one step** (Available): pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.
+- **Install in under 15 minutes** (Available): A short guide for Windows and Linux: someone new to Mechvane installs it and builds the example flange in under 15 minutes.
 - **Webhooks** (Planned): Mechvane reports events such as a saved part, a failed check or a finished agent task to a URL of your choice.
-- **Stable 0.1 release** (Planned): A release you can rely on, checked by four tests: your agent builds a set task in the open SolidCraft app, design checks run in that window with their sources, a bolted connection comes and goes in one call, and a newcomer installs Mechvane and builds the flange in under 15 minutes.
+- **Stable 0.1 release** (Available): A release you can rely on, checked by four tests: your agent builds a set task in the open SolidCraft app, design checks run in that window with their sources, a bolted connection comes and goes in one call, and a newcomer installs Mechvane and builds the flange in under 15 minutes.
 - **Import STEP as a reference body** (Available): Bring in STEP files from suppliers or other tools as solid bodies, using SolidCraft's STEP reader: place bought parts in an assembly, measure them and run the checks on them. In the workspace (File → Import STEP…) or through your agent.
 - **Moves to SolidCraft 0.41** (Available): Mechvane switches to SolidCraft 0.41 (with the new solid kernel since 0.40), so offset, shell and loft cases that fail today work in your parts.
 - **Moves to SolidCraft 0.43** (Available): Mechvane follows SolidCraft to 0.43, with view tabs, new sketch and solid commands and file verification available to you and your agent.
