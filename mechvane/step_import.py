@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 import tempfile
 
-from .documents import ASSEMBLY, PART
+from .documents import ASSEMBLY, PART, check_windows_writable
 from . import links
 from .solidcraft import Session
 
@@ -55,6 +55,7 @@ def import_step(ws, source, name: str | None = None, path: str | None = None, ov
         scratch = Session(allow_paths=[ws.root, src.parent, target.parent])
         try:
             made = scratch.cmd("file.insert_step", {"path": str(src), "name": name, "up": up})
+            check_windows_writable(target)  # extract writes the file before any save could check (#190)
             out = scratch.cmd("component.extract", {"component": made["component"], "path": str(target)})
         finally:
             scratch.close()
@@ -115,6 +116,10 @@ def import_step(ws, source, name: str | None = None, path: str | None = None, ov
                     raise ValueError(f"a document named {p_name!r} is already open")
                 if p_target.exists() and not overwrite:
                     raise FileExistsError(f"document file {str(p_target)!r} already exists on disk; pass overwrite=True")
+            # every file this import writes, checked before the first one is written: no half-written import (#190)
+            for _, _, p_target in part_specs:
+                check_windows_writable(p_target)
+            check_windows_writable(target)
 
             # Extract each body to its own part file
             parts_info = []
@@ -126,6 +131,7 @@ def import_step(ws, source, name: str | None = None, path: str | None = None, ov
                 scratch_b = Session(allow_paths=[ws.root, target.parent, tmp_path])
                 try:
                     m_b = scratch_b.cmd("file.insert_step", {"path": str(b_step), "name": p_name, "up": "z"})
+                    check_windows_writable(p_target)
                     scratch_b.cmd("component.extract", {"component": m_b["component"], "path": str(p_target)})
                 finally:
                     scratch_b.close()

@@ -1,0 +1,149 @@
+{
+  "id": "feingewinde_steigung_einschraubtiefe",
+  "aussage": "Metrische ISO-Feingewinde (ISO 965 / DIN 13) besitzen bei gleichem Nenndurchmesser d eine kleinere Steigung P als das Regelgewinde, weshalb die Steigung in der Gewindebezeichnung immer mit angegeben wird (typische Ausführungen z. B. M8×1, M10×1, M10×1,25, M12×1,25, M12×1,5, M14×1,5, M16×1,5, M20×1,5, M24×2, M30×2). Wann sinnvoll: Durch den kleineren Steigungswinkel bieten Feingewinde eine höhere Selbsthemmung gegen selbsttätiges Lösen bei Vibrationen; nachteilig ist die höhere Empfindlichkeit gegen Beschädigung und Verschmutzung. Einschraubtiefe (Toleranz 6g/6H, ohne Ansenkung und Gewindeauslauf): Wegen der flacheren Gewindegänge erfordert Feingewinde in Werkstoffen niedrigerer Festigkeit größere Mindesteinschraubtiefen als Regelgewinde (SFS-Handbuch / Bossard 052, M6–M16): S235/C15 (> 360 N/mm²) 1,25×d bei 8.8 (Regelgewinde 1,0×d) und 1,4×d bei 10.9 (Regelgewinde 1,25×d); S355/E285 (> 500 N/mm²) 1,0×d bei 8.8 (Regel 0,9×d) und 1,2×d bei 10.9 (Regel 1,0×d); Vergütungsstahl C45 V (> 800 N/mm²) 0,8×d bei 8.8 und 0,9×d bei 10.9 (identisch zum Regelgewinde); Grauguss GJL-250 1,25×d bei 8.8 und 1,4×d bei 10.9; Knetaluminium AlMgSi1 F32 / AlMg4,5Mn F28 1,4×d bei 8.8 und 2,0×d bei 10.9 (Regel 1,6×d). Bei Einschraubtiefen über 1,5×d kann es bei ungünstiger Toleranzlage zum Klemmen kommen.",
+  "werte": [
+    {
+      "name": "Typische Feingewinde-Steigung M8",
+      "wert": 1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Feingewinde-Steigungen M10",
+      "bereich": [1, 1.25],
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Feingewinde-Steigungen M12",
+      "bereich": [1.25, 1.5],
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Feingewinde-Steigung M16 / M20",
+      "wert": 1.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Typische Feingewinde-Steigung M24 / M30",
+      "wert": 2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde S235 / GJL-250, 8.8",
+      "wert": 1.25,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde S235 / GJL-250, 10.9",
+      "wert": 1.4,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde S355 / E285, 8.8",
+      "wert": 1.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde S355 / E285, 10.9",
+      "wert": 1.2,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde C45 V (> 800 N/mm²), 8.8",
+      "wert": 0.8,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde C45 V (> 800 N/mm²), 10.9",
+      "wert": 0.9,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde AlMgSi1 F32, 8.8",
+      "wert": 1.4,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Mindesteinschraubtiefe Feingewinde AlMgSi1 F32, 10.9",
+      "wert": 2.0,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Klemmgrenze Eindrehtiefe bei Toleranz 6g/6H",
+      "wert": 1.5,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "S235JR",
+      "S355J2",
+      "C45",
+      "Grauguss",
+      "EN-GJL-250",
+      "Aluminium",
+      "EN AW-6082"
+    ],
+    "verfahren": [
+      "Gewindeschneiden",
+      "Gewindefräsen",
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Feingewinde",
+      "Innengewinde",
+      "Außengewinde",
+      "Einschraubtiefe"
+    ],
+    "groesse": [
+      "M8",
+      "M10",
+      "M12",
+      "M14",
+      "M16",
+      "M20",
+      "M24",
+      "M30"
+    ],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9"
+    ]
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/allgemeines/Mindesteinschraubtiefe_in_geschnittene_Bauteilmuttergewinde_DE.pdf",
+      "stelle": "SFS Technisches Handbuch, Dimensionierung, S. 153–154 (Abschnitt Feingewinde & Tabelle Mindesteinschraubtiefe)",
+      "zitat": "Feingewinde erfordern grundsätzlich grössere [...] Einschraubtiefen und/oder grössere Festigkeiten des Mutter- [...] gewindes. Sie sind empfindlicher gegen Beschädigung und [...] Verschmutzung. [...] (kleinerer Steigungswinkel, daher grössere [...] Selbsthemmung gegen Lösen)",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/dimensionierung/gewindeprofile/Metrisches_ISO-Gewinde_nach_ISO_965_DE.pdf",
+      "stelle": "SFS Technisches Handbuch, Gewindeprofile, S. 226–227 (Metrisches ISO-Gewinde & Feingewinde-Grenzmaße 6g/6H)",
+      "zitat": "Es wird unterschieden zwischen dem Regelgewinde und dem Feingewinde, welches eine kleinere Gewindesteigung aufweist. Beim Feingewinde wird in der Abmessungsbezeichnung die Steigung immer mitgenannt.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
+      "stelle": "Bossard Auslegung, Konstruktion, Montage Blatt 052 (01/2025), Tabelle Regelgewinde/Feingewinde & Hinweise",
+      "zitat": "Die Mindesteinschraubtiefe versteht sich als effektive Länge der [...] Gewindeüberdeckung, also ohne Ansenkung am Bauteil und ohne [...] Bei Eindrehtiefen über 1,5 d können extreme Toleranzlagen der [...] Aussen- und Innengewinde zum Klemmen einer Schraube führen.",
+      "abgerufen": "2026-11-24"
+    }
+  ],
+  "begruendung": "Eine kleinere Steigung P verringert den Steigungswinkel φ und erhöht dadurch die Gewindeselbsthemmung gegen selbsttätiges Losdrehen. Da die einzelnen Gewindegänge jedoch kürzer und schmaler sind, tragen sie pro Längeneinheit weniger Scherkraft, weshalb in weicheren Werkstoffen größere Mindesteinschraubtiefen für Bruchgleichheit erforderlich werden.",
+  "ausnahmen": "Die Einschraubtiefen-Tabelle der Quelle (Bossard 052) deckt nur M6–M16 ab; die Steigungsbeispiele bis M30×2 stammen nicht aus dieser Tabelle. Bei Einschraubtiefen über 1,5 × d sind ggf. angepasste Toleranzlagen nach ISO 965-1 statt Standard 6g/6H zu wählen.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "gewindetoleranzen_metrisch_6h_6g"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "einschraubtiefe_werkstoffgruppen"
+    }
+  ]
+}

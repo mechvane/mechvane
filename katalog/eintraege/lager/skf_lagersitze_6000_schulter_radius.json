@@ -1,0 +1,207 @@
+{
+  "id": "skf_lagersitze_6000_schulter_radius",
+  "aussage": "Nach dem SKF-Wälzlagerkatalog (PUB BU/P1 17000/1 EN) benötigen Ringe unter Umfangslast (Last dreht relativ zum Ring) eine Übermaßpassung gegen Wandern und Passungsrost, während Ringe unter Punktlast eine Spielpassung (z. B. für Loslagerverschiebbarkeit) erhalten dürfen. Für Rillenkugellager auf Vollstahlwellen empfiehlt SKF bei Umfangslast am Innenring unter leichter Last (P <= 0,05 C) js5 (d <= 17 mm) bzw. j6 (> 17 bis 100 mm) und unter normaler bis hoher Last (0,05 C < P <= 0,1 C) js5 (d <= 10 mm), j5 (> 10 bis 17 mm) bzw. k5 (> 17 bis 100 mm), bei Punktlast am Innenring g6 oder h6. Für ungeteilte Gusseisen-/Stahlgehäuse empfiehlt SKF bei Punktlast am Außenring H7 (Standard, verschiebbar; H8 bei leichten Lasten) und bei Umfangslast am Außenring M7, N7 bzw. P7. Der Katalog definiert zudem die Anschlussmaße (Wellenschulter da_min, Gehäuseschulter Da_max, maximaler Übergangsradius ra_max <= r1,2_min) für die Rillenkugellagerreihe 6000 bis 6005.",
+  "werte": [
+    {
+      "name": "Wellentoleranz Umfangslast Innenring, leichte Last (P <= 0,05 C, d <= 17 mm)",
+      "wert": "js5",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz Umfangslast Innenring, leichte Last (P <= 0,05 C, 17 < d <= 100 mm)",
+      "wert": "j6",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz Umfangslast Innenring, normale bis hohe Last (0,05 C < P <= 0,1 C, d <= 10 mm)",
+      "wert": "js5",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz Umfangslast Innenring, normale bis hohe Last (0,05 C < P <= 0,1 C, 10 < d <= 17 mm)",
+      "wert": "j5",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz Umfangslast Innenring, normale bis hohe Last (0,05 C < P <= 0,1 C, 17 < d <= 100 mm)",
+      "wert": "k5",
+      "einheit": ""
+    },
+    {
+      "name": "Wellentoleranz Punktlast Innenring (axial verschiebbar erwünscht / nicht erforderlich)",
+      "wert": "g6 / h6",
+      "einheit": ""
+    },
+    {
+      "name": "Gehäusetoleranz Punktlast Außenring (alle Lasten, verschiebbar)",
+      "wert": "H7",
+      "einheit": ""
+    },
+    {
+      "name": "Gehäusetoleranz Umfangslast Außenring (leicht / normal-hoch / schwer in dünnwandigen Gehäusen)",
+      "wert": "M7 / N7 / P7",
+      "einheit": ""
+    },
+    {
+      "name": "6000 Wellenschulter da min",
+      "wert": 12,
+      "einheit": "mm"
+    },
+    {
+      "name": "6000 Gehäuseschulter Da max",
+      "wert": 24,
+      "einheit": "mm"
+    },
+    {
+      "name": "6000 Übergangsradius ra max",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Wellenschulter da min",
+      "wert": 14,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Gehäuseschulter Da max",
+      "wert": 26,
+      "einheit": "mm"
+    },
+    {
+      "name": "6001 Übergangsradius ra max",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Wellenschulter da min",
+      "wert": 17,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Gehäuseschulter Da max",
+      "wert": 30,
+      "einheit": "mm"
+    },
+    {
+      "name": "6002 Übergangsradius ra max",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Wellenschulter da min",
+      "wert": 19,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Gehäuseschulter Da max",
+      "wert": 33,
+      "einheit": "mm"
+    },
+    {
+      "name": "6003 Übergangsradius ra max",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Wellenschulter da min",
+      "wert": 23.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Gehäuseschulter Da max",
+      "wert": 38.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "6004 Übergangsradius ra max",
+      "wert": 0.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Wellenschulter da min",
+      "wert": 28.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Gehäuseschulter Da max",
+      "wert": 43.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "6005 Übergangsradius ra max",
+      "wert": 0.6,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Gusseisen",
+      "Wälzlagerstahl"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Schleifen",
+      "Wälzlagermontage"
+    ],
+    "feature": [
+      "Lagersitz",
+      "Wellenabsatz",
+      "Gehäuseschulter",
+      "Übergangsradius",
+      "Rillenkugellager"
+    ],
+    "groesse": [
+      "6000",
+      "6001",
+      "6002",
+      "6003",
+      "6004",
+      "6005"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://cdn.skfmediahub.skf.com/api/public/0901d196802809de/pdf_preview_medium/0901d196802809de_pdf_preview_medium.pdf",
+      "stelle": "SKF Rolling bearings catalogue, Chapter B.6 Bearing interfaces, Table 5 S. 148 (Tolerances for solid steel shafts – seats for radial ball bearings)",
+      "zitat": "Rotating inner ring load or direction of load indeterminate",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://cdn.skfmediahub.skf.com/api/public/0901d196802809de/pdf_preview_medium/0901d196802809de_pdf_preview_medium.pdf",
+      "stelle": "SKF Rolling bearings catalogue, Chapter B.6 Bearing interfaces, Table 8 S. 151 (Tolerances for cast iron and steel housings – seats for radial bearings)",
+      "zitat": "Tolerances for cast iron and steel housings – seats for radial bearings",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://cdn.skfmediahub.skf.com/api/public/0901d196802809de/pdf_preview_medium/0901d196802809de_pdf_preview_medium.pdf",
+      "stelle": "SKF Rolling bearings catalogue, Chapter 1.1 Single row deep groove ball bearings, S. 264–273 (6000–6005 Abutment and fillet dimensions)",
+      "zitat": "Abutment and fillet dimensions",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Ein unter Umfangslast stehender Lagerring erfährt bei jeder Umdrehung eine umlaufende Verformung; bei einer Spielpassung wandert der Ring relativ zum Sitz, was zu Passungsrost und Verschleiß führt. Daher schreibt SKF für den Ring mit Umfangslast (oder unbestimmter Lastrichtung) eine Übermaß- bzw. enge Übergangspassung vor, während der punktbelastete Ring im Loslager axial verschiebbar mit Spielpassung sitzen darf. Die Schulterdurchmesser da_min und Da_max gewährleisten volle axiale Anlage an der Stirnfläche der Lagerringe bei ausreichendem Freiraum zu Dichtungen/Käfig (da_max bei abgedichteten Ausführungen z. B. 14,7 / 16,9 / 20,4 / 22,9 / 27,1 / 31,9 mm für 6000–6005), und ra_max <= r1,2_min verhindert ein Aufreiten des Lagerrings auf der Wellen- oder Gehäusekehlrundung.",
+  "ausnahmen": "Abweichung gegenüber vorhandenem Eintrag waelzlager_wellenpassung_umfangslast (TU Dresden): Jene Quelle empfiehlt bis 40 mm normaler Last pauschal j6 (j5) und bis 100 mm k6 (k5), während SKF (Table 5) für Rillenkugellager unter normaler bis hoher Last (0,05 C < P <= 0,1 C) nach Durchmesser feiner abgestuft js5 (d <= 10 mm), j5 (10 < d <= 17 mm) und k5 (17 < d <= 100 mm) vorgibt und j6 nur bei leichter Last (P <= 0,05 C, 17 < d <= 100 mm) nennt. Außerdem gilt für 6204 (waelzlager_schulter_uebergangsradius) ra_max = 1,0 mm, während 6004 in der 6000er-Reihe ra_max = 0,6 mm besitzt. Für geteilte Gehäuse, Aluminiumgehäuse, Hohlwellen oder hohe Temperaturdifferenzen (> 10 °C, G7 statt H7) gelten gesonderte SKF-Hinweise.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "waelzlager_wellenpassung_umfangslast"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "waelzlager_gehaeusepassung_loslager"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "waelzlager_schulter_uebergangsradius"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din625_rillenkugellager_hauptabmessungen"
+    }
+  ]
+}

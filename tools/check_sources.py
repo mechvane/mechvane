@@ -638,6 +638,8 @@ def verify_json_entry(filepath: Path, fetcher: "SourceFetcher") -> list[dict]:
     data = json.loads(filepath.read_text(encoding="utf-8"))
     results, texts = [], []
     for i, q in enumerate(data.get("quellen") or []):
+        if q.get("werk") and not q.get("url"):
+            continue  # a work source (book, #201) has no page to fetch; it is checked locally, not here
         entry = Entry(file_path=filepath, title=f"{data.get('id', filepath.stem)} / Quelle {i + 1}", line=0,
                       urls=[q.get("url", "")], quotes=[q["zitat"]] if q.get("zitat") else [])
         res = verify_entry_url(entry, q.get("url", ""), fetcher)

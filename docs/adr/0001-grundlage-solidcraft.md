@@ -124,7 +124,7 @@ braucht, beheben wir upstream auch selbst per PR, statt nur zu melden oder in Me
   lernen (Issue beanspruchen, Claim verfällt nach 14 Tagen ohne Push; `cargo xtask ci` muss grün sein;
   Agenten-Regeln in deren `AGENTS.md`/`skills/`). #8517 (Einbettung) ist schon von jemand anderem
   beansprucht (#11273), Kandidat noch offen.
-- **Build-Maschine: Colab Pro** (Skill `colab-bridge`), nicht der Steuer-Container (2 Kerne). CPU-VM
+- **Build-Maschine: Colab Pro** (Skill `colab-bridge`), nicht der eigene Server (2 Kerne). CPU-VM
   `--high-mem` (8 Kerne, 55 GB) kostet ~0,26 CU/h, ein voller `cargo xtask ci` damit deutlich unter 1 CU.
   Rust-Toolchain, `wasm32-unknown-unknown` und `trunk` je Lauf installieren; `target/` und `~/.cargo` als
   Archiv zurückholen und beim nächsten Lauf hochladen, damit Builds inkrementell bleiben. Läufe über 20 CU

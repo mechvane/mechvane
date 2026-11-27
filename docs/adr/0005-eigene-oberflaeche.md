@@ -239,5 +239,5 @@ Regeln ab jetzt:
    modellieren in der SolidCraft-Oberfläche (hat ein Inventor-Navigationsprofil, frei belegbare Kürzel), Mechvane
    als Begleitpanel für Prüfung, Normteile, Baugruppen, Agent; (C) Bausteine upstream einbringen (#8517 o. Ä.,
    nur mit Nutzer-OK); (D) eigener Build von `ui-egui` mit Mechvane-Panel (Rust-Build auf Colab oder in
-   GitHub Actions statt auf dem Steuer-Container). Maßstab: Pflegeaufwand gegenüber Upstream-Tempo
+   GitHub Actions statt auf dem eigenen Server). Maßstab: Pflegeaufwand gegenüber Upstream-Tempo
    (0.30 → 0.40-rc in wenigen Tagen) und Wirkung als eigenes Produkt.

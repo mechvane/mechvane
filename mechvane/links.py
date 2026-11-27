@@ -262,34 +262,40 @@ def resolve_occurrences(s, params):
     """Allow `"Sub:1/Plate:1"` occurrence references in joint params by resolving to the child occurrence name."""
     out = dict(params)
     comps = None
-    for side in ("a", "b"):
-        occ_ref = out.get(side, {}).get("occurrence") if isinstance(out.get(side), dict) else None
-        if isinstance(occ_ref, str) and "/" in occ_ref:
-            parts = [p.strip() for p in occ_ref.split("/") if p.strip()]
-            parent_ref, leaf = parts[-2], parts[-1]
-            if comps is None:
-                comps = {c["id"]: c for c in s.cmd("component.list")["components"]}
-            p_comp = next((c for c in comps.values()
-                           if c["name"] == parent_ref or any(o["name"] == parent_ref for o in c.get("occurrences", []))), None)
-            if not p_comp:
-                raise ValueError(f"unknown subassembly {parent_ref!r} in occurrence path {occ_ref!r}")
-            children = [o["name"] for o in p_comp.get("children", [])]
-            p_name = p_comp["name"]
-            prefixed = f"{p_name}_{leaf}"
-            if leaf in children:
-                resolved_leaf = leaf
-            elif prefixed in children:
-                resolved_leaf = prefixed
-            else:
-                candidates = [c for c in children if c in (leaf, prefixed) or
-                              c.split(":")[0] in (leaf, prefixed)]
-                if len(candidates) == 1:
-                    resolved_leaf = candidates[0]
-                elif len(candidates) > 1:
-                    raise ValueError(f"ambiguous occurrence {leaf!r} in subassembly {parent_ref!r}: {candidates}")
-                else:
-                    raise ValueError(f"occurrence {leaf!r} not found in subassembly {parent_ref!r}")
-            out[side] = dict(out[side], occurrence=resolved_leaf)
+
+    def resolve_ref(occ_ref):
+        nonlocal comps
+        parts = [p.strip() for p in occ_ref.split("/") if p.strip()]
+        parent_ref, leaf = parts[-2], parts[-1]
+        if comps is None:
+            comps = {c["id"]: c for c in s.cmd("component.list")["components"]}
+        p_comp = next((c for c in comps.values()
+                       if c["name"] == parent_ref or any(o["name"] == parent_ref for o in c.get("occurrences", []))), None)
+        if not p_comp:
+            raise ValueError(f"unknown subassembly {parent_ref!r} in occurrence path {occ_ref!r}")
+        children = [o["name"] for o in p_comp.get("children", [])]
+        p_name = p_comp["name"]
+        prefixed = f"{p_name}_{leaf}"
+        if leaf in children:
+            return leaf
+        if prefixed in children:
+            return prefixed
+        candidates = [c for c in children if c in (leaf, prefixed) or
+                      c.split(":")[0] in (leaf, prefixed)]
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            raise ValueError(f"ambiguous occurrence {leaf!r} in subassembly {parent_ref!r}: {candidates}")
+        raise ValueError(f"occurrence {leaf!r} not found in subassembly {parent_ref!r}")
+
+    for side in ("a", "b", "at"):
+        val = out.get(side)
+        if isinstance(val, dict):
+            occ_ref = val.get("occurrence")
+            if isinstance(occ_ref, str) and "/" in occ_ref:
+                out[side] = dict(val, occurrence=resolve_ref(occ_ref))
+        elif side in ("a", "b") and isinstance(val, str) and "/" in val:
+            out[side] = resolve_ref(val)
     return out
 
 

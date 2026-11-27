@@ -5,10 +5,10 @@ Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
 
 ## Installation und Start (seit 2026-10-27)
 
-`pyproject.toml` macht Mechvane installierbar: `pip install mechvane` (PyPI seit 2026-10-27,
+`pyproject.toml` macht Mechvane installierbar: `pip install --pre mechvane` (PyPI seit 2026-10-27,
 `0.1.0a1`; `0.1.0a2` mit Windows-Korrekturen als erste Version per Tag, `0.1.0a3` mit Temp-Aufräumen und Argon-Befund-Fixes), Entwicklung `pip install -e .`. Neue Version: `version` in `pyproject.toml` erhöhen,
 exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/publish.yml` lädt
-per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
+per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat fünf Unterbefehle:
 
 - `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
   (`mechvane/ui/webapp.py`) in der festen Version 0.43.0 (seit 2026-11-16, vorher 0.41.0 und 0.30.1) für die eigene Plattform in den Cache
@@ -17,7 +17,15 @@ per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane`
 - `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
   `--demo` baut beim ersten Mal die Beispiele aus `mechvane/examples.py` (dieselben wie die
   Live-Demo) in `<cache>/demo`.
+- `mechvane shortcut [ordner]` legt einen Startmenü-Eintrag (Windows, Linux) an, der `ordner` öffnet (Standard `~/Mechvane`).
 - `mechvane mcp [--workspace <ordner>]` startet den MCP-Server (wie `python3 -m mechvane`).
+- `mechvane check [datei] [--profile fdm_0.4|cnc_alu] [--material <name>] [--json]` führt dieselbe
+  Konstruktionsprüfung wie `check_design` im Terminal aus: mit Datei headless öffnen, prüfen und
+  schließen; ohne Datei über `find_app` / `connect_window` an das offene SolidCraft-Fenster hängen
+  (nur lesende Befehle, kein Eintrag im Rückgängig-Verlauf). Gibt je Befund Regel, Wert, Grenzwert,
+  Quelle und Zitat aus `katalog/` aus (`--json` gibt die JSON-Antwort von `check_design`
+  unverändert aus). Exit-Code `0` ohne Befunde der Stufe Fehler, `1` bei Fehlern, `2` bei fehlendem
+  Fenster oder Eingabefehler (auf `stderr`, ohne Traceback).
 
 Welche CLI genommen wird: `SOLIDCRAFT_CLI`, sonst die aus `mechvane setup`, sonst
 `solidcraft-cli` im `PATH`. `mcp` ist auf `<2` begrenzt (2.x hat `FastMCP` umbenannt).
@@ -50,6 +58,7 @@ Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/
 | `open_document(path, name)` | Bauteil- oder Baugruppendatei öffnen (Pfad relativ zum Workspace). Ist dieselbe Datei bereits geöffnet, wird das vorhandene Dokument zurückgegeben statt einer Parallelsitzung; Namenskonflikte werden mit klarem Fehler abgewiesen |
 | `save_document(document)` | Offenes Dokument auf die Festplatte schreiben. Speichert Bauteile nur, wenn das Bauteilende am Ende der Historie steht; im zurückgerollten Zustand bricht der Aufruf mit Fehler ab, damit keine unterdrückten Features auf Disk persistiert werden |
 | `close_document(document, discard)` | Dokument schließen. Hat das Dokument ungespeicherte Änderungen, wird ein Fehler mit Hinweis gemeldet, außer es wird ausdrücklich `discard=true` übergeben |
+| `connect_window(name, address)` | Das im laufenden SolidCraft-Fenster offene Design als Dokument `name` anschließen (`address` `auto` findet das Fenster über die Dateien im Steuerordner, bei mehreren Fenstern `127.0.0.1:PORT`). Voraussetzung: in der App „Let AI agents connect“ an oder Start mit `--control PORT`. Lesen (`measure`, `check_design`, `verify_view`, `screenshot`, `browser`, `check_parameters`) und `run` wirken auf das Fenster; `save_document` lehnt ab (der Nutzer speichert in der App), `close_document` trennt nur, Baugruppenwerkzeuge (Gelenke, Verschraubung) brauchen noch eine Datei. `run` und `command` nehmen im Fenster nur Befehle zum Modellieren, Abfragen und Prüfen (Positivliste `WINDOW_ALLOWED`), keine Werkzeug-Schritte wie `save`, `open`, `new_design` oder `export` und keine Befehle oder Parameter mit Dateien (Import, Export, Verknüpfen); Skizzen werden dort nicht umsortiert. `screenshot` und `verify_view` rendern das Modell (`source: "model"`), drehen dafür die Kamera der App auf die Ansicht und passen sie ein (`view.fit`; 0.43 kann die Kamera nicht zurücklesen, kein Eintrag im Rückgängig-Verlauf); `verify_view` setzt im Fenster nur einen Schnitt, wenn `section` angegeben ist (sonst Quadrant „Right“), weil es den Schnitt danach löscht. `check_design`, `check_parameters` und fehlgeschlagene Läufe hinterlassen keinen Eintrag im Rückgängig-Verlauf und lassen das Design unverändert (geprüft am 2026-11-24 gegen ein echtes 0.43-Fenster unter Xvfb: gleiche Befunde wie headless). Schreibt Mechvane eine Datei, die im Fenster offen ist (z. B. `bolted_connection` in ein Teil), lädt das Fenster sie danach neu (in 0.43 über `new_design` + `open`, der Rückgängig-Verlauf des Fensters endet dort); hat das Fenster ungespeicherte Änderungen, lehnt Mechvane vorher ab, statt eine der beiden Fassungen zu verlieren (#191). Ohne Fenster bleibt es bei `--headless` |
 | `list_documents()` | Liste aller aktuell im Workspace geöffneten Dokumente und Arbeitsordner-Pfad |
 | `import_step(source, name, path, overwrite, up, split)` | STEP/IGES/FreeCAD/Rhino als Bauteildatei mit festem Körper ohne Verlauf (Zukaufteil, fremdes Teil zum Messen und Prüfen); `up="y"` dreht Y-oben-Dateien. Mit `split=true` (Standard `false`) wird eine STEP-Datei mit mehreren Körpern als Baugruppe übernommen: je Körper eine eigene Bauteildatei (`<name>_<körper>.solidcraft`), dazu eine Baugruppendatei (`<name>.solidcraft`), erstes Teil fest (grounded), sonst keine Gelenke. Weg: `file.insert_step` in einer Arbeitssitzung, `component.extract` in eigene Dateien (Bauteile bleiben ohne Komponenten). |
 | `standard_part(norm, size, length, name, path)` | Parametrisches Normteil als eigene Bauteildatei erzeugen, speichern und offen halten (ISO 4762, ISO 10642, ISO 4032, ISO 7089, Ruthex, DIN 625) |

@@ -1,0 +1,234 @@
+{
+  "id": "flaechenpressung_schraubenkopf_grenzwerte_werkstoff",
+  "aussage": "Die Flächenpressung unter Schraubenkopf oder Mutter darf die werkstoffabhängige Grenzflächenpressung pG des verspannten Bauteils weder bei der Montage noch im Betrieb überschreiten, da sonst plastisches Eindrücken, Kriechen und Vorspannkraftverlust auftreten. Nach VDI 2230:2015 (Bossard-Richtwerte, Raumtemperatur, Bohrung ohne Fase) gelten folgende Grenzflächenpressungen pG [N/mm²] — in Klammern abweichende ältere Grenzwerte nach VDI 2230:1986: S235 JRG1 490 (St 37: 260), E295 710 (St 50: 420), S355 JO 760, Cq 45 770 (C 45: 700), 34 CrMo 4 1170, 16 MnCr 5 1300, 42 CrMo 4 850 (1986), nichtrostende Stähle 1.4303/1.4401 630 (1986 X5CrNiMo18-10: 210), Grauguss GJL-250 850 (1986 GG 25: 800), Kugelgraphitguss GJS-400 600 / GJS-600 900, Aluminium AlMgSi 1 F31 (AW-6082) 360, AlMg4.5Mn (AW-5083) 325, AlZnMgCu 1.5 (AW-7075) 540, Al-Guss GK-AlSi9Cu3 200 / GD-AlSi9Cu3 300, Magnesium GD-AZ 91 280 und Titan TiAl6V4 1340. Darf keine bleibende Eindrückung entstehen, werden maximal 70 % des Tabellenrichtwertes empfohlen; motorisches Anziehen kann pG bis zu 25 % senken, während angefaste Bohrungen bei Stählen bis zu 25 % (Praxisversuche bis 20 %) höhere Werte zulassen. Standard-Sechskantschrauben 8.8 nach ISO 4014/4017 erreichen unter 90 % Ausnutzung bereits 308 bis 637 N/mm² (z. B. M8: 442 N/mm², M12 ISO SW18: 580 N/mm²) und Zylinderschrauben ISO 4762 250 bis 482 N/mm² (M8: 333 N/mm², M12: 478 N/mm²), sodass bei Aluminium oder weichem Baustahl Flanschschrauben oder gehärtete Scheiben (ab 8.8 mindestens 200 HV mit 300–500 N/mm², ab 10.9 mindestens 300 HV mit 500–800 N/mm²) nötig werden.",
+  "werte": [
+    {
+      "name": "Grenzflächenpressung pG S235 JRG1 (VDI 2230:2015)",
+      "wert": 490,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG St 37 / S235 (VDI 2230:1986)",
+      "wert": 260,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG E295 (VDI 2230:2015)",
+      "wert": 710,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG St 50 (VDI 2230:1986)",
+      "wert": 420,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG S355 JO",
+      "wert": 760,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG Cq 45 (VDI 2230:2015)",
+      "wert": 770,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG C 45 (VDI 2230:1986)",
+      "wert": 700,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG 34 CrMo 4",
+      "wert": 1170,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG 16 MnCr 5",
+      "wert": 1300,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG 42 CrMo 4 (VDI 2230:1986)",
+      "wert": 850,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG 1.4303 / 1.4401 (VDI 2230:2015)",
+      "wert": 630,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG X5 CrNiMo 18 10 (VDI 2230:1986)",
+      "wert": 210,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG GJL-250 / GG-25 (2015 vs. 1986)",
+      "bereich": [800, 850],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG GJS-400 (GGG-40)",
+      "wert": 600,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG GJS-600 (GGG-60)",
+      "wert": 900,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG AlMgSi 1 F31 (EN AW-6082)",
+      "wert": 360,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG AlMg4.5Mn F27 (EN AW-5083)",
+      "wert": 325,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG AlZnMgCu 1.5 (EN AW-7075)",
+      "wert": 540,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG Al-Kokillenguss GK-AlSi9Cu3",
+      "wert": 200,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG Al-Druckguss GD-AlSi9Cu3",
+      "wert": 300,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG Mg-Druckguss GD-AZ 91",
+      "wert": 280,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Grenzflächenpressung pG TiAl6V4",
+      "wert": 1340,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Maximaler Richtwert-Anteil bei unzulässiger Eindrückung",
+      "wert": 70,
+      "einheit": "%"
+    },
+    {
+      "name": "Abminderung bei motorischem Anziehen bis zu",
+      "wert": 25,
+      "einheit": "%"
+    },
+    {
+      "name": "Erhöhung durch Bohrungsfase bei Stählen (Praxisversuche)",
+      "bereich": [20, 25],
+      "einheit": "%"
+    },
+    {
+      "name": "Kopfauflage-Pressung Sechskantschraube M8 8.8 (ISO 4014/4017)",
+      "wert": 442,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Kopfauflage-Pressung Zylinderschraube M8 8.8 (ISO 4762)",
+      "wert": 333,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Kopfauflage-Pressung Sechskantschraube M12 SW18 8.8 (ISO 4014/4017)",
+      "wert": 580,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Kopfauflage-Pressung Zylinderschraube M12 8.8 (ISO 4762)",
+      "wert": 478,
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zulässige Flächenpressung Scheibe 200 HV (geeignet bis 8.8)",
+      "bereich": [300, 500],
+      "einheit": "N/mm²"
+    },
+    {
+      "name": "Zulässige Flächenpressung Scheibe 300 HV (geeignet bis 10.9)",
+      "bereich": [500, 800],
+      "einheit": "N/mm²"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "S235JR",
+      "S355J2",
+      "C45",
+      "42CrMo4",
+      "Edelstahl",
+      "Gusseisen",
+      "EN-GJL-250",
+      "Aluminium",
+      "EN AW-6082",
+      "EN AW-5083",
+      "EN AW-7075",
+      "Magnesium",
+      "Titan"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Schraubverbindung",
+      "Kopfauflage",
+      "Durchgangsbohrung",
+      "Scheibe"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/7MM4CVEWakvMoaUSg5YsPX/2f4fd67879facc612d4d7fbc9d218773/053_056_Flaechenpressung_Fastening_DE_01_2025.pdf",
+      "stelle": "Seiten 53 bis 56 (Flächenpressung: Grenzflächenpressung VDI 2230 1986/2015, Kopfpressung ISO 4014/4017/4762, Scheibenauswahl)",
+      "zitat": "Schraubenverbindung sonst durch Setzerscheinungen lockern kann. [...] diesen Fall empfohlen, maximal 70 % des Tabellenrichtwertes anzusetzen. [...] der Schraubendehngrenze Rp 0,2 und µG = 0,12 (Referenz: VDI 2230, Ausgabe 2015)",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.hs-anhalt.de/fileadmin/Dateien/FB6/personen/voigt_st/Lehrunterlagen/01_ME/04_Schraubenverbindungen_VDI_2230.pdf",
+      "stelle": "Folie 82 (Flächenpressung und Grenzflächenpressungen nach VDI 2230)",
+      "zitat": "die zulässigen Werte nicht überschreiten, da sonst Kriechvorgänge einsetzen, die die Vorspannung verringern.",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube/schraubenverbindung.php",
+      "stelle": "Abschnitt Pressung / Flächenpressung Kopfauflage",
+      "zitat": "Die zwischen Schraubenkopf und Flansch auftretende Pressung darf die zulässige Pressung nicht überschreiten.",
+      "abgerufen": "2026-11-23"
+    }
+  ],
+  "begruendung": "Die Vorspannkraft stützt sich auf der schmalen Kreisringfläche Ap = π/4 · (dw² − dh²) zwischen Schraubenkopf bzw. Mutter und Durchgangsbohrung ab. Bei hochfesten Schrauben (8.8, 10.9, 12.9) auf weichen Werkstoffen wie Aluminium, Magnesium oder unlegiertem Baustahl übersteigt die Kopfpressung ohne Flanschkopf oder ausreichend harte Unterlegscheibe die Werkstoffdruckgrenze und führt zu unzulässigem Setzen oder Kriechen.",
+  "ausnahmen": "Alle genannten pG-Werte sind Kurzzeitwerte bei Raumtemperatur und großen Bauteilaussendurchmessern; für erhöhte Betriebstemperaturen gelten niedrigere Grenzen. Scheiben der Härteklasse 100 HV sind bei 8.8 und höher unzulässig; ab 12.9 reichen auch 300-HV-Scheiben nach ISO 887 nicht mehr aus.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso4017_din974_2_sechskantschrauben_senkungen"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso4762_zylinderschrauben_masse"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso7089_scheiben_masse"
+    }
+  ]
+}

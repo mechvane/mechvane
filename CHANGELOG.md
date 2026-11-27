@@ -7,6 +7,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0a26] - 2026-11-27
+
+### Added
+
+- `add_joint(..., as_built=True)`: joins already-positioned parts via SolidCraft `joint.as_built` without moving or rotating them, and records both side anchors for `check_joints` and `update_links`.
+- `add_joint`: warns with distance and rotation angle when `joint.create` moves or rotates part `b`, hinting at `as_built=True`.
+- `bolted_connection` warns when a part that was already in the assembly moved while the connection was made (the assembly is solved again and an earlier joint can put a part back to its stored pose).
+- `connect_window` attaches the design open in the running SolidCraft window (`solidcraft-cli mcp --connect`): reading tools and `run` work on it, saving stays with the user. Stale token files, several windows and a dead port give a plain message instead of a hang.
+- `mechvane check [file] [--profile fdm_0.4|cnc_alu] [--material NAME] [--json]`: runs `check_design` from the terminal on a `.solidcraft` part file (headless) or on the active design in the running SolidCraft window, printing each finding with rule, value, threshold, catalog source and quote (exit code 0 without error-level findings, 1 on failures, 2 when no window or invalid input).
+- `docs/installation.md`: step by step for Windows and Linux (virtual environment, `mechvane setup`, connecting your agent, the open SolidCraft window, a first flange).
+- Knowledge catalog: new entries from the nightly runs (fasteners, bearings, 3D printing and CNC rules, adhesives, material data), each with its sources and a quoted passage.
+- Catalog entries can name a book or works standard as a literature reference (`werk`, `auflage`, `stelle`) instead of a web page; quotes and local files stay out of the public catalog. A folder named by `MECHVANE_KATALOG_EXTRA` is loaded as a private part of the catalog (faulty files there are skipped with a warning).
+
+### Changed
+
+- Built and tested with **SolidCraft 0.43.0** (unchanged); `mechvane setup` fetches it. Newer SolidCraft apps are not covered yet: please use 0.43.0 with this release.
+- Knowledge catalog: a sample check of 26 entries against their sources corrected or removed unsupported statements in 18 entries. Three entries without a usable source are marked `nicht_belegt`.
+- Seven entries that cited only a web site's start page now cite the page that carries the table.
+
+### Removed
+
+- The workaround that cleaned up the empty scratch folders of old SolidCraft servers (fixed upstream in 0.41).
+
+### Fixed
+
+- Deleting a bolted connection, importing a STEP file and save steps in `run` now check the connected SolidCraft window before they write: with unsaved changes there they refuse before the first change, so no connection is left half deleted. A failed bolted connection no longer rewrites or reloads files it never changed.
+- A file Mechvane writes while it is open in the connected SolidCraft window (a bolted connection drills into a part, for example) is shown again in the window afterwards, so a later save in the app no longer writes the old state back. With unsaved changes in the window, Mechvane refuses instead of losing either version.
+- `bolted_connection`: creates standard part files next to the assembly instead of in the workspace root, so assemblies in workspace subfolders keep self-contained links without `../` paths or `file_missing` errors when opened from the subfolder.
+- `add_joint` and `bolted_connection` (`moved_parts_warnings`): measure part displacement at the occurrence's bounding-box midpoint instead of its coordinate origin, so rotating an off-center part reports the actual part shift rather than the origin swing.
+- `bolted_connection`: rollbacks on mid-build errors now also close and remove newly created standard-part files instead of leaving them behind next to the assembly.
+- `delete_bolted_connection`: update links and repair remaining joints after removing holes so pre-existing planar joints whose face centroid shifted are restored to `ok`.
+- `edit_bolted_connection`: rollbacks on error now also restore foreign part files modified when `delete_bolted_connection` repairs remaining joints or bolted connections via `update_links`, as well as pre-existing standard-part files overwritten during the operation.
+- `delete_bolted_connection`: return `warnings` from `links.update_links(..., repair_moved=True)` in the response so `link_blocked` and failed-repair warnings reach the caller.
+- `bolted_connection` / `edit_bolted_connection`: rollbacks now restore overwritten pre-existing standard-part files byte-for-byte and only delete standard-part files created by the failing call itself.
+- `connect_window` skips ports whose SolidCraft process is gone, takes IPv6 addresses, and says what to do when the app uses its own token or control folder. The window's assembly reads relative part paths from its own file's folder and follows a "save as" in the app. A feature name with a dot is no longer mistaken for a file.
+
 ## [0.1.0a25] - 2026-11-21
 
 ### Added

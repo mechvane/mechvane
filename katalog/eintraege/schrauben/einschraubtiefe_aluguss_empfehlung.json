@@ -17,9 +17,6 @@
     "werkstoff": [
       "Aluminium",
       "Aluminiumguss",
-      "AlSi10Mg",
-      "AlSi12",
-      "AlSi9Cu3",
       "Alu"
     ],
     "verfahren": [
@@ -55,9 +52,9 @@
       "abgerufen": "2026-10-21"
     }
   ],
-  "begruendung": "Deckt sich mit der Stiftschraubennormung DIN 940 (2,5 * d), DIN 835 (2,0 * d) sowie den empirischen Grenzwerten von Bossard und Böllhoff. Verhindert Gewindebohrerbruch und Klemmen durch Steigungstoleranzen bei > 3*d.",
-  "ausnahmen": "Wird die 8.8er Schraube voll vorgespannt, sollte in Aluguss unbekannter Güte nicht tiefer als 2,0 * d geschnitten, sondern ein Drahtgewindeeinsatz (HELICOIL) verwendet werden.",
+  "begruendung": "Erfahrungswert ohne Quellenbeleg. Die Bossard-Tabelle (SFS/Bossard) nennt für 8.8 mit Regelgewinde bei AlMg3 2·d (3·d nach VDI), AlMgSi1 1,4·d, AlMg4,5Mn 1,4·d, AlMgMn1 1,1·d und AlZnMgCu 1,0·d; eine Zeile für Aluminiumguss gibt es dort nicht. Bezug zu DIN 940/835 und Herstellerangaben ist nicht belegt (#210).",
+  "ausnahmen": "",
   "haerte": "hinweis",
-  "pruefstatus": "offen",
+  "pruefstatus": "nicht_belegt",
   "beziehungen": []
 }

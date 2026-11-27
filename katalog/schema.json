@@ -116,25 +116,57 @@
       "type": "array",
       "description": "Nachprüfbare Quellenangaben mit Fundstelle und wörtlichem Zitat",
       "items": {
-        "type": "object",
-        "required": ["url", "stelle", "zitat", "abgerufen"],
-        "properties": {
-          "url": {
-            "type": "string",
-            "description": "Web-URL der Primär- oder Sekundärquelle"
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["url", "stelle", "zitat", "abgerufen"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Web-URL der Primär- oder Sekundärquelle"
+              },
+              "stelle": {
+                "type": "string",
+                "description": "Abschnitt, Kapitel, Seite oder Tabelle in der Quelle"
+              },
+              "zitat": {
+                "type": "string",
+                "description": "Wörtliches Zitat oder Datenzeile aus der Quelle"
+              },
+              "abgerufen": {
+                "type": "string",
+                "description": "Datum des Abrufs / der Quellenprüfung (ISO-Format JJJJ-MM-TT)"
+              }
+            }
           },
-          "stelle": {
-            "type": "string",
-            "description": "Abschnitt, Kapitel, Seite oder Tabelle in der Quelle"
-          },
-          "zitat": {
-            "type": "string",
-            "description": "Wörtliches Zitat oder Datenzeile aus der Quelle"
-          },
-          "abgerufen": {
-            "type": "string",
-            "description": "Datum des Abrufs / der Quellenprüfung (ISO-Format JJJJ-MM-TT)"
+          {
+            "type": "object",
+            "required": ["werk", "stelle"],
+            "additionalProperties": false,
+            "description": "Werk-Quelle (Buch, Werknorm, #201): im öffentlichen Katalog nur ein Literaturverweis ohne zitat und datei; beides nur im privaten Ordner (MECHVANE_KATALOG_EXTRA)",
+            "properties": {
+              "werk": {"type": "string"},
+              "auflage": {"type": "string"},
+              "isbn": {"type": "string"},
+              "stelle": {"type": "string", "description": "Kapitel, Tabelle oder Seite, z. B. 'Tab. 8-2, S. 345'"},
+              "abgerufen": {"type": "string"}
+            }
           }
+        ]
+      }
+    },
+    "buchpruefung": {
+      "type": "array",
+      "description": "Gegenprüfung gegen ein eigenes Buch (lokal): nur Werk, Stelle und Ergebnis, nie Text aus dem Buch",
+      "items": {
+        "type": "object",
+        "required": ["werk", "ergebnis"],
+        "properties": {
+          "werk": {"type": "string"},
+          "auflage": {"type": "string"},
+          "stelle": {"type": "string"},
+          "ergebnis": {"enum": ["bestaetigt", "abweichend", "nicht_gefunden"]},
+          "datum": {"type": "string"}
         }
       }
     },

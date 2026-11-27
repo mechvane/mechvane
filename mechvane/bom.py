@@ -39,7 +39,7 @@ def _get_part_cache_info(ws: Workspace, file_path: Path, cache: dict[str, dict[s
         return cache[canon_key]
 
     target_p = file_path.resolve()
-    open_doc = next((d for d in ws.docs.values() if d.path.resolve() == target_p), None)
+    open_doc = next((d for d in ws.file_docs() if d.path.resolve() == target_p), None)
 
     def unusable(why: str) -> dict[str, Any]:
         # a part file that is gone or unreadable is a row of its own, not the end of the whole list (review 2026-11-16)
@@ -116,7 +116,7 @@ def _get_subassembly_info(
     if canon_key in sub_cache:
         return sub_cache[canon_key]
 
-    open_doc = next((d for d in ws.docs.values() if d.path.resolve() == target_p), None)
+    open_doc = next((d for d in ws.file_docs() if d.path.resolve() == target_p), None)
     if open_doc is not None:
         meta = open_doc.metadata()
         doc_name = open_doc.name
@@ -314,7 +314,7 @@ def bill_of_materials(
 
     part_cache: dict[str, dict[str, Any]] = {}
     sub_cache: dict[str, dict[str, Any]] = {}
-    assembly_dir = doc.path.parent
+    assembly_dir = doc.base_dir if doc.base_dir is not None else Path.cwd()  # unsaved design in the window
 
     if flat:
         leaf_counts: dict[str, dict[str, Any]] = {}

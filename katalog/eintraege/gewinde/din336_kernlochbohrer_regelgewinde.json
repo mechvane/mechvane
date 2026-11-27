@@ -116,15 +116,15 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.toolsinmotion.de",
-      "stelle": "Kernlochtabelle DIN 336",
-      "zitat": "Nenngrößen, Steigungen und Kernlochmaße zum Gewindeschneiden für das metrische ISO-Regelgewinde nach DIN 13.",
-      "abgerufen": "2026-10-21"
+      "url": "https://www.mikrocontroller.net/attachment/285927/Gewinde.pdf",
+      "stelle": "Gewindetabelle metrisches ISO-Gewinde, Spalte Kernlochbohrer (M2,5 bis M12)",
+      "zitat": "M2,5 0,45 3,39 2,208 1,948 2,013 2,05",
+      "abgerufen": "2026-11-27"
     }
   ],
   "begruendung": "Der Kernlochbohrer erzeugt das Ausgangsloch für das geschnittene Innengewinde (Faustformel d_Kern ≈ d - P). Zu kleine Bohrer führen zum Werkzeugbruch, zu große zur unvollständigen Profilausformung.",
   "ausnahmen": "Gewindefurchen (erfordert größere Vorlochdurchmesser).",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

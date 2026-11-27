@@ -1,6 +1,6 @@
 {
   "id": "fdm_liegende_bohrungen_tropfenform_zweitquelle",
-  "aussage": "Zweitquellen zu liegenden Bohrungen im FDM-Druck: EduFacturing empfiehlt bereits ab 4 mm Durchmesser eine Tropfenform im oberen Halbkreis (2–3 mm drucken kreisförmig noch ausreichend); der RepRap-Ursprungsbeitrag begründet die Tropfenform geometrisch mit dem 45°-Überhanglimit ohne Stützstruktur. Damit liegt die Grenze bei EduFacturing niedriger als der Hubs-/Mechvane-Schwellwert (5 mm bis 6 mm).",
+  "aussage": "Zweitquellen zu liegenden Bohrungen im FDM-Druck: EduFacturing empfiehlt bereits ab 4 mm Durchmesser eine Tropfenform im oberen Halbkreis (2–3 mm drucken kreisförmig noch ausreichend); der RepRap-Ursprungsbeitrag begründet die Tropfenform geometrisch mit einem 45°-Überhang ohne Stützstruktur, den eine Stratasys-Maschine dort ohne Stützen baut (Übertragbarkeit auf andere FDM-Drucker nicht belegt). Damit liegt die Grenze bei EduFacturing niedriger als der Hubs-/Mechvane-Schwellwert (5 mm bis 6 mm).",
   "werte": [
     {
       "name": "Grenzdurchmesser für Tropfenform bei liegenden Bohrungen (EduFacturing)",
@@ -13,7 +13,7 @@
       "einheit": "mm"
     },
     {
-      "name": "Scheitelwinkel der Tropfenform (Überhangwinkel)",
+      "name": "Überhangwinkel der Tropfenflanken zur Horizontalen",
       "wert": 45,
       "einheit": "°"
     }
@@ -56,7 +56,7 @@
       "abgerufen": "2026-11-21"
     }
   ],
-  "begruendung": "Am oberen Scheitel einer waagrecht gedruckten Kreisbohrung sinkt der Überhangwinkel lokal gegen 0° zur Horizontalen, sodass der Strang absackt oder die Bohrung verengt. Eine 45°-Spitze auf der Oberhälfte hält den Überhang im selbsttragenden Bereich, während die kreisförmige Unterhälfte als Auflage für Schrauben oder Bolzen erhalten bleibt.",
+  "begruendung": "Am oberen Scheitel einer waagrecht gedruckten Kreisbohrung sinkt der Überhangwinkel lokal gegen 0° zur Horizontalen, sodass der Strang absackt oder die Bohrung verengt. Eine Tropfenspitze mit 45°-Flanken (Überhangwinkel) auf der Oberhälfte hält den Überhang im selbsttragenden Bereich, während die kreisförmige Unterhälfte als Auflage für Schrauben oder Bolzen erhalten bleibt.",
   "ausnahmen": "Bohrungen, die eine exakt kreiszylindrische Innenwand erfordern (z. B. Lagerpresssitze), sollten als Kreis gedruckt und anschließend aufgerieben bzw. gebohrt werden; bei SLA, SLS und DMLS ist die Tropfenform nicht erforderlich.",
   "haerte": "hinweis",
   "pruefstatus": "offen",

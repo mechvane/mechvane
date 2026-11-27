@@ -115,15 +115,15 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.aramfix.com",
-      "stelle": "Aramfix Technical Data Sheet (ISO 4032)",
-      "zitat": "Thread d       preferred    M1,6     M2      M2,5     M3      M4      M5      M6      M8      M10     M12",
-      "abgerufen": "2026-10-21"
+      "url": "https://royasutton.github.io/omdl-snapshot/docs/html/omdl-v1.0/group__database__component__fastener__iso__4032.html",
+      "stelle": "omdl-Datenbank (OpenSCAD), Tabelle Hexagon nuts style 1, ISO 4032 (Schlüsselweite, Dicke max)",
+      "zitat": "nominal size (ns) thread pitch (tp) width across flats (f_max)",
+      "abgerufen": "2026-11-27"
     }
   ],
   "begruendung": "ISO 4032 definiert gegenüber DIN 934 geänderte Schlüsselweiten (M10: 16 mm statt 17 mm; M12: 18 mm statt 19 mm) und größere Mutterhöhen für höhere Abstreiffestigkeit.",
   "ausnahmen": "Alte Konstruktionen nach DIN 934.",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

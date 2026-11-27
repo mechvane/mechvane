@@ -15,7 +15,7 @@ standard values help most.
 
 ## Code
 
-- Python ≥ 3.11, no dependencies beyond `mcp`. Code and comments in English; docs are
+- Python ≥ 3.11, dependencies kept small (`mcp`, `pillow`). Code and comments in English; docs are
   mostly German, English contributions are just as welcome.
 - Every change comes with a check in `tests/mechvane/check.py`, and all checks pass
   (`python3 tests/mechvane/check.py`, `python3 tests/reference/check.py`). Do not weaken

@@ -1,0 +1,129 @@
+{
+  "id": "klebende_schraubensicherung_loctite",
+  "aussage": "Anaerobe Flüssig- und Halbfest-Schraubensicherungen (Loctite) heben das Gewindespiel auf und dichten ab; sie werden nach Festigkeit (Losbrechmoment auf M10-Stahlschrauben) und Temperaturbeständigkeit ausgewählt: niedrigfest Loctite 222 (6 Nm, -55 bis +150 °C, für kleine Gewinde bis M36 und Aluminium/Messing), mittelfest Loctite 243 (20 Nm, mit Handwerkzeugen demontierbar, öltolerant; im älteren DE-Katalog bis +150 °C, im neueren Henkel-Leitfaden bis +180 °C), kapillar/nachträglich Loctite 290 (10 Nm, bis M6, -55 bis +150 °C), hochfest Loctite 2701/270 (38 Nm, bis M20, -55 bis +150 °C; Demontage nur mit Wärme), hochfest temperaturbeständig Loctite 278 (30 Nm, -55 bis +200 °C) sowie Hochtemperaturpaste Loctite 2620 (bis 340 °C Dauertemperatur; Demontage über 340 °C).",
+  "werte": [
+    {
+      "name": "Loctite 222 Losbrechmoment (M10)",
+      "wert": 6,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 222 Funktionsfestigkeit (22 °C)",
+      "wert": 6,
+      "einheit": "Std."
+    },
+    {
+      "name": "Loctite 222 Temperaturbereich",
+      "bereich": [-55, 150],
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 243 Losbrechmoment (M10, DE-Katalog)",
+      "wert": 20,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 243 Funktionsfestigkeit (22 °C)",
+      "wert": 2,
+      "einheit": "Std."
+    },
+    {
+      "name": "Loctite 243 Temperaturbereich (DE-Katalog)",
+      "bereich": [-55, 150],
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 243 Maximale Einsatztemperatur (EN User's Guide)",
+      "wert": 180,
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 290 Losbrechmoment (M10)",
+      "wert": 10,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 290 Funktionsfestigkeit (22 °C)",
+      "wert": 3,
+      "einheit": "Std."
+    },
+    {
+      "name": "Loctite 290 Temperaturbereich",
+      "bereich": [-55, 150],
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 248 (Stick) Losbrechmoment (M10)",
+      "wert": 19,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 2701 (verbessertes 270) Losbrechmoment (M10)",
+      "wert": 38,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 2701 Temperaturbereich",
+      "bereich": [-55, 150],
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 278 Losbrechmoment (M10)",
+      "wert": 30,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 278 Temperaturbereich",
+      "bereich": [-55, 200],
+      "einheit": "°C"
+    },
+    {
+      "name": "Loctite 268 (Stick) Losbrechmoment (M10)",
+      "wert": 25,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Loctite 2620 Maximale Dauertemperatur",
+      "wert": 340,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["Stahl", "Edelstahl", "Aluminium", "Messing", "Metalle"],
+    "verfahren": ["Schraubverbindung", "Kleben", "Montage"],
+    "feature": ["Schraubensicherung", "Losdrehsicherung", "Klebstoff", "Gewinde"],
+    "groesse": ["M3", "M6", "M10", "M20", "M36", "M50"],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ludwigmeister.de/content/techn-informationen/chemische-produkte/klebstoffe/loctite_klebetechnik_de.pdf",
+      "stelle": "Seiten 10–11, Schraubensicherung (Auswahlmatrix Loctite 290, 222, 243, 248, 2701, 278, 268)",
+      "zitat": "Falls der Klebstoff bei Temperaturen unter 5 °C angewendet wird, Oberflächen mit Loctite® 7240 oder Loctite® 7649 vorbehandeln",
+      "abgerufen": "2026-11-25"
+    },
+    {
+      "url": "https://www.ellsworth.com/globalassets/literature-library/manufacturer/henkel-loctite/henkel-loctite-user-guide-threadlocking.pdf",
+      "stelle": "Seiten 9–10, What strength do you require? / Threadlocking Innovations",
+      "zitat": "The LOCTITE® 243™ Medium Strength and 263™ High Strength Threadlockers offer all of the performance properties of the original LOCTITE® 242® and 262™ products, plus more",
+      "abgerufen": "2026-11-25"
+    },
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/4sP1THZ8d8OFO95VbhBonq/81c948affa9638b61ce85f060a0a5a44/075_077_Sichern_Schraubverbindungen_Fastening_DE_01_2025.pdf",
+      "stelle": "Seite 75–76, Sichern von Schraubenverbindungen",
+      "zitat": "Beim Sichern von Schraubenverbindungen unterscheidet man grundsätzlich zwei Arten: Lockern und Losdrehen.",
+      "abgerufen": "2026-11-25"
+    }
+  ],
+  "begruendung": "Anaerobe Methacrylat-Klebstoffe härten unter Luftabschluss bei Metallkontakt im Gewindespalt aus und verhindern Mikrogleitbewegungen unter dynamischer Querlast sowie Korrosion und Undichtheit. Niedrigfeste Typen (222) schützen empfindliche Werkstoffe (Aluminium, Messing) beim Lösen vor Gewindeausriss; mittelfeste (243) bleiben mit Handwerkzeugen demontierbar; hochfeste (2701/270, 263, 278, 2620) erfordern zur Demontage lokales Erhitzen.",
+  "ausnahmen": "Keine Aushärtung auf Kunststoffen ohne geeignete Vorbehandlung (auf Thermoplasten Spannungsrissgefahr). Bei passiven Metallen (z. B. Edelstahl) oder Temperaturen unter 5 °C empfiehlt Henkel Aktivator (Loctite 7240/7649), sofern nicht explizit primerlose Formulierungen wie 243/263 genutzt werden. Abweichung zwischen den Quellen: Loctite 243 ist im älteren DE-Katalog mit -55 °C bis +150 °C (M10-Losbrechmoment 20 Nm) angegeben, im neueren EN Threadlocking User's Guide mit 360 °F (180 °C bzw. 182 °C auf S. 10) und 106 in-lb Losbrech- bzw. 26 in-lb Restmoment (etwa 12 bzw. 2,9 Nm, S. 9).",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "wirksame_losdrehsicherungen"
+    }
+  ]
+}

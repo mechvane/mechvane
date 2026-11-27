@@ -1,0 +1,174 @@
+{
+  "id": "gewindefurchende_schrauben_blech_kunststoff_kernloch",
+  "aussage": "Gewindeformende (gewindefurchende) Schrauben erzeugen ihr Gegengewinde spanlos durch plastische Werkstoffverdrängung und benötigen deutlich größere Kernlochdurchmesser als spanend geschnittene Regelgewinde nach DIN 336-1. In Blechen und duktilen Metallen bis ca. 135 HB bzw. 140–160 HV (DIN 7500-2, Toleranzfeld H11) steigen die Richtwerte für den Vorlochdurchmesser dh mit der Materialstärke s (Bossard 079-093 / Reca TDB): M2,5 (P = 0,45 mm) 2,25–2,35 mm (Reca 2,25–2,30 mm), M3 (P = 0,5 mm) 2,70–2,75 mm (rostbeständiger Stahl 2,75–2,85 mm), M4 (P = 0,7 mm) 3,60–3,70 mm (rostbeständig 3,70–3,80 mm), M5 (P = 0,8 mm) 4,50–4,65 mm (rostbeständig 4,60–4,75 mm), M6 (P = 1,0 mm) 5,40–5,60 mm, M8 (P = 1,25 mm) 7,30–7,50 mm (Reca 7,45–7,50 mm); der konische Furchbereich am Schraubenende beträgt maximal 4 × P, und am Bohrungseinlauf wird bei gebohrten Löchern eine 90°-Ansenkung (0,5–1,0 × P) gegen Aufstauchung empfohlen. Für dünne Stahlbleche DC01–DC04 (s = 0,5–1,5 mm) mit speziellen Blechfurchenden Schrauben (Bossard SHEETtracs, Toleranz +0,1 mm) liegen die Vorlochdurchmesser z. B. bei 2,0–2,1 mm (Ø 3 mm), 2,6–3,0 mm (Ø 4 mm) und 3,8–4,4 mm (Ø 5 mm). In Thermoplasten (Flankenwinkel 20°/30°, z. B. Delta PT / ecosyn-plast) gilt allgemein ein Kernlochdurchmesser von d = 0,8 × d1 mit Randentlastungsbohrung de = d1 + 0,2 mm; werkstoffspezifisch nach Bossard ecosyn-plast reichen die Vorlochfaktoren von 0,70 × d1 (PE weich, PP) über 0,75 × d1 (PA 6, PA 6.6, POM, PBT, PET, PE hart) und 0,80 × d1 (ABS/PC-Blend, PA 6-GF30, PS, PVC hart) bis 0,82 × d1 (PA 6.6-GF30) und 0,85 × d1 (PC, PMMA, PPO).",
+  "werte": [
+    {
+      "name": "Max. Furchzone am Schraubenende DIN 7500",
+      "wert": 4,
+      "einheit": "x Steigung P"
+    },
+    {
+      "name": "Max. Werkstoffhärte für DIN 7500 (Bossard)",
+      "bereich": [140, 160],
+      "einheit": "HV"
+    },
+    {
+      "name": "Max. Werkstoffhärte für DIN 7500 (SMW / Bossard Stahl-Tabelle)",
+      "wert": 135,
+      "einheit": "HB"
+    },
+    {
+      "name": "Kernloch Ø M2,5 Stahl (s = 2 bis 6 mm, DIN 7500-2 H11)",
+      "bereich": [2.25, 2.35],
+      "einheit": "mm"
+    },
+    {
+      "name": "Kernloch Ø M3 Stahl (s = 2 bis 6 mm, DIN 7500-2 H11)",
+      "bereich": [2.7, 2.75],
+      "einheit": "mm"
+    },
+    {
+      "name": "Kernloch Ø M4 Stahl (s = 2 bis 8 mm, DIN 7500-2 H11)",
+      "bereich": [3.6, 3.7],
+      "einheit": "mm"
+    },
+    {
+      "name": "Kernloch Ø M5 Stahl (s = 2 bis ≥10 mm, DIN 7500-2 H11)",
+      "bereich": [4.5, 4.65],
+      "einheit": "mm"
+    },
+    {
+      "name": "Kernloch Ø M6 Stahl (s = 2 bis ≥10 mm, DIN 7500-2 H11)",
+      "bereich": [5.4, 5.6],
+      "einheit": "mm"
+    },
+    {
+      "name": "Kernloch Ø M8 Stahl (s = 4 bis ≥10 mm, DIN 7500-2 H11)",
+      "bereich": [7.3, 7.5],
+      "einheit": "mm"
+    },
+    {
+      "name": "Vorloch Ø SHEETtracs Ø 3 mm in Dünnblech DC01–DC04 (s = 0,5–0,88 mm)",
+      "bereich": [2.0, 2.1],
+      "einheit": "mm"
+    },
+    {
+      "name": "Vorloch Ø SHEETtracs Ø 4 mm in Dünnblech DC01–DC04 (s = 0,63–1,25 mm)",
+      "bereich": [2.6, 3.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "Vorlochfaktor Thermoplaste allgemein (Delta PT)",
+      "wert": 0.8,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Vorlochfaktor PE weich / PP (ecosyn-plast)",
+      "wert": 0.7,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Vorlochfaktor PA 6 / PA 6.6 / POM / PBT (ecosyn-plast)",
+      "wert": 0.75,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Vorlochfaktor PA 6-GF30 / ABS-PC / PVC hart (ecosyn-plast)",
+      "wert": 0.8,
+      "einheit": "x Nenndurchmesser"
+    },
+    {
+      "name": "Vorlochfaktor PC / PMMA / PPO (ecosyn-plast)",
+      "wert": 0.85,
+      "einheit": "x Nenndurchmesser"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl",
+      "Aluminium",
+      "Zinkdruckguss",
+      "Thermoplaste",
+      "ABS",
+      "PA6",
+      "PC",
+      "POM",
+      "PP"
+    ],
+    "verfahren": [
+      "Direktverschraubung",
+      "Gewindefurchen",
+      "Bohren",
+      "Stanzen",
+      "Spritzguss"
+    ],
+    "feature": [
+      "Kernloch",
+      "Vorloch",
+      "Blech",
+      "Schraubdom",
+      "Gewindefurchen"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3DLqM7Z9oEMiNjXOeKeL6V/8cc934e283d8f93bd6f0cdef8a9a5f87/079_093_Konstruktionsempfehlungen_Fastening_DE_01_2025.pdf",
+      "stelle": "Bossard Konstruktionsempfehlungen (01/2025), S. 79–87 (DIN 7500 Stahl/Druckguss/INOX, SHEETtracs, Delta PT Thermoplaste)",
+      "zitat": "Schrauben nach DIN 7500 (trilobularer Querschnitt) furchen spanlos [...] ein lehrenhaltiges, metrisches Muttergewinde. [...] Für spröde Metalle wie Grauguss ist das Gewindefurchen nicht [...] Die maximal erreichbare Vorspannkraft beim Überdrehen ist das",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.reca.co.at/de/wp-content/uploads/sites/6/2022/09/Richtwerte_Lochdurchmesser_TDB.pdf",
+      "stelle": "RECA Technisches Datenblatt Richtwerte für Lochdurchmesser nach DIN 7500-2",
+      "zitat": "Geringere Einschraublängen als in der Tabelle angegeben sind nicht für voll tragfähige Schraubenverbindungen geeignet.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.smw-schrauben.ch/userdata/uploads/Dokumente/din-7500-de.pdf",
+      "stelle": "SMW / Bossard Dokumentation DIN 7500 Trilobulares Furchsystem, S. 5–6",
+      "zitat": "Die maximale Länge dieses nicht voll tragenden Bereichs beträgt maximal 4 Gewindesteigungen (max. 4xP).",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3AYmJ7h7169wKygbbUg0MK/dc07d87c865ade977f525121ea756759/0901_ecosyn_plast_DE.pdf",
+      "stelle": "Bossard Katalog 0901 ecosyn-plast, S. 5 (Vorloch- und Tubustabelle für Thermoplaste)",
+      "zitat": "Für eine optimale Konstruktion, die sich in der Praxis bewährt, ist es erforderlich die Tubusgeometrie den unterschiedlichen Werkstoffen anzupassen.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.smw-schrauben.ch/userdata/uploads/Dokumente/delta-pt-de(1).pdf",
+      "stelle": "SMW / Bossard DELTA PT Broschüre, S. 3 (Tubusgeometrie)",
+      "zitat": "Für alle gängigen Kunststoffe bis E = 20’000 N/mm2. [...] Einschraubtiefe te = 2 x d1",
+      "abgerufen": "2026-11-24"
+    }
+  ],
+  "begruendung": "Beim Gewindefurchen wird kein Werkstoff zerspant, sondern radial aus dem Kernloch in die Gewindespitzen verdrängt. Ein zu kleines Vorloch wie beim Gewindeschneiden erhöht das Eindrehmoment bis zum Schraubenbruch oder sprengt spröde bzw. spannungsrissempfindliche Kunststoffdome; ein zu großes Vorloch verringert die Flankenüberdeckung und damit das Überdreh- und Ausreißmoment.",
+  "ausnahmen": "Spröde Werkstoffe (z. B. Grauguss) eignen sich nicht zum Gewindefurchen. Einsatzgehärtete DIN-7500-Schrauben aus A2-Edelstahl sind prozesssicher nur in Leichtmetall einzudrehen (für austenitische Bleche sind vergütete martensitische Sonderwerkstoffe nötig). Gestanzte oder lasergeschnittene Löcher können wegen Randaufhärtung größere Vorlochdurchmesser und Vorversuche erfordern.",
+  "haerte": "fehler",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "direktverschraubung_thermoplaste_delta_pt"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "direktverschraubung_thermoplaste_ecosyn_plast"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din336_kernlochbohrer_regelgewinde"
+    }
+  ]
+}

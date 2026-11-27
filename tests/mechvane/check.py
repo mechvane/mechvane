@@ -5289,15 +5289,397 @@ def argon_review_findings_7_10_12_checks(ws):
         ws.close(name)
 
 
-def scratch_dir_checks():
-    """SolidCraft leaves an empty solidcraft-mcp-<pid>-<n> folder in the temp dir per session."""
-    import tempfile
-    from mechvane.solidcraft import Session
-    s = Session()
-    pid = s._p.pid
-    s.close()
-    left = [p.name for p in Path(tempfile.gettempdir()).glob(f"solidcraft-mcp-{pid}-*")]
-    ok("session: close removes the server's empty scratch folder", not left, str(left))
+def _try(fn):
+    try:
+        return str(fn())
+    except Exception as e:
+        return str(e)
+
+
+def moved_parts_checks():
+    """#178: parts that move during a bolted connection are reported."""
+    from mechvane import bolted as _b
+    eye = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    up = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, -4, 1]]
+    before = {"A": eye, "B": up}
+    after = {1: {"name": "A", "transform": eye}, 2: {"name": "B", "transform": eye},
+             3: {"name": "Screw", "transform": up}}
+    w = _b.moved_parts_warnings(before, after, "the bolted connection")
+    ok("bolted: a part that jumps during the connection is reported, new fasteners are not",
+       len(w) == 1 and w[0].startswith("B moved by 4.000 mm") and "as_built" in w[0], str(w))
+
+
+def connect_checks(tmp):
+    """Session(connect=...): control folder per platform, window discovery (none, stale files, several, one),
+    the arguments the CLI gets, and a dead port is a plain error (no hang). No app needed."""
+    import socket
+    from mechvane import solidcraft as sc
+    ok("connect: control folder, Linux", sc.control_dir("linux", {"HOME": "/h"}).replace("\\", "/") == "/h/.local/share/solidcraft/control")
+    ok("connect: control folder, Windows", sc.control_dir("win32", {"LOCALAPPDATA": "C:/L"}).replace("\\", "/") == "C:/L/SolidCraft/control")
+    ok("connect: control folder, macOS", sc.control_dir("darwin", {"HOME": "/h"}).replace("\\", "/")
+       == "/h/Library/Application Support/SolidCraft/control")
+    ok("connect: SOLIDCRAFT_CONTROL_DIR wins", sc.control_dir("linux", {"SOLIDCRAFT_CONTROL_DIR": "/x"}) == "/x")
+
+    def find(ports, live):
+        d = Path(tmp) / f"ctl-{len(ports)}-{len(live)}"
+        d.mkdir(parents=True, exist_ok=True)
+        for p in ports:
+            (d / f"{p}.token").write_text("00")
+        try:
+            return sc.find_app(str(d), probe=lambda p: p in live)
+        except sc.SolidCraftError as e:
+            return str(e)
+
+    ok("connect: no window -> says how to open one", "no running SolidCraft window" in find([], []))
+    ok("connect: stale token files -> named, not a hang", "stale" in find([27878], []))
+    ok("connect: several windows -> asks for a port", "several SolidCraft windows" in find([27878, 27879], [27878, 27879]))
+    ok("connect: one live window among stale files", find([27878, 27879], [27879]) == "127.0.0.1:27879")
+
+    seen = []
+    class Stop(Exception):
+        pass
+    def fake_popen(args, **kw):
+        seen.append(args)
+        raise Stop
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    addr = f"127.0.0.1:{srv.getsockname()[1]}"
+    real = sc.subprocess.Popen
+    sc.subprocess.Popen = fake_popen
+    try:
+        try:
+            sc.Session(connect=addr, token="T", allow_paths=["/a"], executable="cli")
+        except Stop:
+            pass
+        try:
+            sc.Session(executable="cli")
+        except Stop:
+            pass
+    finally:
+        sc.subprocess.Popen = real
+        srv.close()
+    ok("connect: --connect replaces --headless, token and allow-path follow",
+       seen[0] == ["cli", "mcp", "--connect", addr, "--token", "T", "--allow-path", "/a"], str(seen[:1]))
+    ok("connect: without connect it stays headless", seen[1:] == [["cli", "mcp", "--headless"]], str(seen[1:]))
+    try:
+        sc.Session(connect="127.0.0.1:1", executable="cli")
+        msg = "no error"
+    except sc.SolidCraftError as e:
+        msg = str(e)
+    from mechvane.documents import ASSEMBLY, Workspace, WindowDocument
+    w = Workspace(Path(tmp) / "winws")
+    w.docs["window"] = WindowDocument("window", "assembly", object())
+    for what, fn in (("save", lambda: w.get("window").save()), ("assembly tools", lambda: w.get("window", ASSEMBLY))):
+        try:
+            fn()
+            wmsg = "no error"
+        except ValueError as e:
+            wmsg = str(e)
+        ok(f"connect: window document refuses {what}", "window" in wmsg and "no error" not in wmsg, wmsg)
+    ok("connect: window document never reloads from disk", w.get("window").disk_mtime() is None)
+    from mechvane import server as _sv
+    wd = w.docs["window"]
+    for cmdname in ("file.new", "doc.open", "file.save", "edit.undo", "document.close", "document.activate"):
+        try:
+            _sv._window_guard(wd, [{"command": cmdname}])
+            gmsg = "no error"
+        except ValueError as e:
+            gmsg = str(e)
+        ok(f"connect: {cmdname} is refused on the window document", "refused" in gmsg, gmsg)
+    _sv._window_guard(wd, [{"command": "document.inspect"}, {"command": "solid.box"}])
+    ok("connect: reads and design commands pass the window guard", True)
+    # review #188: batch steps that name a tool, wrapped commands, file parameters, unknown groups
+    for label, step in (("tool step save", {"command": "save", "params": {"path": "kopie.sc"}}),
+                        ("tool step new_design", {"command": "new_design"}),
+                        ("tool step open", {"command": "open", "params": {"path": "x.sc"}}),
+                        ("tool step export", {"command": "export", "params": {"path": "x.step"}}),
+                        ("tool step undo", {"command": "undo"}),
+                        ("execute wrapping file.save_as", {"command": "execute", "params": {"command": "file.save_as"}}),
+                        ("parameters.export", {"command": "parameters.export", "params": {"path": "p.json"}}),
+                        ("sketch.insert_dxf", {"command": "sketch.insert_dxf"}),
+                        ("component.insert_design", {"command": "component.insert_design"}),
+                        ("render.export (group not allowed)", {"command": "render.export"}),
+                        ("a file key in any command", {"command": "solid.box", "params": {"x": {"file": "/etc/passwd"}}}),
+                        ("a path that is a file", {"command": "inspect.compare", "params": {"path": "/tmp/a.step"}}),
+                        ("a name that is not a string", {"command": 5}),
+                        ("a step without command", {})):
+        try:
+            _sv._window_guard(wd, [step])
+            gmsg = "no error"
+        except ValueError as e:
+            gmsg = str(e)
+        ok(f"connect: guard refuses {label}", "refused" in gmsg, gmsg)
+    _sv._window_guard(wd, [{"command": "set_parameter", "params": {"name": "L", "value": 5}},
+                           {"command": "execute", "params": {"command": "solid.fillet", "params": {}}},
+                           {"command": "solid.sweep", "params": {"path": "Sketch1"}}])
+    ok("connect: tool steps that only model pass, a geometric path is not a file", True)
+    # the window is not a file: autosave, file lookups and relinking leave it alone
+    w.docs["platte"] = WindowDocument("platte", "part", object())
+    ok("connect: file_docs and file_doc skip the window", all(not getattr(d, "window", False) for d in w.file_docs())
+       and w.file_doc("platte") is None and w.file_doc("window") is None)
+    del w.docs["platte"]
+    import inspect as _insp
+    from mechvane import modeling as _mod
+    ok("connect: run does not reorder the user's sketches in the window",
+       'not getattr(doc, "window", False)' in _insp.getsource(_mod.run_commands))
+    class Cam:
+        def __init__(self): self.sent = []
+        def cmd(self, name, params=None, timeout=None): self.sent.append(name); return {}
+    cam_doc = WindowDocument("cam", "part", Cam())
+    args = _sv._shot_args(cam_doc, "front")
+    ok("connect: screenshots in the window turn, fit and render the model",
+       args == {"source": "model"} and cam_doc.session.sent[-2:] == ["view.front", "view.fit"], f"{args} {cam_doc.session.sent}")
+    ok("connect: headless screenshots keep the named view", _sv._shot_args(object(), "iso") == {"view": "iso"})
+    # #191: a file Mechvane writes that is open in the window: refuse over unsaved work, else reload the window
+    from mechvane import documents as _docs
+    class Win:
+        def __init__(self, path, dirty):
+            self.path, self.dirty, self.sent = path, dirty, []
+        def cmd(self, name, params=None, timeout=None):
+            if name == "document.inspect":
+                return {"path": self.path, "dirty": self.dirty}
+            return {"document_id": f"id{len(self.sent)}"}
+        def batch(self, commands, **kw):
+            self.sent.append([c["command"] for c in commands]); return {}
+    class FileSess:
+        def __init__(self): self.saved = 0
+        def cmd(self, name, params=None, timeout=None): return {}
+        def tool(self, name, args=None, timeout=None): self.saved += 1; return {}
+    fpath = Path(tmp) / "winws" / "teil.solidcraft"
+    fpath.parent.mkdir(parents=True, exist_ok=True); fpath.write_text("x")
+    other = Path(tmp) / "winws" / "anderes.solidcraft"
+    fd = _docs.Document("teil", "part", fpath, FileSess())
+    clean = WindowDocument("w_clean", "part", Win(str(fpath), False))
+    elsewhere = WindowDocument("w_other", "part", Win(str(other), False))
+    fd.save()
+    ok("connect: saving a file the window shows reloads the window (new design, open the file)",
+       clean.session.sent == [["new_design", "open"]] and elsewhere.session.sent == [] and fd.session.saved == 1,
+       f"{clean.session.sent} {elsewhere.session.sent}")
+    clean.session.dirty = True
+    try:
+        fd.save()
+        dmsg = "no error"
+    except ValueError as e:
+        dmsg = str(e)
+    ok("connect: unsaved work in the window refuses the write before anything is written",
+       "unsaved changes" in dmsg and fd.session.saved == 1 and clean.session.sent == [["new_design", "open"]], dmsg)
+    import warnings as _w
+    with _w.catch_warnings(record=True):
+        _w.simplefilter("always")
+        ok("connect: reload_windows never throws away unsaved work (rollback in bolted.py)",
+           _docs.reload_windows(fpath) == [] and clean.session.sent == [["new_design", "open"]])
+    clean.session.dirty = False
+    # review #192: a window that is gone does not block saving; one that does not answer blocks only its own file
+    dead = WindowDocument("w_dead", "part", Win(str(other), False))
+    dead.session._closed = True
+    fd.save()
+    ok("connect: a closed window that shows another file blocks nothing", fd.session.saved == 2)
+    _docs._WINDOWS.discard(dead)
+    class Mute(Win):
+        def cmd(self, name, params=None, timeout=None):
+            if getattr(self, "mute", False):
+                raise TimeoutError("no answer")
+            return super().cmd(name, params, timeout)
+    mute = WindowDocument("w_mute", "part", Mute(str(fpath), False))
+    mute.session.mute = True
+    try:
+        fd.save()
+        mmsg = "no error"
+    except ValueError as e:
+        mmsg = str(e)
+    ok("connect: a window that shows the file but does not answer refuses the write", "does not answer" in mmsg, mmsg)
+    mute.session._closed = True  # Session closes itself after a timeout: the protection must stay
+    try:
+        fd.save()
+        mmsg = "no error"
+    except ValueError as e:
+        mmsg = str(e)
+    ok("connect: after a timeout closed its session the window still guards its file (second try)",
+       "does not answer" in mmsg and mute in _docs._WINDOWS, mmsg)
+    _docs._WINDOWS.discard(mute)
+    # the connected tab behind another one: refuse, never reload the wrong tab
+    clean.document_id = "pinned-elsewhere"
+    try:
+        fd.save()
+        bmsg = "no error"
+    except ValueError as e:
+        bmsg = str(e)
+    ok("connect: another tab in front of the connected one refuses the write", "another tab" in bmsg, bmsg)
+    clean.document_id = "id1"
+    # the window turns dirty between the check and the reload: the file is written, the window is left alone
+    class Turns(Win):
+        def cmd(self, name, params=None, timeout=None):
+            if name == "document.inspect":
+                self.calls = getattr(self, "calls", 0) + 1
+                return {"path": self.path, "dirty": self.calls > 1}
+            return {"document_id": "t"}
+    _docs._WINDOWS.discard(clean)
+    turns = WindowDocument("w_turns", "part", Turns(str(fpath), False))
+    turns.session.calls = 0
+    with _w.catch_warnings(record=True) as caught:
+        _w.simplefilter("always")
+        fd.save()
+    ok("connect: unsaved work that appears during the write is not reloaded away, with a warning",
+       turns.session.sent == [] and any("unsaved" in str(c.message) for c in caught), str([str(c.message) for c in caught]))
+    _docs._WINDOWS.discard(turns)
+    # open fails after new_design: the save still counts, with a warning
+    class Fails(Win):
+        def batch(self, commands, **kw):
+            raise RuntimeError("open failed")
+    fails = WindowDocument("w_fails", "part", Fails(str(fpath), False))
+    with _w.catch_warnings(record=True) as caught:
+        _w.simplefilter("always")
+        fd.save()
+    ok("connect: a failed reload is a warning, the write stands", any("could not open" in str(c.message) for c in caught))
+    _docs._WINDOWS.discard(fails)
+    # a file changed on disk since it was loaded (saved in the app) is never written over from a stale copy
+    import os as _os, time as _t
+    _t.sleep(0.01); fpath.write_text("saved in the app"); _os.utime(fpath)
+    try:
+        fd.save()
+        smsg = "no error"
+    except ValueError as e:
+        smsg = str(e)
+    ok("connect: a stale copy does not overwrite a file saved in the app", "changed on disk" in smsg, smsg)
+    # #190: the other write paths check the window before their first change
+    fpath.write_text("x")
+    guard_win = WindowDocument("w_guard", "part", Win(str(fpath), True))  # shows the file, unsaved work
+    class HeadlessDoc:
+        name, path, mtime = "teil", fpath, None  # loaded state unknown: no changed-on-disk check
+        def disk_mtime(self): return None
+    for label, step in (("a save step", {"command": "save"}),
+                        ("save_as onto the window's file", {"command": "execute", "params": {"command": "file.save_as",
+                                                                                              "params": {"path": str(fpath)}}})):
+        try:
+            _sv._save_steps_guard(HeadlessDoc(), [step])
+            rmsg = "no error"
+        except ValueError as e:
+            rmsg = str(e)
+        ok(f"connect: run refuses {label} over unsaved work in the window", "unsaved changes" in rmsg, rmsg)
+    ok("connect: run may save to a file no window shows, and names it for the reload afterwards",
+       _sv._save_steps_guard(HeadlessDoc(), [{"command": "save", "params": {"path": str(other)}}]) == [other])
+    try:
+        _sv._save_steps_guard(HeadlessDoc(), [{"command": "component.extract", "params": {"component": 1, "path": str(fpath)}}])
+        emsg = "no error"
+    except ValueError as e:
+        emsg = str(e)
+    ok("connect: component.extract onto the window's file is checked like a save", "unsaved changes" in emsg, emsg)
+    class OwnDoc:
+        name, path, mtime = "teil", fpath, 1
+        def disk_mtime(self): return 2
+    try:
+        _sv._save_steps_guard(OwnDoc(), [{"command": "save"}])
+        omsg = "no error"
+    except ValueError as e:
+        omsg = str(e)
+    ok("connect: a save step does not write over a file saved in the app since it was loaded", "changed on disk" in omsg, omsg)
+    from mechvane import bolted as _bolted
+    class AsmSess:
+        def __init__(self): self.sent = []
+        def cmd(self, name, params=None, timeout=None): self.sent.append(name); return {"components": []}
+    class Asm:
+        def __init__(self):
+            self.path, self.session = other, AsmSess()
+        def metadata(self):
+            return {"bolted_connections": {"V1": {"parts": [{"file": str(other), "hole_features": ["H1"]},
+                                                            {"file": str(fpath), "hole_features": ["H2"]}],
+                                                  "joints": ["J1"]}}}
+    class AsmWs:
+        def __init__(self): self.asm = Asm()
+        def get(self, name, kind=None): return self.asm
+        def file_doc(self, name): return None
+        def file_docs(self): return []
+    aws = AsmWs()
+    try:
+        _bolted.delete_bolted_connection(aws, "asm", "V1")
+        bmsg = "no error"
+    except ValueError as e:
+        bmsg = str(e)
+    ok("connect: delete_bolted_connection refuses before its first change when one part is held in the window",
+       "unsaved changes" in bmsg and aws.asm.session.sent == [], f"{bmsg} {aws.asm.session.sent}")
+    _docs._WINDOWS.discard(guard_win)
+    # the rollback leaves files the failed attempt never wrote alone (no copy, no reload)
+    import shutil as _sh
+    bak = Path(tmp) / "winws" / "teil.bak"; _sh.copy2(fpath, bak)
+    seen = WindowDocument("w_seen", "part", Win(str(fpath), False))
+    before = fpath.stat().st_mtime_ns
+    class RbDoc:
+        path = other
+        class session:
+            @staticmethod
+            def cmd(*a, **k): return {}
+    class RbWs:
+        def file_docs(self): return []
+    _bolted._restore_backup(RbWs(), RbDoc(), {fpath.resolve(): bak})
+    ok("connect: the rollback does not rewrite or reload a file the attempt never changed",
+       fpath.stat().st_mtime_ns == before and seen.session.sent == [], str(seen.session.sent))
+    # a part without holes in the connection is not written, so a window holding it does not block the deletion
+    class AsmNoHole(Asm):
+        def metadata(self):
+            return {"bolted_connections": {"V1": {"parts": [{"file": str(fpath)}], "joints": []}}}
+    aws2 = AsmWs(); aws2.asm = AsmNoHole()
+    try:
+        _bolted.delete_bolted_connection(aws2, "asm", "V1")
+        nmsg = "no error"
+    except ValueError as e:
+        nmsg = str(e)
+    except Exception as e:
+        nmsg = f"later step: {type(e).__name__}"
+    ok("connect: a part the deletion does not write is not checked", "unsaved changes" not in nmsg, nmsg)
+    _docs._WINDOWS.discard(guard_win)
+    # #190: base folder, file heuristic, finish_edit on the window, save-as in the app, pid files, IPv6
+    based = WindowDocument("w_based", "assembly", Win(str(fpath), False))
+    ok("connect: the window's relative part paths are read from its file's folder",
+       based.base_dir == fpath.parent.resolve(), str(based.base_dir))
+    nofile = WindowDocument("w_nofile", "assembly", Win(None, False))
+    ok("connect: an unsaved design in the window has no base folder", nofile.base_dir is None)
+    based.session.path = str(other)
+    _docs._window_states(other)
+    ok("connect: the connected tab saved under another name is followed", based.pinned_path == other.resolve(),
+       str(based.pinned_path))
+    _docs._WINDOWS.clear()
+    ok("connect: sketch.export_svg is refused in the window", _sv._window_refusal("sketch.export_svg", {"path": "x.svgz"}) is not None)
+    ok("connect: a feature name with a dot is not taken for a file",
+       _sv._window_refusal("timeline.rename", {"feature": "Profil.v2", "name": "x"}) is None
+       and _sv._window_refusal("solid.sweep", {"path": "Sketch1.e2"}) is None
+       and _sv._window_refusal("inspect.compare", {"path": "teil.STEP"}) is not None)
+    from mechvane import inplace as _inpl
+    w.docs["win2"] = WindowDocument("win2", "part", object())
+    try:
+        _inpl.finish_edit(w, "win2")
+        fmsg = "no error"
+    except ValueError as e:
+        fmsg = str(e)
+    ok("connect: finish_edit on the window says to save in the app", "save it in the app" in fmsg, fmsg)
+    del w.docs["win2"]
+    ctl = Path(tmp) / "ctl_pid"; ctl.mkdir(exist_ok=True)
+    for port, pid in ((27801, 2 ** 22 + 12345), (27802, os.getpid())):
+        (ctl / f"{port}.token").write_text("t"); (ctl / f"{port}.pid").write_text(str(pid))
+    ok("connect: a port whose pid file names a gone process is not a window",
+       sc.find_app(str(ctl), probe=lambda p: True) == "127.0.0.1:27802")
+    (ctl / "27802.pid").write_text(str(2 ** 22 + 12346))  # both pid files say gone, the ports answer
+    ok("connect: ports that answer are trusted when every pid file says gone (another pid namespace)",
+       "several" in _try(lambda: sc.find_app(str(ctl), probe=lambda p: True)))
+    ok("connect: IPv6 and bare-port addresses", sc._split_address("[::1]:27878") == ("::1", 27878)
+       and sc._split_address("27878") == ("127.0.0.1", 27878) and sc._split_address("h:x")[1] is None)
+    del clean, elsewhere
+
+    class Tabs:
+        id = "a"
+        def cmd(self, name, params=None, timeout=None):
+            return {"document_id": self.id}
+    tabs = Tabs()
+    w.docs["tabbed"] = WindowDocument("tabbed", "part", tabs)
+    w.get("tabbed")
+    tabs.id = "b"
+    try:
+        w.get("tabbed")
+        tmsg = "no error"
+    except ValueError as e:
+        tmsg = str(e)
+    ok("connect: another tab in front is refused, not edited", "another tab" in tmsg, tmsg)
+    ok("connect: a dead port is a plain error before any process starts", "no SolidCraft window listens" in msg, msg)
 
 
 def install_checks(tmp):
@@ -5373,6 +5755,180 @@ def install_checks(tmp):
         if old[3] is not None:
             os.environ["SOLIDCRAFT_CLI"] = old[3]
     ok("cli: `mechvane ui` on a missing path exits with 1", cli.main(["ui", str(root / "nope"), "--no-browser"]) == 1)
+
+
+def cli_check_checks(tmp):
+    """Issue #198: `mechvane check` subcommand (file headless, open window, --json, text sources, exit codes)."""
+    import contextlib
+    import io
+    import subprocess
+    from mechvane import cli
+    from mechvane.documents import ASSEMBLY, PART, WindowDocument, Workspace
+
+    root = Path(tmp) / "cli_check"
+    root.mkdir(parents=True)
+    ref_build = Path(__file__).resolve().parents[1] / "reference" / "fehlerplatte.build.json"
+    commands = json.loads(ref_build.read_text(encoding="utf-8"))["commands"]
+
+    w = Workspace(root)
+    orig_ws = server.ws
+    server.ws = w
+    try:
+        plate = w.new(PART, "fehlerplatte")
+        plate.session.batch(commands)
+        plate.save()
+        expected_default = server.check_design("fehlerplatte")
+        expected_cnc_steel = server.check_design("fehlerplatte", profile="cnc_alu", material="steel")
+
+        ok_part = w.new(PART, "ok_plate")
+        ok_part.session.cmd("solid.box", {"length": 40, "width": 30, "height": 10, "corner": [0, 0, 0], "name": "Box"})
+        ok_part.save()
+
+        warn_part = w.new(PART, "warn_plate")
+        warn_part.save()
+
+        asm = w.new(ASSEMBLY, "asm_check")
+        links.insert(w, asm, ok_part.path, name="OkPlate", grounded=True)
+        asm.save()
+    finally:
+        server.ws = orig_ws
+        w.close_all()
+
+    plate_path = root / "fehlerplatte.solidcraft"
+    ok_path = root / "ok_plate.solidcraft"
+    warn_path = root / "warn_plate.solidcraft"
+    asm_path = root / "asm_check.solidcraft"
+
+    def run_cli(argv):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                rc = cli.main(argv)
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 2
+        return rc, out.getvalue(), err.getvalue()
+
+    # 1. --json on reference fehlerplatte matches server.check_design and exits with 1
+    rc_json, out_json, err_json = run_cli(["check", str(plate_path), "--json"])
+    try:
+        parsed_json = json.loads(out_json)
+    except Exception:
+        parsed_json = None
+    ok("cli check: --json on reference fehlerplatte matches server.check_design and exits 1",
+       rc_json == 1 and not err_json and isinstance(parsed_json, dict)
+       and parsed_json.get("verdict") == expected_default.get("verdict")
+       and parsed_json.get("checks") == expected_default.get("checks")
+       and parsed_json.get("rules") == expected_default.get("rules")
+       and parsed_json.get("summary") == expected_default.get("summary"),
+       f"rc={rc_json} err={err_json!r} out={out_json[:400]!r}")
+
+    # 2. --profile cnc_alu --material steel --json matches server.check_design
+    rc_opt, out_opt, err_opt = run_cli(["check", str(plate_path), "--profile", "cnc_alu", "--material", "steel", "--json"])
+    try:
+        parsed_opt = json.loads(out_opt)
+    except Exception:
+        parsed_opt = None
+    ok("cli check: --profile cnc_alu --material steel --json matches server.check_design",
+       rc_opt == 1 and not err_opt and isinstance(parsed_opt, dict)
+       and parsed_opt.get("profile") == "cnc_alu" and parsed_opt.get("material") == "steel"
+       and parsed_opt.get("checks") == expected_cnc_steel.get("checks"),
+       f"rc={rc_opt} err={err_opt!r} out={out_opt[:400]!r}")
+
+    # 3. Text output lists rule, value, threshold, source and quote from katalog/
+    rc_txt, out_txt, err_txt = run_cli(["check", str(plate_path)])
+    first_src = next((c["source"] for c in expected_default["checks"] if isinstance(c.get("source"), dict)), {})
+    ok("cli check: text output names rule, value, threshold, source and quote",
+       rc_txt == 1 and not err_txt
+       and "hole_edge_distance" in out_txt and "min_wall_thickness" in out_txt
+       and "6.0" in out_txt and "12.0" in out_txt and "0.8" in out_txt and "1.2" in out_txt
+       and bool(first_src.get("url")) and first_src["url"] in out_txt
+       and bool(first_src.get("zitat")) and first_src["zitat"] in out_txt,
+       f"rc={rc_txt} err={err_txt!r} txt={out_txt!r}")
+
+    # 4. Passing part and warn-only part without error-level findings exit with 0
+    rc_ok, out_ok, err_ok = run_cli(["check", str(ok_path)])
+    rc_warn, out_warn, err_warn = run_cli(["check", str(warn_path)])
+    ok("cli check: part without fail findings exits 0 (ok and warn-only)",
+       rc_ok == 0 and not err_ok and "OK" in out_ok
+       and rc_warn == 0 and not err_warn and "WARN" in out_warn,
+       f"ok=({rc_ok}, {err_ok!r}, {out_ok!r}) warn=({rc_warn}, {err_warn!r}, {out_warn!r})")
+
+    # 5. Without file and without open window (empty SOLIDCRAFT_CONTROL_DIR): exit code 2, stderr message, no traceback
+    empty_ctl = root / "empty_ctl"
+    empty_ctl.mkdir()
+    old_ctl = os.environ.get("SOLIDCRAFT_CONTROL_DIR")
+    os.environ["SOLIDCRAFT_CONTROL_DIR"] = str(empty_ctl)
+    try:
+        rc_nowin, out_nowin, err_nowin = run_cli(["check"])
+        sub = subprocess.run(
+            [sys.executable, "-m", "mechvane", "check"],
+            capture_output=True, text=True, env=dict(os.environ, SOLIDCRAFT_CONTROL_DIR=str(empty_ctl)), timeout=30,
+        )
+    finally:
+        if old_ctl is None:
+            os.environ.pop("SOLIDCRAFT_CONTROL_DIR", None)
+        else:
+            os.environ["SOLIDCRAFT_CONTROL_DIR"] = old_ctl
+    ok("cli check: no file and no open window exits 2 with plain stderr message and no traceback",
+       rc_nowin == 2 and not out_nowin and "no running SolidCraft window" in err_nowin
+       and "Traceback" not in err_nowin and "Traceback" not in out_nowin
+       and sub.returncode == 2 and "no running SolidCraft window" in sub.stderr
+       and "Traceback" not in sub.stderr and "Traceback" not in sub.stdout,
+       f"inproc=({rc_nowin}, {out_nowin!r}, {err_nowin!r}) sub=({sub.returncode}, {sub.stdout!r}, {sub.stderr!r})")
+
+    # 6. Error cases (missing file, assembly file, unknown material): exit code 2, stderr, no traceback
+    rc_miss, out_miss, err_miss = run_cli(["check", str(root / "does_not_exist.solidcraft")])
+    rc_asm, out_asm, err_asm = run_cli(["check", str(asm_path)])
+    rc_mat, out_mat, err_mat = run_cli(["check", str(ok_path), "--material", "unobtainium"])
+    ok("cli check: missing file, assembly and unknown material exit 2 without traceback",
+       rc_miss == 2 and not out_miss and err_miss.strip() and "Traceback" not in err_miss
+       and rc_asm == 2 and not out_asm and "assembly" in err_asm and "Traceback" not in err_asm
+       and rc_mat == 2 and not out_mat and err_mat.strip() and "Traceback" not in err_mat,
+       f"miss=({rc_miss}, {err_miss!r}) asm=({rc_asm}, {err_asm!r}) mat=({rc_mat}, {err_mat!r})")
+
+    # 7. Open-window path: connects via Workspace.connect_window, checks read-only, closes without saving
+    from mechvane.solidcraft import Session
+    win_sess = Session(allow_paths=[root])
+    try:
+        win_sess.tool("open", {"path": str(plate_path)})
+        seen_cmds = []
+        real_cmd = win_sess.cmd
+        real_tool = win_sess.tool
+
+        def spy_cmd(command, params=None, timeout=None):
+            seen_cmds.append(command)
+            return real_cmd(command, params, timeout=timeout)
+
+        def spy_tool(name, args=None, timeout=None):
+            seen_cmds.append(f"tool:{name}")
+            return real_tool(name, args, timeout=timeout)
+
+        win_sess.cmd = spy_cmd
+        win_sess.tool = spy_tool
+        orig_connect = Workspace.connect_window
+
+        def fake_connect(self, name="window", connect="auto", token=None):
+            doc = WindowDocument(name, PART, win_sess)
+            self.docs[name] = doc
+            return doc
+
+        Workspace.connect_window = fake_connect
+        try:
+            rc_win, out_win, err_win = run_cli(["check", "--json"])
+            try:
+                parsed_win = json.loads(out_win)
+            except Exception:
+                parsed_win = None
+        finally:
+            Workspace.connect_window = orig_connect
+    finally:
+        win_sess.close()
+    mutating = [c for c in seen_cmds if c in ("tool:save", "document.metadata.set", "edit.undo", "new_design", "tool:open")]
+    ok("cli check: open window mode runs check read-only and matches file findings",
+       rc_win == 1 and not err_win and isinstance(parsed_win, dict)
+       and parsed_win.get("checks") == expected_default.get("checks")
+       and not mutating,
+       f"rc={rc_win} err={err_win!r} mutating={mutating} cmds={seen_cmds}")
 
 
 def appwindow_checks(tmp):
@@ -10300,14 +10856,17 @@ def heavy_lock_checks(tmp):
     second = subprocess.run([sys.executable, "-c", code, "0"], env=env, capture_output=True, text=True, timeout=30)
     inner = subprocess.run([sys.executable, "-c", code, "0"], env=dict(env, MECHVANE_HEAVY_LOCK="gate"), capture_output=True,
                            text=True, timeout=30)
-    shell = subprocess.run(["bash", "-c", f"head -20 {tools / 'review_branch.sh'} | sed -n '/heavy run at a time/,/^fi/p' > {tmp}/lock.sh; "
-                            f"source {tmp}/lock.sh; echo shell-got"], env=env, capture_output=True, text=True, timeout=30)
+    review_script = tools / "review_branch.sh"  # private pipeline script, not in the public export
+    shell = (subprocess.run(["bash", "-c", f"head -20 {review_script} | sed -n '/heavy run at a time/,/^fi/p' > {tmp}/lock.sh; "
+                             f"source {tmp}/lock.sh; echo shell-got"], env=env, capture_output=True, text=True, timeout=30)
+             if review_script.is_file() else None)
     holder.wait(timeout=30)
     ok("heavy lock: a second heavy run gives up while one holds the lock", second.returncode != 0 and "waiting" in second.stderr,
        (second.returncode, second.stderr[-200:]))
     ok("heavy lock: a run started by the holder goes on", inner.returncode == 0 and "got" in inner.stdout, inner.stderr[-200:])
-    ok("heavy lock: review_branch.sh waits for the same lock", "shell-got" not in shell.stdout and "lock not free" in shell.stderr,
-       (shell.stdout, shell.stderr[-200:]))
+    if shell is not None:
+        ok("heavy lock: review_branch.sh waits for the same lock", "shell-got" not in shell.stdout and "lock not free" in shell.stderr,
+           (shell.stdout, shell.stderr[-200:]))
 
 
 def acceptance_checks(tmp):
@@ -11612,6 +12171,731 @@ def bolted_dialog_checks(tmp):
         srv.server_close()
 
 
+def add_joint_as_built_checks(ws):
+    """Issue #178 / #195: add_joint(..., as_built=True) keeps rotated/offset parts in place and records anchors
+    for check_joints; add_joint without as_built warns with matching distance and angle when b moves or rotates."""
+    import re
+    orig_ws = server.ws
+    server.ws = ws
+    try:
+        p1 = ws.new(PART, "ab_plate1")
+        p1.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p1.save()
+        p2 = ws.new(PART, "ab_plate2")
+        p2.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p2.save()
+        pc = ws.new(PART, "ab_plate_centered")
+        pc.session.batch([
+            {"command": "sketch.create", "params": {"plane": "XY", "name": "S"}},
+            {"command": "sketch.rectangle.two_point", "params": {"p0": [-20, -15], "p1": [20, 15]}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "S", "distance": 4, "name": "Body"}},
+        ])
+        pc.save()
+
+        def _bboxes(asm_name):
+            return {b["occurrence"]: b["bbox"] for b in server.measure(asm_name)["bodies"]}
+
+        def _same_bbox(b1, b2, tol=1e-3):
+            return all(abs(x - y) <= tol for k in ("min", "max") for x, y in zip(b1[k], b2[k]))
+
+        def _bbox_mid(bb):
+            return [(a + b) / 2.0 for a, b in zip(bb["min"], bb["max"])]
+
+        def _parse_move_warning(msg):
+            m = re.search(r"moved by ([0-9.]+) mm and rotated by ([0-9.]+)°", msg)
+            if not m:
+                return None
+            return m.group(1), float(m.group(1)), m.group(2), float(m.group(2))
+
+        # 1. Two plates rotated and offset as in winkel_verschraubung; add_joint(as_built=True)
+        asm1 = ws.new(ASSEMBLY, "ab_asm1")
+        links.insert(ws, asm1, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm1, p2.path, name="Platte2", translate=[30, 0, 4], rotate={"axis": [0, 0, 1], "angle": 90},
+                     grounded=False)
+        bb_before = _bboxes("ab_asm1")
+        res_ab = server.add_joint("ab_asm1", {
+            "name": "PlattenKontakt",
+            "type": "rigid",
+            "a": "Platte1:1",
+            "b": "Platte2:1",
+        }, as_built=True)
+        bb_after = _bboxes("ab_asm1")
+        chk = server.check_joints("ab_asm1")["joints"]
+        ab_meta = asm1.metadata().get("joints", {}).get("PlattenKontakt", {})
+        ok("add_joint(as_built=True): rotated/offset plates keep bounding boxes, check_joints is ok, adopt path used",
+           not res_ab.get("warnings")
+           and set(bb_before) == {"Platte1:1", "Platte2:1"}
+           and all(_same_bbox(bb_before[k], bb_after[k]) for k in bb_before)
+           and len(chk) == 2 and all(j["joint"] == "PlattenKontakt" and j["status"] == "ok" for j in chk)
+           and "create" not in ab_meta and set(ab_meta.get("sides", {})) == {"a", "b"},
+           f"res={res_ab} bb_before={bb_before} bb_after={bb_after} chk={chk} meta={ab_meta}")
+
+        # 2. Dict-style a/b passed with as_built=True also works and keeps bboxes unchanged
+        asm_d = ws.new(ASSEMBLY, "ab_asm_dict")
+        links.insert(ws, asm_d, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm_d, p2.path, name="Platte2", translate=[30, 0, 4], rotate={"axis": [0, 0, 1], "angle": 90},
+                     grounded=False)
+        bb_d_before = _bboxes("ab_asm_dict")
+        res_d = server.add_joint("ab_asm_dict", {
+            "name": "PlattenDict",
+            "type": "rigid",
+            "a": {"occurrence": "Platte1:1", "face": [20, 15, 4]},
+            "b": {"occurrence": "Platte2:1", "face": [15, 20, 4]},
+        }, as_built=True)
+        bb_d_after = _bboxes("ab_asm_dict")
+        chk_d = server.check_joints("ab_asm_dict")["joints"]
+        ok("add_joint(as_built=True): accepts dict-style a/b origins and keeps bounding boxes ok",
+           not res_d.get("warnings")
+           and set(bb_d_before) == {"Platte1:1", "Platte2:1"}
+           and all(_same_bbox(bb_d_before[k], bb_d_after[k]) for k in bb_d_before)
+           and len(chk_d) == 2 and all(j["status"] == "ok" for j in chk_d),
+           f"res={res_d} bb_before={bb_d_before} bb_after={bb_d_after} chk={chk_d}")
+
+        # 3. Rigid face-on-face joint that moves/rotates off-center plate B: warning distance matches bbox midpoint shift within 0.01 mm.
+        asm2 = ws.new(ASSEMBLY, "ab_asm2")
+        links.insert(ws, asm2, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm2, p2.path, name="Platte2", translate=[30, 0, 4], rotate={"axis": [0, 0, 1], "angle": 90},
+                     grounded=False)
+        bb_move_before = _bboxes("ab_asm2")
+        poses_before_move = {o["name"]: o["transform"] for o in links._occurrences(asm2.session).values()}
+        res_move = server.add_joint("ab_asm2", {
+            "name": "FaceRigid",
+            "type": "rigid",
+            "a": {"occurrence": "Platte1:1", "face": [20, 15, 4]},
+            "b": {"occurrence": "Platte2:1", "face": [15, 20, 4]},
+        })
+        bb_move_after = _bboxes("ab_asm2")
+        warns = res_move.get("warnings") or []
+        parsed_move = _parse_move_warning(warns[0]) if warns else None
+        mid_move_shift = g.norm(g.sub(_bbox_mid(bb_move_after["Platte2:1"]), _bbox_mid(bb_move_before["Platte2:1"])))
+        ok("add_joint: rigid face-on-face joint that moves/rotates b reports bbox midpoint distance within 0.01 mm",
+           parsed_move is not None and parsed_move[1] > 0.1 and abs(parsed_move[1] - mid_move_shift) <= 0.01
+           and abs(parsed_move[3] - 90.0) <= 0.01 and mid_move_shift > 0.1 and "as_built=True" in warns[0],
+           f"res_move={res_move} parsed={parsed_move} mid_shift={mid_move_shift}")
+
+        from mechvane import bolted as _b
+        mw = _b.moved_parts_warnings(poses_before_move, links._occurrences(asm2.session), "the bolted connection",
+                                     session=asm2.session)
+        m_mw = re.search(r"moved by ([0-9.]+) mm and turned by ([0-9.]+)°", mw[0]) if len(mw) == 1 else None
+        ok("moved_parts_warnings: rotated off-center part reports bbox midpoint distance within 0.01 mm",
+           m_mw is not None and abs(float(m_mw.group(1)) - mid_move_shift) <= 0.01
+           and abs(float(m_mw.group(2)) - 90.0) <= 0.01,
+           f"mw={mw} mid_shift={mid_move_shift}")
+
+        # 4. Rotated and shifted centered plate: warning distance matches bbox midpoint displacement within 0.01 mm
+        asm_c = ws.new(ASSEMBLY, "ab_asm_centered")
+        links.insert(ws, asm_c, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm_c, pc.path, name="Platte2", translate=[30, 10, 4], rotate={"axis": [0, 0, 1], "angle": 90},
+                     grounded=False)
+        bb_c_before = _bboxes("ab_asm_centered")
+        res_c = server.add_joint("ab_asm_centered", {
+            "name": "CenteredRigid",
+            "type": "rigid",
+            "a": {"occurrence": "Platte1:1", "face": [20, 15, 4]},
+            "b": {"occurrence": "Platte2:1", "face": [30, 10, 4]},
+        })
+        bb_c_after = _bboxes("ab_asm_centered")
+        warns_c = res_c.get("warnings") or []
+        parsed_c = _parse_move_warning(warns_c[0]) if warns_c else None
+        mid_c_shift = g.norm(g.sub(_bbox_mid(bb_c_after["Platte2:1"]), _bbox_mid(bb_c_before["Platte2:1"])))
+        ok("add_joint: moved/rotated centered plate warning distance matches bbox midpoint shift within 0.01 mm",
+           parsed_c is not None and parsed_c[1] > 0.1 and abs(parsed_c[1] - mid_c_shift) <= 0.01
+           and abs(parsed_c[3] - 90.0) <= 0.01 and "as_built=True" in warns_c[0],
+           f"res_c={res_c} parsed={parsed_c} mid_shift={mid_c_shift}")
+
+        # 5. Pure translation without rotation: warning distance matches bbox midpoint shift and reports 0.00 deg
+        asm_tr = ws.new(ASSEMBLY, "ab_asm_translate")
+        links.insert(ws, asm_tr, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm_tr, p2.path, name="Platte2", translate=[15, 10, 4], grounded=False)
+        bb_tr_before = _bboxes("ab_asm_translate")
+        res_tr = server.add_joint("ab_asm_translate", {
+            "name": "TranslateRigid",
+            "type": "rigid",
+            "a": {"occurrence": "Platte1:1", "face": [20, 15, 4]},
+            "b": {"occurrence": "Platte2:1", "face": [35, 25, 4]},
+        })
+        bb_tr_after = _bboxes("ab_asm_translate")
+        warns_tr = res_tr.get("warnings") or []
+        parsed_tr = _parse_move_warning(warns_tr[0]) if warns_tr else None
+        mid_tr_shift = g.norm(g.sub(_bbox_mid(bb_tr_after["Platte2:1"]), _bbox_mid(bb_tr_before["Platte2:1"])))
+        ok("add_joint: pure translation without rotation reports distance matching bbox midpoint shift and 0.00 deg",
+           parsed_tr is not None and parsed_tr[1] > 0.1 and abs(parsed_tr[1] - mid_tr_shift) <= 0.01
+           and parsed_tr[2] == "0.00" and abs(parsed_tr[3]) <= 1e-6 and "as_built=True" in warns_tr[0],
+           f"res_tr={res_tr} parsed={parsed_tr} mid_shift={mid_tr_shift}")
+
+        # 6. Aligned joint that does not move b keeps Platte2 bbox unchanged and returns no warning
+        asm3 = ws.new(ASSEMBLY, "ab_asm3")
+        links.insert(ws, asm3, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm3, p2.path, name="Platte2", translate=[30, 0, 4], rotate={"axis": [0, 0, 1], "angle": 90},
+                     grounded=False)
+        bb_stay_before = _bboxes("ab_asm3")
+        res_stay = server.add_joint("ab_asm3", {
+            "name": "ExactRigid",
+            "type": "rigid",
+            "a": {"occurrence": "Platte1:1", "point": [15, 15, 4], "z": [0, 0, 1], "x": [1, 0, 0]},
+            "b": {"occurrence": "Platte2:1", "point": [15, 15, 4], "z": [0, 0, -1], "x": [1, 0, 0]},
+        })
+        bb_stay_after = _bboxes("ab_asm3")
+        ok("add_joint: aligned joint that leaves b in place keeps bounding boxes and returns no warning",
+           not res_stay.get("warnings")
+           and set(bb_stay_before) == {"Platte1:1", "Platte2:1"}
+           and all(_same_bbox(bb_stay_before[k], bb_stay_after[k]) for k in bb_stay_before),
+           f"res_stay={res_stay} bb_before={bb_stay_before} bb_after={bb_stay_after}")
+
+        ok("add_joint docs & MCP instructions mention as_built=True",
+           "as_built=True" in (server.add_joint.__doc__ or "") and "as_built=True" in (server.mcp.instructions or ""),
+           f"doc={server.add_joint.__doc__!r}")
+    finally:
+        server.ws = orig_ws
+
+
+def bolted_roundtrip_checks(tmp):
+    """Issue #199: bolted_connection + delete_bolted_connection roundtrip and mid-build failure rollback."""
+    base_dir = Path(tmp) / "bolted_roundtrip"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _measure_parts(part_names):
+        out = {}
+        for pname in part_names:
+            bodies = server.measure(pname)["bodies"]
+            out[pname] = (len(bodies), sum(b["volume_mm3"] for b in bodies))
+        return out
+
+    def _solidcraft_files(folder: Path):
+        return sorted(p.name for p in folder.iterdir() if p.is_file() and p.suffix == ".solidcraft")
+
+    def _run_case(case_id: str, label: str, setup_fn, bolt_kwargs: dict, expected_std_files: set[str]):
+        case_dir = base_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        ws_case = Workspace(case_dir)
+        orig_ws = server.ws
+        server.ws = ws_case
+        try:
+            asm_name, part_names = setup_fn(ws_case)
+            asm_doc = ws_case.get(asm_name, ASSEMBLY)
+
+            m_before = _measure_parts(part_names)
+            browser_before = tree.assembly_tree(asm_doc.session, base=asm_doc.base_dir)
+            occs_before = [o["name"] for o in browser_before["occurrences"]]
+            joints_before = server.check_joints(asm_name)["joints"]
+            joint_names_before = [j["name"] for j in asm_doc.session.cmd("joint.list").get("joints", [])]
+            files_before = _solidcraft_files(case_dir)
+
+            res = bolted.bolted_connection(ws_case, asm_name, **bolt_kwargs)
+            m_mid = _measure_parts(part_names)
+            browser_mid = tree.assembly_tree(asm_doc.session, base=asm_doc.base_dir)
+            occs_mid = [o["name"] for o in browser_mid["occurrences"]]
+            joint_names_mid = [j["name"] for j in asm_doc.session.cmd("joint.list").get("joints", [])]
+
+            del_res = bolted.delete_bolted_connection(ws_case, asm_name, res["id"])
+            m_after = _measure_parts(part_names)
+            browser_after = tree.assembly_tree(asm_doc.session, base=asm_doc.base_dir)
+            occs_after = [o["name"] for o in browser_after["occurrences"]]
+            joints_after = server.check_joints(asm_name)["joints"]
+            joint_names_after = [j["name"] for j in asm_doc.session.cmd("joint.list").get("joints", [])]
+            conns_after = bolted.list_bolted_connections(ws_case, asm_name)["count"]
+            links_after = sorted(Path(lk["file"]).name for lk in asm_doc.session.cmd("component.links").get("links", []))
+            files_after = _solidcraft_files(case_dir)
+            extra_files = sorted(set(files_after) - set(files_before))
+
+            vols_ok = all(
+                m_after[p][0] == m_before[p][0]
+                and m_mid[p][1] < m_before[p][1] - 1.0
+                and abs(m_after[p][1] - m_before[p][1]) < 1e-4
+                for p in part_names
+            )
+            joints_ok = (
+                joint_names_after == joint_names_before
+                and joints_after == joints_before
+                and all(j["status"] == "ok" for j in joints_after)
+            )
+            # Standard-part files created next to the assembly stay intentionally as a shared per-folder
+            # norm-part cache (#196), because delete_bolted_connection cannot safely delete disk files
+            # that sibling assemblies or pre-existing manual standard_part calls may share.
+            files_ok = (
+                set(extra_files) == set(expected_std_files)
+                and links_after == sorted(f"{p}.solidcraft" for p in part_names)
+            )
+            vol_summary = ", ".join(
+                f"{p}:{m_before[p][1]:.1f}->{m_mid[p][1]:.1f}->{m_after[p][1]:.1f}mm³({m_before[p][0]}->{m_after[p][0]}b)"
+                for p in part_names
+            )
+            ok(
+                f"bolted roundtrip ({label}): {vol_summary}, occs {len(occs_before)}->{len(occs_mid)}->{len(occs_after)}, "
+                f"joints {len(joint_names_before)}->{len(joint_names_mid)}->{len(joint_names_after)}, "
+                f"std_files={len(extra_files)} (shared folder cache)",
+                vols_ok and occs_after == occs_before and browser_after == browser_before
+                and joints_ok and conns_after == 0 and files_ok and del_res.get("deleted") == res["id"],
+                f"m_before={m_before} m_mid={m_mid} m_after={m_after} occs={occs_before}->{occs_after} "
+                f"joints_before={joints_before} joints_after={joints_after} extra_files={extra_files} "
+                f"links_after={links_after} browser_eq={browser_after == browser_before}",
+            )
+        finally:
+            server.ws = orig_ws
+            ws_case.close_all()
+
+    def _setup_plates(ws_case, h1=10, h2=8, w=40, with_joint=False):
+        p1 = ws_case.new(PART, "p1")
+        p1.session.cmd("solid.box", {"length": w, "width": w, "height": h1, "corner": [-w / 2, -w / 2, 0],
+                                     "operation": "new", "body_name": "Plate1", "name": "Box1"})
+        p1.save()
+        p2 = ws_case.new(PART, "p2")
+        p2.session.cmd("solid.box", {"length": w, "width": w, "height": h2, "corner": [-w / 2, -w / 2, 0],
+                                     "operation": "new", "body_name": "Plate2", "name": "Box2"})
+        p2.save()
+        asm = ws_case.new(ASSEMBLY, "asm")
+        links.insert(ws_case, asm, p1.path, name="Plate1", grounded=True)
+        links.insert(ws_case, asm, p2.path, name="Plate2", translate=[0, 0, -h2], grounded=not with_joint)
+        if with_joint:
+            asm.session.cmd("joint.create", {
+                "type": "rigid", "name": "BaseJoint",
+                "a": {"occurrence": "Plate1:1", "face": [10, 10, 0]},
+                "b": {"occurrence": "Plate2:1", "face": [10, 10, 0]},
+            })
+            links.record(ws_case, asm, "BaseJoint")
+        asm.save()
+        return "asm", ["p1", "p2"]
+
+    # 1. Through-hole with nut + pre-existing planar BaseJoint (hole off-center so face centroid shifts)
+    _run_case(
+        "through", "through+nut M5",
+        lambda w: _setup_plates(w, h1=10, h2=8, w=40, with_joint=True),
+        {"placement": {"position": [10, 0, 10], "direction": [0, 0, -1]}, "size": "M5", "counterbore": False},
+        {"ISO_4762_M5x25.solidcraft", "ISO_7089_M5.solidcraft", "ISO_4032_M5.solidcraft"},
+    )
+
+    # 2. Counterbore M5
+    _run_case(
+        "counterbore", "counterbore M5",
+        lambda w: _setup_plates(w, h1=10, h2=8, w=40),
+        {"placement": {"position": [0, 0, 10], "direction": [0, 0, -1]}, "size": "M5", "counterbore": True},
+        {"ISO_4762_M5x20.solidcraft", "ISO_7089_M5.solidcraft", "ISO_4032_M5.solidcraft"},
+    )
+
+    # 3. Blind tapped hole M5 in alu
+    _run_case(
+        "blind", "blind M5 alu",
+        lambda w: _setup_plates(w, h1=10, h2=20, w=40),
+        {"placement": {"position": [0, 0, 10], "direction": [0, 0, -1]}, "size": "M5",
+         "connection_type": "blind", "blind_material": "alu", "counterbore": False},
+        {"ISO_4762_M5x20.solidcraft"},
+    )
+
+    # 4. Ruthex M3 heat-set insert
+    _run_case(
+        "ruthex", "ruthex M3",
+        lambda w: _setup_plates(w, h1=5, h2=15, w=30),
+        {"placement": {"position": [0, 0, 5], "direction": [0, 0, -1]}, "size": "M3",
+         "use_insert": True, "counterbore": True},
+        {"ISO_4762_M3x8.solidcraft", "Ruthex_RX-M3x5.7.solidcraft"},
+    )
+
+    # 5. Circular pattern on flange with center bore
+    def _setup_flange(ws_case):
+        fl1 = ws_case.new(PART, "flange1")
+        fl1.session.cmd("solid.cylinder", {"diameter": 80, "height": 10, "base": [0, 0, 0], "name": "Fl1"})
+        fl1.session.cmd("solid.hole", {"position": [0, 0, 10], "direction": [0, 0, -1],
+                                       "diameter": 20, "depth": 10, "name": "CenterBore"})
+        fl1.save()
+        fl2 = ws_case.new(PART, "flange2")
+        fl2.session.cmd("solid.cylinder", {"diameter": 80, "height": 8, "base": [0, 0, 0], "name": "Fl2"})
+        fl2.session.cmd("solid.hole", {"position": [0, 0, 8], "direction": [0, 0, -1],
+                                       "diameter": 20, "depth": 8, "name": "CenterBore"})
+        fl2.save()
+        asm = ws_case.new(ASSEMBLY, "asm_flange")
+        links.insert(ws_case, asm, fl1.path, name="Flange1", grounded=True)
+        links.insert(ws_case, asm, fl2.path, name="Flange2", translate=[0, 0, -8], grounded=False)
+        asm.session.cmd("joint.create", {
+            "type": "rigid", "name": "FlangeCenter",
+            "a": {"occurrence": "Flange1:1", "circle": [0, 0, 0]},
+            "b": {"occurrence": "Flange2:1", "circle": [0, 0, 0]},
+        })
+        links.record(ws_case, asm, "FlangeCenter")
+        asm.save()
+        return "asm_flange", ["flange1", "flange2"]
+
+    _run_case(
+        "flange_circ", "circular pattern 4xM5 flange",
+        _setup_flange,
+        {"placement": {"position": [25, 0, 10], "direction": [0, 0, -1]}, "size": "M5",
+         "counterbore": False,
+         "pattern": {"type": "circular", "count": 4, "axis_point": [0, 0, 0], "axis": [0, 0, 1]}},
+        {"ISO_4762_M5x25.solidcraft", "ISO_7089_M5.solidcraft", "ISO_4032_M5.solidcraft"},
+    )
+
+    # 6. Mid-build failure: fail on 2nd _ensure_standard_part call (after drilling + creating 1st standard part)
+    fail_dir = base_dir / "mid_fail"
+    fail_dir.mkdir(parents=True, exist_ok=True)
+    ws_fail = Workspace(fail_dir)
+    orig_ws = server.ws
+    server.ws = ws_fail
+    orig_ensure = bolted._ensure_standard_part
+    try:
+        asm_name, part_names = _setup_plates(ws_fail, h1=10, h2=8, w=40, with_joint=True)
+        asm_doc = ws_fail.get(asm_name, ASSEMBLY)
+        m_before = _measure_parts(part_names)
+        browser_before = tree.assembly_tree(asm_doc.session, base=asm_doc.base_dir)
+        occs_before = [o["name"] for o in browser_before["occurrences"]]
+        joints_before = server.check_joints(asm_name)["joints"]
+        files_before = sorted(p.name for p in fail_dir.iterdir())
+
+        ensure_calls = [0]
+
+        def _fail_on_second_std_part(*args, **kwargs):
+            ensure_calls[0] += 1
+            if ensure_calls[0] == 2:
+                raise RuntimeError("simulated _ensure_standard_part failure after 1st standard part")
+            return orig_ensure(*args, **kwargs)
+
+        bolted._ensure_standard_part = _fail_on_second_std_part
+        err_caught = False
+        try:
+            bolted.bolted_connection(
+                ws_fail, asm_name,
+                placement={"position": [10, 0, 10], "direction": [0, 0, -1]},
+                size="M5",
+                counterbore=False,
+            )
+        except RuntimeError:
+            err_caught = True
+        finally:
+            bolted._ensure_standard_part = orig_ensure
+
+        m_after = _measure_parts(part_names)
+        browser_after = tree.assembly_tree(asm_doc.session, base=asm_doc.base_dir)
+        occs_after = [o["name"] for o in browser_after["occurrences"]]
+        joints_after = server.check_joints(asm_name)["joints"]
+        conns_after = bolted.list_bolted_connections(ws_fail, asm_name)["count"]
+        files_after = sorted(p.name for p in fail_dir.iterdir())
+        extra_files = sorted(set(files_after) - set(files_before))
+
+        # Re-read parts from disk to ensure rollback persisted on disk too
+        disk_vols_ok = True
+        for pname in part_names:
+            r = ws_fail.reader(ws_fail.get(pname, PART).path)
+            try:
+                rbodies = r.cmd("document.inspect", {"measure": True}).get("bodies", [])
+                rvol = sum(b["volume_mm3"] for b in rbodies)
+                if len(rbodies) != m_before[pname][0] or abs(rvol - m_before[pname][1]) >= 1e-4:
+                    disk_vols_ok = False
+            finally:
+                r.close()
+
+        vols_ok = all(
+            m_after[p][0] == m_before[p][0] and abs(m_after[p][1] - m_before[p][1]) < 1e-4
+            for p in part_names
+        )
+        vol_summary = ", ".join(
+            f"{p}:{m_before[p][1]:.1f}->{m_after[p][1]:.1f}mm³({m_before[p][0]}->{m_after[p][0]}b)"
+            for p in part_names
+        )
+        ok(
+            f"bolted roundtrip (mid-build failure): calls={ensure_calls[0]}, {vol_summary}, "
+            f"occs {len(occs_before)}->{len(occs_after)}, joints {len(joints_before)}->{len(joints_after)}, "
+            f"extra_files={len(extra_files)}",
+            err_caught and ensure_calls[0] == 2 and vols_ok and disk_vols_ok
+            and occs_after == occs_before and browser_after == browser_before
+            and joints_after == joints_before and conns_after == 0 and not extra_files,
+            f"caught={err_caught} calls={ensure_calls[0]} m_before={m_before} m_after={m_after} "
+            f"disk_ok={disk_vols_ok} occs={occs_after} joints={joints_after} extra_files={extra_files}",
+        )
+    finally:
+        bolted._ensure_standard_part = orig_ensure
+        server.ws = orig_ws
+        ws_fail.close_all()
+
+
+def bolted_review_205_checks(tmp):
+    """Issue #205: rollback of repaired foreign parts in edit_bolted_connection, update_links warnings in
+    delete_bolted_connection, rollback of overwritten pre-existing standard parts, and scoped cleanup."""
+    base_dir = Path(tmp) / "bolted_205"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _measure_parts(ws_case, part_names):
+        out = {}
+        for pname in part_names:
+            bodies = ws_case.get(pname, PART).session.cmd("document.inspect", {"measure": True}).get("bodies", [])
+            out[pname] = (len(bodies), sum(b["volume_mm3"] for b in bodies))
+        return out
+
+    def _disk_measure(ws_case, part_names):
+        out = {}
+        for pname in part_names:
+            r = ws_case.reader(ws_case.get(pname, PART).path)
+            try:
+                rbodies = r.cmd("document.inspect", {"measure": True}).get("bodies", [])
+                out[pname] = (len(rbodies), sum(b["volume_mm3"] for b in rbodies))
+            finally:
+                r.close()
+        return out
+
+    # 1. edit_bolted_connection rolls back foreign parts repaired by delete_bolted_connection -> update_links
+    case1_dir = base_dir / "edit_foreign_rb"
+    case1_dir.mkdir(parents=True, exist_ok=True)
+    ws1 = Workspace(case1_dir)
+    try:
+        p1 = ws1.new(PART, "p1")
+        p1.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate1", "name": "Box1"})
+        p1.save()
+        p2 = ws1.new(PART, "p2")
+        p2.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate2", "name": "Box2"})
+        p2.save()
+        p3 = ws1.new(PART, "p3")
+        p3.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate3", "name": "Box3"})
+        p3.save()
+        # Stepped plate 4: z=-8..0 for x<=4, z=-14..0 for x>4 (top face at z=0, flat for clamping)
+        p4 = ws1.new(PART, "p4")
+        p4.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate4", "name": "Box4"})
+        p4.session.cmd("solid.box", {"length": 16, "width": 40, "height": 8, "corner": [4, -20, -6],
+                                     "operation": "join", "body_name": "Plate4", "name": "Step4"})
+        p4.save()
+
+        asm1 = ws1.new(ASSEMBLY, "asm1")
+        links.insert(ws1, asm1, p1.path, name="Plate1", grounded=True)
+        links.insert(ws1, asm1, p2.path, name="Plate2", translate=[0, 0, -8], grounded=True)
+        links.insert(ws1, asm1, p3.path, name="Plate3", translate=[100, 0, 0], grounded=True)
+        links.insert(ws1, asm1, p4.path, name="Plate4", translate=[100, 0, -8], grounded=True)
+        asm1.save()
+
+        c1 = bolted.bolted_connection(
+            ws1, "asm1",
+            placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+            size="M5",
+            counterbore=False,
+        )
+        c2 = bolted.bolted_connection(
+            ws1, "asm1",
+            placement={"position": [100, 0, 10], "direction": [0, 0, -1]},
+            size="M5",
+            counterbore=False,
+        )
+        # Shift Plate3:1 by +10 mm in X so conn_2's anchor moves onto the thicker step of Plate4 (x=110)
+        occ_p3 = next(o for o in links._occurrences(asm1.session).values() if o["name"] == "Plate3:1")
+        asm1.session.cmd("occurrence.ground", {"occurrence": occ_p3["id"], "grounded": False})
+        asm1.session.cmd("occurrence.move", {"occurrence": occ_p3["id"], "translate": [10, 0, 0], "space": "world"})
+        asm1.session.cmd("occurrence.ground", {"occurrence": occ_p3["id"], "grounded": True})
+        asm1.save()
+
+        part_names1 = ["p1", "p2", "p3", "p4"]
+        m_before1 = _measure_parts(ws1, part_names1)
+        disk_before1 = _disk_measure(ws1, part_names1)
+        conns_before1 = bolted.list_bolted_connections(ws1, "asm1")["connections"]
+
+        err_edit1 = False
+        try:
+            # delete_bolted_connection runs update_links(repair_moved=True) which repairs c2 (changing p4 volume),
+            # then bolted_connection fails on length_override=5
+            bolted.edit_bolted_connection(ws1, "asm1", c1["id"], fasteners={"length_override": 5})
+        except ValueError:
+            err_edit1 = True
+
+        m_after1 = _measure_parts(ws1, part_names1)
+        disk_after1 = _disk_measure(ws1, part_names1)
+        conns_after1 = bolted.list_bolted_connections(ws1, "asm1")["connections"]
+
+        vols_ok1 = all(
+            m_after1[p][0] == m_before1[p][0] and abs(m_after1[p][1] - m_before1[p][1]) < 1e-4
+            and disk_after1[p][0] == disk_before1[p][0] and abs(disk_after1[p][1] - disk_before1[p][1]) < 1e-4
+            for p in part_names1
+        )
+        ok("bolted 205 / 1: edit_bolted_connection rollback restores foreign parts repaired during delete",
+           err_edit1 and vols_ok1 and conns_after1 == conns_before1,
+           f"caught={err_edit1} m_before={m_before1} m_after={m_after1} disk_after={disk_after1}")
+    finally:
+        ws1.close_all()
+
+    # 2. delete_bolted_connection returns warnings from update_links (e.g. link_blocked, failed repair)
+    case2_dir = base_dir / "delete_warnings"
+    case2_dir.mkdir(parents=True, exist_ok=True)
+    ws2 = Workspace(case2_dir)
+    try:
+        pa = ws2.new(PART, "pa")
+        pa.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "PlateA", "name": "BoxA"})
+        pa.save()
+        pb = ws2.new(PART, "pb")
+        pb.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "PlateB", "name": "BoxB"})
+        pb.save()
+        pc = ws2.new(PART, "pc")
+        pc.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "PartC", "name": "BoxC"})
+        pc.session.cmd("solid.hole", {"position": [0, 0, 10], "direction": [0, 0, -1],
+                                      "diameter": 6, "depth": 10, "name": "HoleC"})
+        pc.save()
+
+        asm2 = ws2.new(ASSEMBLY, "asm2")
+        links.insert(ws2, asm2, pa.path, name="PlateA", grounded=True)
+        links.insert(ws2, asm2, pb.path, name="PlateB", translate=[0, 0, -8], grounded=True)
+        links.insert(ws2, asm2, pc.path, name="PartC", translate=[80, 0, 0], grounded=True)
+        asm2.save()
+
+        c_del = bolted.bolted_connection(
+            ws2, "asm2",
+            placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+            size="M5",
+            counterbore=False,
+        )
+
+        # Break pc so update_links reports link_blocked for PartC (HoleC)
+        pc.session.cmd("timeline.delete", {"features": ["BoxC"]})
+        pc.save()
+
+        del_out = bolted.delete_bolted_connection(ws2, "asm2", c_del["id"])
+        del_warns = del_out.get("warnings") or []
+        has_blocked = any(
+            isinstance(w, dict) and w.get("status") == "link_blocked" and w.get("component") == "PartC"
+            for w in del_warns
+        )
+        ok("bolted 205 / 2: delete_bolted_connection returns update_links warnings (link_blocked)",
+           has_blocked,
+           f"del_out={del_out}")
+    finally:
+        ws2.close_all()
+
+    # 3 & 4. Pre-existing non-matching standard part is byte-identical after rollback; unrelated new file survives
+    case3_dir = base_dir / "std_overwrite_rb"
+    case3_dir.mkdir(parents=True, exist_ok=True)
+    ws3 = Workspace(case3_dir)
+    orig_ensure3 = bolted._ensure_standard_part
+    try:
+        p1 = ws3.new(PART, "p1")
+        p1.session.cmd("solid.box", {"length": 40, "width": 40, "height": 10, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate1", "name": "Box1"})
+        p1.save()
+        p2 = ws3.new(PART, "p2")
+        p2.session.cmd("solid.box", {"length": 40, "width": 40, "height": 8, "corner": [-20, -20, 0],
+                                     "operation": "new", "body_name": "Plate2", "name": "Box2"})
+        p2.save()
+        asm3 = ws3.new(ASSEMBLY, "asm3")
+        links.insert(ws3, asm3, p1.path, name="Plate1", grounded=True)
+        links.insert(ws3, asm3, p2.path, name="Plate2", translate=[0, 0, -8], grounded=True)
+        asm3.save()
+
+        # Pre-existing file at ISO_4762_M5x20.solidcraft that does NOT match ISO 4762 M5x20 metadata
+        screw_path = case3_dir / "ISO_4762_M5x20.solidcraft"
+        custom_doc = ws3.new(PART, "custom_std_seed", path=str(screw_path))
+        custom_doc.session.cmd("solid.box", {"length": 5, "width": 5, "height": 5, "name": "CustomBox"})
+        custom_doc.save()
+        ws3.close("custom_std_seed")
+        orig_screw_bytes = screw_path.read_bytes()
+
+        # Unrelated file created concurrently by another process during the failing call
+        concurrent_path = case3_dir / "other_process_part.solidcraft"
+        calls3 = [0]
+
+        def _fail_second_std(*args, **kwargs):
+            calls3[0] += 1
+            if calls3[0] == 2:
+                concurrent_path.write_bytes(b"concurrent-other-process")
+                raise RuntimeError("simulated failure on 2nd _ensure_standard_part")
+            return orig_ensure3(*args, **kwargs)
+
+        bolted._ensure_standard_part = _fail_second_std
+        err3 = False
+        try:
+            bolted.bolted_connection(
+                ws3, "asm3",
+                placement={"position": [0, 0, 10], "direction": [0, 0, -1]},
+                size="M5",
+                counterbore=True,
+            )
+        except RuntimeError:
+            err3 = True
+        finally:
+            bolted._ensure_standard_part = orig_ensure3
+
+        restored_bytes = screw_path.read_bytes() if screw_path.is_file() else b""
+        concurrent_ok = concurrent_path.is_file() and concurrent_path.read_bytes() == b"concurrent-other-process"
+        ok("bolted 205 / 3: pre-existing overwritten standard part is byte-identical after rollback",
+           err3 and calls3[0] == 2 and restored_bytes == orig_screw_bytes,
+           f"err={err3} calls={calls3[0]} same_bytes={restored_bytes == orig_screw_bytes} "
+           f"orig_len={len(orig_screw_bytes)} after_len={len(restored_bytes)}")
+        ok("bolted 205 / 4: rollback does not delete unrelated .solidcraft files created by other processes",
+           concurrent_ok,
+           f"exists={concurrent_path.is_file()}")
+    finally:
+        bolted._ensure_standard_part = orig_ensure3
+        ws3.close_all()
+
+
+def bolted_subfolder_checks(tmp):
+    """Issue #196: bolted_connection in a workspace subfolder places standard parts next to the
+    assembly so relative links stay inside the subfolder and opening it as workspace finds all files."""
+    ws_root = Path(tmp) / "sub_bolted"
+    proj = ws_root / "projekt"
+    proj.mkdir(parents=True)
+
+    ws = Workspace(ws_root)
+    try:
+        p1 = ws.new(PART, "platte1", path="projekt/platte1.solidcraft")
+        p1.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p1.save()
+        p2 = ws.new(PART, "platte2", path="projekt/platte2.solidcraft")
+        p2.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p2.save()
+        asm = ws.new(ASSEMBLY, "winkel", path="projekt/winkel.solidcraft")
+        links.insert(ws, asm, p1.path, name="Platte1", grounded=True)
+        links.insert(ws, asm, p2.path, name="Platte2", translate=[30, 0, 4],
+                     rotate={"axis": [0, 0, 1], "angle": 90}, grounded=True)
+        bolted.bolted_connection(
+            ws, "winkel",
+            placement={"position": [15, 15, 8], "direction": [0, 0, -1]},
+            size="M4",
+            counterbore=False,
+        )
+        asm.save()
+
+        # Second subfolder in the same open Workspace with identical plate/fastener names must not collide
+        p1b = ws.new(PART, "platte1_b", path="projekt2/platte1.solidcraft")
+        p1b.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p1b.save()
+        p2b = ws.new(PART, "platte2_b", path="projekt2/platte2.solidcraft")
+        p2b.session.cmd("solid.box", {"length": 40, "width": 30, "height": 4})
+        p2b.save()
+        asm2 = ws.new(ASSEMBLY, "winkel2", path="projekt2/winkel.solidcraft")
+        links.insert(ws, asm2, p1b.path, name="Platte1", grounded=True)
+        links.insert(ws, asm2, p2b.path, name="Platte2", translate=[0, 0, 4], grounded=True)
+        bolted.bolted_connection(
+            ws, "winkel2",
+            placement={"position": [15, 15, 8], "direction": [0, 0, -1]},
+            size="M4",
+            counterbore=False,
+        )
+        asm2.save()
+    finally:
+        ws.close_all()
+
+    root_fasteners = sorted(p.name for p in ws_root.glob("ISO_*.solidcraft"))
+    proj_fasteners = sorted(p.name for p in proj.glob("ISO_*.solidcraft"))
+    proj2_fasteners = sorted(p.name for p in (ws_root / "projekt2").glob("ISO_*.solidcraft"))
+    expected = {"ISO_4032_M4.solidcraft", "ISO_4762_M4x16.solidcraft", "ISO_7089_M4.solidcraft"}
+    ok("bolted subfolder: standard parts created in assembly folder, not workspace root",
+       not root_fasteners and set(proj_fasteners) == expected and set(proj2_fasteners) == expected,
+       f"root={root_fasteners} proj={proj_fasteners} proj2={proj2_fasteners}")
+
+    # Fresh session with workspace set to the subfolder itself (as graders or standalone project opens do)
+    ws_sub = Workspace(proj)
+    try:
+        doc_sub = ws_sub.open("winkel.solidcraft")
+        t_sub = tree.assembly_tree(doc_sub.session, base=doc_sub.base_dir)
+        missing = [o["name"] for o in t_sub.get("occurrences", []) if o.get("file_missing")]
+        link_paths = {lk["name"]: lk.get("path") for lk in doc_sub.session.cmd("component.links").get("links", [])}
+        ul_sub = links.update_links(ws_sub, doc_sub)
+        bad_joints = [j for j in ul_sub.get("joints", []) if j.get("status") != "ok"]
+        ok("bolted subfolder: opening subfolder as workspace finds all fasteners without file_missing",
+           not missing and not bad_joints and not ul_sub.get("warnings")
+           and all(not str(p).startswith("..") for p in link_paths.values()),
+           f"missing={missing} paths={link_paths} bad_joints={bad_joints} warnings={ul_sub.get('warnings')}")
+    finally:
+        ws_sub.close_all()
+
+
 def _private_tool(name: str) -> bool:
     """Pipeline tools stay private (tools/export_public.sh): their checks run only where the file exists."""
     return (Path(__file__).resolve().parents[2] / "tools" / name).exists()
@@ -11656,6 +12940,7 @@ def main():
             argon_review_finding_6_checks(ws)
             argon_review_findings_9_11_checks(ws)
             install_checks(tmp)
+            cli_check_checks(tmp)
             appwindow_checks(tmp)
             session_env_checks()
             demo_folder_checks(tmp)
@@ -11691,7 +12976,8 @@ def main():
             bolted_gap_chamfer_check(tmp)
             gltf_export_check(tmp)
             state_delta_checks(ws)
-            scratch_dir_checks()
+            connect_checks(tmp)
+            moved_parts_checks()
             sc_errors_checks(ws)
             design_intent_checks(ws)
             concentric_hole_checks(ws)
@@ -11728,6 +13014,10 @@ def main():
             step_signature_checks(ws)
             record_replay_checks(ws)
             sketch_face_pick_checks(ws)
+            add_joint_as_built_checks(ws)
+            bolted_subfolder_checks(tmp)
+            bolted_roundtrip_checks(tmp)
+            bolted_review_205_checks(tmp)
             if _private_tool("audit_run.sh"):
                 audit_checks(tmp)
             heavy_lock_checks(tmp)

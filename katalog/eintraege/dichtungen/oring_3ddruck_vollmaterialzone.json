@@ -42,9 +42,9 @@
       "abgerufen": "2026-10-21"
     }
   ],
-  "begruendung": "Druckluft oder Wasser unter Druck migriert durch die Grenzflächen der Layer in das Hohlraumsystem des Standard-Infills und tritt außerhalb der Dichtung wieder aus.",
+  "begruendung": "Druckluft oder Wasser unter Druck migriert durch die Grenzflächen der Layer in das Hohlraumsystem des Standard-Infills und tritt außerhalb der Dichtung wieder aus. Nicht belegt: Es gibt keine Quelle; zudem ergeben 5 Perimeter bei 0,4 mm Düse nur etwa 2,0–2,4 mm, nicht 3,0 mm.",
   "ausnahmen": "Vollständig massiv gedruckte Bauteile (100 % Infill).",
-  "haerte": "fehler",
-  "pruefstatus": "offen",
+  "haerte": "hinweis",
+  "pruefstatus": "nicht_belegt",
   "beziehungen": []
 }

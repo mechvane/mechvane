@@ -13,15 +13,15 @@
 
 ## 1. Zusammenfassung
 
-inventa wurde erfolgreich auf dem Windows-Laptop (Surface) des Nutzers eingerichtet. Alle Dateioperationen erfolgten strikt innerhalb von `C:\Users\gollu\inventa\` (keine Admin-Rechte, keine Registry-, PATH-, Firewall- oder MSI-Eingriffe). 
+inventa wurde erfolgreich auf dem Windows-Laptop (Surface) des Nutzers eingerichtet. Alle Dateioperationen erfolgten strikt innerhalb von `C:\Users\<user>\inventa\` (keine Admin-Rechte, keine Registry-, PATH-, Firewall- oder MSI-Eingriffe). 
 
 Wichtigste Ergebnisse:
 1. **SolidCraft 0.17.0 Portable:** Heruntergeladen, SHA256 verifiziert und entpackt. `solidcraft-cli.exe --version` (0.17.0) und `solidcraft-cli mcp` starten einwandfrei.
 2. **Referenzteile (`tests/reference/check.py`):** 27 von 27 Prüfungen (100 %) auf Windows mit SolidCraft 0.17.0 bestanden (Flansch, Gehäuse, Blechwinkel, Scharnier).
 3. **inventa-Basisfunktionen (`tests/inventa/check.py`):** Die ersten 41 Prüfungen laufen unter Windows fehlerfrei durch (Skizzenbesitzregel, Modellbrowser, Arbeitselement-Verschachtelung, semantische Abfragen `find`, Konstruktionsregelprüfung `check_design`, Baugruppengelenke über Dateigrenzen und die #3330-Reparaturlogik).
 4. **Upstream-Befund SolidCraft 0.17.0 auf Windows:** Beim Speichern von Bauteilen mit kosmetischem Gewinde (`solid.thread`, z. B. in `standard_parts.create` für ISO 4762, ISO 4032, Ruthex) stürzt `solidcraft-cli.exe` unter Windows mit `0xC0000005` (STATUS_ACCESS_VIOLATION) ab. Bauteile ohne `solid.thread` (ISO 7089 Scheibe, DIN 625 Kugellager, Platten, Bohrungen) sowie das Speichern als reines JSON speichern und öffnen stabil. Dieselben Tests laufen unter Linux mit SolidCraft 0.17.0 zu 100 % (107/107) fehlerfrei durch – es handelt sich um einen Windows-spezifischen Upstream-Bug im Geometrie-Cache-Writer von SolidCraft.
-5. **Probebauteil:** Ein parametrisches Bauteil (`probe.solidcraft`, Platte 40×30×5 mit Bohrung Ø 6 mm) wurde über die inventa-Schicht unter Windows erzeugt, gemessen (Volumen 5858,65 mm³) und unter `C:\Users\gollu\inventa\workspace\probe.solidcraft` abgelegt.
-6. **Claude-Code-Vorbereitung:** `.mcp.json` mit Windows-Pfaden und Umgebungsvariablen unter `C:\Users\gollu\inventa\repo\.mcp.json` hinterlegt und als Vorlage `docs/mcp.windows.example.json` im Repo gesichert.
+5. **Probebauteil:** Ein parametrisches Bauteil (`probe.solidcraft`, Platte 40×30×5 mit Bohrung Ø 6 mm) wurde über die inventa-Schicht unter Windows erzeugt, gemessen (Volumen 5858,65 mm³) und unter `C:\Users\<user>\inventa\workspace\probe.solidcraft` abgelegt.
+6. **Claude-Code-Vorbereitung:** `.mcp.json` mit Windows-Pfaden und Umgebungsvariablen unter `C:\Users\<user>\inventa\repo\.mcp.json` hinterlegt und als Vorlage `docs/mcp.windows.example.json` im Repo gesichert.
 
 ---
 
@@ -32,14 +32,14 @@ Wichtigste Ergebnisse:
   `gh release download v0.17.0 -R tangency-labs/solidcraft -p 'solidcraft-0.17.0-windows-x64-portable.zip' -p SHA256SUMS.txt -D /tmp/surface-dl`
 - SHA256-Prüfung: `OK` (`e92823075253fa28ba54da3ad9729d713ee0d8d73b3060a4e76c72e2760df890`).
 - Das ZIP enthält: `solidcraft-cli.exe` (80.443.904 Bytes), `solidcraft.exe` (109.753.344 Bytes), `solvecraft-cli.exe` (327.680 Bytes) und Lizenzdateien.
-- Per `scp` nach `C:\Users\gollu\inventa\` übertragen und per PowerShell `Expand-Archive` entpackt nach `C:\Users\gollu\inventa\solidcraft-0.17.0-windows-x64-portable\`.
+- Per `scp` nach `C:\Users\<user>\inventa\` übertragen und per PowerShell `Expand-Archive` entpackt nach `C:\Users\<user>\inventa\solidcraft-0.17.0-windows-x64-portable\`.
 - Startprüfung:
   - `solidcraft-cli.exe --version` liefert `solidcraft-cli 0.17.0`.
   - `solidcraft-cli.exe mcp` startet und antwortet auf das JSON-RPC-Initialisierungssignal mit `serverInfo.name: "solidcraft"`.
 
 ### 2.2 Repo-Stand übertragen
 - Erzeugung eines Archivs aus dem Branch: `git -C /root/repos/mechvane-surface archive --format=zip -o /tmp/surface-inventa.zip HEAD`
-- Per `scp` übertragen und entpackt nach `C:\Users\gollu\inventa\repo\`. Keine Zugangsdaten auf dem Surface angelegt.
+- Per `scp` übertragen und entpackt nach `C:\Users\<user>\inventa\repo\`. Keine Zugangsdaten auf dem Surface angelegt.
 
 ### 2.3 Plattformneutrale Codeanpassungen
 Um Windows ohne PATH-Änderungen und ohne Encoding-Probleme zu unterstützen, wurden folgende minimale, rückwärtskompatible Änderungen vorgenommen:
@@ -129,29 +129,29 @@ Auf dem Surface wurde über die inventa-Python-Schicht ein Probebauteil erzeugt:
 - **Geometrie:** Rechteckige Platte 40 mm × 30 mm, Dicke 5 mm, mit zentrierter zylindrischer Durchgangsbohrung Ø 6 mm bei (x = 20 mm, y = 15 mm).
 - **Ablauf:** `ws.new(PART, "probe")` → `s.batch(...)` → `sketch_rule.enforce(s)` → `doc.save()`.
 - **Messung:** Volumen 5.858,65 mm³ (analytischer Sollwert: $40 \times 30 \times 5 - \pi \times 3^2 \times 5 = 6.000 - 141,37 = 5.858,63\text{ mm}^3$).
-- **Ablage:** Gespeichert unter `C:\Users\gollu\inventa\workspace\probe.solidcraft` (Dateigröße: 6.343 Bytes).
+- **Ablage:** Gespeichert unter `C:\Users\<user>\inventa\workspace\probe.solidcraft` (Dateigröße: 6.343 Bytes).
 
 ---
 
 ## 6. Claude-Code-Konfiguration (.mcp.json)
 
-Die Datei `C:\Users\gollu\inventa\repo\.mcp.json` wurde mit Windows-Pfaden eingerichtet:
+Die Datei `C:\Users\<user>\inventa\repo\.mcp.json` wurde mit Windows-Pfaden eingerichtet:
 
 ```json
 {
   "mcpServers": {
     "solidcraft": {
-      "command": "C:\\Users\\gollu\\inventa\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe",
-      "args": ["mcp", "--allow-path", "C:\\Users\\gollu\\inventa\\workspace"]
+      "command": "C:\\Users\\<user>\\inventa\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe",
+      "args": ["mcp", "--allow-path", "C:\\Users\\<user>\\inventa\\workspace"]
     },
     "inventa": {
       "command": "python",
       "args": ["-m", "inventa"],
-      "cwd": "C:\\Users\\gollu\\inventa\\repo",
+      "cwd": "C:\\Users\\<user>\\inventa\\repo",
       "env": {
-        "INVENTA_WORKSPACE": "C:\\Users\\gollu\\inventa\\workspace",
-        "PYTHONPATH": "C:\\Users\\gollu\\inventa\\repo",
-        "SOLIDCRAFT_CLI": "C:\\Users\\gollu\\inventa\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe"
+        "INVENTA_WORKSPACE": "C:\\Users\\<user>\\inventa\\workspace",
+        "PYTHONPATH": "C:\\Users\\<user>\\inventa\\repo",
+        "SOLIDCRAFT_CLI": "C:\\Users\\<user>\\inventa\\solidcraft-0.17.0-windows-x64-portable\\solidcraft-cli.exe"
       }
     }
   }
@@ -165,4 +165,4 @@ Die Datei `C:\Users\gollu\inventa\repo\.mcp.json` wurde mit Windows-Pfaden einge
 1. **Upstream-Meldung an `tangency-labs/solidcraft`:**
    - Issue: `solidcraft-cli.exe` v0.17.0 (Windows x64 portable) stürzt bei `save` mit `0xC0000005` ab, wenn das Design ein `solid.thread`-Feature enthält. (Unter Linux x86_64 tritt das Problem nicht auf).
 2. **Python-Paket `mcp` auf dem Surface:**
-   - Für die Ausführung von `python -m inventa` (als MCP-Server für Claude Code) wird das Python-Paket `mcp` benötigt (`from mcp.server.fastmcp import FastMCP`). Im globalen System-Python 3.14.7 auf dem Surface ist es noch nicht installiert. Gemäß den Grenzvorgaben darf kein systemweites `pip install` erfolgen; bei Bedarf kann ein venv unter `C:\Users\gollu\inventa\venv` eingerichtet werden.
+   - Für die Ausführung von `python -m inventa` (als MCP-Server für Claude Code) wird das Python-Paket `mcp` benötigt (`from mcp.server.fastmcp import FastMCP`). Im globalen System-Python 3.14.7 auf dem Surface ist es noch nicht installiert. Gemäß den Grenzvorgaben darf kein systemweites `pip install` erfolgen; bei Bedarf kann ein venv unter `C:\Users\<user>\inventa\venv` eingerichtet werden.

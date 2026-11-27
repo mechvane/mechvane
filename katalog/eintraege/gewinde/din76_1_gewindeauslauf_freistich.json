@@ -4,7 +4,7 @@
   "werte": [
     {
       "name": "M3 Auslauf x1 außen",
-      "wert": 1.25,
+      "wert": 1.3,
       "einheit": "mm"
     },
     {
@@ -19,12 +19,12 @@
     },
     {
       "name": "M3 Freistich g2 max Form A",
-      "wert": 1.75,
+      "wert": 1.8,
       "einheit": "mm"
     },
     {
       "name": "M4 Auslauf x1 außen",
-      "wert": 1.75,
+      "wert": 1.8,
       "einheit": "mm"
     },
     {
@@ -39,7 +39,7 @@
     },
     {
       "name": "M4 Freistich g2 max Form A",
-      "wert": 2.45,
+      "wert": 2.5,
       "einheit": "mm"
     },
     {
@@ -84,7 +84,7 @@
     },
     {
       "name": "M8 Auslauf x1 außen",
-      "wert": 3.2,
+      "wert": 3.1,
       "einheit": "mm"
     },
     {
@@ -119,12 +119,12 @@
     },
     {
       "name": "M10 Freistich g2 max Form A",
-      "wert": 5.2,
+      "wert": 5.3,
       "einheit": "mm"
     },
     {
       "name": "M12 Auslauf x1 außen",
-      "wert": 4.3,
+      "wert": 4.4,
       "einheit": "mm"
     },
     {
@@ -175,15 +175,15 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.handwerk-technik.de",
-      "stelle": "Tabellenbuch Maschinenelemente DIN 76-1",
-      "zitat": "DIN 76-1: Gewindeausläufe und Gewindefreistiche",
-      "abgerufen": "2026-10-21"
+      "url": "https://zencnc.com/fachwissen/gewindefreistich/",
+      "stelle": "Tabellen 1 und 2 nach DIN 76-1:2025-10 (Gewindeauslauf x, Freistich dg und g2, Auslauf e)",
+      "zitat": "Für M6 nennt Tabelle 2 e1 = 5,1 mm, e2 = 3,2 mm und e3 = 8,2 mm.",
+      "abgerufen": "2026-11-27"
     }
   ],
-  "begruendung": "Gewindefreistiche erlauben das vollständige Einschrauben bis an den Bund/Absatz, ohne dass die unvollständigen Anschnittgänge des Gewindewerkzeugs verklemmen.",
+  "begruendung": "Gewindefreistiche erlauben das vollständige Einschrauben bis an den Bund/Absatz, ohne dass die unvollständigen Anschnittgänge des Gewindewerkzeugs verklemmen. Werte auf DIN 76-1:2025-10 (Tabellen 1 und 2) nach Sekundärquelle korrigiert: x1 (M3 1,3, M4 1,8, M8 3,1, M12 4,4) und g2 Form A (M3 1,8, M4 2,5, M10 5,3), vorher ältere bzw. ungerundete Werte.",
   "ausnahmen": "Gewinderollen oder Gewindefräsen mit definiertem Auslauf.",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

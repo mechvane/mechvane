@@ -1,0 +1,369 @@
+{
+  "id": "buehler_ifanger_iso273_din74_din974_1",
+  "aussage": "Hersteller- und Werksnorm-Angaben (Bühler LHH-N 300.009, Ifanger VFL, Reyher TI sowie Neue Physik) für Durchgangslöcher nach ISO 273 (DIN EN 20273) in den Reihen fein, mittel und grob (M2,5 bis M12), Flachsenkungen nach DIN 974-1 ohne Scheibe (Reihe 1) und mit Scheibe (Reihe 4 nach DIN 433 bei Bühler) sowie Kegelsenkungen 90° nach DIN 74 Form F für Innensechskant-Senkschrauben ISO 10642 (M3 bis M12). Gegenprüfung gegen mechvane/hole_tables.py: ISO 273 (M3–M12 fein/mittel/grob und M2,5 fein/mittel), DIN 974-1 ohne Scheibe (M3–M12) sowie DIN 74 Form F (auf 0,1 mm gerundet) stimmen überein; bei DIN 974-1 mit Scheibe nutzt Bühler Reihe 4 (DIN 433) statt Reihe 5 (ISO 7089 in hole_tables.py).",
+  "werte": [
+    {
+      "name": "M2.5 Durchgangsloch fein (Ifanger)",
+      "wert": 2.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 Durchgangsloch mittel (Ifanger)",
+      "wert": 2.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Durchgangsloch fein / mittel / grob",
+      "bereich": [3.2, 3.6],
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Durchgangsloch mittel",
+      "wert": 3.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch fein / mittel / grob",
+      "bereich": [4.3, 4.8],
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Durchgangsloch mittel",
+      "wert": 4.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch fein / mittel / grob",
+      "bereich": [5.3, 5.8],
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Durchgangsloch mittel",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch fein / mittel / grob",
+      "bereich": [6.4, 7.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 Durchgangsloch mittel",
+      "wert": 6.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch fein / mittel / grob",
+      "bereich": [8.4, 10.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 Durchgangsloch mittel",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch fein / mittel / grob",
+      "bereich": [10.5, 12.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 Durchgangsloch mittel",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch fein / mittel / grob",
+      "bereich": [13.0, 14.5],
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 Durchgangsloch mittel",
+      "wert": 13.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 DIN 974-1 ohne Scheibe Senk-Ø (Ifanger)",
+      "wert": 5.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 6.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 3.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 974-1 ohne Scheibe Senk-Ø / Tiefe (Bühler/Ifanger)",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 4.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 9.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 4.95,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 10.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 5.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 6.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 11.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 13.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 8.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 15.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 8.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 16.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 10.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 18.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 10.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 12.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 974-1 ohne Scheibe Senk-Ø",
+      "wert": 20.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 974-1 ohne Scheibe Tiefe",
+      "wert": 12.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Senk-Ø",
+      "wert": 24.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 974-1 mit Scheibe Reihe 4 (Bühler) Tiefe",
+      "wert": 14.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 6.94,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 DIN 74 Form F Tiefe",
+      "wert": 1.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 9.18,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 DIN 74 Form F Tiefe",
+      "wert": 2.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 11.47,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 DIN 74 Form F Tiefe",
+      "wert": 3.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 13.71,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 DIN 74 Form F Tiefe",
+      "wert": 3.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 18.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 DIN 74 Form F Tiefe",
+      "wert": 4.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 22.73,
+      "einheit": "mm"
+    },
+    {
+      "name": "M10 DIN 74 Form F Tiefe",
+      "wert": 5.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 74 Form F Senk-Ø (Ifanger)",
+      "wert": 27.21,
+      "einheit": "mm"
+    },
+    {
+      "name": "M12 DIN 74 Form F Tiefe",
+      "wert": 6.9,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "Bohren",
+      "Senken",
+      "Flachsenken",
+      "Kegelsenken",
+      "CNC-Fräsen"
+    ],
+    "feature": [
+      "Durchgangsbohrung",
+      "Durchgangsloch",
+      "Flachsenkung",
+      "Kegelsenkung",
+      "Senkung"
+    ],
+    "groesse": [
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://dam.buhlergroup.com/asset/b8a11dd24a59463f9d1dc4051b63b628",
+      "stelle": "Seite 1, Bühler Werksnorm LHH-N 300.009, Punkt 3 Vorzugsreihe Schrauben",
+      "zitat": "Die Schrauben entsprechen DIN EN ISO 4762, die Senkungen DIN 974-1.",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.defruytier.be/uploads/product/files/ifanger-VFL.pdf",
+      "stelle": "Seite 31, Ifanger Normtabelle über Schraubenkopfsenkungen (DIN 974-1 und DIN 74: 2003-04)",
+      "zitat": "Normtabelle über Schraubenkopfsenkungen",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seite TI-12 und Normenverzeichnis (ISO 273 / ISO 15065 / DIN 74)",
+      "zitat": "Wird die Senkung nach der zurückgezogenen DIN 74-1:1980 ausgeführt, so bleibt unter Umständen bei der Verwendung von ISO-Senkköpfen ein Überstand über dem Bauteil (insbesondere bei den Durchmessern M 3,5, M 4 und M 8).",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.neue-physik.de/353.9_Senkungen.php",
+      "stelle": "Tabellen Durchgangslöcher (DIN EN 20273), Senkungen für Zylinderkopfschrauben (DIN 974-1) und Senkungen für Senkschrauben (DIN 74)",
+      "zitat": "In der Tabelle sind die gängigsten Gewindegrößen aufgeführt. Im Regelfall wird die Reihe „mittel” verwendet.",
+      "abgerufen": "2026-11-26"
+    }
+  ],
+  "begruendung": "Durchgangslöcher nach ISO 273 (DIN EN 20273) nutzen im Regelmaschinenbau die Reihe mittel (H13); die Reihe fein (H12) verringert das Radialspiel bei präzisen Lochbildern, die Reihe grob (H14) gleicht größere Lagetoleranzen aus. Flachsenkungen nach DIN 974-1 versenken Zylinderschrauben ISO 4762 bündig ohne Unterlegteil (Reihe 1) oder mit schmaler Scheibe DIN 433 / ISO 7092 (Reihe 4) bzw. Standardscheibe ISO 7089 (Reihe 5). Für Innensechskant-Senkschrauben ISO 10642 sind die größeren Senkungen nach DIN 74 Form F (DIN 74:2003-04) erforderlich, da Schraubenköpfe in älteren Senkungen nach DIN 74-1:1980 oder DIN 66 überstehen können.",
+  "ausnahmen": "Kontext: Die Bühler-Werksnorm LHH-N 300.009 betrifft laut Quellenprüfung Entgasungsschrauben im Vakuum; die Tabellenwerte gelten nur mit diesem Vorbehalt als Hersteller-Angabe für allgemeine Verwendung. Quellenabdeckung: Reyhers frei zugängliches TI-PDF führt ISO 273 (20273) und DIN 74/15065 im Normenverzeichnis und warnt vor Überständen bei DIN 74-1:1980, druckt jedoch keine vollständigen Durchgangsloch- und Senkungstabellen; ältere Würth-Industrie-PDF-Links leiten um. Gegenprüfung gegen mechvane/hole_tables.py: (1) ISO_273 stimmt für M3–M12 (fein/mittel/grob) und M2.5 (fein 2,7 / mittel 2,9 mm) exakt überein; M2.5 grob (3,1 mm) fehlt in diesen vier Quellen (bei Ifanger ohne Reihe grob, bei Neue Physik ohne M2.5). (2) DIN_974_1 without_washer stimmt für M3–M12 (d1 und Tiefe t) exakt mit Bühler, Ifanger und Neue Physik überein; bei M2.5 ist nur Ø 5,5 mm bei Ifanger belegt (Tiefe 2,9 mm fehlt in diesen Quellen), und bei M20 ohne Scheibe nennt Bühler t1 = 20,8 mm statt 20,6 mm bei Neue Physik. (3) DIN_974_1 with_washer weicht systematisch ab: hole_tables.py verwendet Reihe 5 für ISO-7089-Scheiben (M4–M12: Ø 10/13/15/18/24/26 mm; Tiefe 5,2/6,4/8,0/10,2/12,6/15,1 mm), Bühler LHH-N 300.009 dagegen Reihe 4 für DIN-433-Scheiben (M4–M12: Ø 9/11/13/16/20/24 mm; Tiefe 4,95/6,5/8,2/10,4/12,4/14,8 mm). (4) DIN_74_F rundet in hole_tables.py die Ifanger-Werte nach DIN 74:2003-04 (6,94/9,18/11,47/13,71/18,25/22,73/27,21 mm) auf eine Nachkommastelle (6,9/9,2/11,5/13,7/18,3/22,7/27,2 mm) und stimmt in den Senktiefen (1,8 bis 6,9 mm) exakt mit Neue Physik überein.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso273_durchgangsbohrungen"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din74_iso15065_senkungen_senkschrauben"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "din974_1_senkungen_iso4762_scheibe"
+    }
+  ]
+}

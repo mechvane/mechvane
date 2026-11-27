@@ -159,15 +159,21 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.beuth.de",
-      "stelle": "Normen für das Zeichnen DIN 74 / ISO 15065",
-      "zitat": "DIN 74: Senkungen für Senkschrauben",
-      "abgerufen": "2026-10-21"
+      "url": "https://cdn.standards.iteh.ai/samples/37365/57c8c6dac6864ac5a6f7bfa6fdd06111/ISO-15065-2005.pdf",
+      "stelle": "ISO 15065:2005, Tabelle 1 Dimensions of countersink (Dc min.)",
+      "zitat": "3 M3 ST2,9 3,40 3,58 6,3 6,5 1,55",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://mvg-frankfurt.de/rechner/kernloch",
+      "stelle": "Tabelle Senkung 90° für Senkschrauben (Senkdurchmesser d2 nach ISO 15065)",
+      "zitat": "Senkdurchmesser nach ISO 15065 (Senkschrauben bis M10), Durchgang d1 nach ISO 273 mittel.",
+      "abgerufen": "2026-11-27"
     }
   ],
-  "begruendung": "DIN 74 Form F ist speziell auf ISO 10642 abgestimmt. DIN 74 Form A ist für Schlitzsenkschrauben genormt und besitzt kleinere Senkdurchmesser, sodass ISO 10642 Schrauben in Form-A-Senkungen überstehen.",
+  "begruendung": "DIN 74 Form F ist speziell auf ISO 10642 abgestimmt. DIN 74 Form A ist für Schlitzsenkschrauben genormt und besitzt kleinere Senkdurchmesser, sodass ISO 10642 Schrauben in Form-A-Senkungen überstehen. Nicht belegt (2026-11-27): Die Werte von Form A und Form F nach DIN 74:2003-04 stammen nur aus einer Kopie der Norm auf einer Dokumentenplattform, die hier nicht als Quelle angegeben wird; die freie Ausgabe DIN 74-1:2000-11 nennt für Form F andere Werte. Belegt sind nur die ISO-15065-Werte.",
   "ausnahmen": "DIN 74 Form A ist ab M10 in der Norm nicht mehr enthalten.",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "nicht_belegt",
   "beziehungen": []
 }

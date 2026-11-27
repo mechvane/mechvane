@@ -12,7 +12,7 @@ import struct
 from mcp.server.fastmcp import FastMCP, Image
 
 from . import bom, bolted, design_rules, step_import, modeling, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
-from .documents import ASSEMBLY, PART, Workspace
+from .documents import ASSEMBLY, PART, Workspace, check_windows_writable, reload_windows
 
 mcp = FastMCP(
     "mechvane",
@@ -25,8 +25,9 @@ mcp = FastMCP(
         "it. Keep the design intent: when a request names a relation (in the middle of a face, 10 mm from an "
         "edge, flush, concentric, equal, symmetric), build it as sketch constraints on projected edges "
         "(sketch.project, sketch.constraint.midpoint, dimensions to the projected line), never as computed "
-        "coordinates, so it still holds when the part changes. Put parts into an assembly with insert_part, join them with add_joint and change them with "
-        "edit_joint or delete_joint (not raw joint.create or joint.edit, so Mechvane can check the joint "
+        "coordinates, so it still holds when the part changes. Put parts into an assembly with insert_part, join them with add_joint "
+        "(pass as_built=True when parts are already positioned so they stay where they are) and change them with "
+        "edit_joint or delete_joint (not raw joint.create, joint.as_built or joint.edit, so Mechvane can check the joint "
         "later); for a rule between faces (mate, flush, concentric, angle ...) use add_constraint and edit_constraint, and after changing a part file call update_links: it reports joints that moved to another "
         "face. Save with save_document. To inspect or repair a part before a feature, roll there with "
         "part_end(document, before=feature) and back with part_end(document). For holes and screws use bolted_connection; "
@@ -50,7 +51,7 @@ def _autosave_tool(*args, **kwargs):
             finally:
                 if os.environ.get("MECHVANE_AUTOSAVE") == "1":
                     for doc in list(ws.docs.values()):
-                        if doc.dirty():
+                        if not getattr(doc, "window", False) and doc.dirty():  # the user saves the window's design
                             doc.save()
         return register(wrapped)
     return deco
@@ -105,7 +106,7 @@ def iso_fit(nominal: float, fit: str) -> dict:
     catalog entries (usage notes, e.g. bearing seats) that mention the classes."""
     out = iso286.fit(nominal, fit) if "/" in fit else iso286.limits(nominal, fit)
     terms = [t.strip() for t in fit.split("/")]
-    out["katalog"] = [{"id": e["id"], "aussage": e["aussage"]} for e in katalog.load()
+    out["katalog"] = [{"id": e["id"], "aussage": e["aussage"]} for e in katalog.load(include_private=False)
                       if any(re.search(rf"\b{re.escape(t)}\b", e["aussage"]) for t in terms)]
     return out
 
@@ -121,6 +122,15 @@ def new_assembly(name: str, path: str | None = None, overwrite: bool = False) ->
 def open_document(path: str, name: str | None = None) -> dict:
     """Open a part or assembly file (paths relative to the workspace)."""
     return ws.open(path, name).info()
+
+
+@mcp.tool()
+def connect_window(name: str = "window", address: str = "auto") -> dict:
+    """Work on the design open in the running SolidCraft window, as document `name` (the other tools take it as
+    `document`). address "auto" finds the window (several windows: give "127.0.0.1:PORT"). The design is the
+    user's: new_part, open_document and save_document never replace or save it, the user saves in the app.
+    Mechvane's changes show in the window; close_document only disconnects."""
+    return ws.connect_window(name, address).info()
 
 
 @mcp.tool()
@@ -179,6 +189,9 @@ def close_document(document: str, discard: bool = False) -> dict:
     """Close an open document without saving. If the document has unsaved changes,
     raises an error unless discard=True."""
     doc = ws.docs.get(document) or ws.get(document)  # no reload check: closing is how to drop a stale copy
+    if getattr(doc, "window", False):
+        ws.close(document)  # the user's design stays open in the app
+        return {"closed": document, "note": "disconnected; the design stays open in the window"}
     is_dirty = doc.session.cmd("document.inspect").get("dirty", False)
     if is_dirty and not discard:
         raise ValueError(
@@ -191,6 +204,104 @@ def close_document(document: str, discard: bool = False) -> dict:
 _compact = modeling.compact
 
 
+# The design in the window is the user's: only commands that model, query or check it pass (a positive list, so a
+# command added in a later SolidCraft release stays refused until it is looked at). Batch steps that name a tool
+# (save, open, new_design, export, undo ...) and anything that reads or writes files are refused (#181 review).
+WINDOW_ALLOWED = ("solid.", "sketch.", "construct.", "surface.", "timeline.", "inspect.", "appearance.", "material.",
+                  "sheet.", "plastic.", "model.", "body.", "face.", "mesh.", "expr.", "parameters.", "joint.", "contact.",
+                  "occurrence.", "assembly.", "explode.", "note.", "motion.", "component.")
+WINDOW_REFUSED = ("sketch.insert_dxf", "sketch.insert_svg", "sketch.export_dxf", "sketch.export_svg", "sheet.export_dxf",
+                  "sheet.export_bend_table", "parameters.export", "parameters.import", "motion.export",
+                  "component.insert_design", "component.replace_with_link", "component.extract", "component.relink",
+                  "component.paste_from_design", "component.edit_in_place", "component.finish_edit",
+                  "component.update_links", "component.break_link", "timeline.export_script", "assembly.bom")
+WINDOW_DOCUMENT_READS = ("document.inspect", "document.metadata", "document.list", "document.revision")
+WINDOW_TOOL_STEPS = ("set_parameter", "measure", "inspect_design", "list_commands", "describe_command")
+_FILE_KEYS = ("file", "files", "dir", "folder", "directory", "filename")
+_FILE_VALUE = re.compile(r"[/\\]|^~|\.(sc|solidcraft|step|stp|stl|3mf|obj|dxf|svg|json|png|jpe?g|gif|csv|txt|pdf|urdf|glb|gltf|wasm|zip)$",
+                         re.IGNORECASE)  # a feature name such as "Profil.v2" is not a file (#190)
+
+
+def _file_param(params):
+    """A parameter that names a file or folder: a key such as `file`/`dir`, or a `path`/`out` string that looks
+    like one (`solid.sweep` and the like take a geometric `path`, which is not a file)."""
+    if isinstance(params, dict):
+        for k, v in params.items():
+            if k.lower() in _FILE_KEYS and v not in (None, "", [], {}):
+                return k
+            if k.lower() in ("path", "paths", "out", "output") and isinstance(v, str) and _FILE_VALUE.search(v):
+                return k
+            hit = _file_param(v)
+            if hit:
+                return hit
+    elif isinstance(params, list):
+        for v in params:
+            hit = _file_param(v)
+            if hit:
+                return hit
+    return None
+
+
+def _window_refusal(name, params):
+    if not isinstance(name, str) or not name:
+        return f"{name!r} is not a command name"
+    if name == "execute":  # a batch step that wraps one command
+        inner = params if isinstance(params, dict) else {}
+        return _window_refusal(inner.get("command"), inner.get("params"))
+    if "." not in name:
+        if name not in WINDOW_TOOL_STEPS:
+            return f"the batch step {name!r} could replace, save or export the user's design"
+    elif name in WINDOW_DOCUMENT_READS:
+        pass
+    elif not name.startswith(WINDOW_ALLOWED) or name.startswith(WINDOW_REFUSED):
+        return f"{name!r} could replace, save or close the user's design, or reach files"
+    key = _file_param(params)
+    if key:
+        return f"{name!r} names a file or folder ({key!r})"
+    return None
+
+
+def _window_guard(doc, commands):
+    if not getattr(doc, "window", False):
+        return
+    for c in commands:
+        if isinstance(c, str):
+            name, params = c, None
+        elif isinstance(c, dict):
+            name, params = c.get("command"), c.get("params")
+        else:
+            name, params = c, None
+        why = _window_refusal(name, params)
+        if why:
+            raise ValueError(f"refused on {doc.name!r}, the design in the open SolidCraft window: {why} "
+                             "(the user saves, opens and exports in the app)")
+
+
+def _save_steps_guard(doc, commands):
+    """A batch step that saves to a file a connected SolidCraft window shows goes through the same check as
+    save_document: never over unsaved work in the window (#190)."""
+    targets = []
+    for c in commands:
+        if not isinstance(c, dict):
+            continue
+        name, params = c.get("command"), c.get("params") or {}
+        if name == "execute" and isinstance(params, dict):
+            name, params = params.get("command"), params.get("params") or {}
+        if name in ("save", "file.save", "file.save_as", "component.extract"):
+            path = params.get("path") if isinstance(params, dict) else None
+            target = Path(path) if path else (getattr(doc, "path", None) if name != "component.extract" else None)
+            if target is not None and not getattr(doc, "window", False):
+                own = getattr(doc, "path", None)
+                if own is not None and Path(target).resolve() == Path(own).resolve():
+                    cur = doc.disk_mtime()
+                    if doc.mtime is not None and cur is not None and cur != doc.mtime:
+                        raise ValueError(f"{Path(own).name} changed on disk since {doc.name!r} was loaded here "
+                                         "(saved in the SolidCraft app?): close_document it and open it again")
+                check_windows_writable(target)
+                targets.append(target)
+    return targets
+
+
 @mcp.tool()
 def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
     """Run SolidCraft commands ([{command, params}]) in a document, all or nothing. In a part, owned
@@ -200,7 +311,19 @@ def run(document: str, commands: list[dict], verbose: bool = False) -> dict:
     it was aimed at, the feature in the way with distance and point, and the largest size that fits. A
     change that makes a later feature fail succeeds and lists that feature in feature_errors (with
     where): fix it or take the change back before going on."""
-    return modeling.run_commands(ws.get(document), commands, verbose)
+    doc = ws.get(document)
+    _window_guard(doc, commands)
+    written = _save_steps_guard(doc, commands)
+    try:
+        return modeling.run_commands(doc, commands, verbose)
+    finally:
+        # also after a failed batch: a save step before the failing one has written its file, and the rollback only
+        # resets the session. As save_document does, a window showing the file follows it (#190, review #193)
+        for target in written:
+            if Path(target).exists():
+                reload_windows(target)
+                if Path(target).resolve() == Path(doc.path).resolve():
+                    doc.mtime = doc.disk_mtime()
 
 
 @mcp.tool()
@@ -209,7 +332,7 @@ def browser(document: str, groups: bool = False) -> dict:
     marker, or an assembly's parts with their joints under each part. groups=true adds the same
     items as folders (sketches, work features, relations), each with what it belongs to."""
     doc = ws.get(document)
-    t = tree.part_tree(doc.session, groups) if doc.kind == PART else tree.assembly_tree(doc.session, groups, base=doc.path.parent)
+    t = tree.part_tree(doc.session, groups) if doc.kind == PART else tree.assembly_tree(doc.session, groups, base=doc.base_dir)
     return {"text": tree.render(t), "tree": t}
 
 
@@ -239,7 +362,7 @@ def rename_feature(document: str, feature: str, name: str) -> dict:
     if name in existing and name != feature:
         raise ValueError(f"another feature is called {name!r}")
     r = doc.session.cmd("timeline.rename", {"feature": feature, "name": name})
-    for other in ws.docs.values():
+    for other in ws.file_docs():
         if other.kind == ASSEMBLY:
             meta = other.metadata()
             conns = meta.get("bolted_connections", {})
@@ -278,11 +401,13 @@ def insert_part(assembly: str, part_path: str, name: str | None = None, translat
 
 @mcp.tool()
 @sc_errors.explained
-def add_joint(assembly: str, params: dict) -> dict:
+def add_joint(assembly: str, params: dict, as_built: bool = False) -> dict:
     """Create a joint (params as SolidCraft joint.create takes them, `name` required) and record which
-    part face each side sits on, so update_links can check it later."""
+    part face each side sits on, so update_links can check it later.
+    With as_built=True (joint.as_built: type, a, b as occurrence names, optional at, name required), joins
+    parts where they already sit without moving or rotating them."""
     doc = ws.get(assembly, ASSEMBLY)
-    return modeling.add_joint(ws, doc, params)
+    return modeling.add_joint(ws, doc, params, as_built=as_built)
 
 
 @mcp.tool()
@@ -331,7 +456,7 @@ def adopt_joint(assembly: str, joint: str) -> dict:
     """Start checking a joint that was not made with add_joint (made in the app or with raw
     joint.create). update_links reports it when it moves; repair needs add_joint's parameters."""
     doc = ws.get(assembly, ASSEMBLY)
-    return {"anchors": links.record(ws, doc, joint)["sides"]}
+    return modeling.adopt_joint(ws, doc, joint)
 
 
 @mcp.tool()
@@ -418,7 +543,9 @@ def list_commands(document: str, filter: str | None = None) -> dict:
 @mcp.tool()
 def command(document: str, command: str, params: dict | None = None) -> dict:
     """Run one SolidCraft command in a document (queries such as joint.list or document.inspect)."""
-    r = ws.get(document).session.cmd(command, params or {})
+    doc = ws.get(document)
+    _window_guard(doc, [{"command": command, "params": params}])
+    r = doc.session.cmd(command, params or {})
     return r if isinstance(r, dict) else {"result": r}
 
 
@@ -513,9 +640,28 @@ def screenshot(document: str, view: str = "iso", path: str | None = None):
     """Render a document headless (views: iso, front, top, right, …).
     If path is given, saves the PNG file under this path (relative to the workspace,
     not outside) and returns path, size in bytes and image dimensions instead of the image."""
-    r = ws.get(document).session.tool("screenshot", {"view": view})
+    doc = ws.get(document)
+    r = doc.session.tool("screenshot", _shot_args(doc, view))
     raw = base64.b64decode(r["images"][0]["image"])
     return _save_or_return_png(raw, path, ws)
+
+
+_WINDOW_VIEWS = {"iso": "view.isometric", "front": "view.front", "top": "view.top", "right": "view.right",
+                 "left": "view.left", "back": "view.back", "bottom": "view.bottom", "home": "view.home"}
+
+
+def _shot_args(doc, view):
+    """Screenshot arguments. In the window: a render of the model, not the app's chrome, after turning the app's
+    camera to `view` and fitting it (a named view alone keeps the app's zoom; SolidCraft 0.43 cannot read the
+    camera back to restore it, and neither leaves an undo entry, checked live 2026-11-24)."""
+    if not getattr(doc, "window", False):
+        return {"view": view}
+    cmd = _WINDOW_VIEWS.get(view)
+    if cmd is None:
+        return {"view": view, "source": "model"}  # a named view saved with view.save
+    doc.session.cmd(cmd)
+    doc.session.cmd("view.fit")
+    return {"source": "model"}
 
 
 @mcp.tool()
@@ -536,7 +682,7 @@ def verify_view(document: str, section: dict | None = None, path: str | None = N
     ]
     raw_images = []
     for v, lbl in views:
-        r = doc.session.tool("screenshot", {"view": v})
+        r = doc.session.tool("screenshot", _shot_args(doc, v))
         raw_images.append((base64.b64decode(r["images"][0]["image"]), lbl))
 
     # Section view: cut through the middle of the bounding box (normal X by default)
@@ -569,9 +715,12 @@ def verify_view(document: str, section: dict | None = None, path: str | None = N
         sec_view = "right"
 
     try:
+        if getattr(doc, "window", False) and not section:
+            # a section of our own would replace and then clear one the user set in the window (#181)
+            raise ValueError("no unasked section in the window")
         doc.session.cmd("inspect.section", sec_params)
         try:
-            r = doc.session.tool("screenshot", {"view": sec_view})
+            r = doc.session.tool("screenshot", _shot_args(doc, sec_view))
             raw_images.append((base64.b64decode(r["images"][0]["image"]), sec_lbl))
         finally:
             try:
@@ -580,7 +729,7 @@ def verify_view(document: str, section: dict | None = None, path: str | None = N
                 pass
     except Exception:
         # Fallback to plain right view if inspect.section fails
-        r = doc.session.tool("screenshot", {"view": "right"})
+        r = doc.session.tool("screenshot", _shot_args(doc, "right"))
         raw_images.append((base64.b64decode(r["images"][0]["image"]), "Right"))
 
     pil_images = [PILImage.open(io.BytesIO(raw)).convert("RGB") for raw, _ in raw_images]

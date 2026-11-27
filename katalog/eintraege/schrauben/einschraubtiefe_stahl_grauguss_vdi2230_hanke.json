@@ -1,6 +1,6 @@
 {
   "id": "einschraubtiefe_stahl_grauguss_vdi2230_hanke",
-  "aussage": "Berechnung der Gesamteinschraubtiefe m_ges nach VDI 2230-1 für Schrauben 8.8 in Baustahl und Grauguss nach Hanke: Baustahl S235: M6 = 8,2 mm (1,37 * d), M8 = 10,6 mm (1,33 * d), M10 = 13,0 mm (1,30 * d), M12 = 15,4 mm (1,28 * d); Baustahl S355: M6 = 6,8 mm (1,13 * d); Grauguss GJL-100: M6 = 15,1 mm (2,52 * d); GJL-200: M6 = 8,9 mm (1,48 * d); GJL-250: M6 = 7,8 mm (1,30 * d).",
+  "aussage": "Berechnung der Gesamteinschraubtiefe m_ges nach VDI 2230-1 für Schrauben 8.8 in Baustahl S235 nach Hanke: M6 = 8,2 mm (1,37 * d), M8 = 10,6 mm (1,33 * d), M10 = 13,0 mm (1,30 * d), M12 = 15,4 mm (1,28 * d). Die Quelle behandelt nur Baustahl (Scherfestigkeitsverhältnis 0,8); Werte für S355 und Grauguss sind nicht belegt und wurden entfernt (#210).",
   "werte": [
     {
       "name": "M6 S235 m_ges",
@@ -41,28 +41,13 @@
       "name": "M12 S235 Faktor",
       "wert": 1.28,
       "einheit": "x Nenndurchmesser"
-    },
-    {
-      "name": "M6 GJL-250 m_ges",
-      "wert": 7.8,
-      "einheit": "mm"
-    },
-    {
-      "name": "M6 GJL-250 Faktor",
-      "wert": 1.3,
-      "einheit": "x Nenndurchmesser"
     }
   ],
   "geltungsbereich": {
     "werkstoff": [
       "Stahl",
       "Baustahl",
-      "S235",
-      "S355",
-      "Grauguss",
-      "GJL-100",
-      "GJL-200",
-      "GJL-250"
+      "S235"
     ],
     "verfahren": [
       "Schraubmontage",

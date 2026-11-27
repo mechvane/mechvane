@@ -2,8 +2,9 @@
 dialogs in the web UI (`/api/feature`): all or nothing, sketch rule, state delta, explained errors."""
 
 import json
+import math
 
-from . import links, sc_errors, sc_locate, sketch_rule, state_delta
+from . import geometry as g, links, sc_errors, sc_locate, sketch_rule, state_delta
 from .documents import PART
 
 
@@ -54,7 +55,8 @@ def run_commands(doc, commands: list[dict], verbose: bool = False) -> dict:
     out = {"results": result.get("results", result) if isinstance(result, dict) else result}
     if not verbose:
         out["results"] = compact(out["results"])
-    if doc.kind == PART:
+    if doc.kind == PART and not getattr(doc, "window", False):
+        # not in the user's window: enforce moves every sketch of the design, also the ones the user placed (#181)
         try:
             out["sketch_rule"] = sketch_rule.enforce(doc.session)
         except Exception as e:
@@ -200,15 +202,117 @@ def short_error(e) -> str:
     return f"{message} SolidCraft: {inner}"
 
 
-def add_joint(ws, doc, params: dict) -> dict:
-    """Create a joint via SolidCraft joint.create (`name` required) and record both side anchors
-    with links.record so update_links / check_joints can verify it later."""
+def _transform_delta(m_before, m_after, ref_point=None) -> tuple[float, float]:
+    """Translation distance (mm) of `ref_point` (default: origin) and rotation angle (degrees)
+    between two 4x4 row-vector transforms."""
+    if ref_point is None:
+        dist = g.norm(g.sub(m_after[3][:3], m_before[3][:3]))
+    else:
+        dist = g.norm(g.sub(g.apply_point(m_after, ref_point), g.apply_point(m_before, ref_point)))
+    trace = sum(m_before[i][j] * m_after[i][j] for i in range(3) for j in range(3))
+    cos_a = max(-1.0, min(1.0, (trace - 1.0) / 2.0))
+    return dist, math.degrees(math.acos(cos_a))
+
+
+def _occurrence_midpoints(session, occs: dict | list) -> dict[int, list[float]]:
+    """Local bounding-box midpoint (in each occurrence's coordinate frame) for the given occurrences.
+    Returns {occ_id: [x, y, z]} for occurrences that have measured body geometry."""
+    try:
+        comps = {c["id"]: c for c in session.cmd("component.list").get("components", [])}
+        bodies = {
+            b["name"]: b["bbox"]
+            for b in session.cmd("document.inspect", {"measure": True}).get("bodies", [])
+            if b.get("bbox") and "min" in b["bbox"] and "max" in b["bbox"]
+        }
+    except Exception:
+        return {}
+    if not comps or not bodies:
+        return {}
+
+    cache: dict[int, dict | None] = {}
+
+    def _local_bbox(comp_id: int, seen: set[int]) -> dict | None:
+        if comp_id in cache:
+            return cache[comp_id]
+        if comp_id in seen:
+            return None
+        comp = comps.get(comp_id)
+        if not comp:
+            return None
+        next_seen = seen | {comp_id}
+        pts = []
+        for b_name in comp.get("bodies", []):
+            bb = bodies.get(b_name)
+            if bb is not None:
+                pts.extend((bb["min"], bb["max"]))
+        for ch in comp.get("children", []):
+            ch_bb = _local_bbox(ch["component"], next_seen)
+            if ch_bb is not None:
+                lo, hi = ch_bb["min"], ch_bb["max"]
+                m_ch = ch["transform"]
+                pts.extend(
+                    g.apply_point(m_ch, [x, y, z])
+                    for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])
+                )
+        res = {"min": [min(p[i] for p in pts) for i in range(3)],
+               "max": [max(p[i] for p in pts) for i in range(3)]} if pts else None
+        cache[comp_id] = res
+        return res
+
+    occ_list = occs.values() if isinstance(occs, dict) else occs
+    out = {}
+    for o in occ_list:
+        bb = _local_bbox(o["component"], set())
+        if bb is not None:
+            out[o["id"]] = [(a + b) / 2.0 for a, b in zip(bb["min"], bb["max"])]
+    return out
+
+
+def adopt_joint(ws, doc, joint: str) -> dict:
+    """Record both side anchors of an existing joint so update_links / check_joints can verify it."""
+    return {"anchors": links.record(ws, doc, joint)["sides"]}
+
+
+def add_joint(ws, doc, params: dict, as_built: bool = False) -> dict:
+    """Create a joint via SolidCraft joint.create (or joint.as_built when as_built=True, `name` required)
+    and record both side anchors with links.record so update_links / check_joints can verify it later."""
     if not params.get("name"):
         raise ValueError("give the joint a name")
     resolved = links.resolve_occurrences(doc.session, params)
+    if as_built:
+        ab_params = dict(resolved)
+        # Allow joint.create-style {"occurrence": ..., "face": ...} dicts by unwrapping to OccurrenceKey.
+        for side in ("b", "a"):
+            if isinstance(ab_params.get(side), dict) and "occurrence" in ab_params[side]:
+                if "at" not in ab_params and any(k != "occurrence" for k in ab_params[side]):
+                    ab_params["at"] = ab_params[side]
+                ab_params[side] = ab_params[side]["occurrence"]
+        r = doc.session.cmd("joint.as_built", ab_params)
+        return {"joint": r, **adopt_joint(ws, doc, ab_params["name"])}
+
+    occs_before = links._occurrences(doc.session)
     r = doc.session.cmd("joint.create", resolved)
     anchors = links.record(ws, doc, resolved["name"], resolved)
-    return {"joint": r, "anchors": anchors["sides"]}
+    out = {"joint": r, "anchors": anchors["sides"]}
+
+    joints = doc.session.cmd("joint.list").get("joints", [])
+    jid = r.get("joint") if isinstance(r, dict) else None
+    j = next((x for x in joints if (jid is not None and x.get("id") == jid) or x.get("name") == resolved["name"]), None)
+    if j is not None and j.get("b") in occs_before:
+        occs_after = links._occurrences(doc.session)
+        occ_b = occs_after.get(j["b"])
+        if occ_b is not None:
+            m_before = occs_before[j["b"]]["transform"]
+            m_after = occ_b["transform"]
+            if not g.same_mat(m_before, m_after, tol=1e-9):
+                mids = _occurrence_midpoints(doc.session, [occ_b])
+                dist, angle_deg = _transform_delta(m_before, m_after, ref_point=mids.get(occ_b["id"]))
+                if dist > 1e-3 or angle_deg > 1e-2:
+                    out["warnings"] = [
+                        f"{occ_b['name']} moved by {dist:.3f} mm and rotated by {angle_deg:.2f}°; "
+                        f"pass as_built=True if parts are already positioned and should stay in place."
+                    ]
+    return out
 
 
 def edit_joint(ws, doc, joint: str, params: dict) -> dict:

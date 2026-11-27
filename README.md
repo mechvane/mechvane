@@ -56,8 +56,8 @@ pinned `solidcraft-cli` and SolidCraft web app (v0.43.0) from the
 rendering works headless too.
 
 ```sh
-pip install mechvane
-mechvane setup        # SolidCraft CLI and web app, about 90 MB, once
+pip install --pre mechvane   # alpha releases only, until 0.1.0
+mechvane setup        # SolidCraft CLI and web app, about 170 MB, once
 mechvane mcp          # MCP server for your agent (see below)
 ```
 
@@ -84,12 +84,17 @@ As an MCP server for an agent (e.g. Claude Code), `.mcp.json` in your project:
 }
 ```
 
+To work in the SolidCraft window you have open, switch on **Settings > Assistant > Agents through MCP > Let AI agents connect** in
+SolidCraft (or start the app with `--control PORT`) and ask your agent to `connect_window`. It reads and builds in your window,
+and you save in the app as usual. From the terminal, `mechvane check` runs the design checks on the design in that window
+(or on a file: `mechvane check part.solidcraft --profile cnc_alu`), every finding with its rule, value and source.
+
 For development, clone the repo and run the checks:
 
 ```sh
 git clone https://github.com/mechvane/mechvane && cd mechvane
 pip install -e .
-python3 tests/mechvane/check.py      # about 400 checks, a few minutes
+python3 tests/mechvane/check.py      # over 800 checks, a few minutes
 python3 tests/reference/check.py     # reference parts with expected values
 ```
 
@@ -97,16 +102,16 @@ Then ask, for example: "Build an 80×40×8 plate with four M5 clearance holes, b
 bracket and check the design." The agent uses `new_part`, `run`, `bolted_connection`,
 `add_joint` and `check_design`. When a part changes, `update_links` finds joints that
 jumped to a different face and repairs them.
-Windows: [docs/installation-windows.md](https://github.com/mechvane/mechvane/blob/main/docs/installation-windows.md) (German).
+Step by step for Windows and Linux: [docs/installation.md](https://github.com/mechvane/mechvane/blob/main/docs/installation.md) (German).
 
 ## Status
 
-Alpha: Mechvane runs as a Python layer on top of SolidCraft and as an MCP server for your agent. The next
-step is connecting to the SolidCraft app you have open (see the note at the top and the
-[roadmap](https://mechvane.dev/roadmap/)).
+Alpha: Mechvane runs as a Python layer on top of SolidCraft and as an MCP server for your agent, and it connects to the
+SolidCraft app you have open (see the note at the top and the [roadmap](https://mechvane.dev/roadmap/)).
 
 - **Parts and assemblies** as separate files, joints across files that `update_links` checks and repairs.
-- **Standard parts** (screws, nuts, washers, ball bearings) and a **bolted connection assistant**.
+- **Your open SolidCraft window:** your agent and you work on the same design, and `mechvane check` runs the design checks there.
+- **Standard parts** (screws, nuts, washers, ball bearings) and a **bolted connection assistant** that creates a connection in one call and takes it back in one call.
 - **Design check** with sourced rules, ISO 286 fits and an open knowledge catalog; every finding shows
   its source and quoted passage.
 - **MCP server** for your agent with clear error messages, a short report after every step and
@@ -118,7 +123,7 @@ step is connecting to the SolidCraft app you have open (see the note at the top 
 - [CHANGELOG.md](https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md): what changed in each release
 - [mechvane.dev](https://mechvane.dev/): the project website
 - [Roadmap at a glance](https://mechvane.dev/roadmap/): what is available, what comes next
-- [ROADMAP.md](https://github.com/mechvane/mechvane/blob/main/ROADMAP.md): phases, decision points, risks (detailed, in German)
+- [ROADMAP.md](https://github.com/mechvane/mechvane/blob/main/ROADMAP.md) and [mechvane.dev/roadmap](https://mechvane.dev/roadmap/): what works today, what comes next and what is planned
 - [docs/adr/](https://github.com/mechvane/mechvane/tree/main/docs/adr): architecture decisions
 - [MCP server](https://github.com/mechvane/mechvane/blob/main/docs/mechvane-mcp.md) (`mechvane/`): tools, data model, test reports
 - [tests/](https://github.com/mechvane/mechvane/tree/main/tests): layer checks and reference parts

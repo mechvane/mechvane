@@ -154,15 +154,15 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.itpfasteners.com",
-      "stelle": "ITP Technical Catalog S. 346 (ISO 7089)",
-      "zitat": "       2.5             2.84                    2.7                     6                      5.7                    0.55                      0.45",
-      "abgerufen": "2026-10-21"
+      "url": "https://fasten.it/norms/norm/din_en_iso_7089",
+      "stelle": "fasten.it, Datenblatt DIN EN ISO 7089 Grade A (d1, d2, s)",
+      "zitat": "Thread size d nom=min d1 nom=max s nom weight in Kg x 1000 pcs",
+      "abgerufen": "2026-11-27"
     }
   ],
   "begruendung": "Verteilung der Kopf- und Mutterauflagekraft auf dem verspannten Bauteil zur Vermeidung von Oberflächeneingrabungen.",
-  "ausnahmen": "Senkschrauben oder Zylinderschrauben in engen Senkungen nach DIN 974-1 Reihe 4 (dort Scheiben nach DIN 433 erforderlich).",
+  "ausnahmen": "Senkschrauben oder Zylinderschrauben in engen Senkungen nach DIN 974-1 Reihe 4 (dort Scheiben nach ISO 7092 erforderlich).",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

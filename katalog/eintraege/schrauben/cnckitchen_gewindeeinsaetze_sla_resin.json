@@ -1,0 +1,128 @@
+{
+  "id": "cnckitchen_gewindeeinsaetze_sla_resin",
+  "aussage": "Im SLA-/Resin-3D-Druck sind ausgehärtete Photopolymere Duroplaste und schmelzen nicht, weshalb thermisches Einschmelzen von Gewindeeinsätzen das Material zersetzt und zerbröselt. Messing-Gewindeeinsätze werden stattdessen eingeklebt; eine an die abgestufte Außenkontur des Einsatzes angepasste Stufenbohrung mit geringem Spiel (leicht von Hand eindrückbar) und physischem Tiefenanschlag schließt breite Klebespalte und verhindert Durchrutschen. Im M3-Zugversuch von CNC Kitchen stieg die Auszugskraft in Elegoo Translucent Resin bei dickflüssigem Sekundenkleber (CA) von 56 kg (zylindrische Standardbohrung) auf 82 kg und bei 2K-Epoxid auf über 100 kg; in Prusa Tough Anthracite erreichte CA in der Stufenbohrung 56 kg (Standardbohrung 52 kg) und 2K-Epoxid 59 kg, während flüssiges Druckharz als Klebstoff mangels UV-Durchdringung in schwarzem Harz bei 6 kg versagte.",
+  "werte": [
+    {
+      "name": "M3 Auszugskraft Prusa Tough (Schraube direkt eingedreht)",
+      "wert": 44,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (geschnittenes Gewinde)",
+      "wert": 55,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (CAD-gedrucktes Gewinde)",
+      "wert": 106,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (Druckharz geklebt, Standardloch)",
+      "wert": 6,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (Sekundenkleber CA, Standardloch)",
+      "wert": 52,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (Sekundenkleber CA, Stufenbohrung)",
+      "wert": 56,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Prusa Tough (2K-Epoxid, Stufenbohrung)",
+      "wert": 59,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (Schraube direkt eingedreht)",
+      "wert": 98,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (geschnittenes Gewinde)",
+      "wert": 104,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (CAD-gedrucktes Gewinde)",
+      "wert": 121,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (Sekundenkleber CA, Standardloch)",
+      "wert": 56,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (Sekundenkleber CA, Stufenbohrung)",
+      "wert": 82,
+      "einheit": "kg"
+    },
+    {
+      "name": "M3 Auszugskraft Elegoo Translucent (2K-Epoxid, Stufenbohrung, mindestens)",
+      "wert": 100,
+      "einheit": "kg"
+    },
+    {
+      "name": "Referenz M3 FDM PLA (eingeschmolzener Gewindeeinsatz)",
+      "wert": 205,
+      "einheit": "kg"
+    },
+    {
+      "name": "Referenz M3 FDM PLA (geschnittenes Gewinde)",
+      "wert": 163,
+      "einheit": "kg"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Photopolymer",
+      "SLA-Resin",
+      "Duroplaste",
+      "Messing"
+    ],
+    "verfahren": [
+      "SLA-Druck",
+      "MSLA-Druck",
+      "3D-Druck",
+      "Kleben"
+    ],
+    "feature": [
+      "Gewindeeinsatz",
+      "Stufenbohrung",
+      "Sackloch",
+      "Gewinde"
+    ],
+    "groesse": [
+      "M3"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.cnckitchen.com/blog/how-to-use-threaded-inserts-in-resin-3d-prints",
+      "stelle": "Blogbeitrag How To use Threaded Inserts in Resin 3D Prints (2022-10-29), Abschnitte TL;DR, Fixing it with a better hole shape und Test results",
+      "zitat": "Shaping the hole to follow the stepped profile of the insert closes the gap the glue has to bridge and gives a physical end stop. In translucent resin that took CA-glued inserts to 82 kg and 2-part epoxy past 100 kg, matching a direct screw, with the reliability of an insert.",
+      "abgerufen": "2026-11-26"
+    }
+  ],
+  "begruendung": "UV-gehärtete SLA-Harze sind vernetzte Duroplaste, die bei Hitze nicht fließen, sodass beim Versuch des Einschmelzens Rissbildung und Materialzersetzung auftreten. Durch die abgestufte Geometrie üblicher Einschmelzeinsätze entstehen in einer zylindrischen Bohrung zu große Klebespalte und kein definierter Tiefenanschlag. Eine an den Einsatz angepasste Stufenbohrung mit leichtem Fügespiel reduziert den Klebespalt, verhindert Verkanten und Durchschieben und erzielt mit dickflüssigem Sekundenkleber (einfachere Verarbeitung) oder 2K-Epoxid (höhere Endfestigkeit) wiederholbar verschraubbare Metallgewinde.",
+  "ausnahmen": "Für maximale einmalige statische Zugfestigkeit ohne häufiges Lösen und Anziehen erreichten im CAD direkt mitgedruckte M3-Gewinde im SLA-Versuch höhere Werte (106 kg in Prusa Tough, 121 kg in Elegoo Translucent), sind jedoch weniger verschleißfest bei Mehrfachmontage. Flüssiges Druckharz als Klebstoff ist ungeeignet (in opaken Harzen keine UV-Durchhärtung, in transparenten Harzen blieben teils ungehärtete Reste in der Rändelung). In Prusa Tough Anthracite haftete 2K-Epoxid auf der glatten Stufenbohrung kaum besser als CA (59 kg vs. 56 kg); zusätzliche Hinterschnitte könnten die Verankerung verbessern.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "gewindeeinsaetze_3ddruck_ruthex"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "ruthex_gewindeeinsaetze_m2_m8_wandstaerke"
+    }
+  ]
+}

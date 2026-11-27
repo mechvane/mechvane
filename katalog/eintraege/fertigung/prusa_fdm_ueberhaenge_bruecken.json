@@ -1,0 +1,89 @@
+{
+  "id": "prusa_fdm_ueberhaenge_bruecken",
+  "aussage": "Nach der Prusa Knowledge Base lassen sich Überhänge im Standard-FDM-Druck mit einer 0,4-mm-Düse je nach Einstellungen und Kühlung bis 45° bis 60° (bei 0,25-mm-Düse teils unter 45°; die Prusa-Quelle nennt für diese Winkel keine Bezugsrichtung) sauber ohne Stützstrukturen drucken; Prusa-Drucker mit Nextruder und 360°-Bauteilkühlung (MK4S, CORE One/+, CORE One L) erreichen bis zu 75°. Für horizontale Brücken (Bridging) nennt Prusa bewusst keine fixe maximale Millimeter-Grenze, sondern begrenzt stützfreies Bridging auf kurze Distanzen, die vom Bauteillüfter schnell genug in der Luft abgekühlt werden können; lange Brücken sollen über Stützverstärker (Support enforcers) in kürzere Segmente unterteilt oder mit reduziertem Bridge-Flow und niedriger Brückengeschwindigkeit gedruckt werden.",
+  "werte": [
+    {
+      "name": "Stützfreier Überhangwinkel Standard-FDM (0,4-mm-Düse, Prusa KB)",
+      "bereich": [45, 60],
+      "einheit": "Grad"
+    },
+    {
+      "name": "Maximaler stützfreier Überhangwinkel mit Nextruder und 360°-Kühlung (MK4S / CORE One)",
+      "wert": 75,
+      "einheit": "Grad"
+    },
+    {
+      "name": "Standard-Düsendurchmesser FDM (Bezugswert Prusa KB)",
+      "wert": 0.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "Kleine Düse mit verringertem Überhangwinkel (< 45°)",
+      "wert": 0.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "Bezugswinkel Vertikale im PrusaSlicer Overhang threshold",
+      "wert": 90,
+      "einheit": "Grad"
+    },
+    {
+      "name": "Maximale stützfreie Brückenlänge (Prusa KB)",
+      "wert": "nur kurze Distanzen (keine fixe mm-Grenze genannt)",
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "ASA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Überhang",
+      "Brücke",
+      "Bridging",
+      "Stützstruktur"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+      "stelle": "Abschnitt Overhangs and support material",
+      "zitat": "A 3D printer can cleanly print overhanging structures with an angle between 45 and 60 degrees, depending on your nozzle diameter and settings. Our FDM printer models with Nextruder and 360° cooling can print overhangs of up to 75° without supports. These models are the MK4S, the CORE One/+, and the CORE One L. The standard diameter for nozzles on desktop 3D printers is 0.4 mm. For smaller nozzles, like 0.25 mm, the angle might be less than 45 degrees.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://help.prusa3d.com/article/poor-bridging_1802",
+      "stelle": "Einleitung und Abschnitt Bridging flow",
+      "zitat": "Keep in mind that the best results are achieved only over short distances because the printer’s fans need to cool the extruded plastic mid-air in order to create a solid connection.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://help.prusa3d.com/article/support-material_1698",
+      "stelle": "Abschnitt Overhang threshold und Support enforcers",
+      "zitat": "The Overhang threshold value represents the most horizontal slope (measured from the horizontal plane) that you can print without support material (90=vertical).",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Beim FDM-Druck muss jede Schicht zumindest teilweise auf der darunterliegenden Bahn aufliegen. Mit steigender Kühlleistung (360°-Düse, kürzere Schichten, PLA statt ABS/ASA) lässt sich die schräge Kante weiter auskragen. Bei freien Brücken hängt der Strang durch, wenn das Extrudat zwischen zwei Verankerungspunkten nicht schnell genug unter die Erweichungstemperatur abgekühlt und leicht unter Zug abgelegt wird; daher sinkt die erzielbare Brückenqualität mit zunehmender Spannweite und hängt stark von Material, Lüfterleistung, Brückengeschwindigkeit und Bridge flow ratio ab.",
+  "ausnahmen": "Winkelkonvention beachten: Die Prusa Knowledge Base nennt für die Überhangwinkel (45° bis 60°, 75°) keine Bezugsrichtung. Nur der PrusaSlicer-Parameter Overhang threshold ist dort ausdrücklich von der Horizontalen gemessen (90 = vertikal). Andere Konstruktionsregeln (z. B. druckbarkeit_ueberhang_lochdurchmesser von Hubs mit 45°) können eine andere Konvention verwenden; vor einem Vergleich die Konvention der jeweiligen Quelle prüfen. Mit Nextruder und 360°-Bauteilkühlung sind bis 75° (nach Prusa-Angabe) möglich; bei kleinen Düsen (0,25 mm) kann der Winkel unter 45° liegen. Lange Brücken werden laut Prusa durch Support enforcers in Teilbrücken aufgeteilt oder komplett abgestützt.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "druckbarkeit_ueberhang_lochdurchmesser"
+    }
+  ]
+}

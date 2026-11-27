@@ -36,7 +36,7 @@
       <a class="brand" href="#top" aria-label="Mechvane home">
         <img class="brand-logo" src="media/logo.svg" width="28" height="28" alt="">
         <span class="brand-name">Mech<span class="brand-vane">vane</span></span>
-        <span class="badge badge-alpha" title="Current PyPI release">alpha · 0.1.0a25</span>
+        <span class="badge badge-alpha" title="Current PyPI release">alpha · 0.1.0a26</span>
       </a>
 
       <nav class="site-nav" aria-label="Primary">
@@ -148,7 +148,7 @@
     <section class="section section-alt" id="features" aria-labelledby="features-heading">
       <div class="container">
         <div class="section-header">
-          <p class="eyebrow">Available today · v0.1.0a25 (alpha)</p>
+          <p class="eyebrow">Available today · v0.1.0a26 (alpha)</p>
           <h2 id="features-heading">What works today</h2>
           <p class="section-lead">
             Mechvane is an early alpha for individual engineers, makers, and small and medium-sized
@@ -252,7 +252,7 @@
                 error or a hint.
               </li>
               <li>
-                <strong>First 16 materials included:</strong> Structural and stainless steels, aluminium alloys,
+                <strong>First 28 materials included:</strong> Structural and stainless steels, aluminium alloys,
                 grey cast iron, brass, POM, PA6, PLA, and PETG—with density, stiffness, strength, hardness, and
                 thermal values ready to assign in SolidCraft so mass and thread-depth checks use the part's material.
               </li>
@@ -289,7 +289,7 @@
                 </div>
               </dl>
               <p class="catalog-source">
-                Source: VDI 2230-1 / Roloff-Matek engineering tables · Values without a checked source say so explicitly.
+                Source: Bossard technical information on thread engagement depth (01/2025), class 8.8 coarse thread · Values without a checked source say so explicitly.
               </p>
             </div>
 
@@ -352,18 +352,16 @@
               <span class="code-meta">Python ≥ 3.11</span>
             </div>
             <p>
-              <code>mechvane setup</code> downloads the pinned SolidCraft CLI and web app (about 90 MB) and
+              <code>mechvane setup</code> downloads the pinned SolidCraft CLI and web app (about 170 MB) and
               verifies their SHA256 checksums. After setup, everything runs locally and offline.
             </p>
             <div class="code-block-wrap">
-              <button class="copy-btn" type="button" data-copy="pip install mechvane&#10;mechvane setup">Copy</button>
-              <pre><code><span class="cmd">pip install mechvane</span>
-<span class="cmd">mechvane setup</span>      <span class="comment"># pinned SolidCraft CLI (~90 MB)</span></code></pre>
+              <button class="copy-btn" type="button" data-copy="pip install --pre mechvane&#10;mechvane setup">Copy</button>
+              <pre><code><span class="cmd">pip install --pre mechvane</span>
+<span class="cmd">mechvane setup</span>      <span class="comment"># pinned SolidCraft CLI (~170 MB)</span></code></pre>
             </div>
             <p class="start-note">
-              Connecting Mechvane to the SolidCraft window you have open is the next step on the
-              <a href="/roadmap/">roadmap</a>. Until then Mechvane runs its own SolidCraft session on your project
-              folder.
+              Mechvane connects to the SolidCraft window you have open: your agent reads and builds there, and the design checks run on it. Without a window Mechvane runs its own SolidCraft session on your project folder.
             </p>
             <div class="platform-box" role="note">
               <strong>Platforms:</strong> Tested on <strong>Linux</strong> and <strong>Windows 11 (x64)</strong>;
@@ -442,23 +440,23 @@
                 design checks with the source and quoted passage behind every finding, an open knowledge catalog,
                 thread depth by material, STEP import as a reference body, glTF export, trying parameter values with
                 a skill and MCP tool, a picture for your agent to check its work against, a weekly check on new
-                SolidCraft releases, and SolidCraft 0.43.
+                SolidCraft releases, your agent and you working in the SolidCraft window you have open (design checks
+                with their sources at that window, <code>mechvane check</code>), a bolted connection that comes and goes
+                in one call, a short install guide for Windows and Linux, and SolidCraft 0.43.
               </p>
             </div>
             <div class="rm-col rm-col-progress">
               <h4><span class="rm-dot"></span>In progress</h4>
               <p>
-                Mechvane working with the SolidCraft app you have open: your agent and you in the same window, design
-                checks with their sources in that window, and a bolted connection that comes and goes in one call (a
-                single undo step inside SolidCraft follows with the plugin). Alongside: expanding the open knowledge
-                catalog and growing the material database.
+                A single undo step for a bolted connection inside SolidCraft (it follows with the plugin), expanding the
+                open knowledge catalog and growing the material database.
               </p>
             </div>
             <div class="rm-col rm-col-planned">
               <h4><span class="rm-dot"></span>Planned</h4>
               <p>
                 Engineering plugins inside SolidCraft (design checks, bolted connections and standard parts as a ribbon
-                entry for you and a tool for your agent), a quick install for newcomers, your own features as code,
+                entry for you and a tool for your agent), your own features as code,
                 locks, change previews, versions, branches and variants, rules calculated from material properties,
                 domain modules (frames, design accelerators, sheet metal, slicer, welding, strength check, clearance
                 check, exploded views), manufacturing drawings, and opening files from other CAD systems with their
@@ -524,7 +522,7 @@
           <h4>Project</h4>
           <ul>
             <li><a href="https://github.com/mechvane/mechvane">GitHub</a></li>
-            <li><a href="https://pypi.org/project/mechvane/">PyPI (0.1.0a25)</a></li>
+            <li><a href="https://pypi.org/project/mechvane/">PyPI (0.1.0a26)</a></li>
             <li><a href="https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md">Changelog</a></li>
             <li><a href="https://github.com/mechvane/mechvane/issues/new?template=feature_request.yml">Request a feature</a></li>
           </ul>

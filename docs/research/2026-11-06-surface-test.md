@@ -1,6 +1,6 @@
 # Testbericht Mechvane auf dem Surface (Windows 11, Chrome 157), 2026-11-06
 
-Stand: `main` 58e7f85 in `C:\Users\gollu\mechvane-venv` (Python 3.14.10), SolidCraft 0.30.1.
+Stand: `main` 58e7f85 in `C:\Users\<user>\mechvane-venv` (Python 3.14.10), SolidCraft 0.30.1.
 Testprojekt: `projekt\` (Beispiele + `platte.solidcraft` 60 × 40 × 8 an [10, 10, 0] + `winkel.step` aus `bracket`).
 Klicktests mit Playwright (eigene venv `pwvenv`) im installierten Chrome, sichtbar, 1400 × 860.
 

@@ -5,8 +5,10 @@ See docs/adr/0002-wissenskatalog-format.md.
 """
 
 import json
+import os
 from pathlib import Path
 import re
+import warnings
 from typing import Any, Dict, List, Optional, Union
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +28,12 @@ VALID_HERKUNFT = {
 }
 
 VALID_HAERTE = {"fehler", "hinweis"}
+
+# Check of an entry against an own book (kept locally): only the fact and the verdict are stored, never text from the book.
+VALID_BUCH_ERGEBNIS = {"bestaetigt", "abweichend", "nicht_gefunden"}  # a local checker may also report "unbestimmt", never stored
+
+# Folder with private entries (own books, works standards, own tests). Outside katalog/, never exported, never in the wheel.
+EXTRA_ENV = "MECHVANE_KATALOG_EXTRA"
 
 VALID_PRUEFSTATUS = {"automatisch", "von_hand", "offen", "nicht_belegt"}
 
@@ -54,8 +62,11 @@ REQUIRED_TOP_LEVEL_KEYS = {
 }
 
 
-def validate(eintrag: Dict[str, Any]) -> bool:
+def validate(eintrag: Dict[str, Any], privat: bool = False) -> bool:
     """Validate a catalog entry dictionary against the catalog schema.
+
+    `privat`: the entry comes from the private folder (MECHVANE_KATALOG_EXTRA); only there a work source may carry a
+    literal quote (`zitat`) or a local file (`datei`). In the public catalog a book is a bibliographic reference only (#201).
 
     Raises:
         ValueError: If any field is missing, invalid, or malformed.
@@ -125,6 +136,20 @@ def validate(eintrag: Dict[str, Any]) -> bool:
     for i, q in enumerate(quellen):
         if not isinstance(q, dict):
             raise ValueError(f"Entry '{entry_id}': quellen[{i}] must be an object")
+        if "werk" in q:
+            # Work source (book, works standard): bibliographic reference; quote and file only in the private folder
+            for q_key in ("werk", "stelle"):
+                if not isinstance(q.get(q_key), str) or not q[q_key].strip():
+                    raise ValueError(f"Entry '{entry_id}': quellen[{i}] work source needs a non-empty '{q_key}'")
+            for q_key in ("auflage", "isbn", "zitat", "datei", "abgerufen"):
+                if q_key in q and not isinstance(q[q_key], str):
+                    raise ValueError(f"Entry '{entry_id}': quellen[{i}] '{q_key}' must be a string")
+            if not privat and ("zitat" in q or "datei" in q):
+                raise ValueError(
+                    f"Entry '{entry_id}': quellen[{i}] a work source in the public catalog is a reference only "
+                    "(no 'zitat', no 'datei'); quotes from books belong in the private folder"
+                )
+            continue
         for q_key in ("url", "stelle", "zitat", "abgerufen"):
             if not isinstance(q.get(q_key), str):
                 raise ValueError(f"Entry '{entry_id}': quellen[{i}] '{q_key}' must be a string")
@@ -164,6 +189,24 @@ def validate(eintrag: Dict[str, Any]) -> bool:
         if not isinstance(b_ziel, str) or not b_ziel.strip():
             raise ValueError(f"Entry '{entry_id}': beziehungen[{i}] missing non-empty 'ziel'")
 
+    buchpruefung = eintrag.get("buchpruefung")
+    if buchpruefung is not None:
+        if not isinstance(buchpruefung, list):
+            raise ValueError(f"Entry '{entry_id}': 'buchpruefung' must be a list")
+        for i, b in enumerate(buchpruefung):
+            if not isinstance(b, dict):
+                raise ValueError(f"Entry '{entry_id}': buchpruefung[{i}] must be an object")
+            if not isinstance(b.get("werk"), str) or not b["werk"].strip():
+                raise ValueError(f"Entry '{entry_id}': buchpruefung[{i}] missing non-empty 'werk'")
+            if b.get("ergebnis") not in VALID_BUCH_ERGEBNIS:
+                raise ValueError(
+                    f"Entry '{entry_id}': buchpruefung[{i}] invalid 'ergebnis' {b.get('ergebnis')!r}, "
+                    f"expected one of {sorted(VALID_BUCH_ERGEBNIS)}"
+                )
+            for k in ("auflage", "stelle", "datum"):
+                if k in b and not isinstance(b[k], str):
+                    raise ValueError(f"Entry '{entry_id}': buchpruefung[{i}] '{k}' must be a string")
+
     dickenbereiche = eintrag.get("dickenbereiche")
     if dickenbereiche is not None:
         if not isinstance(dickenbereiche, list):
@@ -194,12 +237,34 @@ def validate(eintrag: Dict[str, Any]) -> bool:
     return True
 
 
-def load(path: Optional[Union[str, Path]] = None, validate_entries: bool = True) -> List[Dict[str, Any]]:
+def extra_dir() -> Optional[Path]:
+    """The private catalog folder from MECHVANE_KATALOG_EXTRA, or None when unset or not a folder."""
+    raw = os.environ.get(EXTRA_ENV, "").strip()
+    if not raw:
+        return None
+    p = Path(raw).expanduser()
+    return p if p.is_dir() else None
+
+
+def quelle_text(q: Dict[str, Any], default: str = "") -> str:
+    """Short text for a source in a finding: the URL, or for a work source "Werk, Auflage, Stelle"."""
+    if q.get("url"):
+        return q["url"]
+    if q.get("werk"):
+        parts = [q["werk"], q.get("auflage", ""), q.get("stelle", "")]
+        return ", ".join(x for x in parts if x)
+    return default
+
+
+def load(path: Optional[Union[str, Path]] = None, validate_entries: bool = True,
+         include_private: bool = True) -> List[Dict[str, Any]]:
     """Load catalog entries from a file or directory.
 
     Args:
-        path: File or directory path. Defaults to katalog/eintraege.
+        path: File or directory path. Defaults to katalog/eintraege (plus the private folder, see below).
         validate_entries: Whether to validate loaded entries against the schema.
+        include_private: With the default path, also load the folder named by MECHVANE_KATALOG_EXTRA (#201). Its entries
+            carry the key `_privat: True` (in memory only), may hold work-source quotes, and must not reuse a public id; a faulty file there is skipped with a warning.
 
     Returns:
         List of entry dictionaries.
@@ -228,6 +293,30 @@ def load(path: Optional[Union[str, Path]] = None, validate_entries: bool = True)
         if validate_entries:
             validate(data)
         entries.append(data)
+
+    extra = extra_dir() if (path is None and include_private) else None
+    if extra is not None:
+        public_ids = {e.get("id") for e in entries}
+        private_ids = set()
+        for f in sorted(extra.rglob("*.json")):
+            if f.name == "schema.json" or f.name.endswith(".pages.json"):
+                continue
+            try:
+                with open(f, "r", encoding="utf-8") as fp:
+                    data = json.load(fp)
+                if validate_entries:
+                    validate(data, privat=True)
+                if data.get("id") in private_ids:
+                    raise ValueError(f"id {data.get('id')!r} is used twice in the private folder")
+                if data.get("id") in public_ids:
+                    raise ValueError(f"id {data.get('id')!r} already exists in the public catalog")
+            except (OSError, ValueError) as exc:
+                # a faulty private file must not break the public catalog: report it and go on
+                warnings.warn(f"Private catalog file {f.name} skipped: {exc}", stacklevel=2)
+                continue
+            private_ids.add(data.get("id"))
+            data["_privat"] = True
+            entries.append(data)
 
     return entries
 

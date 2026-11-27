@@ -42,19 +42,19 @@
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Works with the running SolidCraft app",
           "text": "Mechvane connects to the SolidCraft app you have open, so you and your agent work on the same design in SolidCraft's own window.",
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Design checks in the open SolidCraft window",
           "text": "Run Mechvane's design checks on the part you have open in SolidCraft and get every finding with its rule, value and source.",
           "milestone": "v0.1"
         },
         {
-          "status": "progress",
+          "status": "done",
           "title": "Bolted connection in one call",
           "text": "Create a bolted connection with one call and take it back with one call; Mechvane remembers the steps. A single undo step inside the SolidCraft window follows with the plugin.",
           "milestone": "v0.1"
@@ -91,11 +91,11 @@
         {
           "status": "done",
           "title": "Install in one step",
-          "text": "pip install mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
+          "text": "pip install --pre mechvane and mechvane setup on Linux, Windows and macOS; SolidCraft comes as a checked release download.",
           "milestone": "v0.1"
         },
         {
-          "status": "planned",
+          "status": "progress",
           "title": "Install in under 15 minutes",
           "text": "A short guide for Windows and Linux: someone new to Mechvane installs it and builds the example flange in under 15 minutes.",
           "milestone": "v0.1"

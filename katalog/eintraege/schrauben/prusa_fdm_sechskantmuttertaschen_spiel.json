@@ -1,0 +1,115 @@
+{
+  "id": "prusa_fdm_sechskantmuttertaschen_spiel",
+  "aussage": "Prusa Research veröffentlicht in seiner Knowledge Base keine universelle Maßtabelle für Sechskantmuttertaschen über alle Nenngrößen, dokumentiert aber in seinen produktiven MK3S-OpenSCAD-Bauteilen sowie Begleitleitfäden konkrete CAD-Maße und Toleranzregeln für M3-Muttertaschen: Für M3-Sechskantmuttern (ISO-4032-Schlüsselweite s = 5,5 mm, theoretischer Umkreisradius 3,175 mm) verwendet Prusa in den SCAD-Dateien Sechskant-Taschen ($fn = 6) mit Umkreisradien r = 3,1 mm, 3,15 mm, 3,2 mm (in Einsy-base.scad zusammen mit einem Schlitz r = 3,5 mm) und 3,5 mm (PSU-cover-MK3.scad). Welche Passung (Presssitz, straffer Sitz, Spiel) damit gemeint ist, nennt Prusa nicht; die Zuordnung ist eine Deutung. Als allgemeine FDM-Richtwerte nennt die Prusa Knowledge Base mindestens 0,2 mm Druckgenauigkeit und mindestens 0,3 mm Spiel für bewegliche Teile; im Prusa-Blog zu OpenSCAD wird für eine Sechskant-Schraubenkopftasche ein Toleranzzuschlag von +0,5 mm auf den Umkreisdurchmesser empfohlen.",
+  "werte": [
+    {
+      "name": "M3 Sechskanttasche Umkreisradius (x-end.scad / x-carriage.scad)",
+      "wert": 3.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Sechskanttasche Umkreisradius (x-end.scad)",
+      "wert": 3.15,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Sechskanttasche Umkreisradius (Einsy-base.scad)",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Sechskanttasche Schlitz-Umkreisradius (Einsy-base.scad)",
+      "wert": 3.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Sechskanttasche Umkreisradius (PSU-cover-MK3.scad)",
+      "wert": 3.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Allgemeine Druckgenauigkeit Original Prusa (mind.)",
+      "wert": 0.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlenes Mindestspiel bewegliche Teile (Prusa KB)",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "OpenSCAD-Toleranzzuschlag Sechskant-Schraubenkopftasche (Prusa Blog)",
+      "wert": 0.5,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "PETG",
+      "PLA",
+      "ABS",
+      "ASA",
+      "Thermoplaste"
+    ],
+    "verfahren": [
+      "FDM-Druck",
+      "FFF-Druck",
+      "3D-Druck"
+    ],
+    "feature": [
+      "Sechskantmuttertasche",
+      "Muttertasche"
+    ],
+    "groesse": [
+      "M3"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://raw.githubusercontent.com/prusa3d/Original-Prusa-i3/MK3S/Printed-Parts/SCAD/Einsy-base.scad",
+      "stelle": "Zeilen 345–377 (nut traps HEX für M3)",
+      "zitat": "cylinder( h = 4, r = 3.2, $fn=6); rotate([0,0,0]) resize([0,2,0]) cylinder( h = 4, r = 3.5, $fn=6);",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/prusa3d/Original-Prusa-i3/MK3S/Printed-Parts/SCAD/x-end.scad",
+      "stelle": "Zeilen 86–96 und 119 (Nut traps for TR nut screws, M3)",
+      "zitat": "translate(v=[0,-17, 0]) rotate([0, 0, -135]) translate([0, 9.5, 11]) rotate([0, 0, 0])cylinder(h = 6, r = 3.15, $fn=6);",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/prusa3d/Original-Prusa-i3/MK3S/Printed-Parts/SCAD/PSU-cover-MK3.scad",
+      "stelle": "Zeilen 19–31 und 258–266 (module nuttrap & rear/frame side nut)",
+      "zitat": "translate([0,0, -0.2])rotate([0,0,30]) cylinder(r=3.5,h=15-1.5, $fn=6);",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+      "stelle": "Abschnitt Tolerances",
+      "zitat": "An Original Prusa will be accurate to at least 0.2 mm, but you also need to remember that different materials can warp or shrink during printing. Consider if two parts should move, like a hinge, or lock/snap together with a friction fit. An initial good measurement for movable parts is at least 0.3 mm.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://blog.prusa3d.com/practical-problem-programming-objects-3d-printing-openscad_8415/",
+      "stelle": "Abschnitt Programming the object in OpenSCAD",
+      "zitat": "It’s better to adjust the code and add some tolerance to our object’s dimensions. A good value should be +0.5 mm. It’s a value that works for most of my prints.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Im FDM-Druck schrumpfen innere Konturen leicht nach innen und scharfe 120°-Ecken eines Sechsecks werden durch den Düsenradius (0,4 mm) verrundet. Bei einer M3-Sechskantmutter nach ISO 4032 (Schlüsselweite s = 5,5 mm, Umkreisradius r = s / sqrt(3) ≈ 3,175 mm) ergibt ein CAD-Umkreisradius von r = 3,1 mm (entsprechend s ≈ 5,37 mm) eine Tasche knapp unter der Mutterschlüsselweite; die Sitzart ist hier nicht von Prusa belegt. Bei r = 3,2 mm entspricht die Schlüsselweite der Tasche s ≈ 5,54 mm; die Zusatzgeometrie in Einsy-base.scad (Schlitz r = 3,5 mm) nennt Prusa nicht als Eckenfreischnitt, auch diese Deutung ist nicht belegt.",
+  "ausnahmen": "Die abgeleiteten CAD-Schlüsselweiten (5,37 mm bei r = 3,1 mm; 5,46 mm bei r = 3,15 mm; 5,54 mm bei r = 3,2 mm; 6,06 mm bei r = 3,5 mm) gelten speziell für die OpenSCAD-Umsetzung von M3-Muttern in PETG auf Prusa-Druckern mit 0,4-mm-Düse; je nach Materialschrumpfung (ABS/ASA vs. PLA/PETG) und Kalibrierung empfiehlt sowohl Prusa als auch Ultimaker (How to design for FFF 3D printing) eigene Testdrucke. Für größere Muttern (M4–M12) oder eingeklebte/eingeschmolzene Gewindeeinsätze gelten andere Konstruktionswerte.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso4032_sechskantmutter_masse"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "fdm_mindestspalt_beweglich"
+    }
+  ]
+}

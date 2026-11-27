@@ -1,0 +1,188 @@
+{
+  "id": "ruthex_gewindeeinsaetze_m2_m8_wandstaerke",
+  "aussage": "ruthex RX-Gewindeeinsätze (bleifreies Messing) für Thermoplaste und 3D-Druck von M2 bis M8: empfohlene Vorlochdurchmesser Ø d3, Einsatzlängen L und Mindestwandstärken W min. um das Loch nach Hersteller-Datenblatt (RX-M2x4: d3=3,2 mm, L=4,0 mm, W min.=1,3 mm; RX-M2,5x5,7: d3=4,0 mm, L=5,7 mm, W min.=1,6 mm; RX-M3x5,7: d3=4,0 mm, L=5,7 mm, W min.=1,6 mm; RX-M4x8,1: d3=5,6 mm, L=8,1 mm, W min.=2,1 mm; RX-M5x9,5: d3=6,4 mm, L=9,5 mm, W min.=2,6 mm; RX-M6x12,7: d3=8,0 mm, L=12,7 mm, W min.=3,3 mm; RX-M8x12,7: d3=9,6 mm, L=12,7 mm, W min.=4,5 mm) sowie +1 mm Sackloch-Tiefenzuschlag (Mindestbohrungstiefe L + 1 mm: 5,0 / 6,7 / 6,7 / 9,1 / 10,5 / 13,7 / 13,7 mm).",
+  "werte": [
+    {
+      "name": "M2 (RX-M2x4) Bohrungsdurchmesser d3",
+      "wert": 3.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2 (RX-M2x4) Einsatzlänge L",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2 (RX-M2x4) Mindestwandstärke W min",
+      "wert": 1.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 (RX-M2,5x5,7) Bohrungsdurchmesser d3",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 (RX-M2,5x5,7) Einsatzlänge L",
+      "wert": 5.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M2.5 (RX-M2,5x5,7) Mindestwandstärke W min",
+      "wert": 1.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 (RX-M3x5,7) Bohrungsdurchmesser d3",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 (RX-M3x5,7) Einsatzlänge L",
+      "wert": 5.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 (RX-M3x5,7) Mindestwandstärke W min",
+      "wert": 1.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Short (RX-M3Sx4,0) Bohrungsdurchmesser d3",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Short (RX-M3Sx4,0) Einsatzlänge L",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Voron (RX-M3x5x4) Bohrungsdurchmesser d3",
+      "wert": 4.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M3 Voron (RX-M3x5x4) Mindestwandstärke W min",
+      "wert": 1.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 (RX-M4x8,1) Bohrungsdurchmesser d3",
+      "wert": 5.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 (RX-M4x8,1) Einsatzlänge L",
+      "wert": 8.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 (RX-M4x8,1) Mindestwandstärke W min",
+      "wert": 2.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "M4 Short (RX-M4Sx4,0) Einsatzlänge L",
+      "wert": 4.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 (RX-M5x9,5) Bohrungsdurchmesser d3",
+      "wert": 6.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 (RX-M5x9,5) Einsatzlänge L",
+      "wert": 9.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 (RX-M5x9,5) Mindestwandstärke W min",
+      "wert": 2.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M5 Short (RX-M5Sx9,5) Einsatzlänge L",
+      "wert": 5.8,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 (RX-M6x12,7) Bohrungsdurchmesser d3",
+      "wert": 8.0,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 (RX-M6x12,7) Einsatzlänge L",
+      "wert": 12.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M6 (RX-M6x12,7) Mindestwandstärke W min",
+      "wert": 3.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 (RX-M8x12,7) Bohrungsdurchmesser d3",
+      "wert": 9.6,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 (RX-M8x12,7) Einsatzlänge L",
+      "wert": 12.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "M8 (RX-M8x12,7) Mindestwandstärke W min",
+      "wert": 4.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Sackloch Mindesttiefe Zuschlag über Einsatzlänge L",
+      "wert": 1,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": ["PLA", "PETG", "ABS", "ASA", "PA", "Thermoplaste", "Messing"],
+    "verfahren": ["FDM-Druck", "3D-Druck", "Wärmeeinbettung"],
+    "feature": ["Gewindeeinsatz", "ruthex", "Einschmelzmutter", "Vorloch", "Mindestwandstärke"],
+    "groesse": ["M2", "M2.5", "M3", "M4", "M5", "M6", "M8"],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.igo3d.com/mediafiles/Sonstiges/Ruthex/ruthex_Datenblatt_RX-Serie.pdf",
+      "stelle": "Seite 1, Produktdatenblatt RX-Reihe – Metrisches ISO-Gewinde, Maßtabelle",
+      "zitat": "Geeignet für thermoplastische Kunststoffteile (Besonders geeignet im 3D-Druck)",
+      "abgerufen": "2026-11-25"
+    },
+    {
+      "url": "https://www.cnckitchen.com/blog/tips-and-tricks-for-heat-set-inserts",
+      "stelle": "Abschnitt How to design for inserts?",
+      "zitat": "A blind hole should be slightly deeper than the length of the insert (approx. 1 mm)",
+      "abgerufen": "2026-11-25"
+    },
+    {
+      "url": "https://www.cnckitchen.com/s/CNCKitchen_Heat-Set-Insert-Dimensions-and-Design-Guidelines.pdf",
+      "stelle": "Design Guidelines, Metric Inserts",
+      "zitat": "L = length D1 = insert diameter D2 = hole diameter W = min. wall thickness",
+      "abgerufen": "2026-11-25"
+    }
+  ],
+  "begruendung": "Das zylindrische Vorloch d3 liegt leicht über dem unteren Führungsdurchmesser d2 (z. B. M3: d2=3,9 mm, d3=4,0 mm; M8: d2=9,5 mm, d3=9,6 mm) und deutlich unter dem gerändelten Außendurchmesser d1, sodass verdrängtes Material beim Einschmelzen formschlüssig in die Gegenrändelung fließt. Die Mindestwandstärke W min. verhindert das Ausbeulen oder Aufplatzen des Kunststoffdoms beim Einpressen und Anziehen; der Sackloch-Zuschlag von ca. 1 mm nimmt verdrängte Schmelze unter dem Einsatz auf.",
+  "ausnahmen": "Durchgangsbohrungen benötigen keinen +1 mm-Tiefenzuschlag. Abweichungen: (1) Der vorhandene Eintrag gewindeeinsaetze_3ddruck_ruthex nennt für M8 eine Vorlochbohrung von 10,0 mm statt 9,6 mm im ruthex-Datenblatt (d3=9,6 mm, d1=10,1 mm). (2) CNC Kitchen nennt für M4/M5/M6/M8 leicht größere Bohrungsdurchmesser D2 (5,7 / 6,5 / 8,1 / 9,7 mm) bei identischen Mindestwandstärken W min. (3) Gegenprüfung gegen mechvane/standard_parts.py (RUTHEX_INSERTS): Die dort hinterlegten Werte für M2.5, M3, M4 und M5 (D, L, d_hole, min_depth = L+1) stimmen exakt mit dem ruthex-Datenblatt überein; es fehlen dort jedoch M2, M6, M8, die Kurzbauformen sowie die Mindestwandstärke W min.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "gewindeeinsaetze_3ddruck_ruthex"
+    },
+    {
+      "typ": "widerspricht",
+      "ziel": "gewindeeinsaetze_thermoplaste_amtec_boellhoff"
+    }
+  ]
+}

@@ -4,8 +4,11 @@ Automates multi-part hole drilling, standard part generation (ISO 4762 screw, IS
 ISO 4032 nut), assembly insertion and joint creation with CAD constraints.
 """
 
+import contextlib
+import contextvars
 import math
 from pathlib import Path
+import filecmp
 import shutil
 import tempfile
 
@@ -14,31 +17,46 @@ from . import hole_tables
 from . import links
 from . import sketch_rule
 from . import standard_parts
-from .documents import ASSEMBLY, PART
+from .documents import ASSEMBLY, PART, check_windows_writable, reload_windows
 from .solidcraft import SolidCraftError
 
 
-def _ensure_standard_part(ws, norm: str, size: str, length: float | None = None) -> Path:
-    """Ensure a standard part exists in `ws`, creating it via standard_parts if needed."""
+_ACTIVE_SCOPES: contextvars.ContextVar[tuple["_RollbackScope", ...]] = contextvars.ContextVar(
+    "_bolted_rollback_scopes", default=()
+)
+
+
+def _ensure_standard_part(ws, norm: str, size: str, length: float | None = None,
+                          folder: str | Path | None = None) -> Path:
+    """Ensure a standard part exists in `folder` (default: `ws.root`), creating it via standard_parts if needed."""
     sp = standard_parts.spec(norm, size, length)
     desig = sp["standard"]["designation"].replace(" ", "_")
     expected_std = sp["standard"]
 
-    p = ws._path(desig, None)
-    if desig in ws.docs or p.is_file():
-        doc = ws.docs.get(desig) or ws.open(p)
+    target = Path(folder) / f"{desig}.solidcraft" if folder is not None else None
+    p = ws._path(desig, target)
+    open_doc = _open_part_doc(ws, p)
+    if open_doc or p.is_file():
+        doc = open_doc or _part_doc(ws, p)
         meta = doc.metadata().get("standard")
         if (meta and meta.get("norm") == expected_std["norm"]
                 and meta.get("size") == expected_std["size"]
                 and meta.get("dimensions") == expected_std.get("dimensions")):
             return doc.path
-        if desig in ws.docs:
-            ws.close(desig)
+        for sc in _ACTIVE_SCOPES.get():
+            sc.ensure_backed_up(p)
+        doc_name = doc.name
+        ws.close(doc_name)
         # The file on disk no longer matches the standard: rebuild it in place.
-        res = standard_parts.create(ws, norm, size, length=length, overwrite=True)
+        res = standard_parts.create(ws, norm, size, length=length, name=doc_name, path=str(p), overwrite=True)
         return Path(res["path"])
 
-    res = standard_parts.create(ws, norm, size, length=length)
+    for sc in _ACTIVE_SCOPES.get():
+        sc.track_new_file(p)
+    doc_name, k = desig, 2
+    while doc_name in ws.docs:
+        doc_name, k = f"{desig}_{k}", k + 1
+    res = standard_parts.create(ws, norm, size, length=length, name=doc_name, path=str(p))
     return Path(res["path"])
 
 
@@ -47,7 +65,7 @@ def _find_live_doc(ws, doc, fpath: Path):
     target = fpath.resolve()
     if target == doc.path.resolve():
         return doc
-    for d in ws.docs.values():
+    for d in ws.file_docs():
         if d.path.resolve() == target:
             return d
     return None
@@ -69,7 +87,10 @@ def _restore_backup(ws, doc, copies: dict) -> None:
     """Restore backed-up files and reopen them in their live sessions."""
     # 1. Restore all files on disk first so sessions reload restored contents
     for fpath, src in copies.items():
+        if fpath.exists() and filecmp.cmp(src, fpath, shallow=False):
+            continue  # never written by the failed attempt: nothing to restore, no window to reload (#190)
         shutil.copy2(src, fpath)
+        reload_windows(fpath)  # a window showing the file must not keep the failed attempt (#191)
     # 2. Reopen live sessions (parts first, assembly last)
     doc_resolved = doc.path.resolve()
     part_paths = [p for p in copies if p.resolve() != doc_resolved]
@@ -79,6 +100,7 @@ def _restore_backup(ws, doc, copies: dict) -> None:
         if live is not None:
             try:
                 live.session.tool("open", {"path": str(fpath)})
+                live.mtime = live.disk_mtime()  # copy2 put the old mtime back: this copy is the file again
             except Exception:
                 pass
     # 3. Synchronize link geometry in the assembly session
@@ -86,6 +108,46 @@ def _restore_backup(ws, doc, copies: dict) -> None:
         doc.session.cmd("component.update_links")
     except Exception:
         pass
+
+
+def _open_part_doc(ws, fpath):
+    """The open file document of `fpath` (found by its file, not its name), fresh from disk; None if not open."""
+    target = Path(fpath).resolve()
+    for d in ws.file_docs():
+        if d.path.resolve() == target:
+            return ws._fresh(d)
+    return None
+
+
+def _part_doc(ws, fpath):
+    """The document of part file `fpath`: the open one, else opened under a name no other document has (a window
+    document may carry the file's stem, #190 review)."""
+    d = _open_part_doc(ws, fpath)
+    if d is not None:
+        return d
+    stem, name, k = Path(fpath).stem, Path(fpath).stem, 2
+    while name in ws.docs:
+        name, k = f"{stem}_{k}", k + 1
+    return ws.open(fpath, name=name)
+
+
+def moved_parts_warnings(poses_before: dict, occs_after: dict, what: str, session=None) -> list[str]:
+    """Warnings for occurrences that existed before `what` and moved or turned during it (#178)."""
+    from .modeling import _occurrence_midpoints, _transform_delta  # modeling imports this module's neighbours: import late
+    moved_occs = [
+        o for o in occs_after.values()
+        if o["name"] in poses_before and not g.same_mat(poses_before[o["name"]], o["transform"], tol=1e-9)
+    ]
+    mids = _occurrence_midpoints(session, moved_occs) if session is not None and moved_occs else {}
+    out = []
+    for o in moved_occs:
+        before = poses_before[o["name"]]
+        dist, angle = _transform_delta(before, o["transform"], ref_point=mids.get(o.get("id")))
+        if dist > 1e-3 or angle > 1e-2:
+            out.append(f"{o['name']} moved by {dist:.3f} mm and turned by {angle:.2f}° during {what} (the assembly was "
+                       "solved again and a joint put it back to its stored pose): check its position, and join "
+                       "parts that are already placed with add_joint(as_built=True)")
+    return out
 
 
 def _unique_feature_name(s, base: str, extra_used: set | None = None) -> str:
@@ -1145,6 +1207,94 @@ def preview_bolted_connection(
     return out
 
 
+def _discard_created_files(ws, created_files) -> None:
+    """Close and delete the standard-part files created inside this rollback scope (#199, #205).
+    Best effort: every step is guarded on its own, so a failure here never keeps the caller from restoring
+    its backup."""
+    for extra_path in created_files:
+        try:
+            extra_resolved = Path(extra_path).resolve()
+        except Exception:  # OSError, or RuntimeError for a symlink loop
+            continue
+        try:
+            live_docs = list(ws.file_docs())
+        except Exception:
+            live_docs = []
+        for live in live_docs:
+            try:
+                if live.path.resolve() == extra_resolved:
+                    ws.close(live.name)
+            except Exception:
+                pass  # one unrelated document must not stop the others from being closed
+        for candidate in (extra_resolved, extra_resolved.with_name(extra_resolved.name + ".bak")):
+            try:
+                if candidate.is_file():
+                    candidate.unlink()
+            except OSError:
+                pass
+
+
+def _assembly_backup_paths(doc, extra_paths=()) -> list:
+    """Collect the assembly path, all linked component files, all recorded bolted part files, and `extra_paths`."""
+    paths = [doc.path, *extra_paths]
+    for c in doc.metadata().get("bolted_connections", {}).values():
+        for p_info in c.get("parts", []):
+            if p_info.get("file"):
+                paths.append(p_info["file"])
+    for lk in doc.session.cmd("component.links").get("links", []):
+        if lk.get("file"):
+            paths.append(lk["file"])
+    return paths
+
+
+class _RollbackScope:
+    """Tracks backed-up files and newly created standard parts for one bolted operation (including nested repairs)."""
+
+    def __init__(self, initial_paths):
+        self.backup_dir, self.copies = _backup_files(initial_paths)
+        self.created_files: list[Path] = []
+        self._created_set: set[Path] = set()
+
+    def ensure_backed_up(self, path: Path) -> None:
+        """Back up an existing file before overwriting it, unless it was created inside this scope."""
+        resolved = Path(path).resolve()
+        if resolved in self._created_set or resolved in self.copies or not resolved.exists():
+            return
+        dst = self.backup_dir / f"{len(self.copies)}_{resolved.name}"
+        shutil.copy2(resolved, dst)
+        self.copies[resolved] = dst
+
+    def track_new_file(self, path: Path) -> None:
+        """Record a standard-part file about to be created by this scope so rollback deletes only it."""
+        resolved = Path(path).resolve()
+        if resolved in self.copies or resolved in self._created_set:
+            return
+        self._created_set.add(resolved)
+        self.created_files.append(resolved)
+
+    def rollback(self, ws, doc) -> None:
+        _discard_created_files(ws, self.created_files)
+        _restore_backup(ws, doc, self.copies)
+
+    def cleanup(self) -> None:
+        shutil.rmtree(self.backup_dir, ignore_errors=True)
+
+
+@contextlib.contextmanager
+def _rollback_guard(ws, doc, initial_paths):
+    """Back up `initial_paths` plus any dynamically touched standard parts; roll back on error."""
+    scope = _RollbackScope(initial_paths)
+    token = _ACTIVE_SCOPES.set(_ACTIVE_SCOPES.get() + (scope,))
+    try:
+        yield scope
+    except Exception:
+        scope.rollback(ws, doc)
+        raise
+    finally:
+        _ACTIVE_SCOPES.reset(token)
+        scope.cleanup()
+
+
 def bolted_connection(
     ws,
     assembly: str,
@@ -1237,18 +1387,16 @@ def bolted_connection(
         if anchors:
             anchors[0]["pattern"] = dict(stored_pattern)
 
-    # Back up the assembly and every pierced part file for rollback
-    backup_dir, backup = _backup_files([doc.path] + [p["file"] for p in all_penetrations[0]])
-
-    try:
+    # Back up the assembly, every linked/bolted part file, and any overwritten standard parts for rollback
+    asm_dir = doc.path.parent
+    with _rollback_guard(ws, doc, _assembly_backup_paths(doc, [p["file"] for p in all_penetrations[0]])):
         # Step 1: Write holes into each component file
         parts_meta = []
         num_plates = len(all_penetrations[0])
         for idx in range(num_plates):
             occ = all_penetrations[0][idx]["occurrence"]
             file_path = all_penetrations[0][idx]["file"]
-            part_name = Path(file_path).stem
-            part_doc = ws.docs.get(part_name) or ws.open(file_path)
+            part_doc = _part_doc(ws, file_path)
 
             t_occ = occ["transform"]
             t_inv = g.invert_rigid(t_occ)
@@ -1328,12 +1476,12 @@ def bolted_connection(
         # Reload modified component geometry in the assembly
         s.cmd("component.update_links")
 
-        # Step 2: Ensure standard parts
-        screw_path = _ensure_standard_part(ws, screw_norm, canon_size, length=screw_length)
-        washer_path = _ensure_standard_part(ws, "ISO 7089", canon_size) if washer_head else None
-        nut_washer_path = _ensure_standard_part(ws, "ISO 7089", canon_size) if washer_nut else None
-        nut_path = _ensure_standard_part(ws, "ISO 4032", canon_size) if effective_type == "through" else None
-        insert_path = _ensure_standard_part(ws, "Ruthex", canon_size) if effective_type == "insert" else None
+        # Step 2: Ensure standard parts next to the assembly so project subfolders stay self-contained (#196)
+        screw_path = _ensure_standard_part(ws, screw_norm, canon_size, length=screw_length, folder=asm_dir)
+        washer_path = _ensure_standard_part(ws, "ISO 7089", canon_size, folder=asm_dir) if washer_head else None
+        nut_washer_path = _ensure_standard_part(ws, "ISO 7089", canon_size, folder=asm_dir) if washer_nut else None
+        nut_path = _ensure_standard_part(ws, "ISO 4032", canon_size, folder=asm_dir) if effective_type == "through" else None
+        insert_path = _ensure_standard_part(ws, "Ruthex", canon_size, folder=asm_dir) if effective_type == "insert" else None
 
         # Step 3: Insert fasteners into assembly
         meta = doc.metadata()
@@ -1357,6 +1505,9 @@ def bolted_connection(
 
         cb_offset = (prev.get("cb_depth") or 0.0) if prev.get("counterbore") else 0.0
 
+        # parts already in the assembly: creating the fastener joints re-solves it, and a part joined earlier can
+        # jump back to its joint's stored pose (#178, seen twice in acceptance test 1): reported below
+        poses_before = {o["name"]: o["transform"] for o in links._occurrences(s).values()}
         all_created_joints = []
         all_created_components = []
         all_screw_occs = []
@@ -1624,13 +1775,9 @@ def bolted_connection(
         doc.set_metadata(curr_meta)
         doc.save()
 
-        return dict(conn_record, warnings=links_res.get("warnings", []))
-
-    except Exception:
-        _restore_backup(ws, doc, backup)
-        raise
-    finally:
-        shutil.rmtree(backup_dir, ignore_errors=True)
+        warnings = list(links_res.get("warnings", []))
+        warnings += moved_parts_warnings(poses_before, links._occurrences(s), "the bolted connection", session=s)
+        return dict(conn_record, warnings=warnings)
 
 
 def list_bolted_connections(ws, assembly: str) -> dict:
@@ -1653,6 +1800,15 @@ def delete_bolted_connection(ws, assembly: str, id: str) -> dict:
     if id not in conns:
         raise KeyError(f"no bolted connection {id!r} in assembly {assembly!r}")
     conn = conns[id]
+    # every file this writes, checked before the first change: no half-deleted connection when one is refused (#190).
+    # Only parts that get a hole removed are written; an open copy of one that was saved elsewhere since it was
+    # loaded is reloaded here (or refused, with unsaved changes) rather than in the middle of the deletion
+    for p_info in conn.get("parts", []):
+        if not (p_info.get("hole_features") or p_info.get("hole_feature")):
+            continue
+        check_windows_writable(p_info["file"])
+        _open_part_doc(ws, p_info["file"])  # an open copy is read again here, or refused with unsaved changes
+    check_windows_writable(doc.path)
 
     removed_joints = []
     removed_components = []
@@ -1705,7 +1861,7 @@ def delete_bolted_connection(ws, assembly: str, id: str) -> dict:
     for p_info in conn.get("parts", []):
         fpath = Path(p_info["file"])
         part_name = fpath.stem
-        part_doc = ws.docs.get(part_name) or ws.open(fpath)
+        part_doc = _part_doc(ws, fpath)
         feats = list(p_info.get("hole_features", []))
         if not feats and "hole_feature" in p_info:
             feats = [p_info["hole_feature"]]
@@ -1725,13 +1881,13 @@ def delete_bolted_connection(ws, assembly: str, id: str) -> dict:
             part_doc.save()
             removed_holes[part_name] = deleted_for_part
 
-    # 4. Update links in assembly
-    s.cmd("component.update_links")
-
-    # 5. Clean up metadata
+    # 4. Clean up metadata before updating links so check/repair ignores the deleted connection
     curr_meta = doc.metadata()
     curr_meta.get("bolted_connections", {}).pop(id, None)
     doc.set_metadata(curr_meta)
+
+    # 5. Update links in assembly and repair any remaining joints shifted by hole removal
+    links_res = links.update_links(ws, doc, repair_moved=True)
     doc.save()
 
     return {
@@ -1740,6 +1896,7 @@ def delete_bolted_connection(ws, assembly: str, id: str) -> dict:
         "removed_joints": removed_joints,
         "removed_components": removed_components,
         "removed_holes": removed_holes,
+        "warnings": list(links_res.get("warnings", [])),
     }
 
 
@@ -1797,21 +1954,19 @@ def edit_bolted_connection(ws, assembly: str, id: str, **changes) -> dict:
     if new_params.get("connection_type") == "blind" and new_params.get("blind_material"):
         hole_tables.normalize_material(new_params["blind_material"])
 
-    # Back up the assembly and the affected part files for rollback
-    backup_dir, backup = _backup_files(
-        [doc.path] + [p_info["file"] for p_info in old_conn.get("parts", [])])
-    try:
+    # Back up the assembly, all linked/bolted part files (including other connections that update_links may repair),
+    # and any standard parts created or overwritten during delete/recreate (#205)
+    with _rollback_guard(
+        ws,
+        doc,
+        _assembly_backup_paths(doc, [p_info["file"] for p_info in old_conn.get("parts", []) if p_info.get("file")]),
+    ):
         # 1. Delete old connection
         delete_bolted_connection(ws, assembly, id)
 
         # 2. Recreate with new_params
         new_conn = bolted_connection(ws, assembly, **new_params)
         return new_conn
-    except Exception:
-        _restore_backup(ws, doc, backup)
-        raise
-    finally:
-        shutil.rmtree(backup_dir, ignore_errors=True)
 
 
 def check_and_update_bolted_connections(ws, doc, repair: bool = False) -> list[dict]:

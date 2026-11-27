@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mechvane"
-version = "0.1.0a25"
+version = "0.1.0a26"
 description = "Parametric 3D CAD for everyday mechanical engineering: you and your AI agent on the same model, built on SolidCraft"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -24,8 +24,8 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/mechvane/mechvane"
-Demo = "https://mechvane.dev/"
-Roadmap = "https://github.com/mechvane/mechvane/blob/main/ROADMAP.md"
+Website = "https://mechvane.dev/"
+Roadmap = "https://mechvane.dev/roadmap/"
 Issues = "https://github.com/mechvane/mechvane/issues"
 Changelog = "https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md"
 

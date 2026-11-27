@@ -159,15 +159,15 @@
   "herkunft": "norm_sekundaer",
   "quellen": [
     {
-      "url": "https://www.aramfix.com",
-      "stelle": "Aramfix Technical Data Sheet (ISO 4762 / DIN 912)",
-      "zitat": "Thread d             M1,6          M2           M2,5              M3            M4           M5         M6              M8      M10         M12",
-      "abgerufen": "2026-10-21"
+      "url": "https://fasten.it/norms/norm/din_en_iso_4762",
+      "stelle": "fasten.it, Datenblatt DIN EN ISO 4762 (dk, k, s)",
+      "zitat": "d thread size P dk max plain dk max knurled dk min k max k min s nom",
+      "abgerufen": "2026-11-27"
     }
   ],
   "begruendung": "Grundnorm für metrische Zylinderschrauben; Festlegung der Außenabmessungen für Werkzeugzugang und Senkungen.",
   "ausnahmen": "Gerändelter Kopf erlaubt geringfügig größeres dk (z. B. M3: 5,68 mm; M6: 10,22 mm).",
   "haerte": "fehler",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

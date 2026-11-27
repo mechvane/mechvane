@@ -7,7 +7,7 @@ distance, fix, project a model edge. Needs a running UI on the smoke part:
 Screenshots go to /tmp/shots/. Exit code 1 on a failed step or a page error."""
 import glob, os, sys
 from playwright.sync_api import sync_playwright
-sh = sorted(glob.glob("/root/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell"))
+sh = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell")))
 errs = []
 os.makedirs("/tmp/shots", exist_ok=True)
 fails = []

@@ -1,0 +1,115 @@
+{
+  "id": "aktivatoren_vorbehandlung_anaerobe_schraubensicherung",
+  "aussage": "Vorbehandlung und Aktivatoren für anaerobe Schraubensicherungen auf passiven Metallen (Edelstahl, Aluminium, eloxiertes Aluminium, Zink, verzinkter oder passivierter Stahl, Titan) und unter 5 °C (bzw. unter 15 °C laut TDS): Erst entfetten und reinigen (z. B. mit Loctite SF 7063, Ablüftzeit ≤ 60 s bei 20 °C, vollständig ablüften lassen), anschließend Aktivator auftragen — lösungsmittelbasiert Loctite SF 7649 (Aceton-Basis, Ablüftzeit 30–70 s bei 20 °C, offene Zeit ≤ 30 Tage / 1 Monat) oder lösungsmittelfrei Loctite SF 7240 (Methacrylatmonomer-Basis, lüftet nicht ab, Aktivität 6 Stunden, Fügen innerhalb von 15 s nach Klebstoffauftrag, beidseitiger Auftrag bei Spalten > 0,4 mm). Aktivator und Klebstoff dürfen im flüssigen Zustand niemals direkt gemischt werden.",
+  "werte": [
+    {
+      "name": "Loctite SF 7063 Reiniger Ablüftzeit (20 °C, maximal)",
+      "wert": 60,
+      "einheit": "s"
+    },
+    {
+      "name": "Loctite SF 7649 Ablüftzeit (20 °C)",
+      "bereich": [30, 70],
+      "einheit": "s"
+    },
+    {
+      "name": "Loctite SF 7649 Offene Zeit auf Bauteil (maximal)",
+      "wert": 30,
+      "einheit": "Tage"
+    },
+    {
+      "name": "Loctite SF 7240 Aktivitätsdauer auf Bauteil",
+      "wert": 6,
+      "einheit": "Std."
+    },
+    {
+      "name": "Loctite SF 7240 Maximale Fügezeit nach Klebstoffauftrag",
+      "wert": 15,
+      "einheit": "s"
+    },
+    {
+      "name": "Loctite SF 7240 Spaltgrenze für beidseitige Aktivierung",
+      "wert": 0.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "Empfohlener Temperatur-Schwellenwert laut DE-Katalog (Loctite 7240/7649)",
+      "wert": 5,
+      "einheit": "°C"
+    },
+    {
+      "name": "Empfohlener Temperatur-Schwellenwert laut TDS (SF 7240 / SF 7649)",
+      "wert": 15,
+      "einheit": "°C"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Edelstahl",
+      "Aluminium",
+      "Zink",
+      "Titan",
+      "Verzinkter Stahl",
+      "Passivierte Metalle",
+      "Metalle"
+    ],
+    "verfahren": [
+      "Schraubverbindung",
+      "Kleben",
+      "Montage",
+      "Oberflächenvorbereitung"
+    ],
+    "feature": [
+      "Schraubensicherung",
+      "Losdrehsicherung",
+      "Aktivator",
+      "Vorbehandlung",
+      "Gewinde"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.ludwigmeister.de/content/techn-informationen/chemische-produkte/klebstoffe/loctite_klebetechnik_de.pdf",
+      "stelle": "Seiten 10–11, 31 und 33 (Reinigen und Oberflächenvorbereitung)",
+      "zitat": "Falls der Klebstoff bei Temperaturen unter 5 °C angewendet wird, Oberflächen mit Loctite® 7240 oder Loctite® 7649 vorbehandeln",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.ellsworth.com/globalassets/literature-library/manufacturer/henkel-loctite/henkel-loctite-user-guide-threadlocking.pdf",
+      "stelle": "Seite 6, When should I use a LOCTITE® primer? / Inactive Metals",
+      "zitat": "*LOCTITE® threadlockers cure in the absence of air and presence of metal ions.",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.bt-kleben.de/media/pdf/ae/f3/eb/Loctite-SF-7240-TDS_1501.pdf",
+      "stelle": "Seiten 1–2, LOCTITE SF 7240 Technical Data Sheet (Januar 2015)",
+      "zitat": "Aktivator und Klebstoff dürfen im flüssigen Zustand niemals direkt miteinander vermischt werden.",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.bt-kleben.de/media/pdf/f0/f1/83/Loctite-SF-7649-TDS_1406.pdf",
+      "stelle": "Seite 1, LOCTITE SF 7649 Technical Data Sheet (Juni 2014)",
+      "zitat": "Ablüftzeit bei 20 °C, Sekunden 30 bis 70",
+      "abgerufen": "2026-11-26"
+    },
+    {
+      "url": "https://www.bt-kleben.de/media/pdf/1f/45/e1/Loctite-SF-7063-TDS_1312.pdf",
+      "stelle": "Seite 1, LOCTITE SF 7063 Technical Data Sheet (Dezember 2013)",
+      "zitat": "Lösungsmitteleinschlüsse im Klebespalt zu verhindern.",
+      "abgerufen": "2026-11-26"
+    }
+  ],
+  "begruendung": "Anaerobe Methacrylat-Schraubensicherungen härten unter Luftabschluss durch eine metallionen-katalysierte radikalische Polymerisation aus. Während aktive Metalle (unlegierter Stahl/Eisen, Kupfer, Messing, Bronze) genügend Ionen bereitstellen, bilden passive Metalle (Edelstahl, Aluminium, eloxiertes Aluminium, Zink, verzinkte oder passivierte Flächen, Titan) dichte Oxidschichten und liefern zu wenige Metallionen, sodass die Aushärtung stark verzögert oder unvollständig bleibt. Kupfersalz-Aktivatoren (SF 7649 mit aliphatischem Amin in Aceton; SF 7240 mit basischem Kupfersalz in reaktivem Methacrylatmonomer) bringen katalytische Ionen auf das Substrat und stellen auch bei Kälte und größeren Spalten die Aushärtung sicher; vorheriges Entfetten entfernt Öle, Fette und Späne.",
+  "ausnahmen": "Abweichung zwischen den Quellen: Der deutsche Loctite-Katalog nennt Temperaturen unter 5 °C als Anwendungsschwelle für 7240/7649, während die Technischen Datenblätter (SF 7240, SF 7649) bereits unter 15 °C zur Aktivierung raten. Acetonhaltige Aktivatoren (SF 7649) können bestimmte Kunststoffe oder Beschichtungen angreifen und müssen vor dem Fügen vollständig ablüften; wässrige Reiniger können die Aushärtung beeinträchtigen. Aktivator und Klebstoff niemals im flüssigen Zustand direkt mischen; nicht für reinen Sauerstoff, Chlor oder stark oxidierende Medien geeignet.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "klebende_schraubensicherung_loctite"
+    }
+  ]
+}

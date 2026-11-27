@@ -276,9 +276,10 @@ def main() -> int:
                                  "issues": {k: v[0] for k, v in states.items()}, "last_run": day},
                                 indent=1), encoding="utf-8")
     print(f"wrote docs/upstream/{day}.md")
-    if not a.no_ntfy:
-        subprocess.run(["bash", "-c", f'source /root/scripts/notify-ntfy.sh && notify "Mechvane: Upstream" "$1" low',
-                        "_", msg], check=False)
+    notify = os.environ.get("MECHVANE_NOTIFY_SCRIPT")  # optional shell script that defines `notify TITLE TEXT PRIORITY`
+    if not a.no_ntfy and notify and Path(notify).is_file():
+        subprocess.run(["bash", "-c", f'source "$2" && notify "Mechvane: Upstream" "$1" low', "_", msg, str(Path(notify).resolve())],
+                       check=False)
     return 0
 
 

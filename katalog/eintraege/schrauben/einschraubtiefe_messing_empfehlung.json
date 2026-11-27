@@ -11,8 +11,6 @@
   "geltungsbereich": {
     "werkstoff": [
       "Messing",
-      "CuZn39Pb3",
-      "CuZn37",
       "Kupferlegierung"
     ],
     "verfahren": [
@@ -47,9 +45,9 @@
       "abgerufen": "2026-10-21"
     }
   ],
-  "begruendung": "Automatenmessing ist deutlich scherfester als Aluminiumguss. 1,5 * d bietet Sicherheitsreserven gegen Chargenschwankungen und liegt unterhalb der Klemmschwelle tiefer Gewinde.",
+  "begruendung": "Erfahrungswert ohne Quellenbeleg. Die angegebene Quelle nennt weder Messing noch den Wert 1,5·d für 8.8 (dort nur grobe Faktoren für Stahl, Guss und Aluminium, selbst als zu prüfen markiert) (#210).",
   "ausnahmen": "",
   "haerte": "hinweis",
-  "pruefstatus": "offen",
+  "pruefstatus": "nicht_belegt",
   "beziehungen": []
 }

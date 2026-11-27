@@ -191,7 +191,7 @@ def edit_in_place(ws, assembly: str, occurrence: str, point: list[float] | None 
     target_path = Path(target["file"]).resolve()
 
     part_doc = None
-    for d in ws.docs.values():
+    for d in ws.file_docs():
         if d.path.resolve() == target_path:
             part_doc = d
             break
@@ -222,11 +222,14 @@ def edit_in_place(ws, assembly: str, occurrence: str, point: list[float] | None 
 def finish_edit(ws, part: str, update: bool = True) -> dict:
     """Save an edited part document and run update_links (repair=false) in all assemblies that link it,
     including unopened intermediate subassemblies, and persist updated assemblies to disk."""
+    if getattr(ws.docs.get(part), "window", False):
+        raise ValueError(f"{part!r} is the design in the open SolidCraft window: save it in the app (Ctrl+S); "
+                         "finish_edit saves and relinks part files")
     part_doc = None
-    if part in ws.docs:
-        part_doc = ws.docs[part]
+    if ws.file_doc(part):
+        part_doc = ws.file_doc(part)
     else:
-        for d in ws.docs.values():
+        for d in ws.file_docs():
             if d.name == part or d.path.stem == part or str(d.path) == part or d.path.name == part:
                 part_doc = d
                 break
@@ -244,7 +247,7 @@ def finish_edit(ws, part: str, update: bool = True) -> dict:
         try:
             # Discover all assemblies (open or intermediate subassemblies) linking the part
             affected_docs = {}
-            queue = [d for d in list(ws.docs.values()) if d.kind == ASSEMBLY]
+            queue = [d for d in ws.file_docs() if d.kind == ASSEMBLY]
             seen_paths = {d.path.resolve() for d in queue}
 
             while queue:
@@ -267,7 +270,7 @@ def finish_edit(ws, part: str, update: bool = True) -> dict:
                         uses_target = True
                         if s_file != target_path and s_file not in seen_paths and s_file.is_file():
                             seen_paths.add(s_file)
-                            existing = next((d for d in ws.docs.values() if d.path.resolve() == s_file), None)
+                            existing = next((d for d in ws.file_docs() if d.path.resolve() == s_file), None)
                             if existing:
                                 sub_doc = existing
                             else:

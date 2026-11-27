@@ -3,9 +3,9 @@
 import json
 import os
 import queue
+import socket
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 
@@ -51,15 +51,117 @@ def session_env(platform=sys.platform, environ=None, adapters=None) -> dict:
     return env
 
 
-class Session:
-    """One headless SolidCraft session (one open design)."""
+def control_dir(platform=sys.platform, environ=None) -> str:
+    """Folder where the SolidCraft app writes `<port>.token`, `<port>.pid` and `current.port`
+    (docs/control-protocol.md "Token"); SOLIDCRAFT_CONTROL_DIR moves it."""
+    env = os.environ if environ is None else environ
+    if env.get("SOLIDCRAFT_CONTROL_DIR"):
+        return env["SOLIDCRAFT_CONTROL_DIR"]
+    home = env.get("HOME") or env.get("USERPROFILE") or "~"
+    if platform == "win32":
+        return os.path.join(env.get("LOCALAPPDATA") or os.path.join(home, "AppData", "Local"), "SolidCraft", "control")
+    if platform == "darwin":
+        return os.path.join(home, "Library", "Application Support", "SolidCraft", "control")
+    return os.path.join(env.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share"), "solidcraft", "control")
 
-    def __init__(self, allow_paths=(), executable=None, timeout=300.0):
+
+def _split_address(address: str):
+    """('host', port) from '127.0.0.1:PORT', '[::1]:PORT' or a bare port; port None when it is not a number."""
+    address = address.strip()
+    if address.isdigit():
+        return "127.0.0.1", int(address)
+    host, _, port = address.rpartition(":")
+    host = host.strip("[]") or "127.0.0.1"
+    return host, int(port) if port.isdigit() else None
+
+
+def _pid_alive(folder, port) -> bool:
+    """False only when the window's `<port>.pid` names a process that is gone: then whatever listens on the
+    port is not that SolidCraft window (#190). Unknown (no file, other platform) counts as alive."""
+    try:
+        with open(os.path.join(folder, f"{port}.pid")) as f:
+            pid = int(f.read().strip())
+    except (OSError, ValueError):
+        return True
+    if sys.platform == "win32":
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True  # exists, owned by someone else
+    return True
+
+
+def _listening(port: int, host="127.0.0.1", timeout=1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def find_app(control=None, probe=_listening) -> str:
+    """The `127.0.0.1:PORT` of the one running SolidCraft window, from the files its control channel
+    leaves in the control folder. Raises SolidCraftError with a plain message for no window, only
+    stale files (an app that was force-quit leaves its token behind) and several windows (then the
+    caller names the port itself)."""
+    folder = control or control_dir()
+    try:
+        ports = sorted(int(n[:-6]) for n in os.listdir(folder) if n.endswith(".token") and n[:-6].isdigit())
+    except OSError:
+        ports = []
+    if not ports:
+        raise SolidCraftError(
+            f"no running SolidCraft window found (no token file in {folder}); open the app with "
+            "Settings > Assistant > Agents through MCP > 'Let AI agents connect' on, or start it with --control PORT. "
+            "An app started with SOLIDCRAFT_CONTROL_TOKEN or another SOLIDCRAFT_CONTROL_DIR leaves no file here: "
+            "name its address ('127.0.0.1:PORT') and token instead")
+    answering = [p for p in ports if probe(p)]
+    live = [p for p in answering if _pid_alive(folder, p)]
+    if answering and not live:
+        # the pid files say gone, yet the ports answer: the app may run in another pid namespace (Flatpak, Snap,
+        # a sandbox), so trust the ports (#190 review)
+        live = answering
+    if not live:
+        raise SolidCraftError(
+            f"SolidCraft left token files for port(s) {', '.join(map(str, ports))} in {folder}, but nothing listens "
+            "there (stale files from an app that was force-quit): start the app again or delete the files")
+    if len(live) > 1:
+        raise SolidCraftError(
+            f"several SolidCraft windows are open (ports {', '.join(map(str, live))}): name one with address '127.0.0.1:PORT'")
+    return f"127.0.0.1:{live[0]}"
+
+
+class Session:
+    """One SolidCraft session: headless (one open design of its own), or, with `connect`, bridged to the
+    design in the running app's window (`connect="auto"` finds the window, or `"127.0.0.1:PORT"`)."""
+
+    CONNECT_TIMEOUT = 20.0  # the app answers at once or not at all; a hang would block the agent for `timeout`
+
+    def __init__(self, allow_paths=(), executable=None, timeout=300.0, connect=None, token=None):
         self.timeout = timeout
         self._closed = False
-        # --headless: since 0.25 a plain `mcp` joins a running SolidCraft app instead; each Mechvane
-        # document needs its own session
-        args = [executable or install.find_cli(), "mcp", "--headless"]
+        self.connected = connect is not None
+        self.address = None
+        if self.connected:
+            self.address = find_app() if connect == "auto" else connect
+            # `mcp --connect` only connects at the first tool call ("tool calls connect once it runs"), so a
+            # dead port would show up as a hang or a vague error later: check it here
+            host, port = _split_address(self.address)
+            if port is None or not _listening(port, host):
+                raise SolidCraftError(f"no SolidCraft window listens at {self.address}: open the app with "
+                                      "'Let AI agents connect' on, or start it with --control PORT")
+            if self.address.strip().isdigit():
+                self.address = f"127.0.0.1:{port}"  # a bare port
+            args = [executable or install.find_cli(), "mcp", "--connect", self.address]
+            if token:
+                args += ["--token", token]
+        else:
+            # --headless: since 0.25 a plain `mcp` joins a running SolidCraft app instead; each Mechvane
+            # document needs its own session
+            args = [executable or install.find_cli(), "mcp", "--headless"]
         for p in allow_paths:
             args += ["--allow-path", str(p)]
         self._p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -72,7 +174,8 @@ class Session:
                          daemon=True).start()
         try:
             self._rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
-                                     "clientInfo": {"name": "mechvane", "version": "0.1"}})
+                                     "clientInfo": {"name": "mechvane", "version": "0.1"}},
+                      timeout=self.CONNECT_TIMEOUT if self.connected else None)
             self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
         except Exception:
             self.close()
@@ -209,22 +312,3 @@ class Session:
                     self._p.stdout.close()
                 except OSError:
                     pass
-            if self._p.poll() is not None:
-                _remove_scratch_dirs(self._p.pid)
-
-
-def _remove_scratch_dirs(pid):
-    """Remove the empty `<temp>/solidcraft-mcp-<pid>-<n>` folders the server makes at startup
-    and leaves behind on exit (SolidCraft 0.21.0); folders with content stay.
-    Fixed upstream (#7836): 0.41.0 leaves nothing behind (checked 2026-11-14); kept for older versions, e.g. 0.30.1."""
-    prefix = f"solidcraft-mcp-{pid}-"
-    try:
-        entries = list(os.scandir(tempfile.gettempdir()))
-    except OSError:
-        return
-    for e in entries:
-        if e.name.startswith(prefix):
-            try:
-                os.rmdir(e.path)
-            except OSError:
-                pass

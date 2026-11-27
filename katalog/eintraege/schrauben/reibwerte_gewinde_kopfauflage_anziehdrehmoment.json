@@ -1,0 +1,181 @@
+{
+  "id": "reibwerte_gewinde_kopfauflage_anziehdrehmoment",
+  "aussage": "Beim drehmomentgesteuerten Anziehen gehen rund 80 bis 90 % des Anziehdrehmoments durch Reibung verloren (typisch etwa 50 % unter der Kopf- bzw. Mutterauflage und 40 % im Gewinde), während nur etwa 10 % in Vorspann- bzw. Klemmkraft umgesetzt werden. Übliche Tabellenwerte für Stahlschrauben setzen im Anlieferungszustand pauschal µges = 0,14 an. Nach VDI 2230 (Tabellen bei Würth/Bossard) werden Reibungszahlklassen A (0,04 bis 0,10; Festschmierstoffe wie MoS2 oder PTFE), B (0,08 bis 0,16; Zielklasse für hohe Vorspannkraft bei geringer Streuung, z. B. geölt oder Anlieferungszustand), C (0,14 bis 0,24; leicht geölt bzw. galvanisch verzinkt trocken), D (0,20 bis 0,35; z. B. feuerverzinkt trocken) und E (>= 0,30; ungeschmierter austenitischer Stahl oder Al-/Mg-Legierungen) unterschieden. Schmierung senkt µ deutlich (z. B. schwarze Stahlschrauben von µges = 0,12–0,18 ungeschmiert auf 0,06–0,12 mit MoS2-Paste; M8 8.8 bei Bossard: MA,max sinkt von 27,3 Nm bei µ = 0,14 auf 18,5 Nm bei µ = 0,08, während FM,max durch geringere Torsion von 18,1 kN auf 19,5 kN steigt). Bei nichtrostenden Stählen (A2/A4) liegen ungeschmierte Werte bei großer Nachgiebigkeit sehr hoch und streuen stark (µG = 0,26–0,50, µK = 0,35–0,50), während Spezialschmiermittel sie auf µG = 0,12–0,23 (kleine Nachgiebigkeit 0,10–0,16) und µK = 0,08–0,12 senken.",
+  "werte": [
+    {
+      "name": "Reibungsverlust-Anteil am Anziehdrehmoment gesamt",
+      "bereich": [80, 90],
+      "einheit": "%"
+    },
+    {
+      "name": "Reibungsverlust-Anteil unter der Kopfauflage",
+      "wert": 50,
+      "einheit": "%"
+    },
+    {
+      "name": "Reibungsverlust-Anteil im Gewinde",
+      "wert": 40,
+      "einheit": "%"
+    },
+    {
+      "name": "Anteil des Anziehdrehmoments für Klemmkraft",
+      "wert": 10,
+      "einheit": "%"
+    },
+    {
+      "name": "Standard-Gesamtreibungszahl µges (Stahl Lieferausführung)",
+      "wert": 0.14,
+      "einheit": ""
+    },
+    {
+      "name": "Reibungszahlklasse A (µG, µK mit Festschmierstoffen)",
+      "bereich": [0.04, 0.10],
+      "einheit": ""
+    },
+    {
+      "name": "Reibungszahlklasse B (µG, µK, angestrebter Bereich)",
+      "bereich": [0.08, 0.16],
+      "einheit": ""
+    },
+    {
+      "name": "Reibungszahlklasse C (µG, µK)",
+      "bereich": [0.14, 0.24],
+      "einheit": ""
+    },
+    {
+      "name": "Reibungszahlklasse D (µG, µK)",
+      "bereich": [0.20, 0.35],
+      "einheit": ""
+    },
+    {
+      "name": "Reibungszahlklasse E Mindestwert (µG, µK)",
+      "wert": 0.30,
+      "einheit": ""
+    },
+    {
+      "name": "Stahl ohne Nachbehandlung (schwarz), ungeschmiert µges",
+      "bereich": [0.12, 0.18],
+      "einheit": ""
+    },
+    {
+      "name": "Stahl ohne Nachbehandlung (schwarz), MoS2-Paste µges",
+      "bereich": [0.06, 0.12],
+      "einheit": ""
+    },
+    {
+      "name": "Edelstahl A2/A4 ungeschmiert µG (große Nachgiebigkeit)",
+      "bereich": [0.26, 0.50],
+      "einheit": ""
+    },
+    {
+      "name": "Edelstahl A2/A4 ungeschmiert µK (große Nachgiebigkeit)",
+      "bereich": [0.35, 0.50],
+      "einheit": ""
+    },
+    {
+      "name": "Edelstahl A2/A4 mit Spezialschmiermittel µK",
+      "bereich": [0.08, 0.12],
+      "einheit": ""
+    },
+    {
+      "name": "Edelstahl A2/A4 mit Spezialschmiermittel µG (kleine Nachgiebigkeit)",
+      "bereich": [0.10, 0.16],
+      "einheit": ""
+    },
+    {
+      "name": "Edelstahl A2/A4 mit Spezialschmiermittel µG (große Nachgiebigkeit)",
+      "bereich": [0.12, 0.23],
+      "einheit": ""
+    },
+    {
+      "name": "Anziehdrehmoment MA max M8 8.8 bei µK = µG = 0,08",
+      "wert": 18.5,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Anziehdrehmoment MA max M8 8.8 bei µK = µG = 0,14",
+      "wert": 27.3,
+      "einheit": "Nm"
+    },
+    {
+      "name": "Montagevorspannkraft FM max M8 8.8 bei µK = µG = 0,08",
+      "wert": 19.5,
+      "einheit": "kN"
+    },
+    {
+      "name": "Montagevorspannkraft FM max M8 8.8 bei µK = µG = 0,14",
+      "wert": 18.1,
+      "einheit": "kN"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Edelstahl",
+      "A2",
+      "A4",
+      "Aluminium",
+      "Magnesium"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Schraubverbindung",
+      "Gewinde",
+      "Kopfauflage"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9",
+      "A2-70"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seiten TI-242 bis TI-243 (Montage von Schraubverbindungen, Tabellen 2 und 3)",
+      "zitat": "Zahlreiche Versuche sowie theoretische Betrachtungen haben gezeigt, dass 80 bis 90 % des Anziehdrehmomentes für die Überwindung der Reibung unter Kopf und im Gewinde notwendig sind. Nur ein kleiner Teil wird in die Erzeugung der eigentlichen Vorspannkraft umgesetzt.",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.wuerth-industrie.com/web/media/downloads/brochures/de_wis/dino-technik.pdf",
+      "stelle": "Abschnitt 6.3, Seite 1789 (Reibungszahlklassen nach VDI 2230, Tab. 3)",
+      "zitat": "Ist die Reibungszahl nicht exakt bekannt, ist mit der kleinsten anzunehmenden Reibungszahl zu rechnen, damit die Schraube nicht überbelastet wird.",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.schrauben-lexikon.de/download/pdf/TechnischeDaten.pdf",
+      "stelle": "Kapitel 3.4.4 (TD 24, Tab. 22) und Kapitel 4.4.6 (TD 37, Tab. 38)",
+      "zitat": "Grundsätzlich gilt, dass die Reibungszahl µ sinkt, wenn ein Schmiermittel verwendet wird. Daher kann bei Schmierung leichter ein „Abreißen“ der Stahlschrauben eintreten, wenn mit gleicher Kraft wie bei einer ungeschmierten Verbindung angezogen wird.",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3S40LEUM235Qk3rJk2phR1/dbffd8df726c87755678f2c2c11a443c/060_074_Vorspannkr_fte_Anziehdrehmomente_Fastening_DE_01_2025.pdf",
+      "stelle": "Seiten 60 bis 61 (Umgang mit Richtwerten und Vorspannkräfte/Anziehdrehmomente für µK = µG = 0,08 bis 0,14)",
+      "zitat": "Reibungszahl µK = µG = 0,14 – 0,24, kleinster Wert µK = µG = 0,14",
+      "abgerufen": "2026-11-23"
+    }
+  ],
+  "begruendung": "Beim Anziehen über das Drehmoment überwindet der Großteil der Arbeit die Gleitreibung zwischen Gewindeflanken (µG) sowie zwischen Schraubenkopf bzw. Mutter und Bauteilauflage (µK). Sinkt die Reibung durch Schmierstoffe oder abweichende Oberflächenbeschichtungen, steigt bei unverändertem Drehmoment die Vorspannkraft bis zum Abreißen der Schraube; zusätzlich beeinflusst µG die Torsionsbeanspruchung des Schaftes.",
+  "ausnahmen": "Wird eine Schraube mit ungeschmierten Katalog-Drehmomentwerten (µges = 0,14) zusätzlich geölt oder mit MoS2-Paste geschmiert, treten unbestimmte Anziehverhältnisse mit Überlastungsgefahr auf. Für nichtrostende Stähle (A2/A4) ist wegen großer Reibungsstreuung und Fressneigung (Kaltverschweißen) ein geeignetes Schmiermittel bzw. ein Anziehversuch ratsam.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "vdi2230_anziehdrehmoment_m4_m12_reyher"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "vdi2230_anziehdrehmoment_m3_bossard"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "a2_70_anziehdrehmoment_m4_m10_reyher"
+    }
+  ]
+}

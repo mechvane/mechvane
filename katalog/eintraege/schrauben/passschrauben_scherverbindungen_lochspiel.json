@@ -1,0 +1,150 @@
+{
+  "id": "passschrauben_scherverbindungen_lochspiel",
+  "aussage": "Passschrauben übertragen Querkräfte in Scherverbindungen (Scher-/Lochleibungsverbindungen) formschlüssig und nahezu schlupffrei über einen geschliffenen Passschaft mit minimalem Lochspiel. Im Stahlbau (DIN EN 1090-2 / Eurocode 3, Kategorie A als SLP-Verbindung) beträgt das Nennlochspiel für Passschrauben Δd = 0 (im Gegensatz zu normalen runden Löchern mit Δd = 1 mm für M12–M14, 2 mm für M16–M24 und 3 mm ab M27); der Nennschaftdurchmesser ds ist größer als das Gewindenennmaß d (M12: 13 mm, M16: 17 mm, M20: 21 mm, M22: 23 mm, M24: 25 mm, M27: 28 mm, M30: 31 mm nach EN 1090-2 bzw. 32 mm nach DIN 609/610 laut Reyher; M36: 37 mm nach EN 1090-2 bzw. 38 mm nach DIN 609/610) bei Lochtoleranzklasse H11 (obere Grenzabweichung +0,110 mm für ds 13–17 mm, +0,130 mm für ds 21–28 mm, +0,160 mm für ds 31–37 mm). Im Maschinen- und Vorrichtungsbau werden Sechskant-Passschrauben nach DIN 609 (langer Gewindezapfen) und DIN 610 (kurzer Gewindezapfen) mit Schafttoleranz k6 in geriebenen H7-Bohrungen sowie Innensechskant-Passschulterschrauben nach ISO 7379 (Schafttoleranz h8 oder f9; z. B. M6: ds = 8 mm, M8: ds = 10 mm, M10: ds = 12/13 mm, M12: ds = 16 mm, M16: ds = 20 mm) für präzise Lagefixierungen von Kupplungen, Zahnrädern, Werkzeugen und Gelenkarmen eingesetzt. Eine gleichzeitige rechnerische Kombination aus Formschluss und Reibschluss ist zu vermeiden.",
+  "werte": [
+    {
+      "name": "Nennlochspiel Passschraube Stahlbau Δd",
+      "wert": 0,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nennlochspiel normale Schraubenlöcher M12–M14 (Stahlbau)",
+      "wert": 1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nennlochspiel normale Schraubenlöcher M16–M24 (Stahlbau)",
+      "wert": 2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Nennlochspiel normale Schraubenlöcher ab M27 (Stahlbau)",
+      "wert": 3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschraube M12 Nennschaftdurchmesser ds (DIN 609/610, EN 1090-2)",
+      "wert": 13,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschraube M16 Nennschaftdurchmesser ds (DIN 609/610, EN 1090-2)",
+      "wert": 17,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschraube M20 Nennschaftdurchmesser ds (DIN 609/610, EN 1090-2)",
+      "wert": 21,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschraube M24 Nennschaftdurchmesser ds (DIN 609/610, EN 1090-2)",
+      "wert": 25,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschulterschraube M6 Schaftdurchmesser ds (ISO 7379)",
+      "wert": 8,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschulterschraube M8 Schaftdurchmesser ds (ISO 7379)",
+      "wert": 10,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschulterschraube M12 Schaftdurchmesser ds (ISO 7379)",
+      "wert": 16,
+      "einheit": "mm"
+    },
+    {
+      "name": "Passschulterschraube M16 Schaftdurchmesser ds (ISO 7379)",
+      "wert": 20,
+      "einheit": "mm"
+    },
+    {
+      "name": "Mindest-Untermaß vor dem Aufreiben von Passlöchern (Stahlbau)",
+      "wert": 3,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "S235JR",
+      "S355J2",
+      "Edelstahl",
+      "Aluminium"
+    ],
+    "verfahren": [
+      "Bohren",
+      "Reiben",
+      "CNC-Fräsen",
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Passschraube",
+      "Scherverbindung",
+      "Passbohrung",
+      "Durchgangsbohrung"
+    ],
+    "groesse": [
+      "M6",
+      "M8",
+      "M10",
+      "M12",
+      "M16",
+      "M20",
+      "M24",
+      "M30"
+    ],
+    "festigkeitsklasse": [
+      "8.8",
+      "10.9",
+      "12.9"
+    ]
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://archiv.bauforumstahl.de/upload/documents/publikationen/arbeitshilfen/Arbeitshilfe_05-02.pdf",
+      "stelle": "bauforumstahl Arbeitshilfe 5.2, S. 1–2 (Maße von Löchern, Tabelle 1 & Tabelle 2 Löcher für Passschrauben, Aufreiben)",
+      "zitat": "Bei Passschrauben muss der Nennlochdurchmesser gleich dem [...] Schaftdurchmesser der Schraube sein. Das Nennlochspiel für [...] Passschrauben beträgt damit Δd = 0. Die Passung von Schaft- [...] durchmesser der Schraube und Lochdurchmesser ist durch die [...] Toleranzklasse H11 festgelegt.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube_ec3/schraubenverbindung_ec3.php",
+      "stelle": "Abschnitte Kategorien von Schraubenverbindungen, Maximales Lochspiel Δd & Löcher für Passschrauben",
+      "zitat": "Maximales Lochspiel der zwischen Flansche und Schraube bei Stahlbauschrauben.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.reyher.de/fileadmin/user_upload/Downloadbereich/Reyher_2019-DE_Technische_Informationen_ks.pdf",
+      "stelle": "Seiten TI-13, TI-15 und TI-16 (ISO 7379 Passschulterschrauben, DIN 609 und DIN 610 Sechskant-Passschrauben)",
+      "zitat": "Passschafttol. k6 für Bohrungstol. H7",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.rs-schrauben.de/produkte/passschrauben-nach-din-609-",
+      "stelle": "Abschnitt Einsatzgebiete von Passschrauben DIN 609",
+      "zitat": "Passschrauben werden bevorzugt dort eingesetzt, wo eine genaue Lagefixierung von Bauteilen erforderlich ist.",
+      "abgerufen": "2026-11-24"
+    },
+    {
+      "url": "https://www.hs-anhalt.de/fileadmin/Dateien/FB6/personen/voigt_st/Lehrunterlagen/01_ME/04_Schraubenverbindungen_VDI_2230.pdf",
+      "stelle": "Folie 29 (Kraftübertragung durch Formschluss: Passschraube, Spannhülse, Scherbuchse)",
+      "zitat": "Alternativ zum Reibschluss kann eine Querkraft auch über Formschlusselemente übertragen werden. [...] Eine Kombination aus Form- und Reibschluss ist zu vermeiden",
+      "abgerufen": "2026-11-24"
+    }
+  ],
+  "begruendung": "Standard-Schraubverbindungen tragen Querkräfte über Reibschluss (Vorspannkraft) oder schlagen nach Überwindung des Lochspiels von 1–3 mm an der Lochwand an. Der kalibrierte, gegenüber dem Gewinde vergrößerte Passschaft eliminiert diesen Anfangsschlupf, stellt eine definierte Lage sicher und verhindert, dass das geschwächte Gewinde in der Scherfuge auf Abscherung beansprucht wird.",
+  "ausnahmen": "Für ermüdungsbeanspruchte Verbindungen im Stahlbau ist nach Eurocode 3 eine vorgespannte Verbindung erforderlich. Passlöcher in mehrlagigen Bauteilen müssen gemeinsam mit Untermaß gebohrt bzw. gestanzt und zusammen aufgerieben werden; das Gewinde darf nicht in der Scherfuge auf Lochleibung tragend angesetzt werden (Ausnahme nur innerhalb definierter Grenzen nach EN 1090-2 bis t/3).",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso273_durchgangsbohrungen"
+    }
+  ]
+}

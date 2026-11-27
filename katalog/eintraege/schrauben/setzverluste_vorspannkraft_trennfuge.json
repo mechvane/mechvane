@@ -1,0 +1,121 @@
+{
+  "id": "setzverluste_vorspannkraft_trennfuge",
+  "aussage": "Durch plastisches Einebnen der Oberflächenrauheiten in Gewinde, Kopf-/Mutternauflage und inneren Trennfugen nach der Montage verkürzt sich die Klemmlänge um den Setzbetrag fz und verursacht den Vorspannkraftverlust FZ = fz / (δS + δP). Nach VDI 2230-1:2015 (Richtwerte für unbeschichtete Stahlflansche bei Einhaltung der Grenzflächenpressung) betragen die Einzelsetzbeträge je nach Rautiefe Rz (< 10 µm / 10–40 µm / 40–160 µm): im Gewinde jeweils 3 µm; je Kopf- oder Mutterauflage 2,5 / 3 / 4 µm bei Zug/Druck bzw. 3 / 4,5 / 6,5 µm bei Schub; je innerer Trennfuge 1,5 / 2 / 3 µm bei Zug/Druck bzw. 2 / 2,5 / 3,5 µm bei Schub (insgesamt zwischen 1,5 und 6,5 µm je Einzelfläche). Als pauschale Praxismittelwerte nennen SFS/Hoffmann 4 µm Setzbetrag pro Trennfuge (auch für beschichtete Teile), während Schweizer-FN pauschal 0,01 mm (10 µm) als Gesamt-Mittelwert für eine Stahlflanschverbindung angibt. Kurze, steife Schrauben verlieren bei gleichem Setzbetrag besonders viel Vorspannkraft; empfohlen wird daher ein Klemmlängenverhältnis l/d >= 5 sowie eine möglichst geringe Anzahl von Trennfugen.",
+  "werte": [
+    {
+      "name": "Einzelsetzbetrag nach VDI 2230 (Bereich je Fläche/Auflage)",
+      "bereich": [1.5, 6.5],
+      "einheit": "µm"
+    },
+    {
+      "name": "Pauschal-Mittelwert Setzbetrag pro Trennfuge (SFS/Hoffmann)",
+      "wert": 4,
+      "einheit": "µm"
+    },
+    {
+      "name": "Pauschal-Mittelwert Gesamtsetzbetrag Stahlflansch (Schweizer-FN)",
+      "wert": 0.01,
+      "einheit": "mm"
+    },
+    {
+      "name": "Setzbetrag im Gewinde (Stahl, alle Rautiefen)",
+      "wert": 3,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je Kopf-/Mutterauflage Zug/Druck (Rz < 10 µm)",
+      "wert": 2.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je Kopf-/Mutterauflage Schub (Rz 10–40 µm)",
+      "wert": 4.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je Kopf-/Mutterauflage Schub (Rz 40–160 µm)",
+      "wert": 6.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je innere Trennfuge Zug/Druck (Rz < 10 µm)",
+      "wert": 1.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je innere Trennfuge Zug/Druck (Rz 10–40 µm)",
+      "wert": 2,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je innere Trennfuge Zug/Druck (Rz 40–160 µm)",
+      "wert": 3,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je innere Trennfuge Schub (Rz 10–40 µm)",
+      "wert": 2.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Setzbetrag je innere Trennfuge Schub (Rz 40–160 µm)",
+      "wert": 3.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Empfohlenes Klemmlängenverhältnis l/d gegen Setzverlust",
+      "wert": 5,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl"
+    ],
+    "verfahren": [
+      "Schraubmontage"
+    ],
+    "feature": [
+      "Schraubverbindung",
+      "Trennfuge",
+      "Kopfauflage"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://assets.hoffmann-group.com/media/ch/sfs_ch/broschueren_1/technisches_handbuch_fuer_verbindungstechnik/montage/sichern_von_schraubverbindungen/Eigenschaften_der_Schraubenverbindung_DE.pdf",
+      "stelle": "Seiten 182 und 184 (Setzen, Setzbeträge nach VDI 2230-1 2015 Tab. 5, Maßnahmen gegen Lockern)",
+      "zitat": "zwischen 1,5 und 6,5 Mikrometer. Meist wird mit einem Mittel- [...] wert von 4 Mikrometer Setzbetrag pro Trennfuge gerechnet,",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/schraube/schraubenverbindung.php",
+      "stelle": "Abschnitt Vorspannungsänderung durch Setzung / Richtwerte für Setzbeträge in Abhängigkeit der Rautiefe n. [VDI 2230]",
+      "zitat": "Die Werte sind gültig für Stahl Flansche. Als Mittelwert kann 0,01 mm angenommen werden.",
+      "abgerufen": "2026-11-23"
+    },
+    {
+      "url": "https://www.hs-anhalt.de/fileadmin/Dateien/FB6/personen/voigt_st/Lehrunterlagen/01_ME/04_Schraubenverbindungen_VDI_2230.pdf",
+      "stelle": "Folien 55 bis 57 (Setzen und Vorspannkraftverlust durch Setzen nach VDI 2230)",
+      "zitat": "Verringerung der Vorspannung durch [...] Plastisches Einebnen der Oberflächenrauigkeiten [...] in den Auflageflächen",
+      "abgerufen": "2026-11-23"
+    }
+  ],
+  "begruendung": "Unter der Montagevorspannkraft ebnen sich Rauheitsspitzen in jeder belasteten Kontaktfuge plastisch ein. Die daraus folgende Längenabnahme fz entspannt das elastische Federpaket aus Schraube (Nachgiebigkeit δS) und verspannten Teilen (δP); je geringer die Nachgiebigkeit der Verbindung (kurze Schraube) und je größer die Rautiefe sowie die Zahl der Trennfugen sind, desto stärker fällt die verbleibende Klemmkraft ab.",
+  "ausnahmen": "Die Richtwerte gelten nur bei Einhaltung der zulässigen Grenzflächenpressung an Stahlflanschen. Bei hydraulischem oder thermischem Vorspannen (ohne Drehbewegung beim Anziehen) fehlen Einebnungsvorgänge während der Montage, sodass die nachträglichen Setzbeträge deutlich größer ausfallen können; bei Leichtmetallen, Kunststoffen, Lacken oder Flachdichtungen treten zusätzlich erhebliche Kriech- und Setzverluste auf.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "wirksame_losdrehsicherungen"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "unwirksame_sicherungselemente"
+    }
+  ]
+}

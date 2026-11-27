@@ -1,6 +1,6 @@
 {
   "id": "innenradius_vertikale_kanten_hubs_zweitquelle",
-  "aussage": "Zweitquellen zu vertikalen Taschen-Innenradien beim CNC-Fräsen: Xometry empfiehlt für Inneneckenradien ein Längen-Durchmesser-Verhältnis (Taschentiefe zu Werkzeugdurchmesser) von höchstens 3:1 (entspricht einem Eckenradius von mindestens 1/6 der Taschentiefe, weniger streng als Hubs mit 1/3). Fictiv nennt einen praktischen Mindestinnenradius von 0,8 mm (kleiner als Hubs mit 1,5 mm) und empfiehlt einen Eckenradius knapp oberhalb des Fräserradius.",
+  "aussage": "Zweitquellen zu vertikalen Taschen-Innenradien beim CNC-Fräsen: Xometry empfiehlt für Inneneckenradien ein Längen-Durchmesser-Verhältnis (Taschentiefe zu Werkzeugdurchmesser) von höchstens 3:1 (rechnerische Ableitung, nicht Aussage der Quelle: Eckenradius etwa mindestens 1/6 der Taschentiefe, im Vergleich zu Hubs mit 1/3). Fictiv nennt einen praktischen Mindestinnenradius von 0,8 mm (kleiner als Hubs mit 1,5 mm) und empfiehlt einen Eckenradius knapp oberhalb des Fräserradius.",
   "werte": [
     {
       "name": "Maximales Tiefen-Durchmesser-Verhältnis L:D des Eckfräsers (Xometry)",

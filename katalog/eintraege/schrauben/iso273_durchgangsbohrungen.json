@@ -161,9 +161,9 @@
       "abgerufen": "2026-10-21"
     }
   ],
-  "begruendung": "Reihe mittel (H13) ist die Standardausführung im allgemeinen Maschinenbau; Reihe fein wird bei Passschrauben oder präziser Zentrierung genutzt; Reihe grob gleicht Teilungsfehler bei Schweißkonstruktionen aus.",
+  "begruendung": "Reihe mittel (H13) ist die Standardausführung im allgemeinen Maschinenbau; Reihe fein wird bei Passschrauben oder präziser Zentrierung genutzt; Reihe grob gleicht Teilungsfehler bei Schweißkonstruktionen aus. Nicht belegt: Die angegebene Quelle ist nur eine Startseite, die Zahlen sind dort nicht nachgewiesen.",
   "ausnahmen": "",
   "haerte": "hinweis",
-  "pruefstatus": "offen",
+  "pruefstatus": "nicht_belegt",
   "beziehungen": []
 }

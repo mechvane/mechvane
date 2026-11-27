@@ -32,6 +32,10 @@
     {
       "number": 20301,
       "follow_up": "inspect.classify_points shipped in 0.46.2 / 0.47.0: when U1 (#181) moves Mechvane to that version, switch the probing cut in mechvane/geometry.py to the read command"
+    },
+    {
+      "number": 22110,
+      "follow_up": "Intel-Vulkan-Absturz beim Start ab SolidCraft 0.49 (Surface Pro 7); Fix-PR #22943 am 2026-11-27 gemergt, in keinem stabilen Release. Auslöser: erstes stabiles Release mit dem Fix: auf dem Surface ohne WGPU_BACKEND=dx12 starten, check.py einmal laufen lassen, dann Zielversion für v0.2 wählen (#189) und die Benutzervariable auf dem Surface entfernen"
     }
   ]
 }

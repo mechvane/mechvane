@@ -33,7 +33,7 @@ Meldung im Ereignis), der zweite ging. Ohne Folgen, aber die Fehlermeldung fehlt
 | Mechvane | 0.1.0a7 aus PyPI, venv `~\mechvane-venv` |
 | SolidCraft | 0.25.1 (aus `mechvane setup`, schon vorhanden) |
 | ACP-Adapter | `@agentclientprotocol/claude-agent-acp@0.90.0` per `npm install -g`, Node 24.16.0, npm 11.16.0 |
-| Agent-Start | `agent_command()` findet `C:\Users\gollu\AppData\Roaming\npm\claude-agent-acp.CMD` |
+| Agent-Start | `agent_command()` findet `C:\Users\<user>\AppData\Roaming\npm\claude-agent-acp.CMD` |
 
 Server: `mechvane ui --demo --no-browser --port 8790`, Dokument `bracket.solidcraft` über
 `POST /api/open/…`. `WGPU_BACKEND` nicht gesetzt.
