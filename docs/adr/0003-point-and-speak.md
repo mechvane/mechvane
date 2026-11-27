@@ -200,7 +200,7 @@ es seine Änderung überschreibt. Vor dem Zurückspielen wird der aktuelle Stand
    Rückgängig und Wiederherstellen pro Zug, Rechteprüfung in `run`/`command`.
 2. **Auswahl** (3–5 Tage; *Auflösung fertig 2026-10-28*: `mechvane/ui/selection.py`, `/api/resolve_selection`, Namen im Chat): `/api/resolve_selection` für Bauteile und Baugruppen, Chips,
    Klickpunkt in „Prüfen“.
-3. **Sprache** (2–3 Tage; *erste Fassung 2026-10-28*: Mikrofon-Knopf mit Web Speech API, `mechvane/speech.py`, `/api/speech`): Web Speech API, Drücken und halten, Normalisierung aus dem Glossar.
+3. **Sprache** (2–3 Tage; *erste Fassung 2026-10-28*: Mikrofon-Knopf mit Web Speech API, `mechvane/speech.py` (entfernt mit der Web-UI, #232; Code und Testfälle stehen in der Git-Historie vor dem Merge von PR #239), `/api/speech`): Web Speech API, Drücken und halten, Normalisierung aus dem Glossar.
 4. **Praxistest mit dem Nutzer** an drei echten Teilen, dann über Live-Brücke (2B), Chat im Modus
    „Prüfen“ und Whisper (4B) entscheiden.
 

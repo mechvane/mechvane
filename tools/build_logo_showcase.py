@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from mechvane import bolted, gltf_export, links  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
-from mechvane.ui.mesh import collect_mesh  # noqa: E402
+from mechvane.mesh import collect_mesh  # noqa: E402
 
 folder = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "workspace" / "logo_showcase"
 shutil.rmtree(folder, ignore_errors=True)

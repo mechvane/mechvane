@@ -955,6 +955,33 @@ def _update_component_links(s):
         return {"updated": updated, "blocked": [{k: b[k] for k in ("component", "name", "error")} for b in blocked]}, blocked
 
 
+def update_links_message(checked_joints: list[str], moved_joints: list[str], repaired: list[dict],
+                         updated_comps: list[str], warnings: list[dict]) -> str:
+    """One line on what update_links did: joints checked, moved, repaired, needing attention, parts not updated."""
+    n_checked = len(checked_joints)
+    parts = [f"{n_checked} joint{'s' if n_checked != 1 else ''} checked"]
+    if moved_joints:
+        parts.append(f"moved: {', '.join(moved_joints)}")
+    if repaired:
+        ok_rep = [r["joint"] for r in repaired if r.get("status") != "failed"]
+        bad_rep = [r["joint"] for r in repaired if r.get("status") == "failed"]
+        if ok_rep:
+            parts.append(f"repaired: {', '.join(ok_rep)}")
+        if bad_rep:
+            parts.append(f"repair failed: {', '.join(bad_rep)}")
+    other_warn = sorted({w["joint"] for w in warnings if w.get("joint") and w.get("status") not in ("moved", "origin_lost")})
+    if other_warn:
+        parts.append(f"attention: {', '.join(other_warn)}")
+    blocked = [w for w in warnings if w.get("status") == "link_blocked"]
+    if blocked:
+        # SolidCraft refused to read these parts again (a feature fails): their old bodies stay in the assembly
+        names = ", ".join(f"{w['component']}" + (f" ({w['feature']} fails)" if w.get("feature") else "") for w in blocked)
+        parts.append(f"not updated: {names}")
+    if updated_comps:
+        parts.append(f"updated {', '.join(updated_comps)}")
+    return "; ".join(parts)
+
+
 def update_links(ws, doc, repair_moved=False):
     """Sync subassemblies and update linked parts, then check every recorded joint (and repair moved ones if asked).
     After joints, checks bolted connections against their anchors and repairs moved ones if asked."""

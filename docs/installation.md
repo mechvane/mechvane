@@ -1,6 +1,6 @@
 # Mechvane installieren (Windows & Linux)
 
-Mechvane ist die Maschinenbau-Schicht auf [SolidCraft](https://github.com/tangency-labs/solidcraft) und arbeitet über MCP am offenen SolidCraft-Fenster *(die frühere Web-UI `mechvane ui` ist eingefroren)*.
+Mechvane ist die Maschinenbau-Schicht auf [SolidCraft](https://github.com/tangency-labs/solidcraft) und arbeitet über MCP am offenen SolidCraft-Fenster. Von Hand modellierst du in der SolidCraft-App selbst *(die frühere Web-UI `mechvane ui` ist entfernt)*.
 
 ## 1. Voraussetzungen
 - **Python ≥ 3.11** (Windows: `python`, Linux: `python3`) und **MCP-fähiger Agent** (z. B. Claude Code)
@@ -22,7 +22,7 @@ python3 -m venv ~/mechvane-venv
 ```
 
 ## 3. `mechvane setup`
-Lädt `solidcraft-cli` (**0.43.0**, samt Web-App) mit SHA256-Prüfung herunter. Das ist die Kommandozeile, mit der Mechvane ohne Fenster arbeitet. Die App aus Schritt 1 brauchst du für das Fenster. Beide gehören zu 0.43.0. Danach testet `mechvane setup` mit `solidcraft-cli --version`, ob die CLI startet (Cache: Windows `%LOCALAPPDATA%\mechvane` bzw. `~/.cache/mechvane`, Linux `~/.cache/mechvane` bzw. `$XDG_CACHE_HOME/mechvane`; Suchreihenfolge: `$SOLIDCRAFT_CLI` → Cache → `PATH`):
+Lädt `solidcraft-cli` (**0.43.0**, rund 175 MB Download, entpackt rund 450 MB unter Linux) mit SHA256-Prüfung herunter. Das ist die Kommandozeile, mit der Mechvane ohne Fenster arbeitet. Die App aus Schritt 1 brauchst du für das Fenster. Beide gehören zu 0.43.0. Danach testet `mechvane setup` mit `solidcraft-cli --version`, ob die CLI startet (Cache: Windows `%LOCALAPPDATA%\mechvane` bzw. `~/.cache/mechvane`, Linux `~/.cache/mechvane` bzw. `$XDG_CACHE_HOME/mechvane`; Suchreihenfolge: `$SOLIDCRAFT_CLI` → Cache → `PATH`):
 
 ```powershell
 # Windows (PowerShell) – Fallback: & $HOME\mechvane-venv\Scripts\python -m mechvane setup
@@ -34,7 +34,7 @@ Lädt `solidcraft-cli` (**0.43.0**, samt Web-App) mit SHA256-Prüfung herunter. 
 ~/mechvane-venv/bin/mechvane setup
 ```
 
-*(Die Schlusszeile `Ready. Try: mechvane ui --demo` stammt noch aus der eingefrorenen Web-UI.)*
+Am Ende steht `Ready. Next: connect your agent (mechvane mcp) and the SolidCraft app you have open, see docs/installation.md`.
 
 ## 4. Agent anbinden (`mechvane mcp`)
 `mechvane mcp` startet den MCP-Server über `stdio` (`--workspace <Ordner>`, sonst `$MECHVANE_WORKSPACE`, sonst `./workspace`). Im Projektordner `.mcp.json` anlegen (Benutzername anpassen; JSON löst `~` nicht auf):

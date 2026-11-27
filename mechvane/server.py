@@ -11,6 +11,7 @@ import struct
 
 from mcp.server.fastmcp import FastMCP, Image
 
+from . import solidcraft as sc
 from . import bom, bolted, design_rules, step_import, modeling, geometry as g, iso286, katalog, links, query, sc_errors, sketch_rule, standard_parts, state_delta, tree
 from .documents import ASSEMBLY, PART, Workspace, check_windows_writable, reload_windows
 
@@ -39,8 +40,8 @@ mcp = FastMCP(
 
 
 def _autosave_tool(*args, **kwargs):
-    """mcp.tool that, with MECHVANE_AUTOSAVE=1, saves every changed open document after each call.
-    The web UI runs the agent's turns with it, so a turn ends with everything on disk."""
+    """mcp.tool that, with MECHVANE_AUTOSAVE=1, saves every changed open document after each call,
+    so an agent's turn ends with everything on disk."""
     register = _mcp_tool(*args, **kwargs)
 
     def deco(fn):
@@ -504,13 +505,18 @@ def measure(document: str) -> dict:
     bodies = doc.session.cmd("document.inspect", {"measure": True}).get("bodies", [])
     out = [{k: b[k] for k in keep if k in b} for b in bodies]
     if doc.kind == ASSEMBLY:
-        # SolidCraft reports assembly bodies in part coordinates; move them into world coordinates.
+        # SolidCraft up to 0.49.1 reports assembly bodies in part coordinates: move them into world coordinates. From 0.50.0 they
+        # come in world coordinates already (#231): then only the occurrence is added.
+        ev = getattr(doc.session, "engine_version", None)
+        already_world = ev is not None and ev >= sc.MEASURE_WORLD_FROM
         placed = {t["world_name"]: t for t in query._collect_bodies(doc, None)}
         for b in out:
             t = placed.get(b["name"])
             if not t or not t["transform"]:
                 continue
             b["occurrence"] = t["occurrence"]
+            if already_world:
+                continue
             m = t["transform"]
             if b.get("center_of_mass"):
                 b["center_of_mass"] = g.apply_point(m, b["center_of_mass"])

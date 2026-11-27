@@ -8,7 +8,6 @@ import json
 import math
 import os
 import queue
-import shutil
 import sys
 import tempfile
 import threading
@@ -866,6 +865,30 @@ def design_rule_checks(ws):
        str(r_fail["summary"]))
     ws.close("rule_fail")
 
+    # 1a. Profile and material saved in the part file apply to a later check without arguments (round trip through the
+    # file; formerly only covered by the web UI test): save_rules, reopen, check
+    doc_sv = ws.new(PART, "rule_saved")
+    doc_sv.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 30, "height": 10, "corner": [0, 0, 0], "name": "Box"}},
+    ])
+    design_rules.save_rules(doc_sv, profile="cnc_alu", material="alu_wrought")
+    sv_name = doc_sv.path.name
+    ws.close("rule_saved")
+    doc_sv2 = ws.open(sv_name)
+    r_sv = design_rules.check(doc_sv2)
+    r_sv_arg = design_rules.check(doc_sv2, profile="fdm_0.4", material="steel")
+    try:
+        design_rules.save_rules(doc_sv2, profile="no_such_profile")
+        bad_profile = "no ValueError"
+    except ValueError:
+        bad_profile = ""
+    ok("design rules: profile and material saved in the part file apply to a later check, arguments win, an unknown profile saves nothing",
+       r_sv["profile"] == "cnc_alu" and r_sv["material"] == "alu_wrought" and r_sv["material_source"] == "saved"
+       and r_sv_arg["profile"] == "fdm_0.4" and r_sv_arg["material"] == "steel" and r_sv_arg["material_source"] == "argument"
+       and not bad_profile and design_rules.saved_rules(doc_sv2).get("profile") == "cnc_alu",
+       f"{r_sv.get('profile')}, {r_sv.get('material')}, {r_sv.get('material_source')}, {bad_profile}")
+    ws.close(doc_sv2.name)
+
     # 1b. Rounded ends of open cut-outs are no holes (#130): a U-slot open to the edge and a half notch in the
     # edge used to count as holes 0 mm from the edge; a real hole next to them is still checked
     doc_u = ws.new(PART, "rule_open_round")
@@ -1050,11 +1073,6 @@ def design_rule_checks(ws):
     r_empty = design_rules.check(doc_empty.session)
     ok("design rules: a part without bodies is a warning, not OK",
        r_empty["verdict"] == "warn" and "no solid bodies" in r_empty["summary"], r_empty["summary"])
-    # the Check page badge follows that warning, though it has no finding of its own (Surface test)
-    from mechvane.ui import server as ui_server
-    f_empty = ui_server.collect_findings(ws, doc_empty)
-    ok("design rules: Check page verdict of a part without bodies is warn", f_empty["verdict"] == "warn",
-       f_empty["verdict"])
     ws.close("rule_empty")
 
     # 9a. Counterbored through hole (as bolted_connection drills it): neither the counterbore floor makes
@@ -1202,7 +1220,6 @@ def design_rule_checks(ws):
 
 def finding_source_checks(ws):
     """#120: findings of rules with a knowledge catalog entry carry its source, others carry none."""
-    from mechvane.ui import server as ui_server
     entry_id = design_rules.RULE_SOURCES["horizontal_hole"]
     entry = katalog.get_entry(entry_id)
     q = entry["quellen"][0]
@@ -1240,12 +1257,6 @@ def finding_source_checks(ws):
            for r, eid in design_rules.RULE_SOURCES.items()
        ),
        str(sorted(design_rules.rule_sources())))
-    cf = ui_server.collect_findings(ws, doc)["findings"]
-    c_hh = [f for f in cf if f["rule"] == "horizontal_hole"]
-    c_wall = [f for f in cf if f["rule"] == "min_wall_thickness"]
-    ok("finding source: collect_findings passes the source through for mapped rules",
-       bool(c_hh) and c_hh[0].get("source") == src and c_hh[0]["origin"] == "design_rules"
-       and bool(c_wall) and c_wall[0].get("source") == wall_src, str(c_hh[:1]))
     # an unmapped rule's findings must stay without a source field
     orig = design_rules.rule_sources
     design_rules.rule_sources = lambda: {k: v for k, v in orig().items() if k != "min_wall_thickness"}
@@ -2574,8 +2585,8 @@ def design_intent_checks(ws):
            c is not None and abs(c[0] - L / 2) < 1e-6 and abs(c[1] - W / 2) < 1e-6, str(c))
     ws.close(doc.name)
 
-    # the Hole dialog's "Middle of face" (centred_hole_commands), here on a side face of a block
-    from mechvane.ui.server import centred_hole_commands
+    # a hole in the middle of a face that stays there (modeling.centred_hole_commands), here on a side face of a block
+    from mechvane.modeling import centred_hole_commands
     doc = ws.new(PART, "intent_dialog")
     s = doc.session
     for n, e in (("L", "80 mm"), ("W", "50 mm"), ("T", "20 mm")):
@@ -2588,7 +2599,7 @@ def design_intent_checks(ws):
         for n, v in (("L", L), ("W", W), ("T", T)):
             s.cmd("parameters.change", {"name": n, "expression": f"{v} mm"})
         c = [f["cylinder"]["origin"] for f in s.cmd("model.faces", {"body": "Block"})["faces"] if f.get("cylinder")]
-        ok(f"design intent: dialog 'Middle of face' hole stays centred on the side face at {L} x {W} x {T}",
+        ok(f"design intent: 'Middle of face' hole stays centred on the side face at {L} x {W} x {T}",
            bool(c) and abs(c[0][1] - W / 2) < 1e-6 and abs(c[0][2] - T / 2) < 1e-6, str(c[:1]))
     ws.close(doc.name)
 
@@ -2596,7 +2607,7 @@ def design_intent_checks(ws):
 def concentric_hole_checks(ws):
     """Design intent rule: a centred hole on a circular planar face (cylinder, flange, ring)
     is concentric to the largest circular edge, staying on the cylinder axis when D changes."""
-    from mechvane.ui.server import centred_hole_commands
+    from mechvane.modeling import centred_hole_commands
 
     doc = ws.new(PART, "intent_concentric")
     s = doc.session
@@ -2663,8 +2674,8 @@ def concentric_hole_checks(ws):
 
 
 def profile_choice_checks(ws):
-    """Extrude/Revolve dialogs: /api/sketches lists each sketch's profiles, and one profile index extrudes only it."""
-    from mechvane.ui.server import sketches
+    """query.sketches lists each sketch's profiles, and one profile index extrudes only it."""
+    from mechvane.query import sketches
     doc = ws.new(PART, "profile_choice")
     s = doc.session
     s.cmd("sketch.create", {"plane": "XY", "name": "S"})
@@ -2672,7 +2683,7 @@ def profile_choice_checks(ws):
     s.cmd("sketch.circle.center", {"center": [40, 0], "radius": 5})
     s.cmd("sketch.finish")
     sk = next(x for x in sketches(doc)["sketches"] if x["name"] == "S")
-    ok("profiles: /api/sketches lists both circles", [p["curves"] for p in sk["profiles"]] == [["c1"], ["c2"]], str(sk))
+    ok("profiles: query.sketches lists both circles", [p["curves"] for p in sk["profiles"]] == [["c1"], ["c2"]], str(sk))
     small = next(p["index"] for p in sk["profiles"] if p["curves"] == ["c2"])
     s.cmd("solid.extrude", {"sketch": "S", "distance": 4, "profiles": [small], "operation": "new", "name": "E"})
     vol = s.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
@@ -4032,8 +4043,19 @@ def praxistest_5_fixes_checks(ws):
        all(abs(a - b) < 1e-3 for a, b in zip(m["bbox"]["min"] + m["bbox"]["max"] + m["center_of_mass"],
                                              [100, 0, 50, 110, 10, 60, 105, 5, 55])),
        str(m))
+    engine_version = getattr(asm.session, "engine_version", None)
     ws.close("p5_measure_asm")
     ws.close("p5_block")
+
+    # #231: the engine version decides whether SolidCraft reports assembly bodies in world coordinates (from 0.50.0)
+    from mechvane import solidcraft as _sc
+    ok("praxistest 5 / #231: engine version parsing and the world-coordinate threshold",
+       _sc.parse_version("0.50.0") == (0, 50, 0) and _sc.parse_version("v0.51.0-nightly.20261127") == (0, 51, 0)
+       and _sc.parse_version("") is None and _sc.parse_version(None) is None and _sc.parse_version("x") is None
+       and _sc.parse_version("0.49.1") < _sc.MEASURE_WORLD_FROM <= _sc.parse_version("0.50.0")
+       and _sc.parse_version("0.50") == (0, 50, 0) and _sc.parse_version(50) is None
+       and engine_version is not None,
+       str(engine_version))
 
     # Finding 3: a counterbored through hole is through; a drilled blind hole is not
     hb = ws.new(PART, "p5_holes")
@@ -4369,8 +4391,7 @@ def bolted_anchor_associativity_checks(ws):
         blocked_w = [w for w in r_lost.get("warnings", []) if w.get("status") == "link_blocked"]
         ok("update_links with a failing part reports link_blocked with the failing feature (SolidCraft 0.40) or links it",
            not blocked_w or any(w.get("feature") == "Hole_Ruthex_M3" for w in blocked_w), str(blocked_w)[:300])
-        from mechvane.ui.server import _format_update_links_message
-        msg_blocked = _format_update_links_message(
+        msg_blocked = links.update_links_message(
             [], [], [], [], [{"joint": None, "status": "link_blocked", "component": "Gehaeuse", "feature": "Hole_Ruthex_M3"}])
         ok("update links message names a part that was not updated",
            "not updated: Gehaeuse (Hole_Ruthex_M3 fails)" in msg_blocked, msg_blocked)
@@ -4507,11 +4528,60 @@ def bolted_countersunk_checks(ws):
        f"res={res_edit['head']} tl={p_e1_tl} interf={interf_edit}")
 
 
-def web_ui_stage1_checks(ws):
-    import urllib.request
-    from mechvane.ui import collect_findings, collect_mesh, collect_tree, create_server
+def hole_reference_and_face_name_checks(ws):
+    """Kernhälften von zwei UI-Prüfungen, die mit der Web-UI entfallen (#232). (1) Ein Loch, das über Abstände zu zwei
+    geraden Kanten positioniert ist (#43), bleibt bei seinen Abständen, wenn sich ein Parameter ändert, und
+    `query.find(…, "holes")` meldet Auswahlpunkt und Mitte; parallele Kanten werden abgelehnt. (2) Die Flächennamen
+    der Befunde von `design_rules` sind Flächennamen von `mesh.collect_mesh` (darauf baut `export_gltf` je Fläche auf)."""
+    p_refs = ws.new(PART, "plate_refs43")
+    p_refs.session.batch([
+        {"command": "parameters.add", "params": {"name": "len", "expression": "60 mm"}},
+        {"command": "parameters.add", "params": {"name": "wid", "expression": "40 mm"}},
+        {"command": "solid.box", "params": {"length": "len", "width": "wid", "height": 10, "corner": [0, 0, 0], "name": "Box"}},
+    ])
+    p_refs.session.cmd("solid.hole", {"name": "RefHole", "position": [30, 20, 10], "diameter": 5,
+                                      "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [30, 0, 10], "distance": 12}]})
+    h1 = query.find(p_refs, "holes")
+    p_refs.session.cmd("parameters.change", {"name": "len", "expression": "80 mm"})
+    h2 = query.find(p_refs, "holes")
+    try:
+        p_refs.session.cmd("solid.hole", {"name": "BadHole", "position": [30, 20, 10], "diameter": 5,
+                                          "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [80, 20, 10], "distance": 15}]})
+        bad = ""
+    except Exception as e:  # SolidCraftError with SolidCraft's reason
+        bad = str(e)
+    ok("hole positioned by distances to two straight edges (15 and 12 mm) is reported with pick and centre, keeps its distances "
+       "when the length parameter changes; parallel edges are rejected",
+       h1 and h1[0].get("pick") == [15.0, 12.0, 10.0] and h1[0].get("center")[:2] == [15.0, 12.0]
+       and h2 and h2[0].get("pick") == [15.0, 12.0, 10.0] and h2[0].get("center")[:2] == [15.0, 12.0]
+       and "parallel" in bad.lower(), f"{h1} {h2} {bad[:200]}")
+    ws.close("plate_refs43")
 
-    # 1. mesh.py against flange from tests/reference/flansch.build.json
+    cs_doc = ws.new(PART, "face_names_cs")
+    cs_doc.session.batch([
+        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 8, "corner": [0, 0, 0], "name": "Plate"}},
+        {"command": "solid.hole", "params": {"position": [20, 2.5, 8], "direction": [0, 0, -1], "clearance": "M6",
+                                             "depth": 8, "name": "NearEdge"}},
+    ])
+    from mechvane import mesh as _mesh
+    cs_mesh = _mesh.collect_mesh(cs_doc)
+    mesh_faces = {f["name"]: f["index"] for b in cs_mesh.get("bodies", []) for f in b.get("faces", [])}
+    mesh_fids = {fid for b in cs_mesh.get("bodies", []) for fid in b.get("face_ids", [])}
+    res = design_rules.check(cs_doc, profile="fdm_0.4")
+    fail = res["rules"].get("hole_edge_distance", {})
+    faces = [(f.get("location") or {}).get("face") for f in fail.get("findings", []) if f.get("status") == "fail"]
+    ok("design rule findings name a face that exists in the mesh of the part (face names agree between design_rules and mesh)",
+       fail.get("status") == "fail" and faces and all(f in mesh_faces and mesh_faces[f] in mesh_fids for f in faces),
+       f"{fail} faces={faces} mesh={list(mesh_faces)[:8]}")
+    ws.close("face_names_cs")
+
+
+def mesh_checks(ws):
+    """mechvane.mesh (the glTF export's meshes): face names per triangle, and where the export file goes."""
+    import tempfile as _tempfile
+    from mechvane import mesh
+
+    # mesh against the flange from tests/reference/flansch.build.json
     flansch_path = Path(__file__).resolve().parents[1] / "reference" / "flansch.build.json"
     fl_cmds = json.loads(flansch_path.read_text(encoding="utf-8"))["commands"]
     fl_doc = ws.new(PART, "ui_flansch")
@@ -4519,13 +4589,13 @@ def web_ui_stage1_checks(ws):
     sketch_rule.enforce(fl_doc.session)
     fl_doc.save()
 
-    m_fl = collect_mesh(fl_doc)
+    m_fl = mesh.collect_mesh(fl_doc)
     b_fl = m_fl["bodies"][0]
     raw_faces = fl_doc.session.cmd("model.faces", {"body": b_fl["name"]})["faces"]
     n_verts = len(b_fl["positions"]) // 3
     n_tris = len(b_fl["indices"]) // 3
     face_idx_set = {f["index"] for f in b_fl["faces"]}
-    ok("web ui mesh.py: flange face count matches model.faces, valid triangle face_ids and face names present",
+    ok("mesh: flange face count matches model.faces, valid triangle face_ids and face names present",
        len(b_fl["faces"]) == len(raw_faces) >= 14  # 18 on SolidCraft 0.30 (hole faces in two halves), 14 on 0.40
        and n_tris == len(b_fl["face_ids"]) > 0
        and all(0 <= vi < n_verts for vi in b_fl["indices"])
@@ -4533,520 +4603,27 @@ def web_ui_stage1_checks(ws):
        and all(isinstance(f.get("name"), str) and bool(f["name"]) for f in b_fl["faces"]),
        f"faces={len(b_fl['faces'])} raw={len(raw_faces)} tris={n_tris}")
 
-    # 2. Start server on port 0 in a thread, fetch all four endpoints and check shapes
-    srv = create_server(fl_doc.path, port=0)
-    port = srv.server_address[1]
-    th = threading.Thread(target=srv.serve_forever, daemon=True)
-    th.start()
-    try:
-        def _get_json(ep):
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}{ep}", timeout=10) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
+    # the export goes to a folder SolidCraft may write in, in the system temp folder when it may (Windows TEMP, #114)
+    export_dir = mesh._allowed_export_dir(fl_doc)
+    temp = Path(_tempfile.gettempdir()).resolve()
+    ok("mesh: export in an allowed folder in the system temp folder, no file left behind",
+       export_dir.resolve() == ws.root.resolve() and temp in export_dir.resolve().parents
+       and not list(export_dir.glob("ui1-*.3mf")), f"{export_dir} {list(export_dir.glob('ui1-*'))}")
+    ws.close("ui_flansch")
 
-        st_v, d_ver = _get_json("/api/version")
-        st_m, d_mesh = _get_json("/api/mesh")
-        st_t, d_tree = _get_json("/api/tree")
-        st_f, d_find = _get_json("/api/findings")
-        ok("web ui server: all four endpoints respond with valid JSON shapes",
-           st_v == 200 and isinstance(d_ver.get("mtime"), (int, float)) and d_ver.get("name") == "ui_flansch"
-           and st_m == 200 and len(d_mesh.get("bodies", [])) == 1
-           and st_t == 200 and d_tree.get("kind") == "part" and len(d_tree.get("features", [])) > 0
-           and st_f == 200 and "findings" in d_find and "verdict" in d_find,
-           f"ver={d_ver} tree_kind={d_tree.get('kind')} find_keys={list(d_find.keys())}")
-
-        # Test /api/visibility endpoint (issue #65)
-        fl_body_name = b_fl["name"]
-        req_hide = urllib.request.Request(
-            f"http://127.0.0.1:{port}/api/visibility",
-            data=json.dumps({"items": [fl_body_name], "visible": False}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req_hide, timeout=10) as resp:
-            st_vis, d_vis = resp.status, json.loads(resp.read().decode("utf-8"))
-        _, d_tree_hidden = _get_json("/api/tree")
-
-        req_show = urllib.request.Request(
-            f"http://127.0.0.1:{port}/api/visibility",
-            data=json.dumps({"items": [fl_body_name], "visible": True}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req_show, timeout=10) as resp:
-            st_vis2, d_vis2 = resp.status, json.loads(resp.read().decode("utf-8"))
-        _, d_tree_restored = _get_json("/api/tree")
-
-        ok("web ui server: /api/visibility toggles body visibility and updates tree",
-           st_vis == 200 and d_vis.get("ok") is True and fl_body_name in d_tree_hidden.get("hidden_bodies", [])
-           and st_vis2 == 200 and d_vis2.get("ok") is True and fl_body_name not in d_tree_restored.get("hidden_bodies", []),
-           f"d_vis={d_vis} hidden={d_tree_hidden.get('hidden_bodies')} restored={d_tree_restored.get('hidden_bodies')}")
-
-        import re
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=10) as resp:
-            st_idx = resp.status
-            idx_html = resp.read().decode("utf-8")
-        scripts = re.findall(r"<script\b[^>]*>.*?</script>", idx_html, flags=re.IGNORECASE | re.DOTALL)
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/static/vendor/three/build/three.module.js", timeout=10) as resp:
-            st_three_static = resp.status
-            three_bytes = resp.read()
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/vendor/three/build/three.module.js", timeout=10) as resp:
-            st_three_rel = resp.status
-            resp.read()
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/vendor/three/examples/jsm/controls/OrbitControls.js", timeout=10) as resp:
-            st_orbit = resp.status
-            resp.read()
-        ok("web ui offline three.js: index.html has no http(s) URL in importmap or <script> tags and server serves local three.module.js",
-           st_idx == 200 and len(scripts) >= 2
-           and all("http://" not in s and "https://" not in s for s in scripts)
-           and st_three_static == 200 and st_three_rel == 200 and st_orbit == 200 and len(three_bytes) > 100000,
-           f"scripts={scripts} st_static={st_three_static} st_rel={st_three_rel} st_orbit={st_orbit} bytes={len(three_bytes)}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-    # 3. Assembly of two parts with a joint: tree contains the joint with status
-    p_a = ws.new(PART, "ui_part_a")
-    p_a.session.batch([
-        {"command": "solid.box", "params": {"length": 40, "width": 30, "height": 6, "corner": [0, 0, 0], "body_name": "PlateA"}},
-        {"command": "solid.cylinder", "params": {"diameter": 6, "height": 8, "base": [20, 15, -1], "operation": "cut", "name": "HoleA"}},
-    ])
-    p_a.save()
-
-    p_b = ws.new(PART, "ui_part_b")
-    p_b.session.cmd("solid.cylinder", {"diameter": 6, "height": 16, "base": [0, 0, 0], "body_name": "PinB"})
-    p_b.save()
-
-    asm = ws.new(ASSEMBLY, "ui_asm")
-    links.insert(ws, asm, p_a.path, name="Plate", grounded=True)
-    links.insert(ws, asm, p_b.path, name="Pin", translate=[50, 0, 0])
-    jp = {
-        "type": "revolute",
-        "name": "PinInPlate",
-        "a": {"occurrence": "Plate:1", "circle": [23, 15, 6]},
-        "b": {"occurrence": "Pin:1", "circle": [53, 0, 0]},
-    }
-    asm.session.cmd("joint.create", jp)
-    links.record(ws, asm, "PinInPlate", jp)
+    # an assembly's mesh is in world coordinates: a part inserted 100 mm along x lies there (glTF export of assemblies)
+    cube = ws.new(PART, "mesh_cube")
+    cube.session.cmd("solid.box", {"length": 10, "width": 10, "height": 10, "corner": [0, 0, 0], "body_name": "Cube"})
+    cube.save()
+    asm = ws.new(ASSEMBLY, "mesh_asm")
+    links.insert(ws, asm, cube.path, name="Fixed", grounded=True)
+    links.insert(ws, asm, cube.path, name="Moved", translate=[100, 0, 0])
     asm.save()
-
-    srv_asm = create_server(asm.path, port=0)
-    port_asm = srv_asm.server_address[1]
-    th_asm = threading.Thread(target=srv_asm.serve_forever, daemon=True)
-    th_asm.start()
-    try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/tree", timeout=10) as resp:
-            asm_tree = json.loads(resp.read().decode("utf-8"))
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/mesh", timeout=10) as resp:
-            asm_mesh = json.loads(resp.read().decode("utf-8"))
-        occ_joints = [j for o in asm_tree.get("occurrences", []) for j in o.get("joints", [])]
-        pin_body = next((b for b in asm_mesh.get("bodies", []) if "Pin" in b["name"]), None)
-        pin_xs = pin_body["positions"][0::3] if pin_body else []
-        ok("web ui assembly: tree contains joint with status from links.check and mesh is in world coordinates",
-           asm_tree.get("kind") == "assembly"
-           and any(j.get("name") == "PinInPlate" and j.get("status") == "ok" for j in occ_joints)
-           and any(j.get("name") == "PinInPlate" and j.get("status") == "ok" for j in asm_tree.get("joints", []))
-           and bool(pin_xs) and abs((min(pin_xs) + max(pin_xs)) / 2.0 - 20.0) < 0.1,
-           f"occ_joints={occ_joints} joints={asm_tree.get('joints')}")
-        # Part rules would treat the whole assembly as one printed body (every underside an overhang)
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/findings", timeout=10) as resp:
-            asm_findings = json.loads(resp.read().decode("utf-8"))
-        ok("web ui assembly: findings are joint checks only, no part design rules on the assembly",
-           asm_findings["findings"] and all(f["origin"] == "links" for f in asm_findings["findings"])
-           and asm_findings["verdict"] == "ok" and "joints ok" in asm_findings["summary"],
-           f"summary={asm_findings.get('summary')} sources={[f['origin'] for f in asm_findings['findings']]}")
-        asm_sel = [f.get("select") for f in asm_findings["findings"]]
-        ok("web ui model mode: joint findings carry a select.set item on an assembly body",
-           asm_sel and all(x and x["type"] == "face" and x["body"] in {bd["name"] for bd in asm_mesh.get("bodies", [])}
-                           for x in asm_sel),
-           f"select={asm_sel}")
-
-        # "Model" mode: the web app saves a linked part, the server writes it and updates the links
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/files", timeout=10) as resp:
-            files = json.loads(resp.read().decode("utf-8"))
-        original = p_a.path.read_bytes()
-        p_a.session.cmd("solid.cylinder", {"diameter": 6, "height": 8, "base": [8, 8, -1], "operation": "cut", "name": "HoleB"})
-        p_a.save()
-        edited = p_a.path.read_bytes()
-        p_a.path.write_bytes(original)
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", timeout=10) as resp:
-            served = resp.read()
-        req = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/{p_a.path.name}", data=edited,
-                                     headers={"Content-Type": "application/octet-stream"}, method="POST")
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            saved = json.loads(resp.read().decode("utf-8"))
-        try:
-            urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/file/other.solidcraft",
-                                                          data=b"x", headers={"Content-Type": "application/octet-stream"},
-                                                          method="POST"), timeout=10)
-            foreign = 200
-        except urllib.error.HTTPError as e:
-            foreign = e.code
-        ul = saved.get("update_links", {})
-        ok("web ui model mode: /api/files lists linked parts, POST writes the part and runs update_links",
-           files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
-           and served == original and p_a.path.read_bytes() == edited
-           and ul.get("update", {}).get("updated") == ["Plate"] and not ul.get("warnings")
-           and saved["findings"]["verdict"] == "ok" and foreign == 404,
-           f"files={files} update={ul.get('update')} verdict={saved.get('findings', {}).get('verdict')} foreign={foreign}")
-
-        # Single-file server retains old answer and rejects /api/new
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_asm}/api/project", timeout=10) as resp:
-            sf_proj = json.loads(resp.read().decode("utf-8"))
-        try:
-            req_sf_new = urllib.request.Request(f"http://127.0.0.1:{port_asm}/api/new",
-                                                data=json.dumps({"name": "X"}).encode("utf-8"),
-                                                headers={"Content-Type": "application/json"},
-                                                method="POST")
-            with urllib.request.urlopen(req_sf_new, timeout=10) as resp:
-                sf_new_code = resp.status
-        except urllib.error.HTTPError as e:
-            sf_new_code = e.code
-    finally:
-        srv_asm.shutdown()
-        srv_asm.server_close()
-
-    # 3b. Folder server checks: listing with kinds, /api/open switching, /api/new creation and error handling
-    srv_fld = create_server(ws.root, port=0)
-    port_fld = srv_fld.server_address[1]
-    th_fld = threading.Thread(target=srv_fld.serve_forever, daemon=True)
-    th_fld.start()
-    try:
-        # GET /api/project initially: parts and assembly listed with correct kinds, no doc open
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
-            fld_proj = json.loads(resp.read().decode("utf-8"))
-        fld_kinds = {d["name"]: d["kind"] for d in fld_proj.get("documents", [])}
-
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/files", timeout=10)
-            no_doc_code = 200
-        except urllib.error.HTTPError as e:
-            no_doc_code = e.code
-
-        # /api/open/../../etc -> 404
-        try:
-            req_bad_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/../../etc", data=b"",
-                                                  headers={"Content-Type": "application/json"}, method="POST")
-            with urllib.request.urlopen(req_bad_open, timeout=10) as resp:
-                bad_open_code = resp.status
-        except urllib.error.HTTPError as e:
-            bad_open_code = e.code
-
-        # /api/open switches (then /api/files lists the linked parts for the assembly)
-        req_open = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/open/ui_asm.solidcraft", data=b"",
-                                          headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req_open, timeout=10) as resp:
-            opened_asm = json.loads(resp.read().decode("utf-8"))
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/files", timeout=10) as resp:
-            asm_files = json.loads(resp.read().decode("utf-8"))
-
-        # /api/new creates <name>.solidcraft as a part and it appears in /api/project
-        req_new = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
-                                         data=json.dumps({"name": "Bracket"}).encode("utf-8"),
-                                         headers={"Content-Type": "application/json"},
-                                         method="POST")
-        with urllib.request.urlopen(req_new, timeout=10) as resp:
-            created_part = json.loads(resp.read().decode("utf-8"))
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
-            fld_proj_after = json.loads(resp.read().decode("utf-8"))
-
-        # /api/new with an existing name -> 409
-        try:
-            req_dup = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
-                                             data=json.dumps({"name": "Bracket"}).encode("utf-8"),
-                                             headers={"Content-Type": "application/json"},
-                                             method="POST")
-            with urllib.request.urlopen(req_dup, timeout=10) as resp:
-                dup_code = resp.status
-        except urllib.error.HTTPError as e:
-            dup_code = e.code
-
-        # /api/new with '../x' -> 400
-        try:
-            req_trav = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/new",
-                                              data=json.dumps({"name": "../x"}).encode("utf-8"),
-                                              headers={"Content-Type": "application/json"},
-                                              method="POST")
-            with urllib.request.urlopen(req_trav, timeout=10) as resp:
-                trav_code = resp.status
-        except urllib.error.HTTPError as e:
-            trav_code = e.code
-
-        ok("web ui folder mode: folder server lists parts and assembly with correct kinds, switches and creates parts",
-           fld_kinds.get("ui_asm.solidcraft") == "assembly"
-           and fld_kinds.get("ui_part_a.solidcraft") == "part"
-           and fld_kinds.get("ui_part_b.solidcraft") == "part"
-           and no_doc_code == 409 and bad_open_code == 404
-           and opened_asm["document"] == "ui_asm.solidcraft"
-           and opened_asm["files"] == asm_files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
-           and created_part["document"] == "Bracket.solidcraft"
-           and created_part["files"] == ["Bracket.solidcraft"]
-           and fld_proj_after["current"] == "Bracket.solidcraft"
-           and any(d["name"] == "Bracket.solidcraft" and d["kind"] == "part" for d in fld_proj_after.get("documents", []))
-           and dup_code == 409 and trav_code == 400
-           and files["files"] == sorted(["ui_asm.solidcraft", "ui_part_a.solidcraft", "ui_part_b.solidcraft"])
-           and sf_proj.get("current") == "ui_asm.solidcraft"
-           and sf_proj.get("documents") == [{"name": "ui_asm.solidcraft", "kind": "assembly"}]
-           and sf_new_code == 404,
-           f"kinds={fld_kinds} opened={opened_asm} created={created_part} dup={dup_code} trav={trav_code} bad_open={bad_open_code} sf_new={sf_new_code}")
-
-        # Corrupt .solidcraft file in folder mode: /api/project must return 200 and list remaining documents
-        corrupt_file = ws.root / "kaputt.solidcraft"
-        corrupt_file.write_text("kein zip", encoding="utf-8")
-        try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/project", timeout=10) as resp:
-                corrupt_code = resp.status
-                corrupt_proj = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            corrupt_code = e.code
-            corrupt_proj = {}
-        finally:
-            if corrupt_file.exists():
-                corrupt_file.unlink()
-
-        c_docs = {d["name"]: d.get("kind") for d in corrupt_proj.get("documents", [])}
-        ok("web ui folder mode: corrupt .solidcraft file does not break /api/project",
-           corrupt_code == 200
-           and "ui_asm.solidcraft" in c_docs
-           and "ui_part_a.solidcraft" in c_docs
-           and "ui_part_b.solidcraft" in c_docs
-           and ("kaputt.solidcraft" not in c_docs or c_docs.get("kaputt.solidcraft") == PART),
-           f"code={corrupt_code} docs={c_docs}")
-
-        # /api/folders lists roots, recent folders, subfolders with counts, and STEP files
-        sub_dir = ws.root / "ui_subfolder"
-        sub_dir.mkdir(exist_ok=True)
-        sub_part = ws.new(PART, "sub_part", path=str(sub_dir / "sub_part.solidcraft"))
-        sub_part.save()
-        ws.close("sub_part")
-        flansch_step = Path(__file__).resolve().parents[2] / "docs/research/2026-10-phase0-solidcraft/flansch.step"
-        if flansch_step.exists():
-            shutil.copyfile(flansch_step, sub_dir / "flansch.step")
-
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/folders?path={urllib.parse.quote(str(ws.root))}", timeout=10) as resp:
-            folders_data = json.loads(resp.read().decode("utf-8"))
-
-        sub_entry = next((f for f in folders_data.get("folders", []) if f["name"] == "ui_subfolder"), None)
-        ok("web ui /api/folders: lists subfolders with .solidcraft and STEP counts, roots and recent folders",
-           folders_data.get("current") == str(ws.root.resolve())
-           and len(folders_data.get("roots", [])) >= 1
-           and sub_entry is not None
-           and sub_entry.get("solidcraft_count") == 1
-           and sub_entry.get("step_count") == 1
-           and any(r.get("path") == str(ws.root.resolve()) for r in folders_data.get("recent", [])),
-           f"folders_data={folders_data}")
-
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_fld}/api/folders?path={urllib.parse.quote(str(sub_dir))}", timeout=10) as resp:
-            sub_folder_data = json.loads(resp.read().decode("utf-8"))
-        ok("web ui /api/folders: lists STEP files in current folder",
-           any(sf["name"] == "flansch.step" for sf in sub_folder_data.get("step_files", [])),
-           f"step_files={sub_folder_data.get('step_files')}")
-
-        # /api/project/open switches project folder, closes old docs, updates recent
-        new_proj_dir = ws.root.parent / "ui_switched_proj"
-        shutil.rmtree(new_proj_dir, ignore_errors=True)
-        new_proj_dir.mkdir(exist_ok=True)
-        new_ws = Workspace(new_proj_dir)
-        try:
-            p_switch = new_ws.new(PART, "switched_part", overwrite=True)
-            p_switch.save()
-        finally:
-            new_ws.close_all()
-
-        req_switch = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/project/open",
-                                            data=json.dumps({"folder": str(new_proj_dir)}).encode("utf-8"),
-                                            headers={"Content-Type": "application/json"},
-                                            method="POST")
-        with urllib.request.urlopen(req_switch, timeout=10) as resp:
-            switch_res = json.loads(resp.read().decode("utf-8"))
-
-        ok("web ui /api/project/open: switches project folder and returns new project data",
-           switch_res.get("folder") == "ui_switched_proj"
-           and switch_res.get("mode") == "folder"
-           and any(d["name"] == "switched_part.solidcraft" for d in switch_res.get("documents", []))
-           and srv_fld.folder_path == new_proj_dir.resolve(),
-           f"switch_res={switch_res}")
-
-        # /api/project/open with invalid folder returns 404
-        try:
-            req_bad_switch = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/project/open",
-                                                    data=json.dumps({"folder": str(ws.root.parent / "nonexistent_dir")}).encode("utf-8"),
-                                                    headers={"Content-Type": "application/json"},
-                                                    method="POST")
-            with urllib.request.urlopen(req_bad_switch, timeout=10) as resp:
-                bad_switch_code = resp.status
-        except urllib.error.HTTPError as e:
-            bad_switch_code = e.code
-        ok("web ui /api/project/open: invalid folder returns 404", bad_switch_code == 404, str(bad_switch_code))
-
-        # /api/import_step with file from outside the project folder
-        ext_step_dir = ws.root.parent / "ui_ext_step_dir"
-        shutil.rmtree(ext_step_dir, ignore_errors=True)
-        ext_step_dir.mkdir(exist_ok=True)
-        if flansch_step.exists():
-            ext_step_file = ext_step_dir / "ext_bought_part.step"
-            shutil.copyfile(flansch_step, ext_step_file)
-            req_ext_import = urllib.request.Request(f"http://127.0.0.1:{port_fld}/api/import_step",
-                                                    data=json.dumps({"file": str(ext_step_file)}).encode("utf-8"),
-                                                    headers={"Content-Type": "application/json"},
-                                                    method="POST")
-            with urllib.request.urlopen(req_ext_import, timeout=15) as resp:
-                ext_import_res = json.loads(resp.read().decode("utf-8"))
-            ok("web ui /api/import_step: imports external STEP file into current project folder",
-               ext_import_res.get("document") == "ext_bought_part.solidcraft"
-               and (new_proj_dir / "ext_bought_part.solidcraft").exists()
-               and ext_step_file.exists(),
-               f"ext_import_res={ext_import_res}")
-    finally:
-        srv_fld.shutdown()
-        srv_fld.server_close()
-        shutil.rmtree(new_proj_dir, ignore_errors=True)
-        shutil.rmtree(ext_step_dir, ignore_errors=True)
-        shutil.rmtree(sub_dir, ignore_errors=True)
-
-    # 4. Part with intentional finding (countersink too close to wall as in Befund 8):
-    # finding arrives in /api/findings with a face name that exists in /api/mesh. A hole too close to the edge gives
-    # a finding with a face on every SolidCraft (the countersink notch used before is gone since SolidCraft 0.40).
-    cs_doc = ws.new(PART, "ui_cs_wall")
-    cs_doc.session.batch([
-        {"command": "solid.box", "params": {"length": 40, "width": 40, "height": 8, "corner": [0, 0, 0], "name": "Plate"}},
-        {"command": "solid.hole", "params": {"position": [20, 2.5, 8], "direction": [0, 0, -1], "clearance": "M6",
-                                             "depth": 8, "name": "NearEdge"}},
-    ])
-    cs_doc.save()
-
-    srv_cs = create_server(cs_doc.path, port=0)
-    port_cs = srv_cs.server_address[1]
-    th_cs = threading.Thread(target=srv_cs.serve_forever, daemon=True)
-    th_cs.start()
-    try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/mesh", timeout=10) as resp:
-            cs_mesh = json.loads(resp.read().decode("utf-8"))
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/findings", timeout=10) as resp:
-            cs_findings = json.loads(resp.read().decode("utf-8"))
-
-        mesh_face_map = {f["name"]: f["index"] for b in cs_mesh.get("bodies", []) for f in b.get("faces", [])}
-        mesh_fids = {fid for b in cs_mesh.get("bodies", []) for fid in b.get("face_ids", [])}
-        cs_fail = next(
-            (f for f in cs_findings.get("findings", [])
-             if f.get("rule") == "hole_edge_distance" and f.get("status") == "fail"),
-            None,
-        )
-        cs_face = cs_fail.get("face") if cs_fail else None
-        ok("web ui findings: a finding with a face arrives in /api/findings with a face name present in /api/mesh",
-           cs_fail is not None and cs_face in mesh_face_map and mesh_face_map[cs_face] in mesh_fids,
-           f"cs_fail={cs_fail} mesh_faces={list(mesh_face_map.keys())}")
-        cs_sel = (cs_fail or {}).get("select") or {}
-        ok("web ui model mode: the finding carries a select.set item for its face (index as in /api/mesh)",
-           cs_sel.get("type") == "face" and cs_sel.get("index") == mesh_face_map.get(cs_face)
-           and cs_sel.get("body") in {b["name"] for b in cs_mesh.get("bodies", [])} and len(cs_sel.get("point") or []) == 3,
-           f"select={cs_sel} face={cs_face}")
-
-        # 5. Reload on file change and HTTP 500 JSON recovery (server stays alive)
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/version", timeout=10) as resp:
-            v_before = json.loads(resp.read().decode("utf-8"))["version"]
-        cs_doc.session.cmd("solid.cylinder", {"diameter": 4, "height": 8, "base": [8, 8, 0], "operation": "cut", "name": "ExtraHole"})
-        cs_doc.save()
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/version", timeout=10) as resp:
-            v_after = json.loads(resp.read().decode("utf-8"))["version"]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port_cs}/api/tree", timeout=10) as resp:
-            tree_after = json.loads(resp.read().decode("utf-8"))
-        feat_names = [f.get("name") for f in tree_after.get("features", [])]
-        ok("web ui reload: file mtime change reloads document and updates tree",
-           v_after > v_before and "ExtraHole" in feat_names,
-           f"v_before={v_before} v_after={v_after} feats={feat_names}")
-    finally:
-        srv_cs.shutdown()
-        srv_cs.server_close()
-
-    # 5. UI server security checks (issue #62): Host and Origin headers, Content-Type
-    srv_sec = create_server(fl_doc.path, port=0)
-    port_sec = srv_sec.server_address[1]
-    th_sec = threading.Thread(target=srv_sec.serve_forever, daemon=True)
-    th_sec.start()
-    try:
-        def _sec_req(path, method="GET", host=f"127.0.0.1:{port_sec}", origin=None, content_type=None, data=None):
-            headers = {}
-            if host is not None:
-                headers["Host"] = host
-            if origin is not None:
-                headers["Origin"] = origin
-            if content_type is not None:
-                headers["Content-Type"] = content_type
-            body = data.encode("utf-8") if isinstance(data, str) else data
-            req = urllib.request.Request(f"http://127.0.0.1:{port_sec}{path}", data=body, headers=headers, method=method)
-            try:
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    return resp.status, resp.read()
-            except urllib.error.HTTPError as e:
-                return e.code, e.read()
-
-        # 1. Fremder Host -> 403 on GET and POST
-        st_get_evil_host, _ = _sec_req("/api/version", method="GET", host="evil.com")
-        st_post_evil_host, _ = _sec_req("/api/speech", method="POST", host="evil.com",
-                                        content_type="application/json", data='{"text": "hi"}')
-        st_rebinding_host, _ = _sec_req("/api/folders", method="GET", host=f"attacker.com:{port_sec}")
-        st_wrong_port_host, _ = _sec_req("/api/version", method="GET", host="127.0.0.1:9999")
-        st_ipv6_host, _ = _sec_req("/api/version", method="GET", host=f"[::1]:{port_sec}")
-        st_lh_host, _ = _sec_req("/api/version", method="GET", host=f"localhost:{port_sec}")
-        ok("web ui security: foreign Host header returns 403, local loopback (127.0.0.1, localhost, [::1]) returns 200",
-           st_get_evil_host == 403 and st_post_evil_host == 403
-           and st_rebinding_host == 403 and st_wrong_port_host == 403
-           and st_ipv6_host == 200 and st_lh_host == 200,
-           f"get={st_get_evil_host} post={st_post_evil_host} rebind={st_rebinding_host} wrong_port={st_wrong_port_host} ipv6={st_ipv6_host} lh={st_lh_host}")
-
-        # 2. Fremder Origin bei POST -> 403
-        st_evil_origin, _ = _sec_req("/api/speech", method="POST", origin="http://evil.com",
-                                     content_type="application/json", data='{"text": "hi"}')
-        st_evil_origin_port, _ = _sec_req("/api/speech", method="POST", origin=f"http://evil.com:{port_sec}",
-                                          content_type="application/json", data='{"text": "hi"}')
-        st_null_origin, _ = _sec_req("/api/speech", method="POST", origin="null",
-                                     content_type="application/json", data='{"text": "hi"}')
-        st_wrong_port_origin, _ = _sec_req("/api/speech", method="POST", origin="http://127.0.0.1:9999",
-                                           content_type="application/json", data='{"text": "hi"}')
-        ok("web ui security: foreign Origin header on POST returns 403",
-           st_evil_origin == 403 and st_evil_origin_port == 403
-           and st_null_origin == 403 and st_wrong_port_origin == 403,
-           f"evil={st_evil_origin} port={st_evil_origin_port} null={st_null_origin} wrong_port={st_wrong_port_origin}")
-
-        # 3. Eigener Origin und fehlender Origin -> OK
-        st_own_origin_ip, _ = _sec_req("/api/speech", method="POST", origin=f"http://127.0.0.1:{port_sec}",
-                                       content_type="application/json", data='{"text": "M6"}')
-        st_own_origin_lh, _ = _sec_req("/api/speech", method="POST", origin=f"http://localhost:{port_sec}",
-                                       content_type="application/json", data='{"text": "M6"}')
-        st_own_origin_ipv6, _ = _sec_req("/api/speech", method="POST", origin=f"http://[::1]:{port_sec}",
-                                         content_type="application/json", data='{"text": "M6"}')
-        st_no_origin, _ = _sec_req("/api/speech", method="POST", origin=None,
-                                   content_type="application/json", data='{"text": "M6"}')
-        ok("web ui security: own Origin and missing Origin on POST succeed",
-           st_own_origin_ip == 200 and st_own_origin_lh == 200 and st_own_origin_ipv6 == 200 and st_no_origin == 200,
-           f"own_ip={st_own_origin_ip} own_lh={st_own_origin_lh} own_ipv6={st_own_origin_ipv6} no_origin={st_no_origin}")
-
-        # 4. Form-Content-Type -> 403
-        st_form_url, _ = _sec_req("/api/speech", method="POST",
-                                  content_type="application/x-www-form-urlencoded", data="text=hello")
-        st_form_multi, _ = _sec_req("/api/speech", method="POST",
-                                    content_type="multipart/form-data; boundary=xyz", data="--xyz\r\n")
-        st_form_text, _ = _sec_req("/api/speech", method="POST",
-                                   content_type="text/plain", data="text=hello")
-        st_no_ct, _ = _sec_req("/api/speech", method="POST",
-                               content_type=None, data='{"text": "hello"}')
-        ok("web ui security: form Content-Types and missing Content-Type on POST return 403",
-           st_form_url == 403 and st_form_multi == 403 and st_form_text == 403 and st_no_ct == 403,
-           f"urlencoded={st_form_url} multipart={st_form_multi} text={st_form_text} no_ct={st_no_ct}")
-
-        # 5. PUT/DELETE security checks
-        st_put_evil_host, _ = _sec_req("/api/version", method="PUT", host="evil.com", content_type="application/json", data='{}')
-        st_put_evil_origin, _ = _sec_req("/api/version", method="PUT", origin="http://evil.com", content_type="application/json", data='{}')
-        st_put_form_ct, _ = _sec_req("/api/version", method="PUT", content_type="text/plain", data='hello')
-        st_put_ok_sec, _ = _sec_req("/api/version", method="PUT", content_type="application/json", data='{}')
-        ok("web ui security: PUT/DELETE check Host, Origin and Content-Type (403), valid headers return 405",
-           st_put_evil_host == 403 and st_put_evil_origin == 403 and st_put_form_ct == 403 and st_put_ok_sec == 405,
-           f"evil_host={st_put_evil_host} evil_origin={st_put_evil_origin} form_ct={st_put_form_ct} ok_sec={st_put_ok_sec}")
-    finally:
-        srv_sec.shutdown()
-        srv_sec.server_close()
-
-    ws.close_all()
+    xs = sorted({round(min(b["positions"][0::3]), 3) for b in mesh.collect_mesh(asm)["bodies"]})
+    ok("mesh: an assembly's bodies are in world coordinates (a part inserted at x = 100 starts there)",
+       xs == [0.0, 100.0], str(xs))
+    ws.close("mesh_asm")
+    ws.close("mesh_cube")
 
 
 def argon_review_findings_checks(ws):
@@ -5689,7 +5266,7 @@ def install_checks(tmp):
     import os
     import tarfile
     import zipfile
-    from mechvane import cli, install
+    from mechvane import install
     ref = Path(__file__).resolve().parents[1] / "reference" / "flansch.build.json"
     ok("install: packaged flange example equals the reference build", ref.read_bytes()
        == (Path(install.__file__).parent / "data" / "flange.build.json").read_bytes())
@@ -5754,7 +5331,6 @@ def install_checks(tmp):
         os.environ.pop("SOLIDCRAFT_CLI", None)
         if old[3] is not None:
             os.environ["SOLIDCRAFT_CLI"] = old[3]
-    ok("cli: `mechvane ui` on a missing path exits with 1", cli.main(["ui", str(root / "nope"), "--no-browser"]) == 1)
 
 
 def cli_check_checks(tmp):
@@ -5931,2214 +5507,88 @@ def cli_check_checks(tmp):
        f"rc={rc_win} err={err_win!r} mutating={mutating} cmds={seen_cmds}")
 
 
-def appwindow_checks(tmp):
-    """`mechvane ui` app window and `mechvane shortcut`, with a fake browser script."""
+def documents_reload_checks(tmp):
+    """MCP side: files changed on disk are opened again, MECHVANE_AUTOSAVE saves after each tool call."""
     import os
-    import socket
-    import stat
-    import time
-    import webbrowser
-    from mechvane import install
-    from mechvane.ui import appwindow, server as ui_server
-
-    root = Path(tmp) / "appwindow"
-    root.mkdir()
-    old = (os.environ.get("MECHVANE_BROWSER"), appwindow.HANDOFF_S, webbrowser.open, install.CACHE,
-           os.environ.get("XDG_DATA_HOME"))
-    tabs = []
-    try:
-        install.CACHE = root / "cache"
-        appwindow.HANDOFF_S = 0.5
-        webbrowser.open = lambda url: tabs.append(url)
-
-        def fake(name, body):
-            f = root / name
-            f.write_text("#!/bin/sh\n" + body + "\n")
-            f.chmod(f.stat().st_mode | stat.S_IEXEC)
-            os.environ["MECHVANE_BROWSER"] = str(f)
-            return f
-
-        fake("args.sh", f'echo "$@" > {root}/args.txt; sleep 1.2')
-        closed = threading.Event()
-        opened = appwindow.open_window("http://127.0.0.1:1/", on_close=closed.set)
-        args = (root / "args.txt").read_text() if (root / "args.txt").exists() else ""
-        ok("appwindow: app window with its own profile, server stops when it closes",
-           opened == "window" and "--app=http://127.0.0.1:1/" in args and f"--user-data-dir={install.CACHE / 'app-profile'}" in args
-           and closed.wait(5) and not tabs, f"{opened} {args!r} {tabs}")
-
-        fake("handoff.sh", "exit 0")
-        closed = threading.Event()
-        opened = appwindow.open_window("http://127.0.0.1:2/", on_close=closed.set)
-        time.sleep(0.2)
-        ok("appwindow: window handed to an open instance keeps the server running",
-           opened == "handoff" and not closed.is_set() and not tabs, f"{opened} {tabs}")
-
-        fake("broken.sh", "exit 3")
-        opened = appwindow.open_window("http://127.0.0.1:3/")
-        os.environ["MECHVANE_BROWSER"] = str(root / "missing-browser")
-        opened2 = appwindow.open_window("http://127.0.0.1:4/")
-        ok("appwindow: falls back to a browser tab when the app window does not start",
-           not opened and not opened2 and tabs == ["http://127.0.0.1:3/", "http://127.0.0.1:4/"], f"{tabs}")
-
-        # A busy port falls back to a free one; the opener gets the real URL and can stop the server
-        part = next(Path(__file__).resolve().parents[2].glob("docs/research/*/flansch.solidcraft"))
-        busy = socket.socket()
-        busy.bind(("127.0.0.1", 0))
-        busy.listen()
-        busy_port = busy.getsockname()[1]
-        got = []
-        done = threading.Thread(target=ui_server.run_server, args=(str(part),),
-                                kwargs={"port": busy_port, "opener": lambda url, stop: (got.append(url), stop())},
-                                daemon=True)
-        done.start()
-        done.join(15)
-        busy.close()
-        ok("appwindow: busy port falls back to a free one, stop() ends the server",
-           not done.is_alive() and len(got) == 1 and got[0].startswith("http://127.0.0.1:")
-           and not got[0].endswith(f":{busy_port}/"), f"{got}")
-
-        os.environ["XDG_DATA_HOME"] = str(root / "share")
-        entry = appwindow.create_shortcut(root / "My Parts")
-        text = entry.read_text()
-        ok("appwindow: start menu entry opens the project folder with the Mechvane icon",
-           entry == root / "share/applications/mechvane.desktop" and (root / "My Parts").is_dir()
-           and f'-m mechvane ui "{root / "My Parts"}"' in text and f"Icon={install.CACHE / 'logo.svg'}" in text
-           and (install.CACHE / "logo.svg").is_file(), text)
-    finally:
-        appwindow.HANDOFF_S, webbrowser.open, install.CACHE = old[1], old[2], old[3]
-        for key, val in (("MECHVANE_BROWSER", old[0]), ("XDG_DATA_HOME", old[4])):
-            os.environ.pop(key, None)
-            if val is not None:
-                os.environ[key] = val
-
-
-def feature_request_checks(tmp, ws=None):
-    """Checks for 'Request a feature' UI button, dialog module request.js, and /api/about."""
-    import shutil
-    import threading
-    import urllib.request
-    from mechvane import install, __version__
-    from mechvane.ui import create_server, collect_about
-    from mechvane.ui.server import STATIC_DIR
-
-    # 1. /api/about direct check
-    about_direct = collect_about()
-    ok("feature request: collect_about returns mechvane and solidcraft versions",
-       about_direct.get("mechvane") == __version__ and about_direct.get("solidcraft") == install.VERSION,
-       f"{about_direct}")
-
-    # 2. Server endpoints: /api/about, /request.js, /, /model
-    if ws is None:
-        ws = Workspace(tmp)
-        own_ws = True
-    else:
-        own_ws = False
-    doc = ws.new(PART, "feature_request_test_doc")
-
-    srv = create_server(doc.path, port=0)
-    port = srv.server_address[1]
-    th = threading.Thread(target=srv.serve_forever, daemon=True)
-    th.start()
-    try:
-        def _get(path):
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as resp:
-                return resp.status, resp.headers.get_content_type(), resp.read()
-
-        # Check /api/about endpoint
-        st_about, ct_about, body_about = _get("/api/about")
-        d_about = json.loads(body_about.decode("utf-8"))
-        ok("feature request: /api/about responds with 200 and both versions",
-           st_about == 200 and d_about.get("mechvane") == __version__ and d_about.get("solidcraft") == install.VERSION,
-           f"status={st_about} ct={ct_about} body={d_about}")
-
-        # Check /request.js endpoint
-        st_req, ct_req, body_req = _get("/request.js")
-        ok("feature request: /request.js served with 200 and javascript content type",
-           st_req == 200 and "javascript" in ct_req.lower() and len(body_req) > 0,
-           f"status={st_req} ct={ct_req} len={len(body_req)}")
-
-        # Check / and /model deliver HTML with button and request.js
-        st_idx, _, body_idx = _get("/")
-        idx_html = body_idx.decode("utf-8")
-        ok("feature request: index.html served with button and request.js",
-           st_idx == 200 and "Request a feature" in idx_html and "request.js" in idx_html,
-           f"idx_len={len(idx_html)}")
-
-        st_model, _, body_model = _get("/model")
-        model_html = body_model.decode("utf-8")
-        ok("feature request: model.html served with button and request.js",
-           st_model == 200 and "Request a feature" in model_html and "request.js" in model_html,
-           f"model_len={len(model_html)}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
-        ws.close("feature_request_test_doc")
-        if own_ws:
-            ws.close_all()
-
-    # 3. Static files on disk
-    idx_disk = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    model_disk = (STATIC_DIR / "model.html").read_text(encoding="utf-8")
-    req_disk = (STATIC_DIR / "request.js").read_text(encoding="utf-8")
-    ok("feature request: both HTML pages bind button and request.js",
-       "Request a feature" in idx_disk and "request.js" in idx_disk
-       and "Request a feature" in model_disk and "request.js" in model_disk,
-       "disk HTML check")
-
-    ok("feature request: request.js constructs github issue URL with parameters",
-       "https://github.com/mechvane/mechvane/issues/new" in req_disk
-       and "URLSearchParams" in req_disk and "dialog" in req_disk,
-       "request.js logic check")
-
-    # 4. build_demo_site includes request.js and about.json
-    build_script = (Path(__file__).resolve().parents[2] / "tools" / "build_demo_site.py").read_text(encoding="utf-8")
-    ok("feature request: build_demo_site.py copies STATIC_DIR and writes about.json",
-       "STATIC_DIR" in build_script and "about.json" in build_script,
-       "build_demo_site.py content check")
-
-    out_demo = Path(tmp) / "demo_site_test"
-    if out_demo.exists():
-        shutil.rmtree(out_demo)
-    shutil.copytree(STATIC_DIR, out_demo)
-    for page in ("index.html", "model.html"):
-        html = (out_demo / page).read_text(encoding="utf-8")
-        (out_demo / page).write_text(html.replace('<html lang="en">', '<html lang="en" data-static="1">', 1),
-                                     encoding="utf-8")
-    (out_demo / "about.json").write_text(json.dumps({"mechvane": "live demo", "solidcraft": "live demo"}), encoding="utf-8")
-
-    ok("feature request: build_demo_site output directory includes request.js and about.json",
-       (out_demo / "request.js").is_file() and (out_demo / "about.json").is_file()
-       and "data-static=\"1\"" in (out_demo / "index.html").read_text(encoding="utf-8"),
-       f"out_demo files: {[p.name for p in out_demo.glob('*')]}")
-
-
-def demo_pyodide_checks(tmp):
-    """Checks for the Pyodide in-browser check prototype: browser_check shim, demo_check.js, mechvane.zip, and model.html."""
-    import shutil
-    import subprocess
-    import zipfile
-    from mechvane import browser_check
-    from mechvane.ui.server import STATIC_DIR
-    from tools.build_demo_site import make_mechvane_zip
-
-    fixtures_path = Path(__file__).resolve().parent / "demo_check_fixtures.json"
-    fixtures = json.loads(fixtures_path.read_text(encoding="utf-8"))
-
-    # 1. browser_check Python shim against bracket and flange recorded data
-    flange_res = browser_check.check_browser(
-        fixtures["flange"]["payload"], doc_name="flange.solidcraft"
-    )
-    ok("demo pyodide: browser_check produces ok verdict on flange fixture",
-       flange_res.get("verdict") == "ok" and len(flange_res.get("findings", [])) == 8,
-       f"verdict={flange_res.get('verdict')} findings={len(flange_res.get('findings', []))}")
-
-    bracket_res = browser_check.check_browser(
-        fixtures["bracket"]["payload"], doc_name="bracket.solidcraft"
-    )
-    ok("demo pyodide: browser_check produces fail verdict on bracket fixture",
-       bracket_res.get("verdict") == "fail" and len(bracket_res.get("findings", [])) == 6,
-       f"verdict={bracket_res.get('verdict')} findings={len(bracket_res.get('findings', []))}")
-
-    # 2. make_mechvane_zip packaging
-    zip_path = Path(tmp) / "mechvane.zip"
-    make_mechvane_zip(zip_path)
-    ok("demo pyodide: make_mechvane_zip packages required modules into zip",
-       zip_path.is_file() and zip_path.stat().st_size > 10000,
-       f"zip exists={zip_path.is_file()} size={zip_path.stat().st_size if zip_path.is_file() else 0}")
-    with zipfile.ZipFile(zip_path) as zf:
-        names = zf.namelist()
-        ok("demo pyodide: mechvane.zip includes browser_check, design_rules and hole_tables",
-           "mechvane/browser_check.py" in names and "mechvane/design_rules.py" in names and "mechvane/hole_tables.py" in names,
-           str(names))
-
-    # 3. Static assets: model.html and demo_check.js
-    model_html = (STATIC_DIR / "model.html").read_text(encoding="utf-8")
-    demo_check_js = (STATIC_DIR / "demo_check.js").read_text(encoding="utf-8")
-    ok("demo pyodide: model.html includes verdict-badge and imports demo_check.js",
-       'id="verdict-badge"' in model_html and "demo_check.js" in model_html,
-       "model.html missing verdict-badge or demo_check.js")
-    ok("demo pyodide: demo_check.js defines initDemoCheck and checkInBrowser with pinned Pyodide",
-       "initDemoCheck" in demo_check_js and "checkInBrowser" in demo_check_js and "v0.26.4" in demo_check_js,
-       "demo_check.js functions or Pyodide version")
-
-    # 4. Headless test via node if node is available
-    if shutil.which("node"):
-        test_script = Path(__file__).resolve().parents[2] / "tools" / "test_demo_check.js"
-        run = subprocess.run(["node", str(test_script)], capture_output=True, text=True, timeout=60)
-        ok("demo pyodide: test_demo_check.js runs clean in node",
-           run.returncode == 0 and ("All demo_check tests passed successfully" in run.stdout or "skip demo_check test" in run.stdout),
-           f"returncode={run.returncode} stdout={run.stdout} stderr={run.stderr}")
-
-
-def agent_turns_checks(tmp):
-    """Web UI agent turns (ADR 0003) against tests/mechvane/fake_acp_agent.py, and the MCP side:
-    files changed on disk are opened again, MECHVANE_AUTOSAVE saves after each tool call."""
-    import os
-    import time
-    import urllib.request
-    from mechvane import install
-    from mechvane.ui import agent as ag, server as ui_server
-
-    d = ag.decide
-    ok("agent: Mechvane modelling runs, also deleting features and sketch curves (a turn can be undone); "
-       "other tools and file commands are declined",
-       d("mcp__mechvane__run", {"commands": [{"command": "solid.chamfer", "params": {"edges": [[0, 0, 0]]}}]})[0]
-       and d("mcp__mechvane__run", {"commands": [{"command": "solid.sweep", "params": {"path": [3, 4]}}]})[0]
-       and d("mcp__mechvane__check_design", {})[0]
-       and not d("Bash", {"command": "ls"})[0]
-       and not d("mcp__mechvane__run", {"commands": [{"command": "file.export", "params": {"path": "x.step"}}]})[0]
-       and not d("mcp__mechvane__command", {"command": "sketch.insert_dxf", "params": {"path": "a/b.dxf"}})[0]
-       and d("mcp__mechvane__delete_feature", {"feature": "Box1"})[0]
-       and d("mcp__mechvane__run", {"commands": [{"command": "sketch.delete", "params": {"items": ["l1"]}}]})[0]
-       and d("mcp__mechvane__run", {"commands": [{"command": "timeline.delete", "params": {"feature": "Hole1"}}]})[0]
-       and not d("mcp__mechvane__run", {"commands": [{"command": "doc.open", "params": {"path": "x.solidcraft"}}]})[0]
-       and not d("mcp__mechvane__close_document", {"document": "a"})[0]
-       and not d("mcp__mechvane__screenshot", {"path": "/tmp/s.png"})[0])
-
-    root = Path(tmp) / "agent"
-    folder = root / "proj"
+    folder = Path(tmp) / "reload" / "proj"
     folder.mkdir(parents=True)
-    old_cache = install.CACHE
-    install.CACHE = root / "cache"
-    fake = [sys.executable, str(Path(__file__).resolve().parent / "fake_acp_agent.py")]
-
-    def features(name):
-        w = Workspace(folder)
-        try:
-            return len(w.open(name).session.cmd("document.inspect").get("timeline") or [])
-        finally:
-            w.close_all()
-
-    def wait_idle(turns, seconds=60):
-        end = time.monotonic() + seconds
-        while turns.busy and time.monotonic() < end:
-            time.sleep(0.2)
-        return not turns.busy
-
+    w = Workspace(folder)
     try:
-        w = Workspace(folder)
         plate = w.new(PART, "plate")
         plate.session.cmd("solid.box", {"length": 20, "width": 20, "height": 10})
         plate.save()
-        w.close_all()
-        n0 = features("plate.solidcraft")
-        # a file no turn touches: undo must leave it alone, timestamps included
-        import shutil as _sh
-        _sh.copy2(folder / "plate.solidcraft", folder / "other.solidcraft")
-        other_mtime = (folder / "other.solidcraft").stat().st_mtime_ns
-
-        changed = []
-        turns = ag.AgentTurns(folder, on_files_changed=lambda: changed.append(1), command=fake)
-        turns.send("edit please", [{"kind": "face", "name": "F1:box:top"}], "plate.solidcraft")
-        idle = wait_idle(turns)
-        ev = turns.events_since(0)["events"]
-        text = "".join(e.get("text", "") for e in ev if e["type"] == "text")
-        done = [e for e in ev if e["type"] == "done"]
-        declined = sorted(e["tool"] for e in ev if e["type"] == "declined")
-        ok("agent: a turn runs, edits the project and reports changed files",
-           idle and done and done[0]["changed"] == ["extra.solidcraft", "plate.solidcraft"]
-           and features("plate.solidcraft") == n0 + 1 and changed, f"{ev}")
-        ok("agent: modelling and deleting features are allowed, export and shell declined",
-           '"run chamfer": true' in text and '"run export": false' in text and '"Bash": false' in text
-           and '"delete_feature": true' in text and declined == ["Bash", "run"], text + str(declined))
-
-        out = turns.undo()
-        ok("agent: undo writes back only the files the turn changed",
-           "other.solidcraft" not in out["restored"] and (folder / "other.solidcraft").stat().st_mtime_ns == other_mtime,
-           f"{out}")
-        msg = turns._message("next", None, "plate.solidcraft")
-        ok("agent: after undo the next message tells the agent, once",
-           "undid your turn 1" in msg and "undid" not in turns._message("again", None, None), msg[:200])
-        ok("agent: undo puts the files back and removes files the turn added",
-           out["removed"] == ["extra.solidcraft"] and not (folder / "extra.solidcraft").exists()
-           and features("plate.solidcraft") == n0, f"{out}")
-        turns.redo()
-        ok("agent: redo puts the turn back", (folder / "extra.solidcraft").exists()
-           and features("plate.solidcraft") == n0 + 1)
-
-        turns.send("edit again", None, "plate.solidcraft")
-        if not wait_idle(turns):
-            ok("agent: second turn ends", False, str(turns.events_since(0)["events"][-3:]))
-            return
-        os.utime(folder / "plate.solidcraft", ns=(time.time_ns(), time.time_ns() + 5_000_000_000))
-        try:
-            turns.undo()
-            refused = False
-        except PermissionError:
-            refused = True
-        out = turns.undo(force=True)
-        ok("agent: undo after a later change by hand needs force", refused and features("plate.solidcraft") == n0 + 1)
-
-        turns.send("slow edit", None, "plate.solidcraft")
-        time.sleep(4)
-        stopping = turns.stop()
-        wait_idle(turns)
-        last = turns.events_since(0)["events"][-1]
-        ok("agent: Stop ends the turn and restores the files",
-           stopping and last.get("status") == "stopped" and features("plate.solidcraft") == n0 + 1
-           and turns.turns[-1]["state"] == "stopped", f"{last}")
-
-        turns.send("crash edit", None, "plate.solidcraft")
-        wait_idle(turns)
-        last = turns.events_since(0)["events"][-1]
-        ok("agent: an agent that dies mid-turn leaves the files as before",
-           last["type"] == "error" and features("plate.solidcraft") == n0 + 1, f"{last}")
-        turns.close()
-
-        # The UI server: endpoints, and no saving by hand while the agent works
-        os.environ["MECHVANE_AGENT"] = " ".join(f'"{x}"' for x in fake)
-        srv = ui_server.create_server(str(folder / "plate.solidcraft"), port=0)
-        threading.Thread(target=srv.serve_forever, daemon=True).start()
-        base = f"http://127.0.0.1:{srv.server_address[1]}"
-
-        def post(path, body=b"{}"):
-            ct = "application/octet-stream" if path.startswith("/api/file/") else "application/json"
-            req = urllib.request.Request(base + path, data=body, headers={"Content-Type": ct}, method="POST")
-            try:
-                with urllib.request.urlopen(req) as r:
-                    return r.status, json.loads(r.read())
-            except urllib.error.HTTPError as e:
-                return e.code, json.loads(e.read())
-        try:
-            st, res = post("/api/agent/send", json.dumps({"text": "slow edit"}).encode())
-            time.sleep(3)
-            busy_save = post("/api/file/plate.solidcraft", b"x" * 10)[0]
-            second = post("/api/agent/send", json.dumps({"text": "more"}).encode())[0]
-            post("/api/agent/stop")
-            for _ in range(100):
-                with urllib.request.urlopen(base + "/api/agent/events?since=0") as r:
-                    evs = json.loads(r.read())
-                if not evs["busy"]:
-                    break
-                time.sleep(0.2)
-            ok("agent: UI server runs turns, refuses saving and a second message while busy",
-               st == 200 and res == {"turn": 1} and busy_save == 409 and second == 409 and not evs["busy"]
-               and evs["events"][-1].get("status") == "stopped", f"{st} {busy_save} {second} {evs['events'][-1:]}")
-        finally:
-            srv.shutdown()
-            srv.server_close()
-            os.environ.pop("MECHVANE_AGENT", None)
-
-        # MCP side: a document changed on disk is opened again; autosave after each tool call
-        w1, w2 = Workspace(folder), Workspace(folder)
-        try:
-            a = w1.open("plate.solidcraft")
-            b = w2.open("plate.solidcraft")
-            b.session.cmd("solid.box", {"length": 3, "width": 3, "height": 3, "corner": [0, 0, 20], "operation": "join"})
-            b.save()
-            n_disk = len(b.session.cmd("document.inspect")["timeline"])
-            again = w1.get("plate")
-            fresh = again is a and len(again.session.cmd("document.inspect")["timeline"]) == n_disk
-            again.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [0, 0, 30], "operation": "join"})
-            b.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [5, 5, 30], "operation": "join"})
-            b.save()
-            try:
-                w1.get("plate")
-                conflict = False
-            except ValueError:
-                conflict = True
-        finally:
-            w1.close_all()
-            w2.close_all()
-        ok("documents: a file changed on disk is opened again, unsaved changes are not overwritten", fresh and conflict)
-
-        old_ws = server.ws
-        server.ws = Workspace(folder)
-        os.environ["MECHVANE_AUTOSAVE"] = "1"
-        try:
-            server.open_document("plate.solidcraft")
-            before = (folder / "plate.solidcraft").stat().st_mtime_ns
-            server.run("plate", [{"command": "solid.box", "params": {"length": 1, "width": 1, "height": 1,
-                                                                    "corner": [9, 9, 40], "operation": "join"}}])
-            saved = (folder / "plate.solidcraft").stat().st_mtime_ns != before and not server.ws.get("plate").dirty()
-        finally:
-            os.environ.pop("MECHVANE_AUTOSAVE", None)
-            server.ws.close_all()
-            server.ws = old_ws
-        ok("server: MECHVANE_AUTOSAVE saves changed documents after each tool call", saved)
-    finally:
-        install.CACHE = old_cache
-
-
-def snapshot_prune_checks(tmp):
-    """Snapshot history retention in cache (issue #40): keep at most 50 steps per project hash,
-    remove copies older than 14 days, and leave active turn snapshots untouched."""
-    import hashlib
-    from datetime import datetime, timedelta
-    from mechvane import install
-    from mechvane.ui import agent as ag
-
-    old_cache = install.CACHE
-    install.CACHE = Path(tmp) / "cache"
-    try:
-        folder = Path(tmp) / "proj"
-        folder.mkdir(parents=True)
-        (folder / "part.solidcraft").write_text("{}", encoding="utf-8")
-        key = hashlib.sha1(str(folder.resolve()).encode()).hexdigest()[:12]
-        hist = install.CACHE / "history" / key
-        hist.mkdir(parents=True)
-
-        now = datetime.now()
-        # 60 recent snapshot folders and 10 folders older than 14 days
-        for i in range(60):
-            d = hist / f"{(now - timedelta(minutes=60 - i)):%Y%m%d-%H%M%S}-step{i:02d}"
-            d.mkdir(parents=True)
-            (d / "manifest.json").write_text("[]", encoding="utf-8")
-
-        for i in range(10):
-            d = hist / f"{(now - timedelta(days=20 + i)):%Y%m%d-%H%M%S}-stale{i:02d}"
-            d.mkdir(parents=True)
-            (d / "manifest.json").write_text("[]", encoding="utf-8")
-
-        # Creating AgentTurns prunes the history on init
-        turns = ag.AgentTurns(folder)
-
-        remaining = [p for p in hist.iterdir() if p.is_dir()]
-        stale_remaining = [p for p in remaining if "stale" in p.name]
-
-        # Running turn snapshots must never be pruned
-        active_snap = hist / f"{(now - timedelta(days=25)):%Y%m%d-%H%M%S}-active_snap"
-        active_snap.mkdir(parents=True)
-        (active_snap / "manifest.json").write_text("[]", encoding="utf-8")
-        active_redo = hist / f"{(now - timedelta(days=26)):%Y%m%d-%H%M%S}-active_redo"
-        active_redo.mkdir(parents=True)
-        (active_redo / "manifest.json").write_text("[]", encoding="utf-8")
-
-        turns.turns.append({
-            "id": 1,
-            "text": "active turn",
-            "snapshot": type("S", (), {"dir": active_snap})(),
-            "redo": type("R", (), {"dir": active_redo})()
-        })
-
-        unrelated_stale = hist / f"{(now - timedelta(days=27)):%Y%m%d-%H%M%S}-unrelated_stale"
-        unrelated_stale.mkdir(parents=True)
-        (unrelated_stale / "manifest.json").write_text("[]", encoding="utf-8")
-
-        turns.prune_history()
-
-        active_ok = active_snap.exists() and active_redo.exists() and not unrelated_stale.exists()
-
-        # Second project hash: pruning applies per project hash
-        hist2 = install.CACHE / "history" / "otherhash123"
-        hist2.mkdir(parents=True)
-        for i in range(60):
-            d = hist2 / f"{(now - timedelta(minutes=60 - i)):%Y%m%d-%H%M%S}-step{i:02d}"
-            d.mkdir(parents=True)
-            (d / "manifest.json").write_text("[]", encoding="utf-8")
-        stale2 = hist2 / f"{(now - timedelta(days=20)):%Y%m%d-%H%M%S}-stale"
-        stale2.mkdir(parents=True)
-        (stale2 / "manifest.json").write_text("[]", encoding="utf-8")
-
-        ag.prune_history()
-        remaining2 = [p for p in hist2.iterdir() if p.is_dir()]
-
-        ok("agent: snapshot history keeps at most 50 steps, prunes older than 14 days, active snapshots untouched",
-           len(remaining) == 50 and len(stale_remaining) == 0 and active_ok
-           and len(remaining2) == 50 and not stale2.exists(),
-           f"proj1: {len(remaining)}, stale1: {len(stale_remaining)}, active: {active_snap.exists()}/{active_redo.exists()}, proj2: {len(remaining2)}")
-    finally:
-        install.CACHE = old_cache
-
-
-def selection_checks(tmp):
-    """/api/resolve_selection: the app's selection in Mechvane's names, for a part and an assembly."""
-    import urllib.request
-    from mechvane import examples
-    from mechvane.ui import selection, server as ui_server
-
-    folder = Path(tmp) / "selection"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        examples.bracket(w)
-        examples.bolted_plates(w)
-    finally:
-        w.close_all()
-    w = Workspace(folder)
-    try:
-        br = w.open("bracket.solidcraft")
-        face = next(f for f in br.session.cmd("model.faces", {"body": "Bracket"})["faces"] if f["name"] == "F1:+z")
-        r = selection.resolve(w, br, [{"type": "face", "body": "Bracket", "index": face["index"], "point": [42.2, 30.4, 8.9]},
-                                      {"type": "edge", "body": "Bracket", "index": 0, "point": [0, 0, 0]}])
-        ok("selection: a part face gets its Mechvane name, feature, normal, click and centroid",
-           r[0]["name"] == "F1:+z" and r[0]["feature"] == "BasePlate" and r[0]["normal"] == [0.0, 0.0, 1.0]
-           and r[0]["click"] == [42.2, 30.4, 8.9] and "centroid" in r[0] and r[1]["kind"] == "edge" and r[1].get("length"), str(r))
-        asm = w.open("bolted_plates.solidcraft")
-        f = next(f for f in asm.session.cmd("model.faces", {"body": "TopPlate"})["faces"]
-                 if (f.get("plane_normal") or [0])[-1:] == [1.0])
-        r = selection.resolve(w, asm, [{"type": "face", "body": "TopPlate", "index": f["index"], "point": f.get("point") or f["centroid"]}])
-        ok("selection: an assembly face is named in its part file",
-           r[0].get("part") == "top_plate.solidcraft" and r[0].get("occurrence") == "TopPlate:1"
-           and r[0].get("name", "").startswith("F") and ":face:" not in r[0]["name"], str(r))
     finally:
         w.close_all()
 
-    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    # MCP side: a document changed on disk is opened again; autosave after each tool call
+    w1, w2 = Workspace(folder), Workspace(folder)
     try:
-        req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/resolve_selection", method="POST",
-                                     headers={"Content-Type": "application/json"},
-                                     data=json.dumps({"items": [{"type": "face", "body": "Bracket", "index": face["index"],
-                                                                 "point": [42.2, 30.4, 8.9]}]}).encode())
-        with urllib.request.urlopen(req) as resp:
-            got = json.loads(resp.read())
-        ok("selection: /api/resolve_selection answers with the resolved items",
-           got["selection"][0]["name"] == "F1:+z", str(got))
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def speech_checks(tmp):
-    """Spoken requests cleaned up in code (mechvane/speech.py) and /api/speech with the model's names."""
-    import urllib.request
-    from mechvane import examples, speech
-    from mechvane.ui import server as ui_server
-
-    names = ["CountersinkNearWall", "BasePlate", "Wall"]
-    cases = {
-        "da eine Phase eins mal fünfundvierzig Grad": "da eine Fase 1 × 45°",
-        "mittig eine Gewindebohrung Em sechs": "mittig eine Gewindebohrung M6",
-        "Rundung Er zwei an der Kante": "Rundung R2 an der Kante",
-        "Wandstärke eins Komma fünf Millimeter": "Wandstärke 1.5 mm",
-        "Rechteck vierzig mal dreißig, Höhe hundertzwanzig": "Rechteck 40 × 30, Höhe 120",
-        "zweihundertfünfzig Millimeter": "250 mm",
-        "base plate um fünf Grad drehen": "BasePlate um 5° drehen",
-        "die Senkung countersink near wal zwei Millimeter nach links": "die Senkung CountersinkNearWall 2 mm nach links",
-        "eine Bohrung an der Wand": "eine Bohrung an der Wand",
-    }
-    bad = {t: speech.normalize(t, names) for t, want in cases.items() if speech.normalize(t, names) != want}
-    ok("speech: numbers, units, Fase, M6/R2 and model names from spoken German", not bad, str(bad))
-
-    folder = Path(tmp) / "speech"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        examples.bracket(w)
-    finally:
-        w.close_all()
-    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    try:
-        req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/speech", method="POST",
-                                     headers={"Content-Type": "application/json"},
-                                     data=json.dumps({"text": "an countersink near wall eine Phase eins mal fünfundvierzig Grad"}).encode())
-        with urllib.request.urlopen(req) as resp:
-            got = json.loads(resp.read())
-        ok("speech: /api/speech uses the open model's names",
-           got["text"] == "an CountersinkNearWall eine Fase 1 × 45°", str(got))
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def speech_cases_checks():
-    """Verify test cases from speech_cases.json (issue #21).
-
-    All cases marked 'ok' must match speech.normalize(heard, names).
-    Cases marked 'open' are counted and reported, not treated as failures.
-    """
-    from mechvane import speech
-
-    cases_path = Path(__file__).resolve().parent / "speech_cases.json"
-    with open(cases_path, encoding="utf-8") as f:
-        cases = json.load(f)
-
-    ok_cases = [c for c in cases if c.get("status") == "ok"]
-    open_cases = [c for c in cases if c.get("status") == "open"]
-
-    bad = []
-    for c in ok_cases:
-        got = speech.normalize(c["heard"], c.get("names", []))
-        if got != c["expected"]:
-            bad.append((c["heard"], got, c["expected"]))
-
-    ok(f"speech cases: {len(ok_cases)} ok ({len(open_cases)} open, {len(cases)} total)",
-       len(cases) >= 40 and not bad,
-       f"bad={bad}" if bad else f"case count {len(cases)} < 40")
-
-
-def params_checks(tmp):
-    """Parameter form: /api/params lists user parameters first, changes them together and saves the file."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "params"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        part = w.new(PART, "plate")
-        part.session.cmd("parameters.add", {"name": "width", "expression": "40 mm"})
-        part.session.batch([
-            {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
-            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}},
-            {"command": "sketch.finish", "params": {}},
-            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": "width/4", "name": "Plate"}}])
-        part.save()
-    finally:
-        w.close_all()
-    path = folder / "plate.solidcraft"
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/params"
-
-    def post(changes):
-        req = urllib.request.Request(base, method="POST", data=json.dumps({"changes": changes}).encode(),
-                                     headers={"Content-Type": "application/json"})
+        a = w1.open("plate.solidcraft")
+        b = w2.open("plate.solidcraft")
+        b.session.cmd("solid.box", {"length": 3, "width": 3, "height": 3, "corner": [0, 0, 20], "operation": "join"})
+        b.save()
+        n_disk = len(b.session.cmd("document.inspect")["timeline"])
+        again = w1.get("plate")
+        fresh = again is a and len(again.session.cmd("document.inspect")["timeline"]) == n_disk
+        again.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [0, 0, 30], "operation": "join"})
+        b.session.cmd("solid.box", {"length": 2, "width": 2, "height": 2, "corner": [5, 5, 30], "operation": "join"})
+        b.save()
         try:
-            with urllib.request.urlopen(req) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    try:
-        with urllib.request.urlopen(base) as resp:
-            listed = json.loads(resp.read())["parameters"]
-        mtime = path.stat().st_mtime_ns
-        status, changed = post({"width": "60 mm"})
-        values = {p["name"]: p["value"] for p in changed.get("parameters", [])}
-        bad_status, bad = post({"width": "60 +"})
-        ok("ui: /api/params lists, changes together and saves; a bad expression changes nothing",
-           [p["name"] for p in listed][:1] == ["width"] and listed[1].get("feature") == "Plate"
-           and status == 200 and values.get("width") == 60 and 15 in values.values()
-           and path.stat().st_mtime_ns != mtime and bad_status == 400 and "error" in bad,
-           f"{listed} {status} {changed} {bad_status} {bad}")
-        with urllib.request.urlopen(base) as resp:
-            after = {p["name"]: p["value"] for p in json.loads(resp.read())["parameters"]}
-        ok("ui: after a refused change the parameters keep their last good values", after.get("width") == 60, str(after))
-        with urllib.request.urlopen(base.replace("/api/params", "/api/findings?profile=cnc_alu&material=alu_wrought")) as resp:
-            chosen = json.loads(resp.read())
-        try:
-            urllib.request.urlopen(base.replace("/api/params", "/api/findings?material=unobtainium"))
-            refused = None
-        except urllib.error.HTTPError as e:
-            refused = e.code
-        ok("ui: /api/findings takes profile and material, lists the choices, refuses an unknown material",
-           chosen.get("profile") == "cnc_alu" and chosen.get("material") == "alu_wrought"
-           and "fdm_0.4" in chosen.get("profiles", {}) and "steel" in chosen.get("materials", []) and refused == 400,
-           f"{ {k: chosen.get(k) for k in ('profile', 'material', 'materials')} } {refused}")
-        # profile and material chosen on the Check page are saved in the part file, not only in the browser
-        def post_rules(body):
-            req = urllib.request.Request(base.replace("/api/params", "/api/rules"), method="POST",
-                                         headers={"Content-Type": "application/json"},
-                                         data=json.dumps(body).encode())
-            try:
-                with urllib.request.urlopen(req) as resp:
-                    return resp.status, json.loads(resp.read())
-            except urllib.error.HTTPError as e:
-                return e.code, json.loads(e.read())
-        r_status, r_saved = post_rules({"profile": "cnc_alu", "material": "alu_wrought"})
-        bad_rules, _ = post_rules({"material": "unobtainium"})
-        with urllib.request.urlopen(base.replace("/api/params", "/api/findings")) as resp:
-            plain = json.loads(resp.read())
-        w2 = Workspace(folder)
-        try:
-            reopened = design_rules.check(w2.open(path))
-        finally:
-            w2.close_all()
-        ok("ui: /api/rules saves profile and material in the part file; /api/findings and check_design use them",
-           r_status == 200 and r_saved.get("material_source") == "saved" and bad_rules == 400
-           and (plain.get("profile"), plain.get("material"), plain.get("material_source")) == ("cnc_alu", "alu_wrought", "saved")
-           and (reopened["profile"], reopened["material"], reopened["material_source"]) == ("cnc_alu", "alu_wrought", "saved"),
-           f"{r_status} {bad_rules} {[plain.get(k) for k in ('profile', 'material', 'material_source')]} "
-           f"{[reopened.get(k) for k in ('profile', 'material', 'material_source')]}")
-        with urllib.request.urlopen(base.replace("/api/params", "/viewtools.js")) as resp:
-            js, ctype = resp.read().decode(), resp.headers.get("Content-Type", "")
-        with urllib.request.urlopen(base.replace("/api/params", "/chat.js")) as resp:
-            chat_js = resp.read().decode()
-        # every script the pages import must be served (a 404 kills the whole module: Model mode stayed blank, #135).
-        # #141: all top-level scripts and style sheets of static/ by their own name, with their content type, and every
-        # relative import (static `from "./x.js"`, dynamic `import("./x.js")`, `src="x.js"`) of the pages and scripts
-        import re as _re
-        import urllib.error as _ue
-        root_url = base.replace("/api/params", "")
-
-        def fetch(name):
-            try:
-                with urllib.request.urlopen(root_url + "/" + name) as resp:
-                    return resp.status, resp.headers.get("Content-Type", ""), resp.read()
-            except _ue.HTTPError as e:
-                return e.code, "", b""
-            except Exception as e:  # noqa: BLE001
-                return str(e), "", b""
-
-        static = ui_server.STATIC_DIR
-        files = sorted(f.name for f in static.iterdir() if f.is_file() and f.suffix in (".js", ".css"))
-        bad = []
-        for name in files:
-            f_st, f_type, f_body = fetch(name)  # own names: ctype of the page fetched above is checked later
-            want = "javascript" if name.endswith(".js") else "text/css"
-            if f_st != 200 or want not in f_type or f_body != (static / name).read_bytes():
-                bad.append(f"{name}: {f_st} {f_type}")
-        imports = set()
-        for f in [static / "index.html", static / "model.html"] + [static / n for n in files if n.endswith(".js")]:
-            src = f.read_text(encoding="utf-8")
-            imports |= set(_re.findall(r'(?:from|import\(?)\s*["\']\./([A-Za-z0-9_-]+\.js)["\']', src))
-            imports |= set(_re.findall(r'src="(?:\./)?([A-Za-z0-9_-]+\.js)"', src))
-        missing_js = sorted(n for n in imports if fetch(n)[0] != 200)
-        # names a looser rule would serve: an existing script in a sub-folder (encoded slash), a file outside
-        # static/ that ends in .js, an upper-case extension; and an unknown name
-        outside = "..%2F..%2F..%2Ftools%2Ftest_demo_check.js"
-        refused = {n: fetch(n)[0] for n in ("vendor%2Fthree%2Fbuild%2Fthree.module.js", outside, "APP.JS", "nosuch.js")}
-        ok("ui: every script and style sheet of static/ is served by its name with its content type, every relative "
-           "import of the pages and scripts resolves, paths outside or unknown names are refused",
-           len(files) >= 12 and not bad and len(imports) >= 10 and not missing_js
-           and all(v == 404 for v in refused.values()), f"{len(files)} {bad} {len(imports)} {missing_js} {refused}")
-        index_html = (ui_server.STATIC_DIR / "index.html").read_text(encoding="utf-8")
-        app_js = (ui_server.STATIC_DIR / "app.js").read_text(encoding="utf-8")
-        style_css = (ui_server.STATIC_DIR / "style.css").read_text(encoding="utf-8")
-        ok("ui: Check page has the agent chat (chat.js) and a Select tool feeding it",
-           "export function initAgentChat" in chat_js and 'id="agent-chat"' in index_html
-           and "getSelection" in (ui_server.STATIC_DIR / "viewtools.js").read_text(encoding="utf-8"))
-        ok("ui: measure and section tools served and loaded by the Check page",
-           "javascript" in ctype and "export function initViewTools" in js
-           and 'from "./viewtools.js"' in app_js, ctype)
-        ribbon_cmds = (
-            "Create 2D Sketch", "Extrude", "Revolve", "Hole", "Fillet", "Chamfer",
-            "Rectangular Pattern", "Circular Pattern", "Mirror", "Parameters",
-            "Measure", "Section", "Select", "Design check", "Home view", "Zoom all",
-        )
-        ok("ui: Inventor-style workspace (ADR 0005 stage 1) has ribbon tabs, commands, Properties, statusbar and splitters",
-           all(t in index_html for t in ("3D Model", "Sketch", "Inspect", "Assemble", "View"))
-           and all(c in index_html for c in ribbon_cmds)
-           and 'title="Coming in the next step"' in index_html
-           and "Open in SolidCraft (expert mode)" in index_html
-           and "Select a command" in index_html
-           and 'id="axes-gizmo"' in index_html and 'id="btn-home-view"' in index_html
-           and 'id="statusbar"' in index_html and "https://github.com/tangency-labs/solidcraft" in index_html
-           and 'id="splitter-left"' in index_html and 'id="splitter-right"' in index_html
-           and "renderOriginFolder" in app_js and "localStorage" in app_js
-           and "@media (max-width: 760px)" in style_css)
-        with urllib.request.urlopen(base.replace("/api/params", "/newpart.js")) as resp:
-            newpart_js = resp.read().decode()
-        ok("ui: New part uses the app's own dialog (newpart.js served), no browser prompt()",
-           "export function openNewPartDialog" in newpart_js and "prompt(" not in app_js
-           and 'from "./newpart.js"' in app_js)
-
-        # Issue #73: Sketch dimensions in parameter panel
-        sketch_part = w.new(PART, "sketch_params_test")
-        try:
-            sp = sketch_part.session
-            sp.cmd("sketch.create", {"plane": "XY", "name": "Sketch1"})
-            sp.cmd("sketch.rectangle.two_point", {"p0": [0, 0], "p1": [40, 20]})
-            sp.cmd("sketch.dimension", {"entities": ["l1"], "type": "length", "value": "b = 40"})
-            sp.cmd("sketch.dimension", {"entities": ["l2"], "type": "length", "value": "20"})
-            sp.cmd("sketch.finish", {})
-            sp.cmd("solid.extrude", {"sketch": "Sketch1", "distance": 10, "name": "Extrude1"})
-            sketch_part.save()
-        finally:
-            w.close("sketch_params_test")
-
-        sketch_path = folder / "sketch_params_test.solidcraft"
-        srv_sk = ui_server.create_server(str(sketch_path), port=0)
-        threading.Thread(target=srv_sk.serve_forever, daemon=True).start()
-        base_sk = f"http://127.0.0.1:{srv_sk.server_address[1]}/api/params"
-        try:
-            with urllib.request.urlopen(base_sk) as resp:
-                sk_listed = json.loads(resp.read())["parameters"]
-            names = [p["name"] for p in sk_listed]
-            by_name = {p["name"]: p for p in sk_listed}
-            sk_dims = [p for p in sk_listed if p.get("sketch") == "Sketch1"]
-            named_first = [p["name"] for p in sk_dims] == ["d1", "d2"]
-            req_sk = urllib.request.Request(base_sk, method="POST",
-                                            data=json.dumps({"changes": {"b": "50"}}).encode(),
-                                            headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req_sk) as resp:
-                sk_changed = json.loads(resp.read())
-            with srv_sk.lock:
-                doc_sk = srv_sk.ensure_current()
-                bodies = doc_sk.session.cmd("document.inspect", {"measure": True})["bodies"]
-                bbox = bodies[0]["bbox"]
-                b_width = bbox["max"][0] - bbox["min"][0]
-            ok("ui: /api/params lists sketch dimensions by sketch with named first; setting b=50 widens bbox to 50",
-               "b" in names and "d2" in names and by_name["b"]["value"] == 40.0 and by_name["d2"]["value"] == 20.0
-               and by_name["d2"].get("sketch") == "Sketch1" and named_first and b_width == 50.0,
-               f"{sk_listed} width={b_width}")
-        finally:
-            srv_sk.shutdown()
-            srv_sk.server_close()
+            w1.get("plate")
+            conflict = False
+        except ValueError:
+            conflict = True
     finally:
-        srv.shutdown()
-        srv.server_close()
+        w1.close_all()
+        w2.close_all()
+    ok("documents: a file changed on disk is opened again, unsaved changes are not overwritten", fresh and conflict)
 
-
-COMMANDS_JS_TEST = r"""
-import { scoreMatch, searchCommands, fieldValue, formParams, applyPick, pickText, ontoFace, sketchPickValue } from "./commands.js";
-const out = {};
-// SolidCraft's ranking (shortcut_box.rs tests): prefix > word start > letters in order; no match is 0
-out.rank = scoreMatch("ext", "extrude") > scoreMatch("ext", "offset text") && scoreMatch("pres", "press pull") > scoreMatch("ppl", "press pull")
-  && scoreMatch("ppl", "press pull") > 0 && scoreMatch("xyz", "extrude") === 0;
-const list = [{ id: "sketch.shell", label: "Shell sketch", offered: false, reason: "r" }, { id: "solid.shell", label: "Shell", offered: true },
-              { id: "solid.box", label: "Box", tab: "SOLID", panel: "CREATE", offered: true }];
-out.search = searchCommands(list, "shel").map((c) => c.id);
-out.byPanel = searchCommands(list, "create").map((c) => c.id);
-const form = { raw: false, fields: [
-  { name: "size", kind: "expr", required: true }, { name: "count", kind: "number", integer: true, required: false },
-  { name: "flip", kind: "bool", required: false }, { name: "at", kind: "point", required: false },
-  { name: "bodies", kind: "list", required: false }, { name: "rounds", kind: "json", required: false },
-  { name: "op", kind: "enum", required: false }, { name: "name", kind: "text", required: false }] };
-out.params = formParams(form, { size: " 12.5 ", count: "3", flip: "false", at: ["10", "", "w/2"], bodies: "A, B", rounds: "[[1,2,3]]", op: "", name: "" });
-out.exprText = fieldValue({ kind: "expr" }, "w / 2");
-const err = (f) => { try { f(); return ""; } catch (e) { return e.message; } };
-out.missing = err(() => formParams(form, { count: "2" }));
-out.badJson = err(() => formParams(form, { size: "1", rounds: "[1," }));
-out.badInt = err(() => formParams(form, { size: "1", count: "2.5" }));
-out.raw = formParams({ raw: true, fields: [{ name: "", kind: "json" }] }, { "": '{"thickness": 2}' });
-out.rawArray = err(() => formParams({ raw: true, fields: [{ name: "", kind: "json" }] }, { "": "[1]" }));
-// a json field that offers ids (sketch curves, points): a bare id is text, JSON still parses, other text is refused
-const idForm = { fields: [{ name: "a", kind: "json", choices: ["l1", "l1.end"] }, { name: "b", kind: "json" }] };
-out.idBare = formParams(idForm, { a: "l1.end", b: '{"midpoint": "l1"}' });
-out.idNoChoices = err(() => formParams(idForm, { a: "l1", b: "l1" }));
-out.idSpace = err(() => formParams(idForm, { a: "l1 x" }));
-out.skPick = [sketchPickValue({ kind: "list" }, "", "l1"), sketchPickValue({ kind: "list" }, "l1, l2", "l1"),
-  sketchPickValue({ kind: "list" }, "l1", "c2"), sketchPickValue({ kind: "json" }, "l1", "l2.end")];
-// picks in the view: a list field toggles, a single field replaces; written as points, {face: point} or names
-const edges = { kind: "json", pick: "edges", multi: true, write: "point" };
-let p = applyPick(edges, [], { key: "a", point: [1, 2, 3] });
-p = applyPick(edges, p, { key: "b", point: [4, 5, 6] });
-out.edgesTwo = pickText(edges, p);
-out.edgesToggle = pickText(edges, applyPick(edges, p, { key: "a", point: [1, 2, 3.0001] }));
-const face = { kind: "json", pick: "faces", multi: false, write: "key:face" };
-out.face = pickText(face, applyPick(face, applyPick(face, [], { key: "f1", point: [0, 0, 1] }), { key: "f2", point: [0, 0, 2] }));
-const bodies = { kind: "list", pick: "bodies", multi: true, write: "name" };
-let b = applyPick(bodies, [], { key: "f|B1|3", point: [0, 0, 0], body: "B1" });
-b = applyPick(bodies, b, { key: "f|B2|1", point: [0, 0, 0], body: "B2" });
-out.bodies = pickText(bodies, b);
-out.bodyAgain = pickText(bodies, applyPick(bodies, b, { key: "f|B1|7", point: [0, 0, 0], body: "B1" }));
-const body = { kind: "text", pick: "bodies", multi: false, write: "name" };
-out.body = pickText(body, applyPick(body, [], { key: "x", point: [0, 0, 0], body: "Plate" }));
-// a click on a cylinder's chord (r 9.9 inside r 10, axis Z through (5, 0, 0)) lands on the true surface
-const v = (x, y, z) => ({ x, y, z });
-out.onto = ontoFace([5 + 9.9, 0, 3], { center: v(5, 0, 0), axis: v(0, 0, 2), radius: 10 });
-out.flat = ontoFace([1, 2, 3.0000004], { normal: v(0, 0, 1), area: 1 });
-console.log(JSON.stringify(out));
-"""
-
-
-def command_dialog_assembly_checks(tmp):
-    """Command dialog in an assembly (#128): modelling commands are not offered and refused (SolidCraft would add the
-    body to the assembly file or change a linked part's copy), as the feature dialogs; assembly commands stay."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "commanddialog_asm"
-    folder.mkdir()
-    w = Workspace(folder)
+    old_ws = server.ws
+    server.ws = Workspace(folder)
+    os.environ["MECHVANE_AUTOSAVE"] = "1"
     try:
-        asm, _ = hinge_assembly(w, plate_part(w))
-        path = asm.path
+        server.open_document("plate.solidcraft")
+        before = (folder / "plate.solidcraft").stat().st_mtime_ns
+        server.run("plate", [{"command": "solid.box", "params": {"length": 1, "width": 1, "height": 1,
+                                                                "corner": [9, 9, 40], "operation": "join"}}])
+        saved = (folder / "plate.solidcraft").stat().st_mtime_ns != before and not server.ws.get("plate").dirty()
     finally:
-        w.close_all()
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers={"Content-Type": "application/json"} if body is not None else {})
-        try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    try:
-        mtime = path.stat().st_mtime_ns
-        _, lst = call("commands")
-        by_id = {c["id"]: c for c in lst.get("commands", [])}
-        st_f, fm = call("command?id=solid.box")
-        st_b, box = call("feature", {"command": "solid.box", "generic": True,
-                                     "params": {"length": 5, "width": 5, "height": 5, "corner": [100, 0, 0]}})
-        st_r, read = call("feature", {"command": "joint.list", "generic": True, "params": {}})
-        ok("command dialog: in an assembly modelling commands are not offered and refused, the file stays; "
-           "assembly commands run",
-           by_id.get("solid.box", {}).get("offered") is False and "part" in by_id.get("solid.box", {}).get("reason", "")
-           and st_f == 200 and fm.get("offered") is False and st_b == 403 and path.stat().st_mtime_ns == mtime
-           and by_id.get("joint.list", {}).get("offered") and st_r == 200,
-           f"{by_id.get('solid.box')} {st_b} {box} {st_r} {str(read)[:120]}")
-
-        # routed commands in an assembly (#128)
-        _, jl = call("feature", {"command": "joint.list", "generic": True, "params": {}})
-        jnames = [j["name"] for j in ((jl.get("results") or [{}])[0].get("joints") or [])] if jl.get("results") else []
-        st_ul, ul = call("feature", {"command": "component.update_links", "generic": True, "params": {}})
-        ok("command dialog: component.update_links runs Mechvane's update and returns its report of joints",
-           st_ul == 200 and "moved_joints" in ul, f"{st_ul} {str(ul)[:200]}")
-        refused_a = {c: call("feature", {"command": c, "generic": True, "params": {}})[0]
-                     for c in ("joint.as_built", "component.delete", "component.break_link", "selection.delete",
-                               "assembly.constraint.create")}
-        ok("command dialog: commands that skip Mechvane's records stay refused in an assembly",
-           all(v == 403 for v in refused_a.values()), str(refused_a))
-        if jnames:
-            st_jd, jd = call("feature", {"command": "joint.delete", "generic": True, "params": {"joint": jnames[0]}})
-            _, jl2 = call("feature", {"command": "joint.list", "generic": True, "params": {}})
-            left = [j["name"] for j in ((jl2.get("results") or [{}])[0].get("joints") or [])]
-            _, h = call("history")
-            ok("command dialog: joint.delete drops the joint through Mechvane's handler, one undo step",
-               st_jd == 200 and jnames[0] not in left and "Delete" in (h.get("undo") or ""), f"{st_jd} {str(jd)[:160]} {left} {h}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
+        os.environ.pop("MECHVANE_AUTOSAVE", None)
+        server.ws.close_all()
+        server.ws = old_ws
+    ok("server: MECHVANE_AUTOSAVE saves changed documents after each tool call", saved)
 
 
-def command_dialog_sketch_checks(tmp):
-    """Command dialog in the sketch environment (#128, sketch.*): with a sketch open the dialog offers the sketch's
-    commands (not opening or finishing sketches, not the model's), runs them in the sketch session as one step of
-    the sketch's own undo, offers the sketch's ids as choices and leaves no undo step for a command that only reads."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "commanddialog_sketch"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        part = w.new(PART, "plate")
-        part.session.batch([{"command": "solid.box", "params": {"length": 40, "width": 20, "height": 10, "name": "Plate"}}])
-        part.session.cmd("parameters.add", {"name": "plate_w", "expression": "40 mm"})
-        part.save()
-    finally:
-        w.close_all()
-    path = folder / "plate.solidcraft"
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers={"Content-Type": "application/json"} if body is not None else {})
-        try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    try:
-        _, before = call("commands")
-        b_id = {c["id"]: c for c in before.get("commands", [])}
-        st_b, begun = call("sketch/begin", {"plane": "XY"})
-        _, lst = call("commands")
-        by_id = {c["id"]: c for c in lst.get("commands", [])}
-        ok("command dialog in a sketch: sketch.* is offered only while a sketch is open; the model's commands and "
-           "opening or finishing sketches are not",
-           not b_id.get("sketch.line", {}).get("offered") and "open a sketch" in b_id.get("sketch.line", {}).get("reason", "")
-           and st_b == 200 and lst.get("sketch") is True and by_id.get("sketch.line", {}).get("offered")
-           and by_id.get("sketch.constraint.coincident", {}).get("offered")
-           and by_id.get("solid.box", {}).get("offered") is False and "finish it first" in by_id["solid.box"].get("reason", "")
-           and by_id.get("sketch.finish", {}).get("offered") is False,
-           f"{b_id.get('sketch.line')} {st_b} {by_id.get('sketch.line')} {by_id.get('solid.box')} {by_id.get('sketch.finish')}")
-
-        def curves():
-            return [c["id"] for c in srv.sketch.state()["state"].get("curves", [])]
-
-        n0 = len(curves())
-        st_l, line = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 0], [30, 0]]}, "generic": True})
-        n1 = len(curves())
-        _, fm = call("command?id=sketch.delete")
-        ent = next((f for f in fm.get("fields", []) if f["name"] == "entities"), {})
-        st_r, read = call("sketch/cmd", {"command": "sketch.inspect", "params": {}, "generic": True})
-        can_undo_after_read = srv.sketch.state()["can_undo"]
-        st_u, _ = call("sketch/undo", {})
-        n2 = len(curves())
-        ok("command dialog in a sketch: a command runs in the sketch session (one step of the sketch's undo), its "
-           "form offers the sketch's ids, a command that only reads leaves no undo step",
-           st_l == 200 and line.get("changed") is True and n1 == n0 + 1 and fm.get("sketch") is True
-           and fm.get("offered") and line["state"]["curves"][-1]["id"] in (ent.get("choices") or [])
-           and st_r == 200 and read.get("changed") is False and can_undo_after_read
-           and st_u == 200 and n2 == n0,
-           f"{st_l} {str(line)[:160]} {n0} {n1} {ent} {st_r} {read.get('changed')} {can_undo_after_read} {st_u} {n2}")
-        call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 5], [20, 5]]}, "generic": True})
-        _, co = call("command?id=sketch.constraint.coincident")
-        co_a = next((f for f in co.get("fields", []) if f["name"] == "a"), {})
-        _, ln = call("command?id=sketch.line")
-        ln_pts = next((f for f in ln.get("fields", []) if f["name"] == "points"), {})
-        _, tx = call("command?id=sketch.text")
-        ok("command dialog in a sketch: a constraint's a/b offer the sketch's curves and points (also l1.end), a line's "
-           "coordinates do not, a text with a font file is not offered",
-           any(c.endswith(".end") for c in co_a.get("choices") or []) and "origin" in (co_a.get("choices") or [])
-           and not ln_pts.get("choices") and tx.get("offered") is True,
-           f"{co_a.get('kind')} {(co_a.get('choices') or [])[:6]} {ln_pts.get('choices')} {tx.get('offered')} {tx.get('reason')}")
-        refused = {f"{c} {p.get('font', '')}".strip(): call("sketch/cmd", {"command": c, "params": p, "generic": True})[0] for c, p in (
-            ("solid.box", {"length": 1, "width": 1, "height": 1}), ("sketch.finish", {}), ("sketch.cancel", {}),
-            ("sketch.insert_dxf", {"path": "/tmp/x.dxf"}), ("no.such", {}),
-            ("sketch.text", {"text": "A", "at": [0, 0], "height": 5, "font": "/usr/share/fonts/x.ttf"}),
-            ("sketch.text", {"text": "A", "at": [0, 0], "height": 5, "font": "%WINDIR%/x.otf"}))}
-        # part 2: Preview runs the command and goes back (no change, no undo step); a font file only from the
-        # project folder, offered as a choice there
-        n_pv = len(curves())
-        undo_pv = srv.sketch.state()["can_undo"]
-        st_pv, pv = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 20], [10, 20]]},
-                                        "generic": True, "preview": True})
-        (folder / "MyFont.ttf").write_bytes(b"not a real font")
-        _, txf = call("command?id=sketch.text")
-        font_f = next((f for f in txf.get("fields", []) if f["name"] == "font"), {})
-        st_fo, _ = call("sketch/cmd", {"command": "sketch.text", "params": {"text": "A", "at": [0, 0], "height": 5,
-                                                                         "font": "../outside.ttf"}, "generic": True})
-        st_fm, _ = call("sketch/cmd", {"command": "sketch.text", "params": {"text": "A", "at": [0, 0], "height": 5,
-                                                                         "font": "missing.ttf"}, "generic": True})
-        st_pf, _ = call("sketch/cmd", {"command": "sketch.constraint.coincident", "params": {"a": "no_such", "b": "origin"},
-                                       "generic": True, "preview": True})
-        n_after_fail = len(curves())
-        st_ttc, _ = call("sketch/cmd", {"command": "sketch.text", "params": {"text": "A", "at": [0, 0], "height": 5,
-                                                                          "font": "../x.ttc"}, "generic": True})
-        st_pct, _ = call("sketch/cmd", {"command": "sketch.text", "params": {"text": "A", "at": [0, 0], "height": 5,
-                                                                          "font": "%HOME%x"}, "generic": True})
-        _, cof = call("command?id=sketch.constraint.coincident")
-        choose_a = next((f.get("choose") for f in cof.get("fields", []) if f["name"] == "a"), None)
-        ok("command dialog in a sketch: a failing preview leaves the sketch as it was; .ttc outside and % in a font name "
-           "are refused; a field says what it chooses (for the pick)",
-           st_pf >= 400 and n_after_fail == n_pv and st_ttc == 403 and st_pct == 403 and choose_a == "both",
-           f"{st_pf} {n_after_fail} {n_pv} {st_ttc} {st_pct} {choose_a}")
-        ok("command dialog in a sketch: Preview draws the result and changes nothing (no undo step); a font file only "
-           "from the project folder (offered there), others refused",
-           st_pv == 200 and pv.get("preview") and len(pv["state"]["curves"]) == n_pv + 1 and len(curves()) == n_pv
-           and srv.sketch.state()["can_undo"] == undo_pv and "MyFont.ttf" in (font_f.get("choices") or [])
-           and st_fo == 403 and st_fm == 403,
-           f"{st_pv} {len((pv.get('state') or {}).get('curves', []))} {n_pv} {len(curves())} {font_f.get('choices')} {st_fo} {st_fm}")
-        _, dxf = call("command?id=sketch.insert_dxf")
-        ok("command dialog in a sketch: the model's commands, finishing, file paths and unknown commands are refused",
-           all(v == 403 for v in refused.values()) and dxf.get("offered") is False, f"{refused} {dxf.get('reason')}")
-        # line type in the sketch command dialog (#147): Create commands take construction mode, Modify commands do not
-        before_c = {c["id"] for c in srv.sketch.state()["state"].get("curves", [])}
-        st_norm, b_norm = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 10], [20, 10]]}, "generic": True})
-        norm_ids = [c["id"] for c in b_norm.get("state", {}).get("curves", []) if c["id"] not in before_c]
-        before_cons = {c["id"] for c in b_norm.get("state", {}).get("curves", [])}
-        st_cons, b_cons = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 30], [20, 30]]},
-                                              "generic": True, "line_type": "construction"})
-        cons_new = [c for c in b_cons.get("state", {}).get("curves", []) if c["id"] not in before_cons]
-        before_off = {c["id"] for c in b_cons.get("state", {}).get("curves", [])}
-        st_off, b_off = call("sketch/cmd", {"command": "sketch.offset", "params": {"curves": norm_ids, "distance": 5},
-                                            "generic": True, "line_type": "construction"})
-        off_new = [c for c in b_off.get("state", {}).get("curves", []) if c["id"] not in before_off]
-        ok("command dialog in a sketch: construction line type applies to Create commands (sketch.line), not Modify (sketch.offset)",
-           st_norm == 200 and len(norm_ids) == 1
-           and st_cons == 200 and [c.get("construction") for c in cons_new] == [True]
-           and st_off == 200 and len(off_new) == 1 and off_new[0].get("construction") is False,
-           f"{st_norm} {norm_ids} {st_cons} {cons_new} {st_off} {off_new}")
-        # 3D sketch hint (#147): 3D sketch commands prepend the 3D-mode hint in an open sketch, 2D commands do not
-        from mechvane import command_form
-        st_3d, fm_3d = call("command?id=sketch.line3d")
-        all_3d = {cid: call(f"command?id={cid}")[1].get("description", "") for cid in command_form.SKETCH_3D}
-        ok("command dialog in a sketch: 3D sketch commands carry the 3D-mode hint in description, sketch.line does not",
-           st_3d == 200 and fm_3d.get("description", "").startswith(command_form.SKETCH_3D_HINT)
-           and all(d.startswith(command_form.SKETCH_3D_HINT) for d in all_3d.values())
-           and command_form.SKETCH_3D_HINT not in (ln.get("description") or ""),
-           f"{st_3d} {fm_3d.get('description')!r} {ln.get('description')!r}")
-        _, pcf = call("command?id=parameters.change")
-        pc_name = next((f for f in pcf.get("fields", []) if f["name"] == "name"), {})
-        ok("command dialog in a sketch: parameters.change offers existing parameters in name choices",
-           pcf.get("offered") is True and "plate_w" in (pc_name.get("choices") or []),
-           f"{pcf.get('offered')} {pc_name}")
-        call("sketch/cancel", {})
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def commands_js_checks(tmp):
-    """Command dialog in the browser (#128): SolidCraft's search ranking, and the form values become command params."""
-    import subprocess
-    from mechvane.ui import server as ui_server
-    if not shutil.which("node"):
-        print("skip commands.js: node not installed")
-        return
-    d = Path(tmp) / "commandsjs"
-    d.mkdir()
-    shutil.copyfile(ui_server.STATIC_DIR / "commands.js", d / "commands.js")
-    (d / "package.json").write_text('{"type": "module"}')
-    (d / "t.js").write_text(COMMANDS_JS_TEST)
-    run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
-    try:
-        r = json.loads(run.stdout.splitlines()[0])
-    except (ValueError, IndexError):
-        r = {}
-    ok("commands.js: search ranks as SolidCraft (prefix, word start, letters), offered commands first, tab and panel match",
-       r.get("rank") is True and r.get("search") == ["solid.shell", "sketch.shell"] and r.get("byPanel") == ["solid.box"],
-       f"{r} {run.stderr[-300:]}")
-    ok("commands.js: form values become params (numbers, expressions, point with 0 for empty, list, JSON; empty left out)",
-       r.get("params") == {"size": 12.5, "count": 3, "flip": False, "at": [10, 0, "w/2"], "bodies": ["A", "B"], "rounds": [[1, 2, 3]]}
-       and r.get("exprText") == "w / 2" and r.get("raw") == {"thickness": 2}, f"{r} {run.stderr[-300:]}")
-    ok("commands.js: picks in the view: a list toggles the clicked edge, a single field takes the last face as {face: point}, "
-       "a body clicked twice counts once, a cylinder click lands on the true surface",
-       r.get("edgesTwo") == "[[1,2,3],[4,5,6]]" and r.get("edgesToggle") == "[[4,5,6]]" and r.get("face") == '{"face":[0,0,2]}'
-       and r.get("bodies") == "B1, B2" and r.get("bodyAgain") == "B2" and r.get("body") == "Plate"
-       and r.get("onto") == [15, 0, 3] and r.get("flat") == [1, 2, 3], str(r))
-    ok("commands.js: a missing required field, bad JSON, a fraction for a whole number and a non-object raw JSON are refused",
-       "size" in r.get("missing", "") and "rounds" in r.get("badJson", "") and "count" in r.get("badInt", "")
-       and r.get("idBare") == {"a": "l1.end", "b": {"midpoint": "l1"}} and "b" in r.get("idNoChoices", "")
-       and "a" in r.get("idSpace", "") and r.get("skPick") == ["l1", "l2", "l1, c2", "l2.end"]
-       and "object" in r.get("rawArray", ""), str(r))
-
-
-VIEWTOOLS_TEST = r"""
-import * as THREE from "three";
-import { faceInfo, bodyEdges, edgeInfo, pointOnEdge, edgeKey } from "./viewtools.js";
-import { loopPoints, profileShapes, profileAt, sketchLineAt, boxFromDrag, boxTakesPolyline, boxTakesLine, boxTakesCircle, boxTakesArc, boxTakesCurve, dimAutoOrientation, angleSector } from "./sketchgeom.js";
-// a cylinder r 8 around (30, 20) along Z, split into two half faces like SolidCraft's seam, and a flat face
-const positions = [], indices = [], face_ids = [];
-const n = 48;
-for (let i = 0; i <= n; i++) {
-  const a = (2 * Math.PI * i) / n;
-  positions.push(30 + 8 * Math.cos(a), 20 + 8 * Math.sin(a), 0, 30 + 8 * Math.cos(a), 20 + 8 * Math.sin(a), 20);
-}
-for (let i = 0; i < n; i++) {
-  const k = 2 * i;
-  indices.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
-  face_ids.push(i < n / 2 ? 0 : 1, i < n / 2 ? 0 : 1);
-}
-const base = positions.length / 3;
-positions.push(0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0);
-indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-face_ids.push(2, 2);
-const body = { positions, indices, face_ids };
-const half = faceInfo(body, 0), other = faceInfo(body, 1), flat = faceInfo(body, 2);
-console.log(JSON.stringify({
-  r: half.radius, axisZ: Math.abs(half.axis.z), cx: half.center.x, cy: half.center.y, r2: other.radius,
-  flatNormalZ: flat.normal && Math.abs(flat.normal.z), flatArea: flat.area, flatRadius: flat.radius ?? null,
-}));
-// edges: a bottom disc (face 3) under the two half faces gives two half circles; the seam is a straight edge
-const disc = positions.length / 3;
-positions.push(30, 20, 0);
-for (let i = 0; i < n; i++) { indices.push(disc, 2 * i + 2, 2 * i); face_ids.push(3); }
-const edges = bodyEdges(body);
-const pickOf = (fa, fb) => edges.find((e) => e.faces[0] === fa && e.faces[1] === fb);
-const hole = edgeInfo(edges, pickOf(0, 3)), seam = edgeInfo(edges, pickOf(0, 1));
-// only the first half (its cylinder face and the disc under it): a half circle stays an arc
-const keep = [...Array(face_ids.length).keys()].filter((t) => face_ids[t] === 0 || (face_ids[t] === 3 && t - face_ids.indexOf(3) < n / 2));
-const halfBody = { positions, indices: keep.flatMap((t) => indices.slice(3 * t, 3 * t + 3)), face_ids: keep.map((t) => face_ids[t]) };
-const halfEdges = bodyEdges(halfBody);
-const arc = edgeInfo(halfEdges, halfEdges.find((e) => e.faces[0] === 0 && e.faces[1] === 3));
-// one cylinder face (seam vertices repeated, not shared) on the disc: one closed circle
-const one = { positions, indices, face_ids: face_ids.map((f) => (f === 1 ? 0 : f)) };
-const oneEdges = bodyEdges(one);
-const ring = edgeInfo(oneEdges, oneEdges.find((e) => e.faces[0] === 0 && e.faces[1] === 3));
-console.log(JSON.stringify({
-  arcKind: arc.kind, arcR: arc.radius, arcAngle: arc.angle, holeKind: hole.kind, holeR: hole.radius, seamKind: seam.kind, seamLength: seam.length,
-  seamDirZ: seam.dir && Math.abs(seam.dir.z), ringKind: ring.kind, ringR: ring.radius, ringCx: ring.center?.x,
-  ringAxisZ: ring.axis && Math.abs(ring.axis.z),
-}));
-// feature dialogs send points on the true edge: a chord point of the hole goes out to r 8, a seam pick
-// stays inside the seam (not on its end vertex), and both halves of the hole give one key
-const seg = edges.filter((e) => e.faces[0] === 0 && e.faces[1] === 3)[3];
-const chordMid = seg.a.clone().add(seg.b).multiplyScalar(0.5);
-const onHole = pointOnEdge(hole, chordMid);
-const onSeam = pointOnEdge(seam, { x: 38, y: 20, z: -5 });
-const otherHalf = edgeInfo(edges, pickOf(1, 3));
-console.log(JSON.stringify({
-  chordR: Math.hypot(chordMid.x - 30, chordMid.y - 20), pickR: Math.hypot(onHole[0] - 30, onHole[1] - 20), pickZ: onHole[2],
-  seamZ: onSeam[2], seamLen: seam.length, sameKey: edgeKey(hole) === edgeKey(otherHalf), seamKey: edgeKey(seam) !== edgeKey(hole),
-}));
-const curves = {
-  l1: { type: "line", start_at: [10, 10], end_at: [10, 50] },
-  l2: { type: "line", start_at: [70, 50], end_at: [10, 50] },
-  l4: { type: "line", start_at: [10, 10], end_at: [70, 10] },
-  l3: { type: "line", start_at: [70, 10], end_at: [70, 50] },
-};
-const loop = loopPoints(["l1", "l2", "l4", "l3"], curves);
-const shape = new THREE.Shape(loop.map(([u, v]) => new THREE.Vector2(u, v)));
-const geom = new THREE.ShapeGeometry(shape);
-console.log(JSON.stringify({
-  loopLen: loop.length,
-  triangles: geom.index ? geom.index.count / 3 : 0,
-  firstPt: loop[0],
-  lastPt: loop[loop.length - 1],
-}));
-const sk = {
-  plane: { origin: [0, 0, 0], x_dir: [1, 0, 0], y_dir: [0, 1, 0] },
-  curves: [
-    { id: "c1", type: "circle", center_at: [20, 0], radius: 4, construction: false },
-    { id: "l1", type: "line", start_at: [10, -15], end_at: [10, 15], construction: true },
-    { id: "l2", type: "line", start_at: [0, 0], end_at: [30, 0], construction: false },
-  ],
-  profiles: [{ index: 0, area: 50.265, curves: ["c1"], holes: 0, hole_loops: [] }],
-};
-const shapes = profileShapes(sk);
-const profHit = profileAt(shapes, [21, 1]);
-const lineHit1 = sketchLineAt(sk, [10.4, 5], 1.0);
-const lineHit2 = sketchLineAt(sk, [25, -0.3], 1.0);
-const lineMiss = sketchLineAt(sk, [10, 25], 2.0);
-console.log(JSON.stringify({
-  profIndex: profHit?.index ?? null,
-  line1: lineHit1?.id ?? null, line1Const: lineHit1?.construction ?? null,
-  line2: lineHit2?.id ?? null, line2Const: lineHit2?.construction ?? null,
-  lineMiss: lineMiss ?? null,
-}));
-const inside = [[20, 20], [40, 30]];
-const partly = [[20, 20], [140, 30]];
-const through = [[-10, 50], [200, 50]];
-const away = [[300, 300], [320, 330]];
-const w = boxFromDrag([0, 0], [100, 100]);
-const c = boxFromDrag([100, 100], [0, 0]);
-const l1 = { type: "line", start_at: [10, 10], end_at: [40, 40] };
-const l2 = { type: "line", start_at: [10, 10], end_at: [140, 40] };
-const l3 = { type: "line", start_at: [300, 300], end_at: [350, 350] };
-const c1 = { type: "circle", center_at: [50, 50], radius: 10 };
-const c2 = { type: "circle", center_at: [95, 50], radius: 10 };
-const c3 = { type: "circle", center_at: [200, 200], radius: 10 };
-const a1 = { type: "arc", center_at: [50, 50], radius: 10, start_at: [50, 60], end_at: [60, 50] };
-const a2 = { type: "arc", center_at: [95, 50], radius: 10, start_at: [95, 60], end_at: [105, 50] };
-console.log(JSON.stringify({
-  wCrossing: w.crossing, cCrossing: c.crossing,
-  wInside: boxTakesPolyline(w, inside), wPartly: boxTakesPolyline(w, partly),
-  wThrough: boxTakesPolyline(w, through), wAway: boxTakesPolyline(w, away),
-  cInside: boxTakesPolyline(c, inside), cPartly: boxTakesPolyline(c, partly),
-  cThrough: boxTakesPolyline(c, through), cAway: boxTakesPolyline(c, away),
-  wL1: boxTakesCurve(w, l1), wL2: boxTakesCurve(w, l2), wL3: boxTakesCurve(w, l3),
-  cL1: boxTakesCurve(c, l1), cL2: boxTakesCurve(c, l2), cL3: boxTakesCurve(c, l3),
-  wC1: boxTakesCurve(w, c1), wC2: boxTakesCurve(w, c2), wC3: boxTakesCurve(w, c3),
-  cC1: boxTakesCurve(c, c1), cC2: boxTakesCurve(c, c2), cC3: boxTakesCurve(c, c3),
-  wA1: boxTakesCurve(w, a1), wA2: boxTakesCurve(w, a2),
-  cA1: boxTakesCurve(c, a1), cA2: boxTakesCurve(c, a2),
-}));
-// the dimension preview places what SolidCraft's auto would (engine auto_orientation, angle_by_sector)
-const secDeg = (x) => (x ? Math.round(x.span * 180 / Math.PI * 100) / 100 : null);
-console.log(JSON.stringify({
-  across: dimAutoOrientation([0, 0], [20, 20], [0, 20]), pastUp: dimAutoOrientation([0, 0], [20, 20], [24, 40]),
-  pastSide: dimAutoOrientation([0, 0], [20, 20], [40, 24]), axisLine: dimAutoOrientation([0, 0], [20, 0], [40, 5]),
-  right: secDeg(angleSector([0, 0], [10, 0], [0, 0], [0, 10], [-5, 5])),
-  obtuse: secDeg(angleSector([0, 0], [10, 0], [0, 0], [10, 10], [-5, 1])),
-  acute: secDeg(angleSector([0, 0], [10, 0], [0, 0], [10, 10], [5, 1])),
-  parallel: angleSector([0, 0], [1, 0], [0, 1], [1, 1], [0, 0]),
-}));
-"""
-
-
-def viewtools_checks(tmp):
-    """Measure tool in the browser: faceInfo finds planes and cylinders (also half ones) on the mesh (needs node)."""
-    import re
-    import shutil
-    import subprocess
-    from mechvane.ui import server as ui_server
-    if not shutil.which("node"):
-        print("skip viewtools: node not installed")
-        return
-    d = Path(tmp) / "viewtools"
-    three = d / "node_modules" / "three"
-    three.mkdir(parents=True)
-    (three / "package.json").write_text('{"name": "three", "type": "module", "main": "three.module.js"}')
-    shutil.copyfile(ui_server.STATIC_DIR / "vendor/three/build/three.module.js", three / "three.module.js")
-    shutil.copyfile(ui_server.STATIC_DIR / "viewtools.js", d / "viewtools.js")
-    shutil.copyfile(ui_server.STATIC_DIR / "sketchgeom.js", d / "sketchgeom.js")
-    (d / "package.json").write_text('{"type": "module"}')
-    (d / "t.js").write_text(VIEWTOOLS_TEST)
-    run = subprocess.run(["node", "t.js"], cwd=d, capture_output=True, text=True, timeout=60)
-    try:
-        r, e, pk, lp, sg, bx, dm = (json.loads(line) for line in run.stdout.splitlines()[:7])
-    except ValueError:
-        r, e, pk, lp, sg, bx, dm = {}, {}, {}, {}, {}, {}, {}
-    ok("sketchgeom: the dimension preview chooses as SolidCraft (two points across: distance, pulled past an end up: "
-       "horizontal, sideways: vertical; two lines: the angle of the pointer's sector, 45/90/135)",
-       dm == {"across": "distance", "pastUp": "horizontal", "pastSide": "vertical", "axisLine": "distance",
-              "right": 90, "obtuse": 135, "acute": 45, "parallel": None}, f"{dm} {run.stderr[-300:]}")
-    ok("viewtools: edges, half circle as arc R 8 / 180°, two half faces as one circle, seam as straight edge 20 mm, "
-       "closed circle over a repeated seam",
-       e.get("holeKind") == "circle" and abs(e.get("holeR", 0) - 8) < 1e-3 and e.get("arcKind") == "arc" and abs(e.get("arcR", 0) - 8) < 1e-3 and abs(e.get("arcAngle", 0) - 180) < 0.5
-       and e.get("seamKind") == "line" and abs(e.get("seamLength", 0) - 20) < 1e-6 and e.get("seamDirZ") == 1
-       and e.get("ringKind") == "circle" and abs(e.get("ringR", 0) - 8) < 1e-3 and abs(e.get("ringCx", 0) - 30) < 1e-3
-       and e.get("ringAxisZ", 0) > 0.9999, f"{e} {run.stderr[-300:]}")
-    ok("viewtools: cylinder Ø, axis and centre from a half face, plane normal and area",
-       abs(r.get("r", 0) - 8) < 1e-3 and abs(r.get("r2", 0) - 8) < 1e-3 and r.get("axisZ", 0) > 0.9999
-       and abs(r.get("cx", 0) - 30) < 1e-3 and abs(r.get("cy", 0) - 20) < 1e-3
-       and r.get("flatNormalZ") == 1 and abs(r.get("flatArea", 0) - 100) < 1e-9 and r.get("flatRadius") is None,
-       f"{r} {run.stderr[-300:]}")
-    ok("viewtools: a dialog's edge pick lies on the true circle (not the chord), inside a straight edge, "
-       "and both halves of a hole give one edge key", _viewtools_pick_ok(pk), f"{pk} {run.stderr[-300:]}")
-    ok("sketchgeom: loopPoints chains curves topologically into simple polygon without self-intersection or diagonal line",
-       lp.get("loopLen") == 4 and lp.get("triangles") == 2 and lp.get("firstPt") == [10, 10] and lp.get("lastPt") == [70, 10],
-       f"{lp} {run.stderr[-300:]}")
-    ok("sketchgeom: profileAt and sketchLineAt pick profiles and sketch/construction lines within tolerance",
-       sg.get("profIndex") == 0 and sg.get("line1") == "l1" and sg.get("line1Const") is True
-       and sg.get("line2") == "l2" and sg.get("line2Const") is False and sg.get("lineMiss") is None,
-       f"{sg} {run.stderr[-300:]}")
-    ok("sketchgeom: box selection (window and crossing) for polyline, line, circle and arc matches SolidCraft BoxSel",
-       bx.get("wCrossing") is False and bx.get("cCrossing") is True
-       and bx.get("wInside") is True and bx.get("wPartly") is False and bx.get("wThrough") is False and bx.get("wAway") is False
-       and bx.get("cInside") is True and bx.get("cPartly") is True and bx.get("cThrough") is True and bx.get("cAway") is False
-       and bx.get("wL1") is True and bx.get("wL2") is False and bx.get("wL3") is False
-       and bx.get("cL1") is True and bx.get("cL2") is True and bx.get("cL3") is False
-       and bx.get("wC1") is True and bx.get("wC2") is False and bx.get("wC3") is False
-       and bx.get("cC1") is True and bx.get("cC2") is True and bx.get("cC3") is False
-       and bx.get("wA1") is True and bx.get("wA2") is False
-       and bx.get("cA1") is True and bx.get("cA2") is True,
-       f"{bx} {run.stderr[-300:]}")
-    shutil.copyfile(ui_server.STATIC_DIR / "features.js", d / "features.js")
-    (d / "f_test.js").write_text("""
-import { EDITABLE_TYPES, DIALOGS } from "./features.js";
-const f1 = DIALOGS.hole.fromDefinition({ diameter: "4 + 1", position: [10, 0, 10], hole: { type: "simple" } });
-const f2 = DIALOGS.hole.fromDefinition({ diameter: "P_D", position: [10, 0, 10], hole: { type: "simple" } });
-const es = DIALOGS.hole.editSet(
-  { x: 10, y: 0, z: 10, spec: "diameter", diameter: 6, through: false, depth: 5, type: "counterbore", cb_diameter: 10, cb_depth: 3, edge1: "edge", dist1: 12 },
-  { edgePicks: [{ point: [0, 25, 10] }], direction: [0, 0, -1] });
-const emp = DIALOGS.hole.editSet(
-  { x: 10, y: 0, z: 10, spec: "diameter", diameter: "", through: false, depth: undefined, type: "counterbore", cb_diameter: null, cb_depth: undefined, edge1: "edge", dist1: "" },
-  { edgePicks: [{ point: [0, 25, 10] }], direction: [0, 0, -1] });
-const csEmp = DIALOGS.hole.editSet(
-  { x: 10, y: 0, z: 10, spec: "diameter", diameter: "5", through: true, type: "countersink", cs_diameter: "", cs_angle: null },
-  { edgePicks: [], direction: [0, 0, -1] });
-console.log(JSON.stringify({ keys: Object.keys(EDITABLE_TYPES), f1: f1.values, f2: f2.values, es, emp, csEmp }));
-""")
-    frun = subprocess.run(["node", "f_test.js"], cwd=d, capture_output=True, text=True, timeout=60)
-    try:
-        fd = json.loads(frun.stdout) if frun.returncode == 0 else {}
-    except ValueError:
-        fd = {}
-    dk_m = re.search(r"const EDITABLE = \{([^}]+)\}", (ui_server.STATIC_DIR / "demo_kernel.js").read_text(encoding="utf-8"))
-    dk_keys = sorted(re.findall(r"(\w+Feature)\s*:", dk_m.group(1))) if dk_m else []
-    es, emp, cs_emp = fd.get("es", {}), fd.get("emp", {}), fd.get("csEmp", {})
-    ok("features.js: EDITABLE_TYPES matches server/demo, Hole preserves expressions, omits empty fields, sends string expressions (#129)",
-       frun.returncode == 0
-       and sorted(fd.get("keys", [])) == sorted(ui_server.EDITABLE.keys()) == dk_keys
-       and fd.get("f1", {}).get("diameter") == "4 + 1" and fd.get("f1", {}).get("spec") == "diameter"
-       and fd.get("f2", {}).get("diameter") == "P_D" and fd.get("f2", {}).get("spec") == "diameter"
-       and es.get("diameter") == "6" and es.get("depth") == "5"
-       and es.get("hole", {}).get("cb_diameter") == "10" and es.get("hole", {}).get("cb_depth") == "3"
-       and (es.get("references") or [{}])[0].get("distance") == "12"
-       and "diameter" not in emp and "depth" not in emp and emp.get("references") == []
-       and "cb_diameter" not in emp.get("hole", {}) and "cb_depth" not in emp.get("hole", {})
-       and "cs_diameter" not in cs_emp.get("hole", {}) and "cs_angle" not in cs_emp.get("hole", {}),
-       f"{fd} {frun.stderr[-300:]}")
-
-
-def _viewtools_pick_ok(pk):
-    seam_lo, seam_hi = sorted((0, 20))
-    return (pk.get("chordR", 8) < 8 - 1e-4 and abs(pk.get("pickR", 0) - 8) < 1e-5 and abs(pk.get("pickZ", 1)) < 1e-9
-            and seam_lo < pk.get("seamZ", -1) < seam_hi and pk.get("sameKey") is True and pk.get("seamKey") is True)
-
-
-def command_form_checks():
-    """General command dialog (#128): each schema shape becomes its field kind (type first, not the name), a
-    command without a schema gets one JSON field with SolidCraft's parameter text, and the offer rules hold."""
-    from mechvane import command_form as cf
-    defs = {"LengthExpr": {"anyOf": [{"type": "number"}, {"type": "string", "minLength": 1}]},
-            "Op": {"enum": ["new", "join", "cut"], "type": "string"},
-            "P3": {"anyOf": [{"type": "array", "items": {"$ref": "#/$defs/LengthExpr"}, "minItems": 3, "maxItems": 3},
-                             {"type": "object", "properties": {k: {"$ref": "#/$defs/LengthExpr"} for k in "xyz"}}]},
-            "Names": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
-            "EdgeRefs": {"type": "array", "items": {"anyOf": [{"$ref": "#/$defs/P3"},
-                                                             {"type": "object", "properties": {"body": {"type": "string"}}}]}}}
-    schema = {"type": "object", "additionalProperties": False, "required": ["size"], "$defs": defs, "properties": {
-        "size": {"$ref": "#/$defs/LengthExpr"}, "operation": {"$ref": "#/$defs/Op"}, "flip": {"type": "boolean"},
-        "name": {"type": ["string", "null"], "default": None}, "count": {"type": "integer"},
-        "at": {"$ref": "#/$defs/P3"}, "bodies": {"anyOf": [{"$ref": "#/$defs/Names"}, {"type": "null"}]},
-        "rounds": {"$ref": "#/$defs/EdgeRefs"}, "camera": {"type": "object"}}}
-    fm = cf.form({"id": "x.test", "label": "Test", "params": "size: expr", "input": schema})
-    kinds = {f["name"]: (f["kind"], f.get("pick"), f["required"]) for f in fm["fields"]}
-    want = {"size": ("expr", None, True), "operation": ("enum", None, False), "flip": ("bool", None, False),
-            "name": ("text", None, False), "count": ("number", None, False), "at": ("point", None, False),
-            "bodies": ("list", "bodies", False), "rounds": ("json", "edges", False), "camera": ("json", None, False)}
-    ok("command form: each schema shape becomes its field kind; a json field names what to pick in the view",
-       kinds == want and not fm["raw"], str(kinds))
-    raw = cf.form({"id": "solid.shell", "label": "Shell", "params": "faces: [[x,y,z]]; thickness: expr", "input": None})
-    ok("command form: a command without a schema gets one JSON field with SolidCraft's parameter text",
-       raw["raw"] and len(raw["fields"]) == 1 and raw["fields"][0]["kind"] == "json"
-       and "thickness" in raw["fields"][0]["description"], str(raw))
-    try:
-        cf.to_params(fm, {"operation": "cut"})
-        missing = False
-    except ValueError as e:
-        missing = "size" in str(e)
-    ok("command form: a missing required field is refused, empty optional fields are left out",
-       missing and cf.to_params(fm, {"size": "w/2", "name": "", "bodies": []}) == {"size": "w/2"})
-    pathy = cf.form({"id": "component.extract", "label": "Extract", "params": "", "input": {
-        "type": "object", "properties": {"path": {"type": "string", "description": "Write to this file."}}}})
-    filed = cf.form({"id": "parameters.export", "label": "Export", "params": "", "input": {
-        "type": "object", "properties": {"path": {"type": "string", "description": "Write to this file."}}}})
-    geo = {"P3": defs["P3"], "GeoRef": {"anyOf": [
-        {"type": "object", "properties": {"type": {"enum": ["point", "edge"]}}, "required": ["type"]},
-        {"type": "object", "properties": {"face": {"$ref": "#/$defs/P3"}}, "required": ["face"]},
-        {"type": "object", "properties": {"edge": {"$ref": "#/$defs/P3"}}, "required": ["edge"]}]},
-        "LengthExpr": defs["LengthExpr"], "Names": defs["Names"]}
-    pick_form = cf.form({"id": "x.pick", "label": "Pick", "params": "", "input": {"type": "object", "$defs": geo, "properties": {
-        "faces": {"type": "array", "items": {"$ref": "#/$defs/P3"}}, "face": {"$ref": "#/$defs/GeoRef"},
-        "edge": {"$ref": "#/$defs/GeoRef"}, "body": {"type": "string"}, "bodies": {"$ref": "#/$defs/Names"},
-        "body_names": {"$ref": "#/$defs/Names"}, "size": {"type": "object", "description": "the size of the face",
-                                                           "properties": {"a": {"type": "number"}}}}}})
-    picks = {f["name"]: (f.get("pick"), f.get("multi"), f.get("write")) for f in pick_form["fields"]}
-    ok("command form: edge, face and body fields say how a click in the view is written (points, {face: point}, names); "
-       "names of new bodies and a field that only mentions a face get no pick",
-       picks == {"faces": ("faces", True, "point"), "face": ("faces", False, "key:face"), "edge": ("edges", False, "key:edge"),
-                 "body": ("bodies", False, "name"), "bodies": ("bodies", True, "name"), "body_names": (None, None, None),
-                 "size": (None, None, None)}, str(picks))
-    ok("command form: app commands are excepted, sketch and Mechvane-owned commands deferred, file paths not offered",
-       cf.excepted("panel.timeline") and cf.excepted("tab.solid") and not cf.excepted("solid.box")
-       and cf.deferred("sketch.line") and cf.deferred("joint.create") and not cf.deferred("joint.origin")
-       and all(cf.offered(c) for c in cf.ROUTED) and cf.deferred("timeline.roll_to") and cf.deferred("assembly.constraint.create")
-       and cf.deferred("joint.as_built") and cf.no_preview("joint.delete") and not cf.no_preview("timeline.edit")
-       and cf.why_not("component.extract", pathy) == cf.FILE_REASON and cf.offered("solid.box", fm)
-       and cf.provisional("view.fit") and cf.provisional("render.go") and cf.provisional("select.all")
-       and not cf.provisional("selection.get") and not cf.deferred("view.fit") and not cf.offered("view.fit")
-       and cf.why_not("view.fit") == cf.provisional("view.fit"))
-    ff = next(f for f in filed["fields"] if f["name"] == "path")
-    ok("command form: a command of the file list is offered with a file choice (write, its types, no preview); "
-       "design-file and slicer commands stay deferred",
-       cf.offered("parameters.export", filed) and ff.get("file") == {"mode": "write", "types": [".csv", ".json"]}
-       and cf.no_preview("parameters.export") and not cf.no_preview("parameters.import")
-       and cf.offered("file.export_step") and cf.offered("canvas.insert")
-       and all(cf.deferred(c) for c in ("file.save", "file.save_as", "file.new", "file.send_to_slicer",
-                                       "file.insert_step", "file.export_urdf"))
-       and not cf.offered("component.extract", pathy),
-       str(ff))
-
-
-def command_dialog_checks(tmp):
-    """General command dialog (#128) through the server: the search list, a form from the live schema, and one
-    command per field kind form -> server -> SolidCraft (expr, enum, point, text from solid.box; bool and
-    expr from parameters.add; a command without schema as raw JSON), on the shared undo list; a command
-    that only reads leaves no undo entry; refused: deferred, excepted, file paths, unknown."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "commanddialog"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        part = w.new(PART, "plate")
-        part.session.batch([{"command": "solid.box", "params": {"length": 40, "width": 20, "height": 10, "name": "Plate"}}])
-        part.save()
-    finally:
-        w.close_all()
-    path = folder / "plate.solidcraft"
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None, headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    def inspect():
-        with srv.lock:
-            return srv.ensure_current().session.cmd("document.inspect", {"measure": True})
-
-    def run(command, values, preview=False):
-        st, fm = call("command?id=" + command)
-        if st != 200:
-            return st, fm
-        from mechvane import command_form as cf
-        return call("feature", {"command": command, "params": cf.to_params(fm, values), "generic": True, "preview": preview})
-
-    try:
-        st_l, lst = call("commands")
-        by_id = {c["id"]: c for c in lst.get("commands", [])}
-        ok("command dialog: /api/commands lists SolidCraft's commands with label and panel, marks deferred ones, "
-           "leaves out app commands",
-           st_l == 200 and by_id.get("solid.box", {}).get("offered") and by_id.get("solid.box", {}).get("label")
-           and by_id.get("sketch.line", {}).get("offered") is False and "panel.timeline" not in by_id
-           and len(by_id) > 500, f"{st_l} {len(by_id)} {by_id.get('solid.box')} {by_id.get('sketch.line')}")
-        st_f, fm = call("command?id=solid.box")
-        kinds = {f["name"]: f["kind"] for f in fm.get("fields", [])}
-        ok("command dialog: /api/command builds the form from the live schema (solid.box: expr, enum, point, text)",
-           st_f == 200 and kinds.get("length") == "expr" and kinds.get("operation") == "enum"
-           and kinds.get("corner") == "point" and kinds.get("name") == "text" and fm.get("offered"), f"{st_f} {kinds}")
-
-        mtime = path.stat().st_mtime_ns
-        vol0 = inspect()["bodies"][0]["volume_mm3"] if inspect().get("bodies") else None
-        st_p, prev = run("solid.box", {"length": "10", "width": "10", "height": "5 mm", "corner": [60, 0, 0],
-                                       "operation": "new", "name": "Box2"}, preview=True)
-        ok("command dialog: preview runs the command, returns the mesh, saves nothing and leaves nothing",
-           st_p == 200 and prev.get("changed") and (prev.get("mesh") or {}).get("bodies")
-           and path.stat().st_mtime_ns == mtime and len(inspect()["bodies"]) == 1, f"{st_p} {str(prev)[:200]}")
-        st_b, done = run("solid.box", {"length": "10", "width": "10", "height": "5 mm", "corner": [60, 0, 0],
-                                       "operation": "new", "name": "Box2"})
-        bodies = inspect()["bodies"]
-        _, hist = call("history")
-        ok("command dialog: expr, enum, point and text fields run solid.box; the part is saved and the step is on the undo list",
-           st_b == 200 and done.get("changed") and len(bodies) == 2 and path.stat().st_mtime_ns != mtime
-           and any(abs(b.get("volume_mm3", 0) - 500) < 1e-3 for b in bodies)
-           and "solid.box" in (hist.get("undo") or ""), f"{st_b} {done} {[b.get('volume_mm3') for b in bodies]} {hist}")
-        st_u, _ = call("agent/undo", {})
-        ok("command dialog: Undo takes the box back", st_u == 200 and len(inspect()["bodies"]) == 1, str(st_u))
-
-        def saved_step(command, values):
-            # a change must be saved and on the undo list, not only in the session (document.revision moved)
-            mt = path.stat().st_mtime_ns
-            st, res = run(command, values)
-            _, h = call("history")
-            return st, res, (res.get("changed") is True and path.stat().st_mtime_ns != mt
-                             and command in (h.get("undo") or ""))
-
-        st_pa, pa, saved_pa = saved_step("parameters.add", {"name": "gap", "expression": "3 mm", "favorite": True})
-        with srv.lock:
-            params = {p["name"]: p for p in srv.ensure_current().session.cmd("parameters.list", {})["parameters"]}
-        ok("command dialog: bool and expr fields run parameters.add, saved and on the undo list",
-           st_pa == 200 and saved_pa and "gap" in params and params["gap"].get("favorite") is True,
-           f"{st_pa} {pa} {saved_pa} {params.get('gap')}")
-
-        body = inspect()["bodies"][0]["name"]
-        st_m, mi, saved_m = saved_step("solid.mirror", {"": {"bodies": [body], "plane": "YZ"}})
-        ok("command dialog: a command without schema runs with its parameters as raw JSON, saved and on the undo list",
-           st_m == 200 and saved_m and len(inspect()["bodies"]) == 2, f"{st_m} {mi} {saved_m}")
-
-        # picks in the view write these values (commands.js applyPick): edge points, {"face": point}, body names
-        _, chf = call("command?id=solid.chamfer")
-        _, axf = call("command?id=construct.axis.normal_to_face")
-        pick_fields = {f["name"]: (f.get("pick"), f.get("multi"), f.get("write"))
-                       for f in chf.get("fields", []) + axf.get("fields", []) if f.get("pick")}
-        st_ch, ch, saved_ch = saved_step("solid.chamfer", {"edges": [[20, 20, 10], [20, 0, 10]], "distance": "1"})
-        st_ax, ax, saved_ax = saved_step("construct.axis.normal_to_face", {"face": {"face": [20, 10, 10]}, "point": {"point": [20, 10, 10]}, "name": "PickAxis"})
-        with srv.lock:
-            ws_names = {f["name"] for f in srv.ensure_current().session.cmd("document.inspect", {"measure": False})["timeline"]}
-        ok("command dialog: values as the view picks write them run (two edge points for a chamfer, {face: point} for an axis)",
-           pick_fields.get("edges") == ("edges", True, "point") and pick_fields.get("face") == ("faces", False, "key:face")
-           and st_ch == 200 and saved_ch and st_ax == 200 and saved_ax and "PickAxis" in ws_names,
-           f"{pick_fields} {st_ch} {ch} {st_ax} {ax} {sorted(ws_names)}")
-
-        st_ma, ma, saved_ma = saved_step("material.assign", {"bodies": [body], "material": "Steel"})
-        ok("command dialog: a change outside the timeline (material) is saved and on the undo list",
-           st_ma == 200 and saved_ma, f"{st_ma} {ma} {saved_ma}")
-
-        _, hist_before = call("history")
-        mtime = path.stat().st_mtime_ns
-        st_r, read = run("parameters.list", {})
-        _, hist_after = call("history")
-        ok("command dialog: a command that only reads returns its result, saves nothing and leaves no undo entry",
-           st_r == 200 and read.get("changed") is False and read.get("results") and hist_after == hist_before
-           and path.stat().st_mtime_ns == mtime, f"{st_r} {str(read)[:200]} {hist_before} {hist_after}")
-
-        refused = {c: call("feature", {"command": c, "params": p, "generic": True})[0] for c, p in (
-            ("sketch.line", {}), ("panel.timeline", {}), ("parameters.export", {"path": "/tmp/x.csv"}),
-            ("joint.create", {}), ("timeline.roll_to", {"position": 0}), ("view.fit", {}), ("no.such", {}))}
-        ok("command dialog: deferred (sketch, Mechvane-owned, hidden window), excepted, file-path and unknown commands are refused",
-           all(v == 403 for v in refused.values()), str(refused))
-
-        # files in the project folder (#128): the choice lists its files of the right type; a write needs no
-        # existing file, a read does; nothing outside the folder, of another type or hidden
-        (folder / "old.csv").write_text("name,expression\n", encoding="utf-8")
-        _, pe_form = call("command?id=parameters.export")
-        pe_field = next((f for f in pe_form.get("fields", []) if f["name"] == "path"), {})
-        st_pv, pv = call("feature", {"command": "parameters.export", "params": {"path": "pv.csv"}, "generic": True, "preview": True})
-        st_w, w_res = call("feature", {"command": "parameters.export", "params": {"path": "params.csv"}, "generic": True})
-        written = (folder / "params.csv").read_text(encoding="utf-8") if (folder / "params.csv").is_file() else ""
-        bad_paths = {v: call("feature", {"command": "parameters.export", "params": {"path": v}, "generic": True})[0]
-                     for v in ("../outside.csv", str(folder.parent / "abs.csv"), "params.sc", ".hidden.csv", "nosub/p.csv")}
-        st_r, r_res = call("feature", {"command": "parameters.import", "params": {"path": "nosuch.csv"}, "generic": True})
-        ok("command dialog: a file command writes inside the project folder only (choices from the folder, no preview, "
-           "paths outside, other types, hidden files, missing folders and missing files to read refused)",
-           pe_form.get("offered") and (pe_field.get("file") or {}).get("mode") == "write" and "old.csv" in (pe_field.get("choices") or [])
-           and st_pv == 200 and pv.get("note") and not (folder / "pv.csv").exists()
-           and st_w == 200 and "gap" in written
-           and all(v == 403 for v in bad_paths.values()) and not (folder.parent / "outside.csv").exists()
-           and not (folder.parent / "abs.csv").exists() and st_r == 403,
-           f"{pe_field} {st_pv} {pv} {st_w} {str(w_res)[:120]} {written[:80]!r} {bad_paths} {st_r} {r_res}")
-        # review of #144: overwrite only after the dialog asked; no slicer, no urdf/json export; links, Windows
-        # paths, lists, folders and an empty name write nothing
-        st_ow, ow = call("feature", {"command": "parameters.export", "params": {"path": "params.csv"}, "generic": True})
-        (folder / "params.csv").write_text("old", encoding="utf-8")
-        st_ok, _ = call("feature", {"command": "parameters.export", "params": {"path": "params.csv"}, "generic": True,
-                                    "overwrite": True})
-        replaced = (folder / "params.csv").read_text(encoding="utf-8") != "old"
-        outside = Path(tmp) / "outside_target.csv"
-        outside.write_text("x", encoding="utf-8")
-        link_ok = True
-        try:
-            (folder / "link.csv").symlink_to(outside)
-        except OSError:
-            link_ok = False  # no symlinks on this system (Windows without the right): nothing to check
-        (folder / "dir.csv").mkdir()
-        _, pe2 = call("command?id=parameters.export")
-        ch2 = next((f.get("choices") or [] for f in pe2.get("fields", []) if f["name"] == "path"), [])
-        before = sorted(p.name for p in folder.iterdir())
-        odd = {repr(v): call("feature", {"command": "parameters.export", "params": {"path": v}, "generic": True,
-                                         "overwrite": True})[0]
-               for v in (["a.csv"], "..\\outside.csv", "\\\\srv\\share\\x.csv", "C:x.csv", "dir.csv", "a\x00.csv")
-               + (("link.csv",) if link_ok else ())}
-        st_empty, empty = call("feature", {"command": "parameters.export", "params": {"path": ""}, "generic": True})
-        after = sorted(p.name for p in folder.iterdir())
-        st_sl, _ = call("feature", {"command": "file.save_mesh", "params": {"path": "m.stl", "slicer": "PrusaSlicer"}, "generic": True})
-        st_fmt, _ = call("feature", {"command": "file.export", "params": {"path": "x.step", "format": "urdf"}, "generic": True})
-        st_sl0, _ = call("feature", {"command": "file.save_mesh", "params": {"path": "m.stl", "slicer": 0}, "generic": True})
-        st_fmt2, _ = call("feature", {"command": "file.export", "params": {"path": "x.step", "format": "URDF"}, "generic": True})
-        st_lo, _ = call("feature", {"command": "library.export", "params": {"path": "lib.json", "overwrite": True}, "generic": True})
-        st_pv2, pv2 = call("feature", {"command": "parameters.export", "params": {"path": "params.csv"}, "generic": True, "preview": True})
-        ok("command dialog: an existing file is overwritten only when the dialog confirms it (409 first); slicer, urdf, "
-           "links out of the folder, Windows paths, lists, folders and an empty name write nothing",
-           st_ow == 409 and ow.get("exists") and st_ok == 200 and replaced
-           and all(v == 403 for v in odd.values()) and before == after and outside.read_text() == "x"
-           and "link.csv" not in ch2 and "dir.csv" not in ch2
-           and st_empty == 200 and empty.get("changed") is False and st_sl == 403 and st_fmt == 403
-           and st_sl0 == 403 and st_fmt2 == 403 and st_lo == 403 and st_pv2 == 200 and pv2.get("note")
-           and not (folder / "m.stl").exists() and not (folder / "x.step").exists(),
-           f"{st_ow} {ow} {st_ok} {replaced} {odd} {before} {after} {ch2} {st_empty} {st_sl} {st_fmt}")
-        st_half_pv, half_pv = call("feature", {"command": "parameters.export", "params": {"path": "halb.cs"},
-                                               "generic": True, "preview": True})
-        st_half_ok, half_ok = call("feature", {"command": "parameters.export", "params": {"path": "halb.cs"},
-                                               "generic": True})
-        ok("command dialog: preview of a writing file command returns the no-preview note even with an unfinished path; "
-           "OK checks the path",
-           st_half_pv == 200 and bool(half_pv.get("note")) and st_half_ok == 403,
-           f"{st_half_pv} {half_pv} {st_half_ok} {half_ok}")
-
-        # routed commands (#128): the Mechvane handler runs, not the raw command
-        def feats():
-            with srv.lock:
-                return {f["name"]: f["type"] for f in srv.ensure_current().session.cmd("document.inspect", {"measure": False})["timeline"]}
-
-        def undo_label():
-            return (call("history")[1].get("undo") or "")
-
-        _, rform = call("command?id=timeline.delete")
-        _, eform = call("command?id=timeline.rename")
-        ok("command dialog: routed commands are offered and a feature field carries the names of the open part as choices",
-           rform.get("offered") and eform.get("offered")
-           and any(f["name"] == "feature" and "Plate" in (f.get("choices") or []) for f in eform["fields"]), str(eform.get("fields"))[:300])
-        before = feats()
-        mt = path.stat().st_mtime_ns
-        st_d1, d1 = run("timeline.rename", {"feature": "PickAxis", "name": "Plate"})
-        ok("command dialog: timeline.rename to a name in use is refused by the Mechvane handler, nothing saved",
-           st_d1 != 200 and feats() == before and path.stat().st_mtime_ns == mt, f"{st_d1} {d1}")
-        st_rn, rn = run("timeline.rename", {"feature": "PickAxis", "name": "AxisA"})
-        ok("command dialog: timeline.rename runs as one saved undo step", st_rn == 200 and "AxisA" in feats()
-           and "PickAxis" not in feats() and "Rename" in undo_label() and path.stat().st_mtime_ns != mt, f"{st_rn} {rn} {undo_label()}")
-        st_two, _ = run("timeline.delete", {"features": ["AxisA", "Plate"]})
-        ok("command dialog: timeline.delete of several features at once is refused (one undo step each)",
-           st_two == 403 and "AxisA" in feats() and "Plate" in feats(), str(st_two))
-        chamfer = next((n for n, t in feats().items() if t == "ChamferFeature"), None)
-        mt = path.stat().st_mtime_ns
-        st_bad, bad = run("timeline.edit", {"feature": chamfer, "set": {"distance": "500"}})
-        ok("command dialog: timeline.edit that breaks a later feature is refused and the file stays",
-           chamfer is not None and st_bad != 200 and path.stat().st_mtime_ns == mt, f"{chamfer} {st_bad} {str(bad)[:200]}")
-        st_ok, okr = run("timeline.edit", {"feature": chamfer, "set": {"distance": "0.5"}})
-        ok("command dialog: a valid timeline.edit runs and is one undo step", st_ok == 200 and "Edit" in undo_label(),
-           f"{st_ok} {str(okr)[:200]} {undo_label()}")
-        n_before = len(feats())
-        st_del, dl = run("timeline.delete", {"feature": "AxisA"})
-        ok("command dialog: timeline.delete runs the Mechvane delete (one undo step) and the feature is gone",
-           st_del == 200 and "AxisA" not in feats() and len(feats()) == n_before - 1 and "Delete" in undo_label(),
-           f"{st_del} {str(dl)[:200]} {undo_label()}")
-        # the live demo's copy (#128): made like the server's forms, without the open part's choices; routed and
-        # file commands are not offered there, the rest keeps the server's reason
-        from tools import build_demo_site as bds
-        with srv.lock:
-            demo = bds.demo_command_forms(srv.ensure_current(), only={"solid.chamfer", "timeline.rename", "file.export",
-                                                                      "parameters.list", "sketch.line"})
-        f = demo["forms"]
-        ok("command dialog in the live demo: forms like the server's, no choices of the build's part; routed and file "
-           "commands not offered, sketch commands keep their reason",
-           set(f) == {"solid.chamfer", "timeline.rename", "file.export", "parameters.list", "sketch.line"}
-           and f["solid.chamfer"]["offered"] and {"edges", "distance"} <= {x["name"] for x in f["solid.chamfer"]["fields"]}
-           and f["parameters.list"]["offered"]
-           and f["timeline.rename"]["reason"] == bds.DEMO_REASON and f["file.export"]["reason"] == bds.DEMO_REASON
-           and not f["sketch.line"]["offered"] and f["sketch.line"]["reason"] != bds.DEMO_REASON
-           and not any("choices" in x for fm in f.values() for x in fm["fields"])
-           and {c["id"] for c in demo["commands"] if "reason" not in c} == {"solid.chamfer", "parameters.list"},
-           json.dumps({k: (v["offered"], v["reason"]) for k, v in f.items()})[:600])
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def feature_dialog_checks(tmp):
-    """Workspace feature dialogs (ADR 0005, stage 2): /api/feature previews without saving, runs and saves,
-    refuses commands outside the list, explains a size that does not fit; the step and parameter changes
-    land in the shared undo list with the agent's turns; a new step after an undo drops the redo."""
-    import urllib.error
-    import urllib.request
-    from mechvane import modeling, query
-    from mechvane.ui import server as ui_server
-
+def delete_feature_keep_sketch_checks(tmp):
+    """MCP delete_feature with keep_sketch=True (#66): the feature goes, its sketch stays, unconsumed, in the browser."""
     folder = Path(tmp) / "features"
     folder.mkdir()
-    w = Workspace(folder)
+    old_ws = server.ws
+    server.ws = Workspace(folder)
     try:
-        part = w.new(PART, "block")
-        part.session.batch([
+        part = server.ws.new(PART, "block")
+        modeling.run_commands(part, [
             {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
             {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}},
             {"command": "sketch.finish", "params": {}},
-            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 10, "name": "Block"}}])
+            {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 10, "name": "Block"}},
+            {"command": "sketch.create", "params": {"plane": {"origin": [0, 0, 10], "x_dir": [1, 0, 0], "y_dir": [0, 1, 0]},
+                                                     "name": "BossSketch"}},
+            {"command": "sketch.circle.center", "params": {"center": [30, 10], "radius": 3}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.extrude", "params": {"sketch": "BossSketch", "distance": 5, "operation": "join", "name": "Boss"}}])
         part.save()
+        res = server.delete_feature("block", "Boss", keep_sketch=True)
+        names = [f["name"] for f in part.session.cmd("document.inspect", {"measure": False})["timeline"]]
+        tree_features = server.browser("block")["tree"].get("features", [])
+        vol = part.session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
+        ok("feature/delete: keep_sketch=true deletes feature, keeps sketch as unconsumed in tree",
+           res.get("deleted") == ["Boss"] and "Boss" not in names and "BossSketch" in names
+           and any(f.get("name") == "BossSketch" for f in tree_features) and abs(vol - 40 * 20 * 10) < 0.5,
+           f"{res} {names} {[f.get('name') for f in tree_features]} {vol}")
     finally:
-        w.close_all()
-    path = folder / "block.solidcraft"
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    def features():
-        with srv.lock:
-            doc = srv.ensure_current()
-            return [f["name"] for f in doc.session.cmd("document.inspect", {"measure": False})["timeline"]]
-
-    top_edge = [20, 20, 10]  # middle of the long top edge at y = 20
-    try:
-        mtime = path.stat().st_mtime_ns
-        st_p, prev = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 2}, "preview": True})
-        ok("feature dialog: preview returns the mesh and volume change, saves nothing and leaves no feature",
-           st_p == 200 and prev.get("mesh", {}).get("bodies") and prev.get("delta", {}).get("volume_change_mm3", 0) < 0
-           and path.stat().st_mtime_ns == mtime and "Fillet1" not in features(),
-           f"{st_p} {str(prev)[:200]} {features()}")
-        st_big, big = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 50}, "preview": True})
-        st_no, no = call("feature", {"command": "solid.shell", "params": {}})
-        ok("feature dialog: a radius that does not fit is explained in one line with SolidCraft's words; "
-           "commands outside the dialog list are refused",
-           st_big == 400 and "\n" not in big.get("error", "\n") and "SolidCraft:" in big.get("error", "")
-           and st_no == 403, f"{st_big} {big.get('error')} {st_no}")
-        st_c, done = call("feature", {"command": "solid.fillet", "params": {"edges": [top_edge], "radius": 2}})
-        _, hist = call("history")
-        ok("feature dialog: OK runs the fillet, saves the part, and puts the step on the undo list",
-           st_c == 200 and "Fillet1" in features() and path.stat().st_mtime_ns != mtime
-           and hist.get("undo", "").startswith("Fillet R2 on 1 edge") and hist.get("redo") is None,
-           f"{st_c} {done} {features()} {hist}")
-        st_u, _ = call("agent/undo", {})
-        after_undo = features()
-        _, hist_u = call("history")
-        st_r, _ = call("agent/redo", {})
-        after_redo = features()
-        ok("feature dialog: Undo takes the fillet back, Redo puts it back",
-           st_u == 200 and "Fillet1" not in after_undo and hist_u.get("redo", "").startswith("Fillet R2")
-           and st_r == 200 and "Fillet1" in after_redo, f"{st_u} {after_undo} {hist_u} {st_r} {after_redo}")
-        call("agent/undo", {})
-        st_ch, _ = call("feature", {"command": "solid.chamfer", "params": {"edges": [[20, 0, 10]], "distance": 1}})
-        _, hist_ch = call("history")
-        ok("feature dialog: a new step after an undo drops the redo (it would discard the new step)",
-           st_ch == 200 and hist_ch.get("redo") is None and hist_ch.get("undo", "").startswith("Chamfer 1")
-           and "Fillet1" not in features(), f"{st_ch} {hist_ch} {features()}")
-        with srv.lock:
-            doc = srv.ensure_current()
-            pname = next(p["name"] for p in doc.session.cmd("parameters.list", {})["parameters"]
-                         if p.get("feature") == "Block")
-        st_pa, _ = call("params", {"changes": {pname: "12 mm"}})
-        _, hist_pa = call("history")
-        st_pu, _ = call("agent/undo", {})
-        with srv.lock:
-            back = {p["name"]: p["value"] for p in srv.ensure_current().session.cmd("parameters.list", {})["parameters"]}
-        ok("feature dialog: a parameter change from the form is a step on the same undo list",
-           st_pa == 200 and hist_pa.get("undo", "").startswith("Parameters in block") and st_pu == 200
-           and back.get(pname) == 10, f"{st_pa} {hist_pa} {st_pu} {back}")
-        # edit from the model browser: values and the model before the feature, then a change in place
-        st_e, ed = call("feature?name=Chamfer1")
-        before_bodies = ed.get("before", {}).get("bodies") or []
-        ok("feature dialog: opening Chamfer1 for editing gives its values and the model before it",
-           st_e == 200 and ed.get("dialog") == "chamfer" and ed.get("definition", {}).get("edges") == [[20, 0, 10]]
-           and str(ed.get("definition", {}).get("distance")) == "1" and before_bodies
-           and "Chamfer1" in features(), f"{st_e} {str(ed)[:300]} features={features()}")
-        mtime_e = path.stat().st_mtime_ns
-        st_ep, _ = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1", "preview": True,
-                                    "params": {"edges": [[20, 0, 10]], "distance": 2}})
-        st_eb, eb = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1",
-                                     "params": {"edges": [[20, 0, 10]], "distance": 50}})
-        st_ew, _ = call("feature", {"command": "solid.fillet", "edit": "Chamfer1",
-                                    "params": {"edges": [[20, 0, 10]], "radius": 1}})
-        st_ec, _ = call("feature", {"command": "solid.chamfer", "edit": "Chamfer1",
-                                    "params": {"edges": [[20, 0, 10], [20, 20, 10]], "distance": 2}})
-        with srv.lock:
-            d_after = srv.ensure_current().session.cmd("timeline.inspect", {"feature": "Chamfer1"})["definition"]
-        _, hist_e = call("history")
-        ok("feature dialog: editing previews without saving, refuses a size that does not fit and another command, "
-           "then changes Chamfer1 in place (two edges, 2 mm) as one undo step",
-           st_ep == 200 and st_eb == 400 and st_ew == 403 and st_ec == 200 and len(d_after.get("edges", [])) == 2
-           and str(d_after.get("distance")) in ("2", "2.0") and features().count("Chamfer1") == 1
-           and hist_e.get("undo", "").startswith("Edit Chamfer1") and path.stat().st_mtime_ns != mtime_e,
-           f"{st_ep} {st_eb} {eb.get('error')} {st_ew} {st_ec} {d_after} {hist_e}")
-        st_d, dele = call("feature/delete", {"name": "Chamfer1"})
-        gone = "Chamfer1" not in features()
-        call("agent/undo", {})
-        ok("feature dialog: Delete removes a feature as one undo step, Undo brings it back",
-           st_d == 200 and gone and "Chamfer1" in features() and dele.get("deleted") == ["Chamfer1"],
-           f"{st_d} {dele} {features()}")
-
-        # Rename via /api/feature/rename and via /api/feature command routing
-        st_rn_empty, _ = call("feature/rename", {"feature": "Chamfer1", "name": ""})
-        st_rn_dup, _ = call("feature/rename", {"feature": "Chamfer1", "name": "Block"})
-        st_rn, rn = call("feature/rename", {"feature": "Chamfer1", "name": "ChamferSpecial"})
-        _, hist_rn = call("history")
-        with srv.lock:
-            doc_rn = srv.ensure_current()
-            params_rn = doc_rn.session.cmd("parameters.list", {})["parameters"]
-            p_chamfer = [p for p in params_rn if p.get("feature") == "ChamferSpecial"]
-        ok("feature dialog: Rename rejects empty and duplicate names, updates feature and parameters as one undo step",
-           st_rn_empty == 400 and st_rn_dup == 400 and st_rn == 200
-           and "ChamferSpecial" in features() and "Chamfer1" not in features()
-           and len(p_chamfer) > 0
-           and hist_rn.get("undo", "").startswith("Rename Chamfer1 to ChamferSpecial"),
-           f"{st_rn_empty} {st_rn_dup} {st_rn} {rn} {features()} {hist_rn} {p_chamfer}")
-        st_rnu, _ = call("agent/undo", {})
-        ok("feature dialog: Undo reverts rename",
-           st_rnu == 200 and "Chamfer1" in features() and "ChamferSpecial" not in features())
-        st_cmd_rn, _ = call("feature", {"command": "timeline.rename", "params": {"feature": "Chamfer1", "name": "ChamferCmd"}})
-        ok("feature dialog: timeline.rename routes to rename",
-           st_cmd_rn == 200 and "ChamferCmd" in features())
-        call("agent/undo", {})
-        # Hole dialog: tables from Mechvane (ISO 273, DIN 336, DIN 974-1), a counterbored clearance hole, then
-        # edited in place into a blind tapped hole (null removes "through all"'s missing depth the other way round)
-        _, sizes = call("hole_sizes")
-        m5 = sizes.get("sizes", {}).get("M5", {})
-        st_h, hole = call("feature", {"command": "solid.hole", "params": {
-            "position": [30, 10, 10], "direction": [0, 0, -1], "diameter": m5.get("clearance", {}).get("normal"),
-            "type": "counterbore", "cb_diameter": m5.get("counterbore", {}).get("diameter"),
-            "cb_depth": m5.get("counterbore", {}).get("depth")}})
-        hname = (hole.get("results") or [{}])[0].get("name")
-        st_he, _ = call("feature", {"command": "solid.hole", "edit": hname, "params": {
-            "position": [30, 10, 10], "diameter": m5.get("tap_drill"), "depth": 6, "thread": "M5", "hole": {"type": "simple"}}})
-        with srv.lock:
-            hdef = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
-        st_ht, _ = call("feature", {"command": "solid.hole", "edit": hname, "params": {"depth": None, "thread": None}})
-        with srv.lock:
-            hdef2 = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
-        ok("feature dialog: Hole with M5 values from Mechvane's tables (5.5 / Cb. 10 x 5.4), edited into a tapped M5 "
-           "6 deep, then back to through all",
-           m5.get("clearance", {}).get("normal") == 5.5 and m5.get("tap_drill") == 4.2
-           and m5.get("counterbore") == {"diameter": 10.0, "depth": 5.4} and sizes.get("sources", {}).get("clearance") == "ISO 273"
-           and st_h == 200 and hole.get("done", "").startswith("Counterbored hole Ø5.5, through all")
-           and st_he == 200 and hdef.get("thread") == "M5" and str(hdef.get("depth")) == "6"
-           and hdef.get("hole", {}).get("type") == "simple"
-           and st_ht == 200 and "depth" not in hdef2 and "thread" not in hdef2,
-           f"{m5} {st_h} {hole.get('done')} {st_he} {hdef} {st_ht} {hdef2}")
-        # #111: the dialog's edit set sends "references": null for a hole placed without edge references;
-        # SolidCraft rejects null there ("invalid type: integer 8, expected a string" with a numeric depth),
-        # so the edit has to go through as "no references" (an empty list)
-        st_hr, hr = call("feature", {"command": "solid.hole", "edit": hname, "params": {
-            "position": [30, 10, 10], "diameter": 6.6, "depth": 8, "thread": None, "hole": {"type": "simple"},
-            "references": None}})
-        with srv.lock:
-            hdef3 = srv.ensure_current().session.cmd("timeline.inspect", {"feature": hname})["definition"] if hname else {}
-        ok("feature dialog: editing a hole without edge references (references: null from the dialog) works (#111)",
-           st_hr == 200 and str(hdef3.get("depth")) == "8" and not hdef3.get("references")
-           and str(hdef3.get("diameter", "")).startswith("6.6"),
-           f"{st_hr} {hr} {hdef3}")
-        # patterns and mirror: a small through hole near x = 5, copied in a row, around it, and mirrored at x = 20
-        def volume():
-            with srv.lock:
-                return srv.ensure_current().session.cmd("document.inspect", {"measure": True})["bodies"][0]["volume_mm3"]
-        st_sh, small = call("feature", {"command": "solid.hole", "params": {"position": [5, 10, 10], "diameter": 3}})
-        sname = (small.get("results") or [{}])[0].get("name")
-        v_hole = volume()
-        st_rp, rp = call("feature", {"command": "solid.pattern.rectangular", "params": {
-            "features": [sname], "dir1": [1, 0, 0], "count1": 3, "spacing1": 4}})
-        rname = (rp.get("results") or [{}])[0].get("name")
-        v_rect = volume()
-        st_re, _ = call("feature", {"command": "solid.pattern.rectangular", "edit": rname, "params": {
-            "features": [sname], "pattern": {"type": "rectangular", "dir1": [1, 0, 0], "count1": "2", "spacing1": "4",
-                                             "dir2": None, "count2": None, "spacing2": None}}})
-        v_rect2 = volume()
-        _, red = call(f"feature?name={rname}")
-        ok("feature dialog: rectangular pattern of a hole (3 in a row), edited to 2 with counts as text; "
-           "the edit dialog gets feature names for the ids",
-           st_sh == 200 and st_rp == 200 and v_rect < v_hole - 1 and st_re == 200 and v_rect < v_rect2 < v_hole
-           and rp.get("done", "").startswith(f"Rectangular pattern of {sname}, 3")
-           and red.get("feature_names", {}).get(str(red.get("definition", {}).get("features", [None])[0])) == sname,
-           f"{st_sh} {st_rp} {rp.get('done')} {v_hole} {v_rect} {st_re} {v_rect2} {str(red.get('feature_names'))[:200]}")
-        st_mi, mi = call("feature", {"command": "solid.mirror", "params": {
-            "features": [sname], "plane": {"origin": [20, 0, 0], "normal": [1, 0, 0]}}})
-        mname = (mi.get("results") or [{}])[0].get("name")
-        v_mirror = volume()
-        st_me, _ = call("feature", {"command": "solid.mirror", "edit": mname, "params": {
-            "features": [sname], "plane": {"type": "origin", "name": "XZ"}}})
-        v_mirror_xz = volume()
-        ok("feature dialog: mirror of the hole about x = 20 adds a hole; edited to the XZ plane (outside the block) "
-           "it no longer cuts",
-           st_mi == 200 and v_mirror < v_rect2 - 1 and st_me == 200 and abs(v_mirror_xz - v_rect2) < 1e-6,
-           f"{st_mi} {mi.get('done')} {v_rect2} {v_mirror} {st_me} {v_mirror_xz}")
-        # Extrude and Revolve on a sketch made elsewhere (agent, expert mode): a boss on the top face, joined,
-        # then edited into a 3 mm cut (sketch sent by name, the definition keeps its id)
-        with srv.lock:
-            d0 = srv.ensure_current()
-            modeling.run_commands(d0, [
-                {"command": "sketch.create", "params": {"plane": {"face": [15, 12, 10]}, "name": "BossSketch"}},
-                {"command": "sketch.circle.center", "params": {"center": [15, 12], "radius": 3}},
-                {"command": "sketch.finish", "params": {}}])
-            d0.save()
-            srv.mtime = d0.path.stat().st_mtime
-        _, sk = call("sketches")
-        by_name = {x["name"]: x["used_by"] for x in sk.get("sketches", [])}
-        v_before_ex = volume()
-        st_ex, ex = call("feature", {"command": "solid.extrude", "params": {
-            "sketch": "BossSketch", "distance": 5, "operation": "join", "direction": "positive"}})
-        xname = (ex.get("results") or [{}])[0].get("name")
-        v_boss = volume()
-        st_xe, _ = call("feature", {"command": "solid.extrude", "edit": xname, "params": {
-            "sketch": "BossSketch", "operation": "cut",
-            "extent": {"direction": "negative", "through_all": False, "distance": "3"}}})
-        v_cut = volume()
-        ok("feature dialog: /api/sketches lists sketches with their users; Extrude joins a boss (+5 x πr²) and is "
-           "edited into a 3 mm cut",
-           "Block" in by_name.get("Base", []) and by_name.get("BossSketch") == [] and st_ex == 200
-           and abs((v_boss - v_before_ex) - 5 * 3.14159265 * 9) < 0.5 and st_xe == 200
-           and abs((v_before_ex - v_cut) - 3 * 3.14159265 * 9) < 0.5,
-           f"{by_name} {st_ex} {ex.get('done')} {v_before_ex} {v_boss} {st_xe} {v_cut}")
-        # Delete feature with keep_sketch over server endpoint (issue #66)
-        st_del_keep, del_keep = call("feature/delete", {"name": xname, "keep_sketch": True})
-        feats_after_keep = features()
-        _, tr_keep = call("tree")
-        sk_in_tree = any(f.get("name") == "BossSketch" for f in tr_keep.get("features", []))
-        call("agent/undo", {})
-        feats_after_undo = features()
-        ok("feature/delete: keep_sketch=true deletes feature, keeps sketch as unconsumed in tree; undo restores it",
-           st_del_keep == 200 and xname not in feats_after_keep and "BossSketch" in feats_after_keep
-           and sk_in_tree and xname in feats_after_undo and del_keep.get("deleted") == [xname],
-           f"{st_del_keep} {del_keep} {feats_after_keep} {tr_keep}")
-        # Revolve dialog (issue #59): profile index and axis (sketch line, model edge, world axis) and editing
-        with srv.lock:
-            d0 = srv.ensure_current()
-            modeling.run_commands(d0, [
-                {"command": "sketch.create", "params": {"plane": "XY", "name": "RevSketch"}},
-                {"command": "sketch.circle.center", "params": {"center": [60, 10], "radius": 3}},
-                {"command": "sketch.circle.center", "params": {"center": [75, 10], "radius": 2}},
-                {"command": "sketch.line", "params": {"points": [[50, 0], [50, 20]], "construction": True}},
-                {"command": "sketch.finish", "params": {}}])
-            d0.save()
-            srv.mtime = d0.path.stat().st_mtime
-        _, rev_sks = call("sketches")
-        rev_sk = next((x for x in rev_sks.get("sketches", []) if x["name"] == "RevSketch"), {})
-        rev_p0 = next((p["index"] for p in rev_sk.get("profiles", []) if p.get("curves") == ["c1"]), 0)
-        st_rv, rv = call("feature", {"command": "solid.revolve", "params": {
-            "sketch": "RevSketch", "profiles": [rev_p0], "axis": "l1", "angle": "360 deg", "operation": "new"}})
-        rv_name = (rv.get("results") or [{}])[0].get("name")
-        st_rvi, rvi = call(f"feature?name={rv_name}") if rv_name else (500, {})
-        st_rve_edge, rve_edge = call("feature", {"command": "solid.revolve", "edit": rv_name, "preview": True, "params": {
-            "sketch": "RevSketch", "profiles": [rev_p0], "angle": "360 deg", "operation": "new_body",
-            "axis": {"type": "model", "geo": {"type": "edge", "at": [40, 10, 0]}}}})
-        st_rve_world, _ = call("feature", {"command": "solid.revolve", "edit": rv_name, "params": {
-            "sketch": "RevSketch", "profiles": [rev_p0], "angle": "180 deg", "operation": "new_body",
-            "axis": {"type": "world", "axis": "Y"}}})
-        _, rvi2 = call(f"feature?name={rv_name}") if rv_name else (500, {})
-        torus_r10 = 2 * (3.14159265 ** 2) * 10 * 9
-        ok("feature dialog: Revolve takes selected profile and sketch-line axis, inspects both for editing, "
-           "and edits to a model-edge or origin axis",
-           st_rv == 200 and abs(rv.get("delta", {}).get("volume_change_mm3", 0) - torus_r10) < 5.0
-           and st_rvi == 200 and rvi.get("dialog") == "revolve"
-           and rvi.get("definition", {}).get("axis") == {"type": "sketch_line", "curve": "l1"}
-           and rvi.get("definition", {}).get("profiles", {}).get("loops") == [["c1"]]
-           and st_rve_edge == 200 and st_rve_world == 200
-           and rvi2.get("definition", {}).get("axis") == {"type": "world", "axis": "Y"},
-           f"{st_rv} {rv.get('delta')} {rvi.get('definition')} {st_rve_edge} {st_rve_world} {rvi2.get('definition')}")
-        # Sketch dialog: the plane's frame without leaving a sketch, then a fully dimensioned rectangle and
-        # circle on the XZ plane (sizes as parameters), extruded symmetric into a new body
-        st_sp, frame = call("sketch_plane?plane=XZ")
-        n_before = len(features())
-        st_sk, sk_res = call("feature", {"command": "mechvane.sketch", "params": {"plane": "XZ", "shapes": [
-            {"type": "rectangle", "x": 50, "y": 0, "w": 20, "h": 10}, {"type": "circle", "x": 60, "y": 5, "d": 4}]}})
-        skname = (sk_res.get("results") or [{}])[0].get("name")
-        with srv.lock:
-            skins = srv.ensure_current().session.cmd("sketch.inspect", {"sketch": skname}) if skname else {}
-        st_ske, _ = call("feature", {"command": "solid.extrude", "params": {
-            "sketch": skname, "distance": 6, "direction": "symmetric", "operation": "new"}})
-        with srv.lock:
-            bodies_sk = srv.ensure_current().session.cmd("document.inspect", {"measure": True})["bodies"]
-        new_body = [b for b in bodies_sk if abs(b["volume_mm3"] - (20 * 10 - 3.14159265 * 4) * 6) < 0.5]
-        _, hist_sk = call("history")
-        ok("feature dialog: sketch plane frame (XZ: y along +Z, Z up as in Inventor) leaves nothing behind; a sketch with a rectangle and a "
-           "circle is fully defined, one undo step, and extrudes into the expected body",
-           st_sp == 200 and [round(v) for v in frame.get("y_dir", [])] == [0, 0, 1] and st_sk == 200 and skname
-           and skins.get("fully_constrained") is True and len(features()) == n_before + 2 and st_ske == 200
-           and len(new_body) == 1 and hist_sk.get("undo", "").startswith("Solid") is False,
-           f"{st_sp} {frame} {st_sk} {sk_res} {skins.get('dof')} {st_ske} {[b['volume_mm3'] for b in bodies_sk]} {hist_sk}")
-        # negative positions: a sketch dimension has no sign, the shape stays on the negative side
-        st_neg, neg = call("feature", {"command": "mechvane.sketch", "params": {"plane": "XY", "shapes": [
-            {"type": "rectangle", "x": -30, "y": -8, "w": 6, "h": 4}, {"type": "circle", "x": -40, "y": -5, "d": 3}]}})
-        negname = (neg.get("results") or [{}])[0].get("name")
-        with srv.lock:
-            pts = srv.ensure_current().session.cmd("sketch.inspect", {"sketch": negname}).get("points", []) if negname else []
-        xs = sorted(round(pt.get("at", pt.get("position", [0, 0]))[0], 6) for pt in pts if pt.get("id") != "origin")
-        ok("feature dialog: a sketch takes negative positions (rectangle at -30/-8, circle at -40/-5)",
-           st_neg == 200 and xs and min(xs) == -40 and -30 in xs, f"{st_neg} {neg} {xs} {str(pts)[:300]}")
-        st_dx, _ = call("feature/delete", {"name": "NoSuchFeature"})
-        st_ex, _ = call("feature?name=Base")
-        ok("feature dialog: unknown features are 404, features without a dialog (a sketch) cannot be opened for editing (403)",
-           st_dx == 404 and st_ex == 403, f"{st_dx} {st_ex}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-    # Hole positioned by distances from two edges (issue #43)
-    p_refs = w.new(PART, "plate_refs")
-    p_refs.session.batch([
-        {"command": "parameters.add", "params": {"name": "len", "expression": "60 mm"}},
-        {"command": "parameters.add", "params": {"name": "wid", "expression": "40 mm"}},
-        {"command": "solid.box", "params": {"length": "len", "width": "wid", "height": 10, "corner": [0, 0, 0], "name": "Box"}},
-    ])
-    p_refs.save()
-    w.close_all()
-    srv_ref = ui_server.create_server(str(folder / "plate_refs.solidcraft"), port=0)
-    threading.Thread(target=srv_ref.serve_forever, daemon=True).start()
-    base_ref = f"http://127.0.0.1:{srv_ref.server_address[1]}/api/"
-
-    def call_ref(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base_ref + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    try:
-        st_hr, hr = call_ref("feature", {"command": "solid.hole", "params": {
-            "name": "RefHole", "position": [30, 20, 10], "diameter": 5,
-            "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [30, 0, 10], "distance": 12}]}})
-        with srv_ref.lock:
-            h1 = query.find(srv_ref.ensure_current(), "holes")
-        st_get, hget = call_ref("feature?name=RefHole")
-        st_he, he = call_ref("feature", {"command": "solid.hole", "edit": "RefHole", "params": {
-            "references": [{"edge": [0, 20, 10], "distance": 20}, {"edge": [30, 0, 10], "distance": 12}]}})
-        with srv_ref.lock:
-            h2 = query.find(srv_ref.ensure_current(), "holes")
-        st_hp, hp = call_ref("params", {"changes": {"len": "80 mm"}})
-        with srv_ref.lock:
-            h3 = query.find(srv_ref.ensure_current(), "holes")
-        st_bad, bad = call_ref("feature", {"command": "solid.hole", "params": {
-            "name": "BadHole", "position": [30, 20, 10], "diameter": 5,
-            "references": [{"edge": [0, 20, 10], "distance": 15}, {"edge": [80, 20, 10], "distance": 15}]}})
-        ok("feature dialog: hole positioned by distances to two straight edges (15 and 12 mm), edited to 20 mm, "
-           "keeps distance when part length parameter changes; parallel edges rejected",
-           st_hr == 200 and h1 and h1[0].get("pick") == [15.0, 12.0, 10.0] and h1[0].get("center")[:2] == [15.0, 12.0]
-           and len(hget.get("definition", {}).get("references", [])) == 2
-           and st_he == 200 and h2 and h2[0].get("pick") == [20.0, 12.0, 10.0] and h2[0].get("center")[:2] == [20.0, 12.0]
-           and st_hp == 200 and h3 and h3[0].get("pick") == [20.0, 12.0, 10.0] and h3[0].get("center")[:2] == [20.0, 12.0]
-           and st_bad == 400 and "parallel" in bad.get("error", "").lower(),
-           f"{st_hr} {h1} {st_he} {h2} {st_hp} {h3} {st_bad} {bad.get('error')}")
-    finally:
-        srv_ref.shutdown()
-        srv_ref.server_close()
-
-
-def centred_hole_dialog_checks(tmp):
-    """Bohrungsdialog: mittig gesetzte Bohrung bearbeiten (issue #72).
-    A hole placed with 'Middle of face' (centred on rectangular face or concentric on circular face)
-    is recognized as centred in /api/feature, can be edited via /api/feature (e.g. diameter 6 to 8),
-    and stays centred when the parent geometry is resized."""
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "centred_hole_edit"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        part = w.new(PART, "plate")
-        part.session.cmd("parameters.add", {"name": "L", "expression": "60 mm"})
-        part.session.cmd("solid.box", {
-            "corner": [0, 0, 0], "length": "L", "width": 40, "height": 10,
-            "operation": "new", "body_name": "Plate", "name": "Box1"
-        })
-        part.save()
-    finally:
-        w.close_all()
-
-    path = folder / "plate.solidcraft"
-    srv = ui_server.create_server(str(path), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    try:
-        # 1. Place centred hole Ø 6 on top face (60x40 plate)
-        st, res = call("feature", {"command": "solid.hole", "params": {
-            "centre": True, "position": [30, 20, 10], "direction": [0, 0, -1], "diameter": 6, "depth": None
-        }})
-        hname = next(r["name"] for r in res.get("results", []) if "name" in r and not r["name"].startswith("Hole centre"))
-        ok("centred hole dialog: hole placed in middle of plate face", st == 200 and hname == "Hole1", f"{st} {res}")
-
-        # 2. Inspect Hole1 via /api/feature?name=Hole1
-        st_i, insp = call(f"feature?name={urllib.parse.quote(hname)}")
-        ok("centred hole dialog: /api/feature recognizes hole as centred",
-           st_i == 200 and insp.get("dialog") == "hole" and insp.get("definition", {}).get("centre") is True,
-           f"{st_i} {insp}")
-
-        # 3. Preview edit to Ø 8
-        st_p, prev = call("feature", {"command": "solid.hole", "edit": hname, "preview": True, "params": {
-            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
-        }})
-        ok("centred hole dialog: preview edit to dia 8 succeeds",
-           st_p == 200 and prev.get("delta", {}).get("volume_change_mm3", 0) < 0, f"{st_p} {prev}")
-
-        # 4. Apply edit to Ø 8
-        st_e, ed = call("feature", {"command": "solid.hole", "edit": hname, "params": {
-            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
-        }})
-        ok("centred hole dialog: edit applied", st_e == 200, f"{st_e} {ed}")
-
-        # 5. Change plate length from 60 to 80 mm via /api/params
-        st_par, _ = call("params", {"changes": {"L": "80 mm"}})
-        ok("centred hole dialog: parameter L changed to 80 mm", st_par == 200)
-
-        # 6. Verify hole diameter is 8 and axis is at x = 40
-        with srv.lock:
-            doc = srv.ensure_current()
-            topo = doc.session.tool("body_topology", {"body": "Plate"})
-            cyls = [f["cylinder"] for f in topo.get("faces", []) if f.get("cylinder")]
-        ok("centred hole dialog: after resize to 80 mm, hole diameter is 8 and axis is at x = 40",
-           len(cyls) > 0 and all(abs(c["radius"] - 4.0) < 1e-4 and abs(c["origin"][0] - 40.0) < 1e-4
-                                and abs(c["origin"][1] - 20.0) < 1e-4 for c in cyls), f"cyls={cyls}")
-
-        # 7. Concentric hole on cylinder (dia D=40 mm, height 30 mm)
-        with srv.lock:
-            doc = srv.ensure_current()
-            doc.session.cmd("parameters.add", {"name": "D", "expression": "40 mm"})
-            doc.session.cmd("solid.cylinder", {
-                "base": [100, 0, 0], "diameter": "D", "height": 30,
-                "operation": "new", "body_name": "Cyl", "name": "Cyl1"
-            })
-            doc.save()
-            srv.mtime = doc.path.stat().st_mtime
-
-        st_ch, ch_res = call("feature", {"command": "solid.hole", "params": {
-            "centre": True, "position": [105, 5, 30], "direction": [0, 0, -1], "diameter": 6, "depth": None
-        }})
-        ch_name = next(r["name"] for r in ch_res.get("results", []) if "name" in r and not r["name"].startswith("Hole centre"))
-        ok("centred hole dialog: concentric hole placed on cylinder", st_ch == 200 and ch_name == "Hole2", f"{st_ch} {ch_res}")
-
-        # Inspect Hole2
-        st_ci, cinsp = call(f"feature?name={urllib.parse.quote(ch_name)}")
-        ok("centred hole dialog: /api/feature recognizes concentric hole as centred",
-           st_ci == 200 and cinsp.get("definition", {}).get("centre") is True, f"{st_ci} {cinsp}")
-
-        # Edit Hole2 to Ø 8
-        st_ce, _ = call("feature", {"command": "solid.hole", "edit": ch_name, "params": {
-            "centre": True, "diameter": 8, "depth": None, "hole": {"type": "simple"}
-        }})
-        ok("centred hole dialog: concentric edit applied", st_ce == 200)
-
-        # Resize cylinder: change D from 40 to 60 mm
-        st_cd, _ = call("params", {"changes": {"D": "60 mm"}})
-        ok("centred hole dialog: parameter D changed to 60 mm", st_cd == 200)
-
-        # Verify hole axis is at x = 100, y = 0 with diameter 8
-        with srv.lock:
-            doc = srv.ensure_current()
-            cyl_topo = doc.session.tool("body_topology", {"body": "Cyl"})
-            hole_cyls = [f["cylinder"] for f in cyl_topo.get("faces", []) if f.get("cylinder") and abs(f["cylinder"]["radius"] - 4.0) < 1e-4]
-        ok("centred hole dialog: after resize to D=60, concentric hole diameter is 8 and axis stays at (100, 0)",
-           len(hole_cyls) > 0 and all(abs(c["radius"] - 4.0) < 1e-4 and abs(c["origin"][0] - 100.0) < 1e-4
-                                     and abs(c["origin"][1] - 0.0) < 1e-4 for c in hole_cyls), f"hole_cyls={hole_cyls}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
+        server.ws.close_all()
+        server.ws = old_ws
 
 
 def step_import_checks(tmp):
@@ -8166,6 +5616,18 @@ def step_import_checks(tmp):
         asm = w.new(ASSEMBLY, "asm_kauf")
         ins = links.insert(w, asm, Path(r["path"]), name="Kaufteil", grounded=True)
         ok("import_step: the imported part goes into an assembly like any part", bool(ins.get("occurrence")), str(ins)[:200])
+        # a STEP file outside the project folder (as a supplier's file in Downloads): the part file lands in the project
+        outside = Path(tmp) / "step_outside"
+        outside.mkdir()
+        ext_src = w.new(PART, "ext_src")
+        ext_src.session.cmd("solid.box", {"length": 12, "width": 8, "height": 6})
+        ext_src.session.cmd("file.export_step", {"path": str(folder / "ext.step")})
+        w.close("ext_src")
+        (folder / "ext.step").rename(outside / "ext.step")
+        r_ext = step_import.import_step(w, str(outside / "ext.step"), name="Extern")
+        ok("import_step: a STEP file outside the project folder becomes a part file in the project folder",
+           (folder / "Extern.solidcraft").is_file() and len(r_ext["bodies"]) == 1
+           and abs(r_ext["bodies"][0]["volume_mm3"] - 12 * 8 * 6) < 0.5, str(r_ext)[:300])
         errs = []
         for bad in ({"source": "nope.step"}, {"source": "block_src.solidcraft"}, {"source": "block.step", "name": "Kaufteil"}):
             try:
@@ -8234,271 +5696,6 @@ def step_import_checks(tmp):
            f"r_split={r_split} vols_ok={vols_ok} bbox_ok={bbox_ok} grounded_ok={grounded_ok} no_joints={no_joints}")
     finally:
         w.close_all()
-
-
-def sketch_session_checks(tmp):
-    """Sketch environment (ADR 0005, addendum 2026-11-02): /api/sketch/begin opens a sketch, cmd draws one command
-    at a time, undo goes back one command, other edits and a second sketch are refused meanwhile, finish saves it as
-    one step of the shared undo list, cancel leaves nothing, edit opens an existing sketch again."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "sketching"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        w.new(PART, "plate").save()
-    finally:
-        w.close_all()
-    srv = ui_server.create_server(str(folder / "plate.solidcraft"), port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    def features():
-        with srv.lock:
-            doc = srv.ensure_current()
-            return [f["name"] for f in doc.session.cmd("document.inspect", {"measure": False})["timeline"]]
-
-    try:
-        st, b = call("sketch/begin", {"plane": "XY"})
-        ok("sketch env: begin on XY opens Sketch1", st == 200 and b.get("sketch") == "Sketch1", str(b)[:200])
-        st, b = call("sketch/cmd", {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 20]}})
-        st2, b2 = call("sketch/cmd", {"command": "sketch.circle.center", "params": {"center": [60, 10], "radius": 5}})
-        ok("sketch env: rectangle and circle give two profiles",
-           st == 200 and st2 == 200 and len(b2["state"]["profiles"]) == 2, str(b2.get("state", b2))[:200])
-        st, b = call("sketch/undo", {})
-        ok("sketch env: undo takes the circle back", st == 200 and len(b["state"]["profiles"]) == 1, str(b)[:200])
-        st, b = call("sketch/cmd", {"command": "solid.extrude", "params": {"sketch": "Sketch1", "distance": 5}})
-        st2, _ = call("sketch/begin", {"plane": "XZ"})
-        st3, _ = call("feature", {"command": "solid.box", "params": {"length": 1, "width": 1, "height": 1}})
-        ok("sketch env: no solid command, no second sketch, no feature dialog while a sketch is open",
-           st == 403 and st2 == 409 and st3 == 409, f"{st} {st2} {st3}")
-        # a dimension, then its value changed through its parameter (double-click in the sketcher), then undone
-        st, b = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l1"], "type": "length"}})
-        param = b.get("result", {}).get("param")
-        st2, b2 = call("sketch/cmd", {"command": "parameters.change", "params": {"changes": {param: "55"}}})
-        widths = [round(c["value"], 3) for c in b2.get("state", {}).get("constraints", []) if c.get("param") == param]
-        st4, _ = call("sketch/cmd", {"command": "parameters.add", "params": {"name": "x", "expression": "1"}})
-        call("sketch/undo", {})
-        call("sketch/undo", {})
-        ok("sketch env: a dimension's value changes through parameters.change, other parameter commands stay out",
-           st == 200 and st2 == 200 and widths == [55.0] and st4 == 403, f"{st} {st2} {widths} {st4}")
-        st, b = call("sketch/state")
-        ok("sketch env: state names the open sketch", st == 200 and b.get("active") and b.get("sketch") == "Sketch1", str(b)[:120])
-        # a page reloaded during the sketch opens the same document again: answered, not refused; another stays refused (#134)
-        st_same, b_same = call("open/plate.solidcraft", {})
-        st_other, _ = call("open/other.solidcraft", {})
-        ok("sketch env: reopening the current document during a sketch is answered, another document is refused",
-           st_same == 200 and b_same.get("document") == "plate.solidcraft" and st_other == 409, f"{st_same} {b_same} {st_other}")
-        # line types (#138): a line drawn in construction mode is construction geometry, one undo takes it back;
-        # sketch.construction switches selected curves; an unknown line type is refused
-        n_before = len(call("sketch/state")[1]["state"]["curves"])
-        st_c, b_c = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 30], [20, 30]]}, "line_type": "construction"})
-        new_curves = [c for c in b_c.get("state", {}).get("curves", []) if c.get("id") not in
-                      {x.get("id") for x in b_c.get("state", {}).get("curves", [])[:n_before]}]
-        cons = [c.get("construction") for c in new_curves]
-        _, b_u = call("sketch/undo", {})
-        n_after_undo = len(b_u.get("state", {}).get("curves", []))
-        st_t, b_t = call("sketch/cmd", {"command": "sketch.construction", "params": {"curves": ["l1"], "value": True}})
-        l1_cons = [c.get("construction") for c in b_t.get("state", {}).get("curves", []) if c.get("id") == "l1"]
-        call("sketch/undo", {})
-        st_bad, _ = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 40], [5, 40]]}, "line_type": "zigzag"})
-        ok("sketch env: construction line type for new curves (one undo step), switching selected curves, unknown type refused",
-           st_c == 200 and cons == [True] and n_after_undo == n_before and st_t == 200 and l1_cons == [True] and st_bad == 409,
-           f"{st_c} {cons} {n_after_undo}/{n_before} {st_t} {l1_cons} {st_bad}")
-        st, b = call("sketch/finish", {})
-        st_s, b_s = call("sketch/state")
-        ok("sketch env: finish keeps Sketch1 and closes the environment",
-           st == 200 and features() == ["Sketch1"] and b_s.get("active") is False, f"{b} {features()}")
-        call("sketch/begin", {"plane": "XZ"})
-        call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 0], [10, 10]]}})
-        st, _ = call("sketch/cancel", {})
-        ok("sketch env: cancel leaves nothing", st == 200 and features() == ["Sketch1"], str(features()))
-        st, b = call("sketch/begin", {"edit": "Sketch1"})
-        call("sketch/cmd", {"command": "sketch.circle.center", "params": {"center": [80, 10], "radius": 3}})
-        st2, _ = call("sketch/finish", {})
-        with srv.lock:
-            doc = srv.ensure_current()
-            profiles = doc.session.cmd("sketch.inspect", {"sketch": "Sketch1"})["profiles"]
-        ok("sketch env: edit opens Sketch1 again and keeps the new circle", st == 200 and st2 == 200 and len(profiles) == 2,
-           str(profiles)[:120])
-        st, _ = call("agent/undo", {})
-        with srv.lock:
-            doc = srv.ensure_current()
-            profiles = doc.session.cmd("sketch.inspect", {"sketch": "Sketch1"})["profiles"]
-        ok("sketch env: one undo takes the whole edit session back", st == 200 and len(profiles) == 1, str(profiles)[:120])
-
-        # Issue #68: sketch on a planar body face automatically projects outer edges and inner hole loops,
-        # allows snapping/dimensioning to projected corners, follows model changes, undoes in one step,
-        # and can be disabled via project_edges=False or /api/sketch/auto_project
-        call("sketch/begin", {"edit": "Sketch1"})
-        _, dim_b = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l1"], "type": "length", "value": 40}})
-        w_param = dim_b.get("result", {}).get("param")
-        call("sketch/finish", {})
-        st_ex, _ = call("feature", {"command": "solid.extrude", "params": {"sketch": "Sketch1", "distance": 10}})
-        st_fb, fb = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
-        fb_state = fb.get("state", {})
-        fb_lines = [c for c in fb_state.get("curves", []) if c.get("type") == "line" and c.get("link") and c.get("fixed")]
-        st_ln, ln_b = call("sketch/cmd", {"command": "sketch.line", "params": {"points": [[0, 0], [10, 5]], "connect": True}})
-        st_dm, _ = call("sketch/cmd", {"command": "sketch.dimension", "params": {"entities": ["l5"], "type": "length", "value": 12}})
-        coinc = [k for k in ln_b.get("state", {}).get("constraints", []) if k.get("type") == "coincident"]
-        st_ff, ff_b = call("sketch/finish", {})
-        face_sk = ff_b.get("sketch")
-        ok("sketch env (#68): sketch on face auto-projects 4 outer lines, line snaps with coincident to corner and dimensions",
-           st_ex == 200 and st_fb == 200 and fb.get("can_undo") is False and len(fb_lines) == 4
-           and st_ln == 200 and st_dm == 200 and st_ff == 200 and len(coinc) >= 1 and face_sk in features(),
-           f"{st_fb} lines={len(fb_lines)} can_undo={fb.get('can_undo')} coinc={coinc} features={features()}")
-        # Model change updates projected face edges in the sketch (width 40 -> 50)
-        st_pc, _ = call("params", {"changes": {w_param: "50"}})
-        with srv.lock:
-            doc = srv.ensure_current()
-            insp_after = doc.session.cmd("sketch.inspect", {"sketch": face_sk})
-        max_x = max((max(c["start_at"][0], c["end_at"][0]) for c in insp_after.get("curves", [])
-                     if c.get("type") == "line" and c.get("link")), default=0)
-        ok("sketch env (#68): projected face edges follow upstream model changes (width 40 -> 50)",
-           st_pc == 200 and abs(max_x - 50.0) < 1e-3, f"{st_pc} max_x={max_x}")
-        call("agent/undo", {})  # undo parameter change
-        st_u_sk, _ = call("agent/undo", {})  # undo face sketch + auto-projection in one step
-        ok("sketch env (#68): undo reverts face sketch and projected edges as one step",
-           st_u_sk == 200 and face_sk not in features(), f"{st_u_sk} {features()}")
-        # Face with a hole: inner boundary edges are projected too
-        st_hl, _ = call("feature", {"command": "solid.hole", "params": {
-            "position": [20, 10, 10], "direction": [0, 0, -1], "diameter": 6}})
-        st_fh, fh = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
-        fh_curves = fh.get("state", {}).get("curves", [])
-        fh_lines = [c for c in fh_curves if c.get("type") == "line" and c.get("link")]
-        fh_arcs = [c for c in fh_curves if c.get("type") == "arc" and c.get("link") and abs(c.get("radius", 0) - 3.0) < 1e-3]
-        call("sketch/cancel", {})
-        ok("sketch env (#68): sketch on face with hole auto-projects outer lines and inner hole arcs",
-           st_hl == 200 and st_fh == 200 and len(fh_lines) == 4 and len(fh_arcs) == 2,
-           f"{st_hl} {st_fh} lines={len(fh_lines)} arcs={len(fh_arcs)}")
-        # Disable via project_edges=False and via /api/sketch/auto_project
-        st_np1, np1 = call("sketch/begin", {"plane": {"face": [5, 5, 10]}, "project_edges": False})
-        call("sketch/cancel", {})
-        st_ap, ap_b = call("sketch/auto_project", {"value": False})
-        st_np2, np2 = call("sketch/begin", {"plane": {"face": [5, 5, 10]}})
-        call("sketch/cancel", {})
-        call("sketch/auto_project", {"value": True})
-        ok("sketch env (#68): auto-projection can be disabled per begin or via /api/sketch/auto_project",
-           st_np1 == 200 and len(np1.get("state", {}).get("curves", [])) == 0
-           and st_ap == 200 and ap_b.get("auto_project") is False
-           and st_np2 == 200 and len(np2.get("state", {}).get("curves", [])) == 0,
-           f"{st_np1} {np1.get('state', {}).get('curves')} {st_ap} {ap_b} {st_np2} {np2.get('state', {}).get('curves')}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def sessionlog_checks(tmp):
-    """Session log for debugging test sessions: api requests, browser events (/api/log), agent decisions,
-    developer messages to the agent, long values cut, old logs removed."""
-    import urllib.request
-    from datetime import datetime, timedelta
-    from mechvane import install
-    from mechvane.ui import agent as ag, server as ui_server, sessionlog
-
-    old_cache = install.CACHE
-    install.CACHE = Path(tmp) / "logcache"
-    sessionlog._pruned = False
-    try:
-        logs = install.CACHE / "logs"
-        logs.mkdir(parents=True)
-        stale = logs / f"{(datetime.now() - timedelta(days=30)):%Y-%m-%d}.jsonl"
-        stale.write_text("{}\n")
-        folder = Path(tmp) / "logproj"
-        folder.mkdir()
-        w = Workspace(folder)
-        try:
-            w.new(PART, "p").save()
-        finally:
-            w.close_all()
-        srv = ui_server.create_server(str(folder / "p.solidcraft"), port=0)
-        threading.Thread(target=srv.serve_forever, daemon=True).start()
-        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-        try:
-            urllib.request.urlopen(base + "version").read()
-            req = urllib.request.Request(base + "log", method="POST", headers={"Content-Type": "application/json"},
-                                         data=json.dumps({"events": [
-                {"kind": "click", "what": "btn-fillet"}, {"kind": "js_error", "message": "x" * 5000}]}).encode())
-            urllib.request.urlopen(req).read()
-            req = urllib.request.Request(base + "feature", method="POST", headers={"Content-Type": "application/json"},
-                                         data=json.dumps({"command": "solid.shell", "params": {}}).encode())
-            try:
-                urllib.request.urlopen(req)
-            except urllib.error.HTTPError:
-                pass
-        finally:
-            srv.shutdown()
-            srv.server_close()
-        sessionlog.log("agent_permission", tool="mcp__mechvane__run", allowed=False, reason="test")
-        today = logs / f"{datetime.now():%Y-%m-%d}.jsonl"
-        lines = [json.loads(x) for x in today.read_text(encoding="utf-8").splitlines()]
-        kinds = [(e.get("kind"), e.get("event") or e.get("path")) for e in lines]
-        click = next((e for e in lines if e.get("event") == "click"), {})
-        err = next((e for e in lines if e.get("event") == "js_error"), {})
-        refused = next((e for e in lines if e.get("path") == "/api/feature"), {})
-        msg = ag.AgentTurns(folder)._message("which tools?", [], "p.solidcraft", "developer")
-        ok("session log: browser events and refused api calls with their error, the agent's decisions; polls left "
-           "out; long values cut; logs older than 14 days removed; developer messages are marked for the agent",
-           click.get("what") == "btn-fillet" and len(err.get("message", "")) < 2100
-           and refused.get("status") == 403 and "not available" in refused.get("error", "")
-           and ("agent_permission", None) in kinds and not any(p == "/api/version" for _, p in kinds)
-           and not stale.exists() and "Developer: which tools?" in msg and "Mechvane developer" in msg,
-           f"{kinds} {stale.exists()} {msg[:120]}")
-    finally:
-        install.CACHE = old_cache
-
-
-def window_close_checks(tmp):
-    """The app window closed (the page said "closing" and nothing came after): the server stops after a few seconds,
-    although the browser process lives on (Chrome on Windows); a reload (a request after "closing") keeps it."""
-    import time
-    import urllib.request
-    from mechvane.ui import server as ui_server
-    folder = Path(tmp) / "winclose"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        w.new(PART, "p").save()
-    finally:
-        w.close_all()
-    old = ui_server.CLOSING_GRACE_S
-    ui_server.CLOSING_GRACE_S = 1
-    try:
-        results = []
-        for reload_after in (False, True):
-            srv = ui_server.create_server(str(folder / "p.solidcraft"), port=0)
-            t = threading.Thread(target=srv.serve_forever, daemon=True)
-            t.start()
-            watcher = threading.Thread(target=ui_server._watch_closing, args=(srv,), daemon=True)
-            watcher.start()
-            base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-            urllib.request.urlopen(urllib.request.Request(base + "closing", method="POST", data=b"{}",
-                                                          headers={"Content-Type": "application/json"})).read()
-            if reload_after:
-                time.sleep(0.2)
-                urllib.request.urlopen(base + "version").read()
-            t.join(timeout=8)
-            results.append(not t.is_alive())
-            if t.is_alive():
-                srv.shutdown()
-            srv.server_close()
-        ok("ui: a closed app window stops the server (page says closing, nothing follows); a reload keeps it",
-           results == [True, False], str(results))
-    finally:
-        ui_server.CLOSING_GRACE_S = old
 
 
 def roadmap_json_checks():
@@ -8588,51 +5785,11 @@ def session_env_checks():
        and session_env("win32", {"WGPU_BACKEND": "vulkan"}, intel)["WGPU_BACKEND"] == "vulkan")
 
 
-def demo_folder_checks(tmp):
-    """`mechvane ui --demo` after a first build that broke off, and temp files in the system temp folder."""
-    import tempfile as _tempfile
-    from mechvane import cli, install
-    from mechvane.examples import DEMOS
-    from mechvane.ui import mesh, server as ui_server
-
-    old = install.CACHE
-    install.CACHE = Path(tmp) / "democache"
-    try:
-        stale = install.CACHE / "demo"
-        stale.mkdir(parents=True)
-        (stale / "top_plate.solidcraft").write_text("left over from a crash")
-        folder = cli.demo_folder()
-        names = sorted(p.name for p in folder.glob("*.solidcraft"))
-        w = Workspace(folder)
-        try:
-            asm = w.open("bolted_plates.solidcraft")
-            bad = [c for c in links.check(w, asm) if c.get("status") != "ok"]
-        finally:
-            w.close_all()
-        (folder / "top_plate.solidcraft").unlink()
-        rebuilt = cli.demo_folder()
-        ok("demo: a part file missing from a finished demo is built again",
-           (rebuilt / "top_plate.solidcraft").is_file() and (rebuilt / ".complete").is_file())
-        ok("demo: a broken first build is replaced, the assembly finds its parts",
-           all(f"{n}.solidcraft" in names for n, _, _ in DEMOS)
-           and not bad, f"{names} {bad}")
-    finally:
-        install.CACHE = old
-
-    srv = ui_server.create_server(str(folder / "bracket.solidcraft"), port=0)
-    try:
-        temp = Path(_tempfile.gettempdir()).resolve()
-        ok("ui: scratch folder and mesh export in the system temp folder",
-           temp in srv.tmp_dir.resolve().parents and mesh._allowed_export_dir(srv.doc, tmp_dir=None) is not None,
-           str(srv.tmp_dir))
-    finally:
-        srv.server_close()
-
-
 def moved_project_checks(tmp):
     """A project folder moved (or copied to another computer): assemblies still find their parts."""
     import shutil as _shutil
-    from mechvane import METADATA_KEY, examples
+    from mechvane import METADATA_KEY
+    import example_models as examples
 
     a = Path(tmp) / "moved" / "before"
     a.mkdir(parents=True)
@@ -8698,69 +5855,14 @@ def moved_project_checks(tmp):
 
 
 def empty_part_mesh_check(tmp):
-    """A new part without bodies yet: the Check page gets an empty mesh, not an error."""
-    from mechvane.ui.mesh import collect_mesh
+    """A new part without bodies yet: an empty mesh, not an error."""
+    from mechvane.mesh import collect_mesh
     w = Workspace(Path(tmp) / "emptypart")
     try:
         doc = w.new(PART, "leer")
-        ok("ui: a part without bodies has an empty mesh", collect_mesh(doc) == {"bodies": []})
+        ok("mesh: a part without bodies has an empty mesh", collect_mesh(doc) == {"bodies": []})
     finally:
         w.close_all()
-
-
-def single_instance_check(tmp):
-    """A second `mechvane ui` for the same folder opens a window on the running server instead of a new one."""
-    from mechvane.ui import server as ui_server
-    folder = Path(tmp) / "single"
-    folder.mkdir()
-    first = ui_server.create_server(str(folder), port=0)
-    threading.Thread(target=first.serve_forever, daemon=True).start()
-    port = first.server_address[1]
-    try:
-        opened = []
-        ui_server.run_server(str(folder), port=port, opener=lambda url, stop: opened.append(url))
-        other = Path(tmp) / "single-other"
-        other.mkdir()
-        done = threading.Thread(target=ui_server.run_server, args=(str(other),),
-                                kwargs={"port": port, "opener": lambda url, stop: (opened.append(url), stop())}, daemon=True)
-        done.start()
-        done.join(20)
-        ok("ui: same folder again reuses the running server, another folder gets its own",
-           opened[0] == f"http://127.0.0.1:{port}/" and len(opened) == 2 and not opened[1].endswith(f":{port}/")
-           and not done.is_alive(), str(opened))
-    finally:
-        first.shutdown()
-        first.server_close()
-
-
-def quit_check(tmp):
-    """The UI says whether closing the window stops Mechvane; a browser tab gets Quit (/api/quit)."""
-    import urllib.request
-    from mechvane.ui import server as ui_server
-    folder = Path(tmp) / "quit"
-    folder.mkdir()
-    port_box = []
-    opener = lambda url, stop: port_box.append(url) or "window"  # noqa: E731
-    done = threading.Thread(target=ui_server.run_server, args=(str(folder),), kwargs={"port": 0, "opener": opener},
-                            daemon=True)
-    done.start()
-    for _ in range(100):
-        if port_box:
-            break
-        threading.Event().wait(0.1)
-    url = port_box[0] if port_box else "http://127.0.0.1:1/"
-    threading.Event().wait(0.3)
-    try:
-        with urllib.request.urlopen(url + "api/about", timeout=5) as r:
-            about = json.loads(r.read())
-        req = urllib.request.Request(url + "api/quit", data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req, timeout=5) as r:
-            stopped = json.loads(r.read())
-    except OSError as e:
-        about, stopped = {"error": str(e)}, {}
-    done.join(10)
-    ok("ui: app window owns the server (about says so), Quit stops it",
-       about.get("stops_with_window") is True and stopped.get("stopped") and not done.is_alive(), f"{about} {stopped}")
 
 
 def edge_touches_check():
@@ -9576,15 +6678,12 @@ def sc_locate_checks(ws):
 
 
 def sc_errors_stage2_checks(ws):
-    """Stage 2 error translation (issue #42): translated errors for all MCP tools and /api/feature.
+    """Stage 2 error translation (issue #42): translated errors for all MCP tools.
     (a) add_joint with known error raises RuntimeError with explanation and hint in the error text;
-    (b) /api/feature with oversized fillet returns explanation and hint in both preview and apply;
+    (b) run with an oversized fillet raises explanation, hint and the place, and leaves the part as it was;
     (c) unknown errors remain unchanged without empty additions."""
-    import urllib.error
-    import urllib.request
     from unittest.mock import patch
     from mechvane.solidcraft import SolidCraftError
-    from mechvane.ui import server as ui_server
 
     orig_ws = server.ws
     server.ws = ws
@@ -9625,7 +6724,7 @@ def sc_errors_stage2_checks(ws):
         finally:
             ws.close("sc2_err_asm")
 
-        # (b) /api/feature with a fillet whose radius is too large returns explanation and hint
+        # (b) run with a fillet whose radius is too large: explanation, hint and the place, the part as it was
         block_doc = ws.new(PART, "sc2_err_block")
         block_doc.session.batch([
             {"command": "sketch.create", "params": {"plane": "XY", "name": "Base"}},
@@ -9634,69 +6733,43 @@ def sc_errors_stage2_checks(ws):
             {"command": "solid.extrude", "params": {"sketch": "Base", "distance": 10, "name": "Block"}}
         ])
         block_doc.save()
-        part_path = block_doc.path
-        srv = ui_server.create_server(str(part_path), port=0)
-        t = threading.Thread(target=srv.serve_forever, daemon=True)
-        t.start()
-        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
         try:
-            def call_feature(body):
-                req = urllib.request.Request(
-                    base + "feature",
-                    data=json.dumps(body).encode(),
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
+            def run_error(commands):
                 try:
-                    with urllib.request.urlopen(req) as resp:
-                        return resp.status, json.loads(resp.read())
-                except urllib.error.HTTPError as err:
-                    return err.code, json.loads(err.read())
+                    server.run("sc2_err_block", commands)
+                except Exception as e:  # noqa: BLE001 - the error itself is what is checked
+                    return e
+                return None
+
+            def state():
+                insp = block_doc.session.cmd("document.inspect", {"measure": True})
+                return [f["name"] for f in insp["timeline"]], [round(b["volume_mm3"], 3) for b in insp["bodies"]]
 
             exp_fillet = next(x for x in sc_errors.ERROR_TABLE if x["code"] == "blend_too_large")
+            before = state()
+            err = run_error([{"command": "solid.fillet", "params": {"edges": [[10, 20, 10]], "radius": 50}}])
+            explanation = getattr(err, "explanation", None) or {}
+            ok("sc_errors stage 2 (b): run with an oversized fillet raises explanation and hint",
+               isinstance(err, sc_errors.ExplainedError) and explanation.get("code") == "blend_too_large"
+               and exp_fillet["message"] in str(err) and exp_fillet["hint"] in str(err),
+               f"{type(err).__name__}: {err}")
+            place = getattr(err, "location", None) or {}
+            brief = sc_locate.brief(place) if place else {}
+            ok("sc_locate: run names the edge and the face that is too narrow for the fillet",
+               "the edge of Block" in place.get("text", "") and "only 10 mm wide" in place.get("text", "")
+               and place.get("kind") == "blend" and brief.get("at") == [10.0, 20.0, 10.0]
+               and f"Where: {place.get('text')}" in str(err),
+               f"{place.get('text')} {place.get('kind')} {brief}")
+            ok("sc_errors stage 2 (b): the refused fillet leaves the part as it was",
+               state() == before, f"{before} {state()}")
 
-            # Preview with radius too large
-            st_prev, data_prev = call_feature({
-                "command": "solid.fillet",
-                "params": {"edges": [[10, 20, 10]], "radius": 50},
-                "preview": True
-            })
-            ok("sc_errors stage 2 (b): /api/feature preview with oversized fillet returns explanation and hint",
-               st_prev == 400
-               and data_prev.get("explanation") == exp_fillet["message"]
-               and data_prev.get("hint") == exp_fillet["hint"]
-               and "SolidCraft:" in data_prev.get("error", ""),
-               f"st={st_prev} data={data_prev}")
-            ok("sc_locate: /api/feature names the edge and the face that is too narrow for the fillet",
-               "the edge of Block" in data_prev.get("where", "") and "only 10 mm wide" in data_prev.get("where", "")
-               and data_prev.get("location", {}).get("kind") == "blend"
-               and data_prev.get("location", {}).get("at") == [10.0, 20.0, 10.0],
-               f"{data_prev.get('where')} {data_prev.get('location')}")
-
-            # Apply with radius too large
-            st_apply, data_apply = call_feature({
-                "command": "solid.fillet",
-                "params": {"edges": [[10, 20, 10]], "radius": 50},
-                "preview": False
-            })
-            ok("sc_errors stage 2 (b): /api/feature apply with oversized fillet returns explanation and hint",
-               st_apply == 400
-               and data_apply.get("explanation") == exp_fillet["message"]
-               and data_apply.get("hint") == exp_fillet["hint"]
-               and "SolidCraft:" in data_apply.get("error", ""),
-               f"st={st_apply} data={data_apply}")
-
-            # (c-2) /api/feature with an unknown error has no explanation or hint fields
-            st_unk, data_unk = call_feature({"command": "solid.fillet", "params": {"edges": "invalid_type"}})
-            ok("sc_errors stage 2 (c): /api/feature with unknown error does not add empty explanation or hint",
-               st_unk == 400
-               and "explanation" not in data_unk
-               and "hint" not in data_unk
-               and "error" in data_unk,
-               f"st={st_unk} data={data_unk}")
+            # (c-2) an error explain() does not know comes back without an explanation
+            err_unk = run_error([{"command": "solid.fillet", "params": {"edges": "invalid_type"}}])
+            ok("sc_errors stage 2 (c): run with an unknown error adds no explanation or hint",
+               err_unk is not None and getattr(err_unk, "explanation", None) is None
+               and not any(x["hint"] in str(err_unk) for x in sc_errors.ERROR_TABLE),
+               f"{type(err_unk).__name__}: {err_unk}")
         finally:
-            srv.shutdown()
-            srv.server_close()
             ws.close("sc2_err_block")
 
         # (c-3) sc_errors.reraise re-raises unknown exception unchanged
@@ -9886,9 +6959,6 @@ def part_end_checks(ws):
 
 def bill_of_materials_checks(ws):
     import csv
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
 
     orig_ws = server.ws
     server.ws = ws
@@ -9941,50 +7011,19 @@ def bill_of_materials_checks(ws):
         )
         asm.save()
 
-        # Place a standard part via UI endpoint POST /api/assembly/standard, then test GET /api/assembly/bom
+        # Place a standard part (DIN 625 608 bearing) as the MCP tools do: standard_part (unless an earlier check left
+        # the file in the workspace), then insert_part
+        std_path = ws.root / "DIN_625_608.solidcraft"
+        res_std = None
+        if not std_path.is_file():
+            res_std = server.standard_part("DIN 625", "608", name="DIN_625_608", path=str(std_path))
+        if "DIN_625_608" in ws.docs:
+            ws.close("DIN_625_608")
+        ins_std = server.insert_part("bom_main_asm", str(std_path), translate=[40, 0, 10])
+        asm.save()
+        ok("BOM setup: standard_part DIN 625 608 and insert_part place the bearing in the assembly",
+           std_path.is_file() and bool(ins_std.get("name")), f"std={res_std} ins={ins_std}")
         ws.close_all()
-        srv = ui_server.create_server(ws.root, port=0)
-        threading.Thread(target=srv.serve_forever, daemon=True).start()
-        base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-        def call(endpoint, body=None):
-            headers = {"Content-Type": "application/json"} if body is not None else {}
-            req = urllib.request.Request(
-                base + endpoint,
-                method="POST" if body is not None else "GET",
-                data=json.dumps(body).encode() if body is not None else None,
-                headers=headers,
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    return resp.status, json.loads(resp.read().decode("utf-8"))
-            except urllib.error.HTTPError as e:
-                return e.code, json.loads(e.read().decode("utf-8"))
-
-        try:
-            st_op_part, _ = call("open/bom_plate1.solidcraft", {})
-            st_bom_part, err_bom_part = call("assembly/bom")
-            ok("BOM HTTP: GET /api/assembly/bom returns 400 when a part is open",
-               st_op_part == 200 and st_bom_part == 400 and bool(err_bom_part.get("error")),
-               f"open={st_op_part} bom=({st_bom_part}, {err_bom_part})")
-
-            st_op_asm, _ = call("open/bom_main_asm.solidcraft", {})
-            st_std, res_std = call("assembly/standard", {"norm": "DIN 625", "size": "608", "translate": [40, 0, 10]})
-            ok("BOM setup: Place Standard Part via /api/assembly/standard succeeds",
-               st_op_asm == 200 and st_std == 200 and res_std.get("designation") == "DIN 625 608",
-               f"open={st_op_asm} std=({st_std}, {res_std})")
-
-            st_bom_s, http_s = call("assembly/bom")
-            st_bom_f, http_f = call("assembly/bom?flat=true")
-            st_bom_bad, err_bad = call("assembly/bom?flat=invalid")
-            ok("BOM HTTP: GET /api/assembly/bom returns structured and flat BOM JSON and rejects bad flat param",
-               st_bom_s == 200 and http_s.get("flat") is False and http_s.get("count") == 8
-               and st_bom_f == 200 and http_f.get("flat") is True and http_f.get("count") == 8
-               and st_bom_bad == 400 and bool(err_bad.get("error")),
-               f"s=({st_bom_s}, {http_s.get('count')}) f=({st_bom_f}, {http_f.get('count')}) bad={st_bom_bad}")
-        finally:
-            srv.shutdown()
-            srv.server_close()
 
         # Re-open main assembly in ws to verify MCP tool & CSV export on the same assembly
         asm = ws.open("bom_main_asm.solidcraft")
@@ -10589,34 +7628,6 @@ def gate_class_checks():
        all(cls(p) == "C" for p in ("tools/agent_clone.sh", "tools/gemini_queue.sh", "tools/upstream_watch.py",
                                    "tests/tasks/scharnier/grade.py", "tools/status_collect.py", "tools/systemd/x.timer")))
     ok("gate: a count of ok( calls is read from a revision", gt.count_checks("HEAD") > 500, str(gt.count_checks("HEAD")))
-    # #115: a branch that touches nothing the UI runs on is checked against main before it goes back
-    ok("gate: only the frozen UI, the live demo and their smokes count as UI paths; kernel code and pyproject.toml do not (#115, #179)",
-       gt.ui_independent(["tests/tasks/welle/grade.py", "docs/x.md", "katalog/a.json", "mechvane/links.py", "pyproject.toml"])
-       and not gt.ui_independent(["mechvane/ui/static/app.js"]) and not gt.ui_independent(["tools/ui_smoke.py"])
-       and not gt.ui_independent(["demo/replays/a.json"]) and not gt.ui_independent(["tools/build_demo_site.py"])
-       and not gt.ui_independent(["tools/demo_site/x.js"]))
-    # #179: the UI path list lives in three places (gate.py, review_branch.sh, the workflow); they must not drift
-    import re as _re
-    sh_text = (gt.REPO / "tools/review_branch.sh").read_text()
-    wf_text = (gt.REPO / ".github/workflows/platforms.yml").read_text()
-
-    def _alts(text):
-        m = _re.search(r"\^\(((?:mechvane/ui/)[^)]*)\)", text)
-        return sorted(x.replace("\\.", ".").rstrip("$") for x in m.group(1).split("|")) if m else None
-    want = sorted(gt.UI_PATHS)
-    ok("gate: UI path list is the same in gate.py, review_branch.sh and platforms.yml (#179)",
-       _alts(sh_text) == want and _alts(wf_text) == want, (want, _alts(sh_text), _alts(wf_text)))
-    head = gt.sh(["git", "rev-parse", "origin/main"])[1].strip()
-    cache = gt.REPO / "build/status" / f"main_ui_{head[:12]}.json"
-    had = cache.read_text() if cache.exists() else None
-    try:
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        cache.write_text(json.dumps({"red": True, "note": "planted"}))
-        red, note = gt.ui_red_on_main()
-    finally:
-        cache.write_text(had) if had is not None else cache.unlink(missing_ok=True)
-    ok("gate: the main counter-check is cached per main commit (no second ui_smoke run that night, #115)",
-       red is True and "zwischengespeichert" in note, f"{red} {note}")
 
 
 def py311_syntax_checks():
@@ -10653,124 +7664,6 @@ def py311_syntax_checks():
     old = scan(b'x = f"a {d[\'k\']} {g(\'s[name=\\"x\\"]\')!r}"\n')
     ok("python 3.11: no f-string syntax that needs 3.12 in versioned files (and the scan finds a planted one)",
        not bad and len(old) == 1, f"{bad[:10]} planted={old}")
-
-
-def sketch_face_pick_checks(ws):
-    """A tap near an edge gives a point on two faces; SolidCraft refuses it as ambiguous. The workspace sends the body
-    and face index it hit, and the sketch goes on that face (live demo on Android, 2026-11-16)."""
-    from mechvane import examples
-    from mechvane.ui import sketch_session as ss
-    from mechvane.documents import Workspace
-    ws = Workspace(tempfile.mkdtemp(prefix="sketchface-"))
-    doc = examples.bracket(ws)
-    s = doc.session
-    edge = [30, 30, 8]  # where the top of the plate meets the front of the wall
-
-    def make(plane):
-        cp = s.cmd("edit.checkpoint", {})["checkpoint"]
-        try:
-            s.cmd("sketch.create", ss.create_params(plane))
-            return s.cmd("sketch.inspect", {}).get("plane")
-        except Exception as e:
-            return f"ERR {e}"
-        finally:
-            s.cmd("edit.restore_checkpoint", {"checkpoint": cp})
-
-    alone = make({"face": edge})
-    ok("sketch on a face: a point on an edge alone is ambiguous (why the face is sent)", str(alone).startswith("ERR")
-       and "ambiguous" in str(alone), alone)
-    top = make({"face": edge, "body": "Bracket", "index": 1})
-    ok("sketch on a face: with body and face index the sketch goes on the face that was hit",
-       isinstance(top, dict) and top.get("origin", [0, 0, 0])[2] == 8.0 and top.get("y_dir") == [0.0, 1.0, 0.0], top)
-    ok("sketch on a face: body and index only together and well formed",
-       ss.face_plane({"face": edge, "body": "B", "index": True}) == {"face": edge}
-       and ss.face_plane({"face": edge, "index": 2}) == {"face": edge}
-       and ss.face_plane({"face": edge, "body": "B", "index": 2}) == {"face": edge, "body": "B", "index": 2})
-    ws.close_all()
-
-
-def record_replay_checks(ws):
-    """#124: a real agent session becomes a recording for the live demo: pauses cut to 2 s, the agent's text in one
-    line, changes marked, paths and the computer's name taken out, an unknown tool refused, times from the session
-    log; the agent's tool events carry the whole input; the demo build replays a change with the MCP functions."""
-    from tools import record_replay as rr
-    from mechvane.ui import agent as ag
-    ev = [
-        {"n": 1, "turn": 1, "type": "user", "text": "fix it", "selected": 0, "from": "user", "selection_names": [], "t": 100.0},
-        {"n": 2, "turn": 1, "type": "status", "status": "working", "t": 100.2},
-        {"n": 3, "turn": 1, "type": "tool", "id": "a", "tool": "check_design", "status": "pending", "t": 101.0},
-        {"n": 4, "turn": 1, "type": "tool", "id": "a", "status": "completed", "params": {"document": "/root/x/bracket.solidcraft"}, "t": 101.5},
-        {"n": 5, "turn": 1, "type": "text", "text": "Moving ", "t": 130.0},
-        {"n": 6, "turn": 1, "type": "text", "text": "the hole on myhost.local, myhost stays a word", "t": 130.1},
-        {"n": 7, "turn": 1, "type": "tool", "id": "b", "tool": "run", "status": "pending", "t": 131.0},
-        {"n": 8, "turn": 1, "type": "tool", "id": "b", "status": "completed",
-         "params": {"document": "bracket", "commands": [{"command": "timeline.edit", "params": {"feature": "Hole", "set": {"position": [10, 14, 8]}}}]}, "t": 132.0},
-        {"n": 9, "turn": 1, "type": "tool", "id": "c", "tool": "command", "status": "pending", "t": 132.5},
-        {"n": 10, "turn": 1, "type": "tool", "id": "c", "status": "completed", "params": {"document": "bracket", "command": "timeline.inspect"}, "t": 133.0},
-        {"n": 11, "turn": 1, "type": "done", "reason": "end_turn", "changed": ["bracket.solidcraft"], "removed": [], "t": 134.0},
-    ]
-    rec = rr.build(ev, demo="bracket", title="T", host="myhost")
-    types = [s["event"]["type"] for s in rec["steps"]]
-    ok("record_replay: status left out, the agent's text pieces are one line",
-       types == ["user", "tool", "tool", "text", "tool", "tool", "tool", "tool", "done"], types)
-    gaps = [round(b["t"] - a["t"], 2) for a, b in zip(rec["steps"], rec["steps"][1:])]
-    ok("record_replay: pauses cut to at most 2 s", max(gaps) <= rr.MAX_GAP and gaps[2] == rr.MAX_GAP, gaps)
-    text = json.dumps(rec)
-    ok("record_replay: paths and the computer's name taken out (the same word in text stays)", "/root" not in text
-       and rec["steps"][3]["event"]["text"] == "Moving the hole on computer.local, myhost stays a word", rec["steps"][3]["event"])
-    dos = [s["event"]["do"]["tool"] for s in rec["steps"] if s["event"].get("do")]
-    ok("record_replay: only the change is marked (run yes; check_design, timeline.inspect no)", dos == ["run"], dos)
-    try:
-        rr.build(ev[:2] + [{"turn": 1, "type": "tool", "id": "z", "tool": "bolted_connection", "status": "pending"},
-                           {"turn": 1, "type": "tool", "id": "z", "status": "completed", "params": {}}],
-                 demo="bracket", title="T", host="h")
-        ok("record_replay: an unknown changing tool is refused", False)
-    except ValueError as e:
-        ok("record_replay: an unknown changing tool is refused", "bolted_connection" in str(e), str(e))
-    # sessions before #124 have no time in the events: the session log has it (the day's earlier sessions skipped)
-    bare = [{k: v for k, v in e.items() if k != "t"} for e in ev]
-    log = [{"t": "09:00:00.000", "kind": "agent_event", "type": "user", "text": "fix it"},
-           {"t": "09:00:05.000", "kind": "agent_event", "type": "tool", "id": "a", "status": "pending"}]
-    stamp = 10 * 3600
-    for e in ev:
-        if e["type"] != "text":
-            log.append({"t": f"10:00:{e['t'] - 100:06.3f}", "kind": "agent_event",
-                        **{k: e[k] for k in ("type", "id", "status", "text") if k in e}})
-    times = rr.times_from_log(bare, log)
-    ok("record_replay: times from the session log, from the last time the message was logged",
-       times[0] == stamp and times[3] == stamp + 1.5 and times[4] == times[3], times[:5])
-    # the ACP adapter sends the input only with an update: the completion event carries it
-    seen = []
-    a = ag.AcpAgent.__new__(ag.AcpAgent)
-    a.on_event, a._inputs = seen.append, {}
-    a._update({"sessionUpdate": "tool_call", "toolCallId": "x", "title": "mcp__mechvane__run", "rawInput": {}})
-    a._update({"sessionUpdate": "tool_call_update", "toolCallId": "x", "rawInput": {"document": "d", "commands": []}})
-    a._update({"sessionUpdate": "tool_call_update", "toolCallId": "x", "status": "completed"})
-    ok("agent: the completed tool event carries the whole input", seen[-1].get("params") == {"document": "d", "commands": []}
-       and "params" not in seen[0], seen)
-    # every event has its time; the session log keeps its own clock string (record_replay reads it)
-    from mechvane.ui import sessionlog
-    logged, orig = [], sessionlog.log
-    sessionlog.log = lambda kind, **d: logged.append(d)
-    try:
-        sess = ag.AgentTurns.__new__(ag.AgentTurns)
-        sess.lock, sess.events, sess.turns = threading.Lock(), [], []
-        sess._event({"type": "user", "text": "x"})
-    finally:
-        sessionlog.log = orig
-    ok("agent: events carry their time, not passed to the session log",
-       isinstance(sess.events[0].get("t"), float) and "t" not in logged[0], (sess.events[0], logged))
-    # the demo build replays the change with Mechvane's own functions: the bracket's finding is gone
-    from mechvane import examples
-    from mechvane.ui.server import collect_findings
-    from mechvane.documents import Workspace
-    ws = Workspace(tempfile.mkdtemp(prefix="replay-"))  # its own folder: other checks use the name bracket
-    doc = examples.bracket(ws)
-    before = collect_findings(ws, doc).get("verdict")
-    rr.apply_change(ws, doc, rec["steps"][5]["event"]["do"])
-    ok("record_replay: replaying the recorded run fixes the bracket", (before, collect_findings(ws, doc).get("verdict")) == ("fail", "ok"),
-       before)
-    ws.close_all()
 
 
 def audit_checks(tmp):
@@ -10870,79 +7763,30 @@ def heavy_lock_checks(tmp):
 
 
 def acceptance_checks(tmp):
-    """Audit A1: coverage counts a frozen command only when the workspace code names it as a string (not as part of a
-    longer id), the other tests keep a value set by hand with its date or say "nicht gemessen"."""
+    """The four acceptance tests keep a value set by hand with its date or say "nicht gemessen"; a provisional value shows
+    apart from a measured one (Abdeckung and the command list are gone with the web UI, #232)."""
     tools = Path(__file__).resolve().parents[2] / "tools"
     sys.path.insert(0, str(tools))
     import acceptance as acc
-    ui = Path(tmp) / "acc_ui"
-    (ui / "static" / "vendor").mkdir(parents=True)
-    (ui / "static" / "a.js").write_text('run("solid.fillet"); x = `sketch.line`; y = "solid.fillet.extra";')
-    (ui / "srv.py").write_text("cmd('timeline.edit')\ncmd('select.set')\n")
-    (ui / "static" / "vendor" / "lib.js").write_text('"solid.chamfer"')
-    named = acc.named_in_ui(["solid.fillet", "sketch.line", "timeline.edit", "solid.chamfer", "solid.fillet.extra2"], ui)
-    ok("acceptance: commands named in the workspace code, quoted, vendor left out",
-       named == {"solid.fillet", "sketch.line", "timeline.edit"}, named)
     d = Path(tmp) / "acc_docs"
     d.mkdir()
-    (d / "befehle-0.43.0.txt").write_text("solid.fillet\nsketch.line\nview.fit\nrender.go\nselect.set\n")
     (d / "messwerte.json").write_text(json.dumps({"installation": {"wert": "12 Minuten", "gemessen": "2026-11-06", "quelle": "Sichtung"},
                                                     "konstruieren": {"wert": "80", "gemessen": "2026-11-23", "quelle": "Headless", "status": "vorwert"}}))
     old = acc.DIR, acc.VALUES
     acc.DIR, acc.VALUES = d, d / "messwerte.json"
     try:
-        res = acc.measure(ui)
+        res = acc.measure()
     finally:
         acc.DIR, acc.VALUES = old
     rows = {r["key"]: r for r in res["pruefungen"]}
-    ok("acceptance: coverage against the frozen list, by domain", res["solidcraft_ziel"] == "0.43.0"
-       and rows["abdeckung"]["wert"].startswith("3 von 5 in der Oberfläche") and rows["abdeckung"]["bereiche"]["view"] == "0/1",
-       rows["abdeckung"])
-    prov = rows["abdeckung"].get("ausgenommen_mit_grund", {})
-    ok("acceptance: commands of SolidCraft's hidden window are left out of a second share, with their reason; one the "
-       "workspace reaches still counts (#128)",
-       rows["abdeckung"].get("anteil") == 0.6 and rows["abdeckung"].get("anteil_ohne_ausnahmen") == 1.0
-       and prov.get("befehle") == ["render.go", "view.fit"] and set(prov.get("gruppen", {})) == {"render.", "view."}
-       and all(g["grund"] and g["anzahl"] == 1 for g in prov["gruppen"].values())
-       and "60,0 %" in rows["abdeckung"]["wert"] and "100,0 %" in rows["abdeckung"]["wert"], rows["abdeckung"])
     ok("acceptance: a value by hand keeps its date, the others say so; a provisional value shows apart from a measured one; "
-       "Abdeckung is information only (#180)",
+       "only the four acceptance tests are listed",
        rows["installation"]["wert"] == "12 Minuten" and rows["installation"]["gemessen"] == "2026-11-06"
        and rows["installation"]["status"] == "gemessen"
        and rows["konstruieren"]["status"] == "vorwert" and "Vorwert" in rows["konstruieren"]["wert"]
        and rows["verschraubung"]["wert"] == "nicht gemessen" and rows["verschraubung"]["status"] == "offen"
-       and rows["abdeckung"]["status"] == "information" and "eindruck" not in rows and "zusammenarbeit" not in rows
+       and "abdeckung" not in rows and len(res["pruefungen"]) == 4
        and [r["art"] for r in res["pruefungen"]].count("abnahme") == 4, rows)
-
-
-def demo_wasm_split_checks(tmp):
-    """#119: the demo build splits a wasm over GitHub's file limit and wires the loader into sc/index.html."""
-    import hashlib
-    from tools import build_demo_site as bds
-    sc = Path(tmp) / "wasm_split"
-    sc.mkdir()
-    data = bytes(range(256)) * 40  # 10240 bytes
-    (sc / "app-x_bg.wasm").write_bytes(data)
-    (sc / "index.html").write_text('<head><link rel="preload" href="./app-x_bg.wasm" crossorigin="anonymous" as="fetch">'
-                                   '<script type="module">init()</script><script>navigator.serviceWorker.register("sw.js")'
-                                   '</script></head>', encoding="utf-8")
-    (sc / "sw.js").write_text('// x\n/* @build */ const VERSION = "0.43.0-abc", FILES = [];\nconst RETIRE = VERSION === "dev";\n',
-                              encoding="utf-8")
-    old = bds.PART_BYTES
-    bds.PART_BYTES = 4000
-    try:
-        bds.split_large_wasm(sc)
-    finally:
-        bds.PART_BYTES = old
-    man = json.loads((sc / "app-x_bg.wasm.parts.json").read_text())
-    joined = b"".join((sc / p).read_bytes() for p in man["parts"])
-    html = (sc / "index.html").read_text()
-    ok("demo build: a wasm over the limit becomes pieces with size and SHA-256, the loader comes before the module, "
-       "no preload of the gone file, the offline worker retires (#119)",
-       not (sc / "app-x_bg.wasm").exists() and len(man["parts"]) == 3 and joined == data
-       and man["sha256"] == hashlib.sha256(data).hexdigest() and (sc / "wasm-parts.js").exists()
-       and html.index("wasm-parts.js") < html.index('<script type="module">') and "rel=\"preload\"" not in html
-       and "serviceWorker.register" not in html and 'const VERSION = "dev"' in (sc / "sw.js").read_text(), f"{man} {html}")
 
 
 def step_signature_checks(ws):
@@ -11037,7 +7881,7 @@ def cleanup_branches_checks(tmp):
 def check_parameters_tool_checks(ws):
     """#108: the MCP tool check_parameters tries values and puts the design back; a bolt circle moves the cylinders
     without changing the volume, a hole too big leaves no body, a made-up name is refused with the real names."""
-    from mechvane import examples
+    import example_models as examples
     orig_server_ws, server.ws = server.ws, ws
     doc = examples.flange(ws)
     exprs = lambda: {p["name"]: p["expression"] for p in doc.session.cmd("parameters.list", {}).get("parameters", [])
@@ -11063,35 +7907,6 @@ def check_parameters_tool_checks(ws):
        f"{exprs()} {vol(base)} {vol(wide)} {vol(moved)} {huge['measure']['body_count']} {refused[:120]!r}")
     ws.close(doc.name)
     server.ws = orig_server_ws
-
-
-def agent_first_use_checks():
-    """#156: the page's first requests reach UIServer.agent in parallel and the constructor is slow; they must share
-    one AgentTurns, or a hand step recorded in one is lost when another replaces it (Undo stayed disabled)."""
-    import time as _t
-    from types import SimpleNamespace
-    from mechvane.ui import server as ui_server
-    made = []
-
-    class Slow:
-        def __init__(self, folder, on_files_changed=None):
-            made.append(self)
-            _t.sleep(0.2)
-
-    fake = SimpleNamespace(ws=SimpleNamespace(root=Path(".")), _files_changed=lambda: None)
-    orig = ui_server.agent_mod.AgentTurns
-    ui_server.agent_mod.AgentTurns = Slow
-    try:
-        got = []
-        threads = [threading.Thread(target=lambda: got.append(ui_server.UIServer.agent.fget(fake))) for _ in range(8)]
-        for th in threads:
-            th.start()
-        for th in threads:
-            th.join()
-    finally:
-        ui_server.agent_mod.AgentTurns = orig
-    ok("ui server (#156): parallel first uses of the agent share one instance", len(made) == 1 and len({id(a) for a in got}) == 1,
-       f"{len(made)} made, {len({id(a) for a in got})} distinct")
 
 
 def queue_guard_checks(tmp):
@@ -11165,12 +7980,12 @@ def queue_guard_checks(tmp):
     red = rescue_calls([(901, "hyd", "red")])
     again = rescue_calls([(901, "hyd", "red"), (901, "hyd", "red")])  # the same issue twice in one night
     two = rescue_calls([(901, "hyd", "red"), (902, "hyd", "red")])
-    none = [rescue_calls([(903, "hyd", v)]) for v in ("green", "merged", "flaky", "conflict", "main-red", "")]
+    none = [rescue_calls([(903, "hyd", v)]) for v in ("green", "merged", "flaky", "conflict", "")]
     ok("queue rescue (#163): a red Hydrogen gate starts exactly one orchestrator run from the same start (then its gate), a second red of the "
        "same issue the same night does not, another issue does",
        red.startswith("ev:step=rescue_start run:901:abc123 gate:901 ev:step=rescue |") and "Rettung mit dem Orchestrator: green" in red
        and again.count("run:901") == 1 and two.count("run:") == 2, f"{red!r} {again!r} {two!r}")
-    ok("queue rescue (#163): no second attempt after green, merged, flaky, conflict, main-red or no verdict, none for a run of Neon, "
+    ok("queue rescue (#163): no second attempt after green, merged, flaky, conflict or no verdict, none for a run of Neon, "
        "none with the general pot below the threshold, none when the night has no time left, none with ORCH_RESCUE=0",
        all(n.startswith("|") for n in none)
        and rescue_calls([(904, "neon", "red")]).startswith("|") and rescue_calls([(905, "hyd", "red")], pot="10").startswith("|")
@@ -11313,136 +8128,11 @@ def verify_view_checks(ws):
         server.ws = prev_ws
 
 
-def assemble_dialog_checks(tmp):
-    """Assemble tab stage 1a: /api/assembly/insert places parts with transform/grounded on the shared undo
-    list, /api/assembly/update_links checks joints and supports repair=True, and both return 400 on a part."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "assemble_ui"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        plate = w.new(PART, "BasePlate")
-        plate.session.batch([
-            {"command": "parameters.change", "params": {"name": "h", "expression": "10 mm"}},
-            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPlate"}},
-            {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [40, 40]}},
-            {"command": "sketch.finish", "params": {}},
-            {"command": "solid.extrude", "params": {"sketch": "SkPlate", "distance": "h", "name": "PlateBody"}},
-        ])
-        plate.save()
-
-        pin = w.new(PART, "Pin")
-        pin.session.batch([
-            {"command": "sketch.create", "params": {"plane": "XY", "name": "SkPin"}},
-            {"command": "sketch.circle.center", "params": {"center": [0, 0], "radius": 5}},
-            {"command": "sketch.finish", "params": {}},
-            {"command": "solid.extrude", "params": {"sketch": "SkPin", "distance": 20, "name": "PinBody"}},
-        ])
-        pin.save()
-
-        asm = w.new(ASSEMBLY, "Gearbox")
-        links.insert(w, asm, plate.path, name="Plate", grounded=True)
-        asm.save()
-    finally:
-        w.close_all()
-
-    srv = ui_server.create_server(folder, port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read().decode("utf-8"))
-
-    try:
-        # With a part open, /api/assembly/* must fail with 400
-        st_op, _ = call("open/BasePlate.solidcraft", {})
-        st_p_ins, p_ins = call("assembly/insert", {"file": "Pin.solidcraft"})
-        st_p_upd, p_upd = call("assembly/update_links", {})
-        ok("assemble UI endpoints: return HTTP 400 when a part is open",
-           st_op == 200 and st_p_ins == 400 and st_p_upd == 400 and p_ins.get("error") and p_upd.get("error"),
-           f"open={st_op} ins=({st_p_ins}, {p_ins}) upd=({st_p_upd}, {p_upd})")
-
-        # Open the assembly and verify /api/files lists folder parts excluding the assembly itself
-        st_oa, _ = call("open/Gearbox.solidcraft", {})
-        st_fl, fl = call("files")
-        parts_list = fl.get("parts") or []
-        ok("assemble /api/files: lists folder parts excluding the assembly itself",
-           st_oa == 200 and st_fl == 200 and "BasePlate.solidcraft" in parts_list and "Pin.solidcraft" in parts_list
-           and "Gearbox.solidcraft" not in parts_list,
-           f"open={st_oa} files={fl}")
-
-        # Insert the second part via POST /api/assembly/insert with name, translate, rotate, grounded=False
-        st_ins, ins = call("assembly/insert", {
-            "file": "Pin.solidcraft",
-            "name": "DrivePin",
-            "translate": [20, 20, 10],
-            "rotate": [0, 0, 90],
-            "grounded": False,
-        })
-        st_tr, tr = call("tree")
-        occ_names = [o.get("name", "") for o in tr.get("occurrences", [])]
-        ok("assemble /api/assembly/insert: inserts second part, returns component name and /api/tree shows it",
-           st_ins == 200 and ins.get("name") == "DrivePin"
-           and any("DrivePin" in n for n in occ_names),
-           f"ins=({st_ins}, {ins}) occs={occ_names}")
-
-        # Shared Undo / Redo reverts and re-applies the placement
-        st_un, _ = call("agent/undo", {})
-        _, tr_un = call("tree")
-        occ_un = [o.get("name", "") for o in tr_un.get("occurrences", [])]
-        st_re, _ = call("agent/redo", {})
-        _, tr_re = call("tree")
-        occ_re = [o.get("name", "") for o in tr_re.get("occurrences", [])]
-        ok("assemble /api/assembly/insert: undo and redo on shared history",
-           st_un == 200 and not any("DrivePin" in n for n in occ_un)
-           and st_re == 200 and any("DrivePin" in n for n in occ_re),
-           f"undo=({st_un}, {occ_un}) redo=({st_re}, {occ_re})")
-
-        # Record a rigid joint between Plate and DrivePin and verify POST /api/assembly/update_links reports joint count
-        with srv.lock:
-            doc = srv.ensure_current()
-            jparams = {
-                "type": "rigid",
-                "name": "PinOnPlate",
-                "a": {"occurrence": "Plate:1", "face": [20, 20, 10]},
-                "b": {"occurrence": "DrivePin:1", "face": [20, 20, 10]},
-            }
-            doc.session.cmd("joint.create", jparams)
-            links.record(srv.ws, doc, "PinOnPlate", create_params=jparams)
-            doc.save()
-            srv.mtime = doc.path.stat().st_mtime
-
-        st_upd, upd = call("assembly/update_links", {"repair": False})
-        st_rep, rep = call("assembly/update_links", {"repair": True})
-        ok("assemble /api/assembly/update_links: reports checked joint count and supports repair=True",
-           st_upd == 200 and upd.get("joint_count") == 1 and "PinOnPlate" in (upd.get("checked_joints") or [])
-           and st_rep == 200 and rep.get("joint_count") == 1,
-           f"upd=({st_upd}, {upd}) rep=({st_rep}, {rep})")
-    finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def assemble_constraint_checks(tmp):
-    """Assemble tab step 3 (#88): POST /api/assembly/constraint adds SolidCraft assembly constraints via
-    modeling.add_constraint (recorded like joints, so check_joints and update_links follow them), /edit changes
-    rule, gap and name, links.repair recreates a constraint by its rule, and the browser shows the rule."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "assemble_constraint_ui"
+def assembly_constraint_checks(tmp):
+    """Assembly constraints over the MCP tools (#88): add_constraint adds SolidCraft assembly constraints via
+    modeling.add_constraint (recorded like joints, so check_joints and update_links follow them), edit_constraint
+    changes rule, gap and name, links.repair recreates a constraint by its rule, and the browser shows the rule."""
+    folder = Path(tmp) / "assembly_constraint"
     folder.mkdir()
     w = Workspace(folder)
     try:
@@ -11463,98 +8153,62 @@ def assemble_constraint_checks(tmp):
     finally:
         w.close_all()
 
-    srv = ui_server.create_server(folder, port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers={"Content-Type": "application/json"} if body is not None else {})
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read().decode("utf-8"))
-
+    old_ws = server.ws
+    server.ws = Workspace(folder)
     try:
-        call("open/Base.solidcraft", {})
-        st_part, res_part = call("assembly/constraint", {"type": "mate", "a": {"occurrence": "Base:1", "face": [20, 15, 10]},
-                                                         "b": {"occurrence": "Lid:1", "face": [80, 15, 0]}})
-        ok("assemble constraint: HTTP 400 with a part open", st_part == 400 and res_part.get("error"), res_part)
-        call("open/ConstrainAsm.solidcraft", {})
+        doc = server.ws.open("ConstrainAsm.solidcraft")
+
+        def live(name):
+            return next((j for j in doc.session.cmd("joint.list")["joints"] if j["name"] == name), {})
+
         a_top = {"occurrence": "Base:1", "face": [20, 15, 10]}
         b_bottom = {"occurrence": "Lid:1", "face": [80, 15, 0]}
-        bad = {
-            "unknown rule": call("assembly/constraint", {"type": "glue", "a": a_top, "b": b_bottom}),
-            "distance without offset": call("assembly/constraint", {"type": "distance", "a": a_top, "b": b_bottom}),
-            "angle without angle": call("assembly/constraint", {"type": "angle", "a": a_top, "b": b_bottom}),
-            "same component": call("assembly/constraint", {"type": "mate", "a": a_top, "b": {"occurrence": "Base:1", "face": [0, 15, 5]}}),
-            "text offset": call("assembly/constraint", {"type": "mate", "a": a_top, "b": b_bottom, "offset": "zwei"}),
-        }
-        ok("assemble constraint: unknown rule, missing gap or angle, one component twice, a bad offset give HTTP 400 with a message",
-           all(st == 400 and r.get("error") for st, r in bad.values()), {k: v for k, v in bad.items() if v[0] != 400})
-        _, hist0 = call("history")
-        st, res = call("assembly/constraint", {"type": "mate", "a": a_top, "b": b_bottom, "offset": 2})
-        _, ctx = call("assembly/context")
-        mate = next((j for j in ctx.get("joints", []) if j["name"] == "Mate1"), {})
-        _, hist1 = call("history")
-        ok("assemble constraint: a mate with gap 2 puts the lid on the base top at z=12, named Mate1, on the shared Undo list",
-           st == 200 and res.get("name") == "Mate1" and mate.get("constraint") == "mate"
-           and abs((mate.get("frame_b") or {}).get("origin", [0, 0, 0])[2] - 12) < 1e-6
-           and (hist1.get("undo") or "").startswith("Constraint mate") and hist0.get("undo") != hist1.get("undo"),
-           (st, res, mate, hist1))
-        st_c, res_c = call("assembly/constraint", {"type": "concentric", "a": {"occurrence": "PinA:1", "circle": [5, 60, 10]},
-                                                   "b": {"occurrence": "PinB:1", "circle": [35, 60, 10]}})
-        _, ctx = call("assembly/context")
-        conc = next((j for j in ctx.get("joints", []) if j["name"] == res_c.get("name")), {})
+        res = server.add_constraint("ConstrainAsm", {"type": "mate", "a": a_top, "b": b_bottom, "offset": 2})
+        mate = live("Mate1")
+        ok("assembly constraint: a mate with gap 2 puts the lid on the base top at z=12, named Mate1",
+           res.get("name") == "Mate1" and mate.get("constraint") == "mate"
+           and abs((mate.get("frame_b") or {}).get("origin", [0, 0, 0])[2] - 12) < 1e-6, (res, mate))
+        res_c = server.add_constraint("ConstrainAsm", {"type": "concentric", "a": {"occurrence": "PinA:1", "circle": [5, 60, 10]},
+                                                       "b": {"occurrence": "PinB:1", "circle": [35, 60, 10]}})
+        conc = live(res_c.get("name"))
         oa, ob = (conc.get("frame_a") or {}).get("origin", [9, 9, 9]), (conc.get("frame_b") or {}).get("origin", [0, 0, 0])
-        ok("assemble constraint: concentric on two round faces (circle picks) puts both pins on one axis",
-           st_c == 200 and conc.get("constraint") == "concentric" and abs(oa[0] - ob[0]) < 1e-6 and abs(oa[1] - ob[1]) < 1e-6,
-           (st_c, res_c, conc))
-        meta = json.loads(json.dumps(srv.doc.metadata()))
-        ok("assemble constraint: recorded like a joint (part faces on both sides, create marked as a constraint)",
+        ok("assembly constraint: concentric on two round faces (circle picks) puts both pins on one axis",
+           conc.get("constraint") == "concentric" and abs(oa[0] - ob[0]) < 1e-6 and abs(oa[1] - ob[1]) < 1e-6,
+           (res_c, conc))
+        meta = json.loads(json.dumps(doc.metadata()))
+        ok("assembly constraint: recorded like a joint (part faces on both sides, create marked as a constraint)",
            (meta.get("joints", {}).get("Mate1", {}).get("sides", {}).get("a", {}).get("face") == "F1:+z")
            and meta["joints"]["Mate1"]["sides"]["b"]["face"] == "F1:-z" and meta["joints"]["Mate1"]["create"].get("constraint") is True,
            meta.get("joints", {}).get("Mate1"))
-        st_e, res_e = call("assembly/constraint/edit", {"constraint": "Mate1", "type": "mate", "offset": 4, "name": "LidOnBase"})
-        _, ctx = call("assembly/context")
-        ed = next((j for j in ctx.get("joints", []) if j["name"] == "LidOnBase"), {})
-        st_ea, res_ea = call("assembly/constraint/edit", {"constraint": "LidOnBase", "a": a_top})
-        st_eu, res_eu = call("assembly/constraint/edit", {"constraint": "NoSuch", "offset": 1})
-        st_ej, res_ej = call("assembly/constraint/edit", {"constraint": "LidOnBase", "type": "distance"})
-        st_en, res_en = call("assembly/constraint/edit", {"constraint": "LidOnBase", "name": "LidOnBase"})
-        ok("assemble constraint edit: gap 4 and a new name (lid at z=14, record renamed); new references, an unknown name and nothing to change give 400",
-           st_e == 200 and ed.get("constraint") == "mate" and abs(ed["frame_b"]["origin"][2] - 14) < 1e-6
-           and "LidOnBase" in srv.doc.metadata()["joints"] and "Mate1" not in srv.doc.metadata()["joints"]
-           and st_ea == 400 and "delete it" in res_ea.get("error", "") and st_eu == 400
-           and st_en == 400 and "nothing to change" in res_en.get("error", ""),
-           (st_e, res_e, ed, st_ea, res_ea, st_eu, res_eu, st_en, res_en))
-        _, ctx = call("assembly/context")
-        ej = next((j for j in ctx.get("joints", []) if j["name"] == "LidOnBase"), {})
-        ok("assemble constraint edit: a change to distance keeps the gap (as SolidCraft does)",
-           st_ej == 200 and ej.get("constraint") == "distance" and abs(ej["frame_b"]["origin"][2] - 14) < 1e-6, (st_ej, res_ej, ej))
-        call("assembly/constraint/edit", {"constraint": "LidOnBase", "type": "mate"})
-        st_chk, chk = call("assembly/update_links", {})
-        ok("assemble constraint: Update Links checks constraints like joints (all sides ok)",
-           st_chk == 200 and all(r.get("status") == "ok" for r in chk.get("joints", []) if r.get("joint") in ("LidOnBase", res_c.get("name")))
+        res_e = server.edit_constraint("ConstrainAsm", "Mate1", {"offset": 4, "name": "LidOnBase"})
+        ed = live("LidOnBase")
+        ok("assembly constraint edit: gap 4 and a new name (lid at z=14, record renamed)",
+           res_e.get("name") == "LidOnBase" and ed.get("constraint") == "mate" and abs(ed["frame_b"]["origin"][2] - 14) < 1e-6
+           and "LidOnBase" in doc.metadata()["joints"] and "Mate1" not in doc.metadata()["joints"], (res_e, ed))
+        server.edit_constraint("ConstrainAsm", "LidOnBase", {"type": "distance"})
+        ej = live("LidOnBase")
+        ok("assembly constraint edit: a change to distance keeps the gap (as SolidCraft does)",
+           ej.get("constraint") == "distance" and abs(ej["frame_b"]["origin"][2] - 14) < 1e-6, ej)
+        server.edit_constraint("ConstrainAsm", "LidOnBase", {"type": "mate"})
+        chk = server.update_links("ConstrainAsm")
+        ok("assembly constraint: update_links checks constraints like joints (all sides ok)",
+           all(r.get("status") == "ok" for r in chk.get("joints", []) if r.get("joint") in ("LidOnBase", res_c.get("name")))
            and any(r.get("joint") == "LidOnBase" for r in chk.get("joints", [])), chk)
-        _, tree = call("tree")
-        ok("assemble constraint: the model browser names the rule, not the joint kind", '"mate"' in json.dumps(tree), json.dumps(tree)[:400])
+        tree_asm = server.browser("ConstrainAsm", groups=True)["tree"]
+        ok("assembly constraint: the model browser names the rule, not the joint kind", '"mate"' in json.dumps(tree_asm),
+           json.dumps(tree_asm)[:400])
 
         # links.repair recreates a constraint by its rule, keeps gap and the joint's facing
-        doc = srv.doc
-        with srv.lock:
-            before = next(j for j in doc.session.cmd("joint.list")["joints"] if j["name"] == "LidOnBase")
-            links.repair(srv.ws, doc, "LidOnBase")
-            after = next(j for j in doc.session.cmd("joint.list")["joints"] if j["name"] == "LidOnBase")
-        ok("assemble constraint: links.repair recreates it through assembly.constraint.create (rule, gap, flip and position kept)",
+        before = live("LidOnBase")
+        links.repair(server.ws, doc, "LidOnBase")
+        after = live("LidOnBase")
+        ok("assembly constraint: links.repair recreates it through assembly.constraint.create (rule, gap, flip and position kept)",
            after.get("constraint") == "mate" and after["offset"] == before["offset"] and after["flip"] == before["flip"]
            and all(abs(x - y) < 1e-6 for x, y in zip(after["frame_b"]["origin"], before["frame_b"]["origin"])), (before, after))
-        # every rule the dialog offers, with the picks it makes (face for a plane, circle for a round face): add,
-        # repair (recreated by its rule, same place, facing and rule), delete through the browser's endpoint
-        st_dm, _ = call("assembly/joint/delete", {"joint": "LidOnBase"})
-        st_dc, _ = call("assembly/joint/delete", {"joint": res_c.get("name")})
+        # every rule SolidCraft offers, with face picks for a plane and circle picks for a round face: add,
+        # repair (recreated by its rule, same place, facing and rule), delete_joint
+        server.delete_joint("ConstrainAsm", "LidOnBase")
+        server.delete_joint("ConstrainAsm", res_c.get("name"))
         # PinB moves with each round rule: its circle picks are given in its own coordinates ("local") and placed
         # where PinB is before each rule
         rules = {
@@ -11571,96 +8225,53 @@ def assemble_constraint_checks(tmp):
         rule_res = {}
         for rule, (ra, rb, extra) in rules.items():
             if "local" in rb:
-                with srv.lock:
-                    pb = next(o for o in links._occurrences(srv.doc.session).values() if o["name"] == "PinB:1")["transform"]
+                pb = next(o for o in links._occurrences(doc.session).values() if o["name"] == "PinB:1")["transform"]
                 rb = {"occurrence": "PinB:1", "circle": links.g.apply_point(pb, rb["local"])}
-            st_r, res_r = call("assembly/constraint", dict({"type": rule, "a": ra, "b": rb}, **extra))
-            nm = res_r.get("name")
-            if st_r != 200:
-                rule_res[rule] = ("add", st_r, res_r)
+            try:
+                nm = server.add_constraint("ConstrainAsm", dict({"type": rule, "a": ra, "b": rb}, **extra)).get("name")
+            except Exception as e:  # noqa: BLE001 - reported per rule
+                rule_res[rule] = ("add", str(e))
                 continue
-            with srv.lock:
-                bj = next(j for j in srv.doc.session.cmd("joint.list")["joints"] if j["name"] == nm)
-                try:
-                    links.repair(srv.ws, srv.doc, nm)
-                    aj = next(j for j in srv.doc.session.cmd("joint.list")["joints"] if j["name"] == nm)
-                    same = (aj.get("constraint") == rule and aj["flip"] == bj["flip"]
-                            and all(abs(x - y) < 1e-6 for x, y in zip(aj["frame_b"]["origin"] + aj["frame_b"]["z"],
-                                                                      bj["frame_b"]["origin"] + bj["frame_b"]["z"])))
-                except Exception as e:
-                    same = f"repair: {e}"
-            st_d, res_d = call("assembly/joint/delete", {"joint": nm})
-            with srv.lock:
-                gone = (all(j["name"] != nm for j in srv.doc.session.cmd("joint.list")["joints"])
-                        and nm not in srv.doc.metadata().get("joints", {}))
-            if same is not True or st_d != 200 or not gone:
-                rule_res[rule] = (same, st_d, res_d, gone)
-        ok("assemble constraint: all nine dialog rules are made from face/circle picks, links.repair keeps rule, place, facing "
-           "(flipped flush and angle included) and gap, and Delete removes joint and record",
-           st_dm == 200 and st_dc == 200 and not rule_res, rule_res)
-        st_dx, res_dx = call("assembly/joint/delete", {"joint": "NoSuchJoint"})
-        ok("assemble joint delete: an unknown name gives HTTP 400", st_dx == 400 and res_dx.get("error"), res_dx)
+            bj = live(nm)
+            try:
+                links.repair(server.ws, doc, nm)
+                aj = live(nm)
+                same = (aj.get("constraint") == rule and aj["flip"] == bj["flip"]
+                        and all(abs(x - y) < 1e-6 for x, y in zip(aj["frame_b"]["origin"] + aj["frame_b"]["z"],
+                                                                  bj["frame_b"]["origin"] + bj["frame_b"]["z"])))
+            except Exception as e:  # noqa: BLE001 - reported per rule
+                same = f"repair: {e}"
+            res_d = server.delete_joint("ConstrainAsm", nm)
+            gone = not live(nm) and nm not in doc.metadata().get("joints", {})
+            if same is not True or res_d.get("deleted") != nm or not gone:
+                rule_res[rule] = (same, res_d, gone)
+        ok("assembly constraint: all nine rules are made from face/circle picks, links.repair keeps rule, place, facing "
+           "(flipped flush and angle included) and gap, and delete_joint removes joint and record",
+           not rule_res, rule_res)
 
         # a create SolidCraft refuses during repair leaves the constraint where it was
-        st_g, res_g = call("assembly/constraint", {"type": "angle", "a": rules["angle"][0], "b": rules["angle"][1], "angle": 30})
-        with srv.lock:
-            d = srv.doc
-            meta = d.metadata()
-            meta["joints"][res_g["name"]]["create"].pop("angle", None)  # repair then has no angle for the rule
-            d.set_metadata(meta)
-            try:
-                links.repair(srv.ws, d, res_g["name"])
-                refused = False
-            except Exception:
-                refused = True
-            still = any(j["name"] == res_g["name"] and j.get("constraint") == "angle"
-                        for j in d.session.cmd("joint.list")["joints"])
-        ok("assemble constraint: a refused re-create during repair leaves the constraint in place (checkpoint)",
-           st_g == 200 and refused and still, (st_g, res_g, refused, still))
-        call("assembly/joint/delete", {"joint": res_g.get("name")})
-
-        # Place Standard Part (#88 step 3)
-        files_before = sorted(p.name for p in folder.glob("*.solidcraft"))
-        st_s, res_s = call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": 30, "translate": [0, 0, 40]})
-        st_s2, res_s2 = call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": 30})
-        st_n, res_n = call("assembly/standard", {"norm": "ISO 4032", "size": "M6"})
-        _, ctx = call("assembly/context")
-        occs = [o["path"] for o in ctx.get("occurrences", [])]
-        new_files = sorted(set(p.name for p in folder.glob("*.solidcraft")) - set(files_before))
-        ok("place standard part: makes ISO_4762_M6x30 once in the folder and places it twice, a nut without a length",
-           st_s == 200 and res_s.get("created") is True and res_s.get("file") == "ISO_4762_M6x30.solidcraft"
-           and st_s2 == 200 and res_s2.get("created") is False and st_n == 200 and res_n.get("designation") == "ISO 4032 M6"
-           and new_files == ["ISO_4032_M6.solidcraft", "ISO_4762_M6x30.solidcraft"]
-           and sum(1 for o in occs if o.startswith("ISO_4762_M6x30")) == 2, (st_s, res_s, st_s2, res_s2, st_n, res_n, new_files, occs))
-        bad_std = {
-            "unknown norm": call("assembly/standard", {"norm": "DIN 0", "size": "M6"}),
-            "unknown size": call("assembly/standard", {"norm": "ISO 4762", "size": "M99", "length": 30}),
-            "missing length": call("assembly/standard", {"norm": "ISO 4762", "size": "M6"}),
-            "text length": call("assembly/standard", {"norm": "ISO 4762", "size": "M6", "length": "lang"}),
-        }
-        ok("place standard part: unknown norm or size, a screw without length and a text length give HTTP 400",
-           all(st == 400 and r.get("error") for st, r in bad_std.values()), bad_std)
-        _, hist = call("history")
-        ok("place standard part: one step on the shared Undo list", (hist.get("undo") or "").startswith("Place ISO 4032 M6"), hist)
-        _, std_cat = call("standard_parts")
-        ok("place standard part: the catalog lists every norm's sizes and preferred lengths for the dialog",
-           set(std_cat.get("details", {})) == {n["norm"] for n in std_cat.get("norms", [])}
-           and 30 in std_cat["details"]["ISO 4762"]["sizes"]["M6"]["preferred_lengths"], list(std_cat.get("details", {})))
+        res_g = server.add_constraint("ConstrainAsm", {"type": "angle", "a": rules["angle"][0], "b": rules["angle"][1], "angle": 30})
+        meta = doc.metadata()
+        meta["joints"][res_g["name"]]["create"].pop("angle", None)  # repair then has no angle for the rule
+        doc.set_metadata(meta)
+        try:
+            links.repair(server.ws, doc, res_g["name"])
+            refused = False
+        except Exception:
+            refused = True
+        still = live(res_g["name"]).get("constraint") == "angle"
+        ok("assembly constraint: a refused re-create during repair leaves the constraint in place (checkpoint)",
+           refused and still, (res_g, refused, still))
     finally:
-        srv.shutdown()
-        srv.server_close()
+        server.ws.close_all()
+        server.ws = old_ws
 
 
-def assemble_joint_dialog_checks(tmp):
-    """Assemble tab stage 1b: POST /api/assembly/joint creates joints via Mechvane add_joint (with
-    links.record), POST /api/assembly/joint/edit edits them, check_joints reports no warning, and
-    part documents reject /api/assembly/* joint endpoints with HTTP 400."""
-    import urllib.error
-    import urllib.request
-    from mechvane import server as mcp_server
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "assemble_joint_ui"
+def assembly_joint_edit_checks(tmp):
+    """Joints over the MCP tools: add_joint records both sides (check_joints reports no warning), edit_joint changes
+    type, flip, offset, angle, a component and the name and records the sides again, and update_links(repair=True)
+    keeps the edited values, also when a part moved and links.repair runs."""
+    folder = Path(tmp) / "assembly_joint_edit"
     folder.mkdir()
     w = Workspace(folder)
     try:
@@ -11683,10 +8294,6 @@ def assemble_joint_dialog_checks(tmp):
         ])
         pin.save()
 
-        asm_single = w.new(ASSEMBLY, "SinglePartAsm")
-        links.insert(w, asm_single, plate.path, name="OnlyPlate", grounded=True)
-        asm_single.save()
-
         asm = w.new(ASSEMBLY, "GearboxJoints")
         links.insert(w, asm, plate.path, name="Plate", grounded=True)
         links.insert(w, asm, pin.path, name="DrivePin", translate=[30, 0, 0], grounded=False)
@@ -11695,480 +8302,108 @@ def assemble_joint_dialog_checks(tmp):
     finally:
         w.close_all()
 
-    srv = ui_server.create_server(folder, port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read().decode("utf-8"))
-
+    old_ws = server.ws
+    server.ws = Workspace(folder)
     try:
-        # With a part open, joint endpoints fail with HTTP 400
-        st_op, _ = call("open/BasePlate.solidcraft", {})
-        st_gc, gc = call("assembly/context")
-        st_pj, pj = call("assembly/joint", {"type": "rigid", "a": {"occurrence": "Plate:1", "plane": "XY"},
-                                            "b": {"occurrence": "DrivePin:1", "plane": "XY"}})
-        st_pe, pe = call("assembly/joint/edit", {"joint": "J1", "flip": True})
-        ok("assemble joint endpoints: return HTTP 400 when a part is open",
-           st_op == 200 and st_gc == 400 and st_pj == 400 and st_pe == 400
-           and bool(gc.get("error") and pj.get("error") and pe.get("error")),
-           f"open={st_op} ctx=({st_gc}, {gc}) add=({st_pj}, {pj}) edit=({st_pe}, {pe})")
+        doc = server.ws.open("GearboxJoints.solidcraft")
 
-        # Assembly with fewer than 2 components rejects joint creation with HTTP 400
-        st_os, _ = call("open/SinglePartAsm.solidcraft", {})
-        st_single, res_single = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "OnlyPlate:1", "plane": "XY"},
-            "b": {"occurrence": "OnlyPlate:1", "plane": "YZ"},
-        })
-        ok("assemble POST /api/assembly/joint: rejects assembly with fewer than two components",
-           st_os == 200 and st_single == 400 and "two components" in (res_single.get("error") or ""),
-           f"single=({st_single}, {res_single})")
+        def entry(name):
+            """The joint as SolidCraft has it, with occurrence paths and its angle (joint.inspect, else values, else
+            the recorded create)."""
+            by_id = {oid: o["path"] for oid, o in links._occurrences(doc.session).items()}
+            j = next((j for j in doc.session.cmd("joint.list", {}).get("joints") or [] if j.get("name") == name), None)
+            if j is None:
+                return {}
+            insp = next((x for x in doc.session.cmd("joint.inspect", {}).get("joints") or []
+                         if isinstance(x, dict) and x.get("name") == name), {})
+            angle = insp.get("angle")
+            if angle is None:
+                angle = next((v.get("value") for v in (j.get("values") or []) if v.get("name") == "angle"), None)
+            if angle is None:
+                angle = ((doc.metadata().get("joints") or {}).get(name, {}).get("create") or {}).get("angle", 0.0)
+            return {"type": j.get("type"), "flip": bool(j.get("flip")), "offset": j.get("offset", 0.0),
+                    "angle": round(float(angle), 6), "occurrence_a": by_id.get(j.get("a"), ""),
+                    "occurrence_b": by_id.get(j.get("b"), "")}
 
-        # Open assembly and check GET /api/assembly/context
-        st_oa, _ = call("open/GearboxJoints.solidcraft", {})
-        st_ctx, ctx = call("assembly/context")
-        occ_paths = [o.get("path") for o in (ctx.get("occurrences") or [])]
-        body_occ = ctx.get("body_occurrences") or {}
-        ok("assemble /api/assembly/context: lists occurrences and body_occurrences map",
-           st_oa == 200 and st_ctx == 200 and "Plate:1" in occ_paths and "DrivePin:1" in occ_paths
-           and "SecondPin:1" in occ_paths
-           and body_occ.get("BasePlate") == "Plate:1" and body_occ.get("Pin") == "DrivePin:1",
-           f"ctx=({st_ctx}, {ctx})")
-
-        # Input validation: same component on both sides (including base name vs :1), unknown occurrence,
-        # malformed face/point/frame, and non-numeric offset/angle strings all return HTTP 400
-        st_same, res_same = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate", "plane": "XY"},
-            "b": {"occurrence": "Plate:1", "plane": "YZ"},
-        })
-        st_unk, res_unk = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Ghost:1", "plane": "XY"},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-        })
-        st_face, res_face = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate:1", "face": [10, 20]},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-        })
-        st_pt, res_pt = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate:1", "point": ["bad", 0, 0]},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-        })
-        st_frm, res_frm = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate:1", "frame": {"origin": [1, 2]}},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-        })
-        st_off, res_off = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate:1", "plane": "XY"},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-            "offset": "not_a_number",
-        })
-        st_ang, res_ang = call("assembly/joint", {
-            "type": "rigid",
-            "a": {"occurrence": "Plate:1", "plane": "XY"},
-            "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-            "angle": "forty_five",
-        })
-        ok("assemble POST /api/assembly/joint: validates distinct occurrences, known occurrence, face/point/frame, and numeric offset/angle",
-           st_same == 400 and "different component" in (res_same.get("error") or "")
-           and st_unk == 400 and "unknown component occurrence" in (res_unk.get("error") or "").lower()
-           and st_face == 400 and "face" in (res_face.get("error") or "")
-           and st_pt == 400 and "point" in (res_pt.get("error") or "")
-           and st_frm == 400 and "frame" in (res_frm.get("error") or "")
-           and st_off == 400 and "offset" in (res_off.get("error") or "")
-           and st_ang == 400 and "angle" in (res_ang.get("error") or ""),
-           f"same=({st_same},{res_same}) unk=({st_unk},{res_unk}) face=({st_face},{res_face}) "
-           f"pt=({st_pt},{res_pt}) frm=({st_frm},{res_frm}) off=({st_off},{res_off}) ang=({st_ang},{res_ang})")
-
-        # Create a revolute joint via POST /api/assembly/joint using picked face points
-        st_add, add_res = call("assembly/joint", {
+        add_res = server.add_joint("GearboxJoints", {
             "type": "revolute",
             "name": "PinPivot",
             "a": {"occurrence": "Plate:1", "face": [20, 20, 10]},
             "b": {"occurrence": "DrivePin:1", "face": [34, 3, 12]},
             "offset": 1.5,
         })
-        st_tr, tr = call("tree")
-        st_fd, fd = call("findings")
-        joint_warnings = [f for f in (fd.get("findings") or []) if f.get("severity") in ("warn", "fail")]
-        _, ctx_after_add = call("assembly/context")
-        added_j = next((j for j in (ctx_after_add.get("joints") or []) if j.get("name") == "PinPivot"), {})
-        # Verify check_joints via Mechvane's links.check & MCP check_joints reports it with zero warnings
-        with srv.lock:
-            cur = srv.ensure_current()
-            chk_entries = links.check(srv.ws, cur)
-        prev_ws = mcp_server.ws
-        try:
-            mcp_server.ws = Workspace(folder)
-            mcp_server.ws.open(folder / "GearboxJoints.solidcraft")
-            mcp_chk = mcp_server.check_joints("GearboxJoints")
-        finally:
-            mcp_server.ws.close_all()
-            mcp_server.ws = prev_ws
-
-        ok("assemble POST /api/assembly/joint: creates recorded joint with occurrence_a/occurrence_b and check_joints reports no warning",
-           st_add == 200 and add_res.get("name") == "PinPivot"
+        added_j = entry("PinPivot")
+        tr = server.browser("GearboxJoints")["tree"]
+        mcp_chk = server.check_joints("GearboxJoints")
+        ok("assembly joint: add_joint creates a recorded joint between Plate:1 and DrivePin:1 and check_joints reports no warning",
+           bool(add_res.get("anchors")) and added_j.get("type") == "revolute"
            and added_j.get("occurrence_a") == "Plate:1" and added_j.get("occurrence_b") == "DrivePin:1"
-           and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" and j.get("status") == "ok"
-                   for j in (tr.get("joints") or []))
-           and len(chk_entries) == 2 and all(e.get("status") == "ok" for e in chk_entries)
-           and not joint_warnings and not mcp_chk.get("warnings")
+           and "PinPivot" in json.dumps(tr)
+           and not mcp_chk.get("warnings")
            and len(mcp_chk.get("joints") or []) == 2 and all(e.get("status") == "ok" for e in mcp_chk["joints"]),
-           f"add=({st_add}, {add_res}) added_j={added_j} chk={chk_entries} mcp={mcp_chk} findings={joint_warnings}")
+           f"add={add_res} added_j={added_j} mcp={mcp_chk}")
 
-        # Edit joint validation: setting one side to match the other side's occurrence is rejected with HTTP 400
-        st_ed_same, res_ed_same = call("assembly/joint/edit", {
-            "joint": "PinPivot",
-            "b": {"occurrence": "Plate:1", "face": [20, 20, 10]},
-        })
-        ok("assemble POST /api/assembly/joint/edit: rejects setting both sides to the same component",
-           st_ed_same == 400 and "different component" in (res_ed_same.get("error") or ""),
-           f"ed_same=({st_ed_same}, {res_ed_same})")
-
-        # Edit the joint via POST /api/assembly/joint/edit (including angle)
-        st_ed, ed_res = call("assembly/joint/edit", {
-            "joint": "PinPivot",
-            "type": "cylindrical",
-            "flip": True,
-            "offset": 3.0,
-            "angle": 45.0,
-        })
-        _, ctx_ed = call("assembly/context")
-        ed_entry = next((j for j in (ctx_ed.get("joints") or []) if j.get("name") == "PinPivot"), {})
-        with srv.lock:
-            chk_ed = links.check(srv.ws, srv.ensure_current())
-        ok("assemble POST /api/assembly/joint/edit: updates type/flip/offset/angle and keeps joint anchors ok",
-           st_ed == 200 and ed_res.get("name") == "PinPivot"
-           and ed_entry.get("type") == "cylindrical" and ed_entry.get("flip") is True
+        ed_res = server.edit_joint("GearboxJoints", "PinPivot", {"type": "cylindrical", "flip": True, "offset": 3.0, "angle": 45.0})
+        ed_entry = entry("PinPivot")
+        chk_ed = links.check(server.ws, doc)
+        ok("assembly joint: edit_joint updates type/flip/offset/angle and keeps joint anchors ok",
+           bool(ed_res.get("anchors")) and ed_entry.get("type") == "cylindrical" and ed_entry.get("flip") is True
            and ed_entry.get("offset") == 3.0 and ed_entry.get("angle") == 45.0
            and ed_entry.get("occurrence_a") == "Plate:1" and ed_entry.get("occurrence_b") == "DrivePin:1"
            and len(chk_ed) == 2 and all(e.get("status") == "ok" for e in chk_ed),
-           f"edit=({st_ed}, {ed_res}) ctx={ed_entry} chk={chk_ed}")
+           f"edit={ed_res} entry={ed_entry} chk={chk_ed}")
 
-        # Shared Undo / Redo reverts and restores the joint and its recorded anchors
-        st_un, _ = call("agent/undo", {})
-        _, tr_un = call("tree")
-        st_un2, _ = call("agent/undo", {})
-        _, tr_un2 = call("tree")
-        st_re, _ = call("agent/redo", {})
-        _, tr_re = call("tree")
-        st_re2, _ = call("agent/redo", {})
-        _, tr_re2 = call("tree")
-        ok("assemble /api/assembly/joint: undo and redo on shared history",
-           st_un == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" for j in (tr_un.get("joints") or []))
-           and st_un2 == 200 and not any(j.get("name") == "PinPivot" for j in (tr_un2.get("joints") or []))
-           and st_re == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "revolute" for j in (tr_re.get("joints") or []))
-           and st_re2 == 200 and any(j.get("name") == "PinPivot" and j.get("type") == "cylindrical" for j in (tr_re2.get("joints") or [])),
-           f"un={tr_un.get('joints')} un2={tr_un2.get('joints')} re={tr_re.get('joints')} re2={tr_re2.get('joints')}")
-
-        # Edit joint with changed component (switching b from DrivePin:1 to SecondPin:1 and a to point pick)
-        st_ed_comp, res_ed_comp = call("assembly/joint/edit", {
-            "joint": "PinPivot",
+        # another component for b (SecondPin:1) and a point pick for a
+        res_comp = server.edit_joint("GearboxJoints", "PinPivot", {
             "a": {"occurrence": "Plate:1", "point": [20, 20, 10], "z": [0, 0, 1]},
             "b": {"occurrence": "SecondPin:1", "face": [4, 33, 12]},
         })
-        _, ctx_comp = call("assembly/context")
-        comp_entry = next((j for j in (ctx_comp.get("joints") or []) if j.get("name") == "PinPivot"), {})
-        with srv.lock:
-            chk_comp = links.check(srv.ws, srv.ensure_current())
-        ok("assemble POST /api/assembly/joint/edit: switches component b to SecondPin:1 and records new anchor",
-           st_ed_comp == 200 and comp_entry.get("occurrence_a") == "Plate:1"
-           and comp_entry.get("occurrence_b") == "SecondPin:1"
-           and comp_entry.get("angle") == 45.0
+        comp_entry = entry("PinPivot")
+        chk_comp = links.check(server.ws, doc)
+        ok("assembly joint: edit_joint switches component b to SecondPin:1 and records new anchor",
+           bool(res_comp.get("anchors")) and comp_entry.get("occurrence_a") == "Plate:1"
+           and comp_entry.get("occurrence_b") == "SecondPin:1" and comp_entry.get("angle") == 45.0
            and len(chk_comp) == 2 and all(e.get("status") == "ok" for e in chk_comp)
            and {e.get("occurrence") for e in chk_comp} == {"Plate:1", "SecondPin:1"},
-           f"ed_comp=({st_ed_comp}, {res_ed_comp}) entry={comp_entry} chk={chk_comp}")
+           f"res={res_comp} entry={comp_entry} chk={chk_comp}")
 
-        # Rename joint via POST /api/assembly/joint/edit
-        st_ren, res_ren = call("assembly/joint/edit", {
-            "joint": "PinPivot",
-            "name": "MainShaftJoint",
-        })
-        _, tr_ren = call("tree")
-        _, ctx_ren = call("assembly/context")
-        ren_entry = next((j for j in (ctx_ren.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
-        with srv.lock:
-            chk_ren = links.check(srv.ws, srv.ensure_current())
-        ok("assemble POST /api/assembly/joint/edit: renames joint across session, tree, and recorded anchors",
-           st_ren == 200 and res_ren.get("name") == "MainShaftJoint"
-           and any(j.get("name") == "MainShaftJoint" for j in (tr_ren.get("joints") or []))
-           and not any(j.get("name") == "PinPivot" for j in (tr_ren.get("joints") or []))
+        server.edit_joint("GearboxJoints", "PinPivot", {"name": "MainShaftJoint"})
+        tr_ren = json.dumps(server.browser("GearboxJoints")["tree"])
+        ren_entry = entry("MainShaftJoint")
+        chk_ren = links.check(server.ws, doc)
+        ok("assembly joint: edit_joint renames the joint across session, tree, and recorded anchors",
+           "MainShaftJoint" in tr_ren and "PinPivot" not in tr_ren and not entry("PinPivot")
            and ren_entry.get("occurrence_a") == "Plate:1" and ren_entry.get("occurrence_b") == "SecondPin:1"
            and len(chk_ren) == 2 and all(e.get("joint") == "MainShaftJoint" and e.get("status") == "ok" for e in chk_ren),
-           f"ren=({st_ren}, {res_ren}) tree={tr_ren.get('joints')} ctx={ren_entry} chk={chk_ren}")
+           f"tree={tr_ren[:300]} entry={ren_entry} chk={chk_ren}")
 
-        # Check 6(a): update_links(repair=True) after edit_joint:
+        # update_links(repair=True) after edit_joint:
         # 1) When parts have not moved, update_links(repair=True) does not invoke links.repair, so
         #    edited type/flip/offset/angle remain unchanged.
         # 2) When BasePlate's thickness changes (h: 10 mm -> 14 mm) so links.repair runs,
         #    modeling.edit_joint's updated entry["create"] ensures links.repair preserves the
         #    edited type ("cylindrical"), flip (True), offset (3.0), and angle (45.0).
-        st_rep_nomove, rep_nomove = call("assembly/update_links", {"repair": True})
-        _, ctx_nomove = call("assembly/context")
-        nomove_entry = next((j for j in (ctx_nomove.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
-        ok("assemble edit_joint + update_links(repair=True) without part move: keeps edited type, flip, offset, and angle",
-           st_rep_nomove == 200 and rep_nomove.get("repaired") == []
+        rep_nomove = server.update_links("GearboxJoints", repair=True)
+        nomove_entry = entry("MainShaftJoint")
+        ok("assembly edit_joint + update_links(repair=True) without part move: keeps edited type, flip, offset, and angle",
+           rep_nomove.get("repaired") == []
            and nomove_entry.get("type") == "cylindrical" and nomove_entry.get("flip") is True
            and nomove_entry.get("offset") == 3.0 and nomove_entry.get("angle") == 45.0,
-           f"rep_nomove=({st_rep_nomove}, {rep_nomove}) entry={nomove_entry}")
+           f"rep_nomove={rep_nomove} entry={nomove_entry}")
 
-        with srv.lock:
-            plate_doc = srv.ws.open(folder / "BasePlate.solidcraft")
-            plate_doc.session.cmd("parameters.change", {"name": "h", "expression": "14 mm"})
-            plate_doc.save()
-        st_rep_move, rep_move = call("assembly/update_links", {"repair": True})
-        _, ctx_move = call("assembly/context")
-        move_entry = next((j for j in (ctx_move.get("joints") or []) if j.get("name") == "MainShaftJoint"), {})
-        ok("assemble edit_joint + links.repair on moved part: repairs joint and preserves edited type, flip, offset, and angle",
-           st_rep_move == 200
-           and any(r.get("joint") == "MainShaftJoint" and r.get("status") == "ok" for r in (rep_move.get("repaired") or []))
+        plate_doc = server.ws.open(folder / "BasePlate.solidcraft")
+        plate_doc.session.cmd("parameters.change", {"name": "h", "expression": "14 mm"})
+        plate_doc.save()
+        rep_move = server.update_links("GearboxJoints", repair=True)
+        move_entry = entry("MainShaftJoint")
+        ok("assembly edit_joint + links.repair on moved part: repairs joint and preserves edited type, flip, offset, and angle",
+           any(r.get("joint") == "MainShaftJoint" and r.get("status") == "ok" for r in (rep_move.get("repaired") or []))
            and move_entry.get("flip") is True and move_entry.get("offset") == 3.0
            and move_entry.get("type") == "cylindrical" and move_entry.get("angle") == 45.0,
-           f"rep_move=({st_rep_move}, {rep_move}) move_entry={move_entry}")
-
-        # Check 6(b): Forced error in the middle of apply() after joint.create:
-        # Verify assembly_add_joint rolls back doc.session via edit.checkpoint, whereas raw hand_step
-        # only drops the disk Snapshot without rolling back doc.session.
-        orig_record = links.record
-        def boom_record(*args, **kwargs):
-            raise RuntimeError("simulated error after joint.create")
-        links.record = boom_record
-        try:
-            st_boom, res_boom = call("assembly/joint", {
-                "type": "rigid",
-                "name": "GhostOnError",
-                "a": {"occurrence": "Plate:1", "plane": "XY"},
-                "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-            })
-        finally:
-            links.record = orig_record
-        with srv.lock:
-            cur_after_boom = srv.ensure_current()
-            live_after_boom = [j.get("name") for j in cur_after_boom.session.cmd("joint.list", {}).get("joints", [])]
-
-        # Also demonstrate raw hand_step behavior without assembly_add_joint's checkpoint rollback:
-        raw_hand_leaked = False
-        with srv.lock:
-            cur_doc = srv.ensure_current()
-            cp_raw = cur_doc.session.cmd("edit.checkpoint", {}).get("checkpoint")
-            try:
-                def raw_failing_apply():
-                    cur_doc.session.cmd("joint.create", {
-                        "type": "rigid",
-                        "name": "RawHandStepLeak",
-                        "a": {"occurrence": "Plate:1", "plane": "XY"},
-                        "b": {"occurrence": "DrivePin:1", "plane": "XY"},
-                    })
-                    raise RuntimeError("simulated mid-hand_step failure")
-                try:
-                    srv.agent.hand_step("raw test", raw_failing_apply)
-                except RuntimeError:
-                    pass
-                raw_names = [j.get("name") for j in cur_doc.session.cmd("joint.list", {}).get("joints", [])]
-                raw_hand_leaked = "RawHandStepLeak" in raw_names
-            finally:
-                modeling._restore(cur_doc.session, cp_raw, forget=False)
-
-        ok("assemble POST /api/assembly/joint: rolls back session checkpoint when apply() fails after joint.create",
-           st_boom == 400 and "simulated error after joint.create" in (res_boom.get("error") or "")
-           and "GhostOnError" not in live_after_boom and raw_hand_leaked is True,
-           f"boom=({st_boom}, {res_boom}) live_after_boom={live_after_boom} raw_hand_leaked={raw_hand_leaked}")
+           f"rep_move={rep_move} move_entry={move_entry}")
     finally:
-        srv.shutdown()
-        srv.server_close()
-
-
-def bolted_dialog_checks(tmp):
-    """Assemble tab stage 1c: /api/standard_parts and /api/assembly/bolted/{preview,create,edit,delete}."""
-    import urllib.error
-    import urllib.request
-    from mechvane.ui import server as ui_server
-
-    folder = Path(tmp) / "bolted_ui"
-    folder.mkdir()
-    w = Workspace(folder)
-    try:
-        for pname, thick in (("BottomPlate", 20), ("TopPlate", 10)):
-            p = w.new(PART, pname)
-            p.session.batch([
-                {"command": "sketch.create", "params": {"plane": "XY", "name": f"Sk_{pname}"}},
-                {"command": "sketch.rectangle.two_point", "params": {"p0": [0, 0], "p1": [60, 60]}},
-                {"command": "sketch.finish", "params": {}},
-                {"command": "solid.extrude", "params": {"sketch": f"Sk_{pname}", "distance": thick, "name": f"{pname}Body"}},
-            ])
-            p.save()
-
-        asm = w.new(ASSEMBLY, "Flange")
-        links.insert(w, asm, folder / "BottomPlate.solidcraft", name="BottomPlate", grounded=True)
-        links.insert(w, asm, folder / "TopPlate.solidcraft", name="TopPlate", translate=[0, 0, 20], grounded=True)
-        asm.save()
-    finally:
-        w.close_all()
-
-    srv = ui_server.create_server(folder, port=0)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{srv.server_address[1]}/api/"
-
-    def call(endpoint, body=None):
-        headers = {"Content-Type": "application/json"} if body is not None else {}
-        req = urllib.request.Request(base + endpoint, method="POST" if body is not None else "GET",
-                                     data=json.dumps(body).encode() if body is not None else None,
-                                     headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read().decode("utf-8"))
-
-    try:
-        st_sp, sp = call("standard_parts")
-        ok("bolted UI /api/standard_parts: exposes ISO 4762 and ISO 10642 details",
-           st_sp == 200 and "ISO 4762" in (sp.get("bolted_norms") or [])
-           and "ISO 10642" in (sp.get("bolted_norms") or [])
-           and "M6" in (sp.get("bolted_details", {}).get("ISO 4762", {}).get("sizes") or {}),
-           f"st={st_sp} keys={list(sp.keys())}")
-
-        # Open a part: assembly bolted endpoints must return HTTP 400
-        call("open/TopPlate.solidcraft", {})
-        st_pl, _ = call("assembly/bolted")
-        st_pp, _ = call("assembly/bolted/preview", {"x": 30, "y": 30, "z": 10, "size": "M6"})
-        st_pc, _ = call("assembly/bolted/create", {"x": 30, "y": 30, "z": 10, "size": "M6"})
-        ok("bolted UI endpoints: return HTTP 400 when a part is open",
-           st_pl == 400 and st_pp == 400 and st_pc == 400,
-           f"list={st_pl} prev={st_pp} create={st_pc}")
-
-        # Open the two-plate assembly
-        st_oa, _ = call("open/Flange.solidcraft", {})
-        placement = {"type": "point", "position": [30, 30, 30], "direction": [0, 0, -1]}
-        st_pr, pr = call("assembly/bolted/preview", {
-            "placement": placement,
-            "screw_norm": "ISO 4762",
-            "size": "M6",
-            "connection_type": "through",
-            "fit": "normal",
-            "counterbore": True,
-            "washer_head": True,
-            "washer_nut": True,
-        })
-        pr_occs = [p.get("occurrence") for p in pr.get("parts") or []]
-        ok("bolted UI preview: returns fastener length, dims and both plates",
-           st_oa == 200 and st_pr == 200 and pr.get("selected_screw_length", 0) > 20
-           and "TopPlate:1" in pr_occs and "BottomPlate:1" in pr_occs
-           and isinstance(pr.get("dims"), dict),
-           f"prev=({st_pr}, {pr})")
-
-        # Invalid inputs (size='M99', length='abc', x='abc'): HTTP 400 with readable message, undo history unchanged
-        _, hist_before = call("agent/history")
-        turns_before = len(srv.agent.turns)
-        st_bad_sz, err_sz = call("assembly/bolted/create", {"placement": placement, "size": "M99"})
-        st_bad_ln, err_ln = call("assembly/bolted/create", {"placement": placement, "size": "M6", "length": "abc"})
-        st_bad_x, err_x = call("assembly/bolted/create", {"x": "abc", "y": 30, "z": 22, "size": "M6"})
-        _, hist_after = call("agent/history")
-        turns_after = len(srv.agent.turns)
-        ok("bolted UI validation: size='M99', length='abc', x='abc' return HTTP 400 and leave undo history unchanged",
-           st_bad_sz == 400 and "M99" in (err_sz.get("error") or "")
-           and st_bad_ln == 400 and "length" in (err_ln.get("error") or "").lower()
-           and st_bad_x == 400 and "x must be a number" in (err_x.get("error") or "")
-           and hist_after == hist_before and turns_after == turns_before,
-           f"sz=({st_bad_sz}, {err_sz}) ln=({st_bad_ln}, {err_ln}) x=({st_bad_x}, {err_x}) hist=({hist_before}, {hist_after})")
-
-        st_cr, cr = call("assembly/bolted/create", {
-            "placement": placement,
-            "screw_norm": "ISO 4762",
-            "size": "M6",
-            "connection_type": "through",
-            "fit": "normal",
-            "counterbore": True,
-            "washer_head": True,
-            "washer_nut": True,
-            "length_override": 50,
-            "name": "FlangeBolt",
-        })
-        conn_id = cr.get("id")
-        st_ls, ls = call("assembly/bolted")
-        st_tr, tr = call("tree")
-        tree_ids = [c.get("id") for c in tr.get("bolted_connections") or []]
-        ok("bolted UI create: connection is listed in /api/assembly/bolted and /api/tree with fixed length_override",
-           st_cr == 200 and conn_id and st_ls == 200 and ls.get("count") == 1
-           and conn_id in (ls.get("connections") or {}) and conn_id in tree_ids
-           and cr.get("screw_length") == 50.0,
-           f"create=({st_cr}, {cr}) list={ls} tree_ids={tree_ids}")
-
-        # Preview while editing an existing connection must ignore old fasteners and reset washer_head on countersunk
-        st_ep, ep = call("assembly/bolted/preview", {
-            "edit_id": conn_id,
-            "size": "M8",
-            "screw_norm": "ISO 10642",
-            "connection_type": "through",
-        })
-        ok("bolted UI edit preview: evaluates updated size on plates without hitting old fasteners",
-           st_ep == 200 and ep.get("size") == "M8" and ep.get("screw_norm") == "ISO 10642"
-           and ep.get("washer_head") is False and ep.get("washer_nut") is True,
-           f"edit_prev=({st_ep}, {ep})")
-
-        # Edit cap -> countersunk without explicit washer_head: washer_head must reset to False, fixed length preserved
-        st_ed, ed = call("assembly/bolted/edit", {
-            "id": conn_id,
-            "size": "M8",
-            "screw_norm": "ISO 10642",
-        })
-        _, ls_ed = call("assembly/bolted")
-        ed_conn = (ls_ed.get("connections") or {}).get(conn_id, {})
-        ed_fast = (ed_conn.get("parameters") or {}).get("fasteners") or {}
-        ok("bolted UI edit (cap -> countersunk): resets washer_head to False and preserves fixed length_override",
-           st_ed == 200 and ed_conn.get("size") == "M8" and ed_conn.get("screw_norm") == "ISO 10642"
-           and ed_conn.get("washer_head") is False and ed_fast.get("washer_head") is False
-           and ed_conn.get("washer_nut") is True and ed_fast.get("washer_nut") is True
-           and ed_conn.get("screw_length") == 50.0 and ed_fast.get("length_override") == 50.0,
-           f"edit=({st_ed}, {ed}) conn={ed_conn}")
-
-        # Edit through -> blind without explicit washer_nut: washer_nut must reset to False
-        st_eb, eb = call("assembly/bolted/edit", {
-            "id": conn_id,
-            "connection_type": "blind",
-            "length_override": None,
-        })
-        _, ls_eb = call("assembly/bolted")
-        eb_conn = (ls_eb.get("connections") or {}).get(conn_id, {})
-        eb_fast = (eb_conn.get("parameters") or {}).get("fasteners") or {}
-        ok("bolted UI edit (through -> blind): resets washer_nut to False in connection and stored parameters",
-           st_eb == 200 and eb_conn.get("type") == "blind"
-           and eb_conn.get("washer_nut") is False and eb_fast.get("washer_nut") is False
-           and eb_conn.get("washer_head") is False and eb_fast.get("washer_head") is False,
-           f"edit_blind=({st_eb}, {eb}) conn={eb_conn}")
-
-        st_del, dl = call("assembly/bolted/delete", {"id": conn_id})
-        _, ls_del = call("assembly/bolted")
-        st_miss, _ = call("assembly/bolted/delete", {"id": "nonexistent"})
-        ok("bolted UI delete: removes connection from list and returns 404 on unknown id",
-           st_del == 200 and dl.get("deleted") == conn_id and ls_del.get("count") == 0
-           and not (ls_del.get("connections") or {}) and st_miss == 404,
-           f"del=({st_del}, {dl}) after={ls_del} miss={st_miss}")
-
-        st_un, _ = call("agent/undo", {})
-        _, ls_un = call("assembly/bolted")
-        st_re, _ = call("agent/redo", {})
-        _, ls_re = call("assembly/bolted")
-        ok("bolted UI undo/redo: restores and re-deletes bolted connection on shared history",
-           st_un == 200 and ls_un.get("count") == 1 and st_re == 200 and ls_re.get("count") == 0,
-           f"undo={ls_un} redo={ls_re}")
-    finally:
-        srv.shutdown()
-        srv.server_close()
+        server.ws.close_all()
+        server.ws = old_ws
 
 
 def add_joint_as_built_checks(ws):
@@ -12933,7 +9168,8 @@ def main():
             praxistest_6_fixes_checks(ws)
             bolted_anchor_associativity_checks(ws)
             bolted_countersunk_checks(ws)
-            web_ui_stage1_checks(ws)
+            mesh_checks(ws)
+            hole_reference_and_face_name_checks(ws)
             argon_review_findings_checks(ws)
             argon_review_findings_5_8_checks(ws)
             argon_review_findings_7_10_12_checks(ws)
@@ -12941,37 +9177,15 @@ def main():
             argon_review_findings_9_11_checks(ws)
             install_checks(tmp)
             cli_check_checks(tmp)
-            appwindow_checks(tmp)
             session_env_checks()
-            demo_folder_checks(tmp)
             moved_project_checks(tmp)
             empty_part_mesh_check(tmp)
-            single_instance_check(tmp)
-            quit_check(tmp)
             split_face_name_check()
             edge_touches_check()
-            feature_request_checks(tmp, ws)
-            demo_pyodide_checks(tmp)
-            agent_turns_checks(tmp)
-            snapshot_prune_checks(tmp)
-            selection_checks(tmp)
-            speech_checks(tmp)
-            speech_cases_checks()
-            params_checks(tmp)
-            feature_dialog_checks(tmp)
-            command_form_checks()
-            command_dialog_checks(tmp)
-            command_dialog_assembly_checks(tmp)
-            command_dialog_sketch_checks(tmp)
-            commands_js_checks(tmp)
-            assemble_dialog_checks(tmp)
-            assemble_joint_dialog_checks(tmp)
-            assemble_constraint_checks(tmp)
-            bolted_dialog_checks(tmp)
-            centred_hole_dialog_checks(tmp)
-            sessionlog_checks(tmp)
-            window_close_checks(tmp)
-            viewtools_checks(tmp)
+            documents_reload_checks(tmp)
+            delete_feature_keep_sketch_checks(tmp)
+            assembly_joint_edit_checks(tmp)
+            assembly_constraint_checks(tmp)
             roadmap_json_checks()
             bolted_gap_chamfer_check(tmp)
             gltf_export_check(tmp)
@@ -12982,7 +9196,6 @@ def main():
             design_intent_checks(ws)
             concentric_hole_checks(ws)
             profile_choice_checks(ws)
-            sketch_session_checks(tmp)
             step_import_checks(tmp)
             sc_errors_stage2_checks(ws)
             sc_locate_checks(ws)
@@ -13002,7 +9215,6 @@ def main():
                 tester_tasks_checks()
             if _private_tool("cleanup_branches.sh"):
                 cleanup_branches_checks(tmp)
-            agent_first_use_checks()
             if _private_tool("gate.py") and _private_tool("gemini_queue.sh"):
                 queue_guard_checks(tmp)
             if _private_tool("gate.py"):
@@ -13010,10 +9222,7 @@ def main():
             check_sources_gzip_check()
             py311_syntax_checks()
             check_parameters_tool_checks(ws)
-            demo_wasm_split_checks(tmp)
             step_signature_checks(ws)
-            record_replay_checks(ws)
-            sketch_face_pick_checks(ws)
             add_joint_as_built_checks(ws)
             bolted_subfolder_checks(tmp)
             bolted_roundtrip_checks(tmp)

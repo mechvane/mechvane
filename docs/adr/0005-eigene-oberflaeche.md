@@ -1,6 +1,9 @@
 # ADR 0005: Eigene Oberfläche – Mechvane-Arbeitsbereich statt eingebetteter SolidCraft-App
 
-- Status: **angenommen** (2026-10-31, Nutzer; vorgeschlagen am selben Tag von Claude nach Nutzerentscheid „eigene vollständige Oberfläche in v0.1“)
+- Status: **abgelöst** (2026-11-27, Nutzer): Die Web-UI war seit 2026-11-20 eingefroren und ist entfernt (`mechvane ui`,
+  `mechvane shortcut`, die Web-App in `mechvane setup`). Von Hand wird in der SolidCraft-App modelliert, Mechvane hängt sich an das
+  offene Fenster. Der Text unten bleibt als Verlauf.
+- Vorher: **angenommen** (2026-10-31, Nutzer; vorgeschlagen am selben Tag von Claude nach Nutzerentscheid „eigene vollständige Oberfläche in v0.1“)
 - Entscheidet: Aufbau des Arbeitsbereichs, wie Befehle aus eigenen Dialogen an SolidCraft gehen, Auswahl,
   Vorschau und Rückgängig, Reihenfolge der Stufen, was in v0.1 gehört
 - Bezug: ROADMAP Grundsatz 5 (Feature-Baum wie Inventor), 10 (Bedienung wie Inventor, dunkler und schicker),

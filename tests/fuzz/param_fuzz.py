@@ -26,10 +26,12 @@ from pathlib import Path
 # Repository root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "tests" / "mechvane"))
 
-from mechvane import examples, links, modeling, sc_errors  # noqa: E402
+import example_models as examples  # noqa: E402
+from mechvane import links, modeling, sc_errors  # noqa: E402
 from mechvane.documents import ASSEMBLY, PART, Workspace  # noqa: E402
-from mechvane.ui.server import collect_params  # noqa: E402
+from mechvane.query import collect_params  # noqa: E402
 
 REF_DIR = REPO_ROOT / "tests" / "reference"
 BUILD_FUZZ_DIR = REPO_ROOT / "build" / "fuzz"

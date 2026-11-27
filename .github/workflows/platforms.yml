@@ -37,7 +37,7 @@ jobs:
           path: |
             ~/.cache/mechvane
             ~/AppData/Local/mechvane
-          key: solidcraft-${{ runner.os }}-${{ hashFiles('mechvane/install.py', 'mechvane/ui/webapp.py') }}
+          key: solidcraft-${{ runner.os }}-${{ hashFiles('mechvane/install.py') }}
           restore-keys: |
             solidcraft-${{ runner.os }}-
 
@@ -48,83 +48,3 @@ jobs:
 
       - name: Run CI smoke test
         run: python tools/ci_smoke.py
-
-  # The web UI is frozen (2026-11-20): its smoke tests run only when UI paths change (or nightly / by hand) and
-  # never block a release: the six platform jobs above (check + ci_smoke) are what counts (#179).
-  ui-smoke:
-    name: UI and demo smoke (not blocking)
-    if: github.repository == 'mechvane/mechvane'
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Did a UI path change?
-        id: ui
-        run: |
-          RUN=1
-          if [ "${{ github.event_name }}" = "push" ]; then
-            BEFORE="${{ github.event.before }}"
-            if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-              if ! git diff --no-renames --name-only "$BEFORE" "${{ github.sha }}" | grep -qE '^(mechvane/ui/|demo/|tools/demo_site/|tools/build_demo_site\.py$|tools/ui_smoke\.py$|tools/sketch_smoke\.py$|tools/demo_smoke\.py$)'; then
-                RUN=0
-              fi
-            fi
-          fi
-          echo "run=$RUN" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Python
-        if: steps.ui.outputs.run == '1'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Cache SolidCraft downloads
-        if: steps.ui.outputs.run == '1'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/mechvane
-            ~/AppData/Local/mechvane
-          key: solidcraft-${{ runner.os }}-${{ hashFiles('mechvane/install.py', 'mechvane/ui/webapp.py') }}
-          restore-keys: |
-            solidcraft-${{ runner.os }}-
-
-      - name: Install Mechvane and Playwright
-        if: steps.ui.outputs.run == '1'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install playwright
-          playwright install --with-deps chromium chromium-headless-shell
-
-      - name: Download SolidCraft (mechvane setup)
-        if: steps.ui.outputs.run == '1'
-        run: python -m mechvane setup
-
-      - name: Run UI smoke test
-        if: steps.ui.outputs.run == '1'
-        run: python tools/ui_smoke.py http://127.0.0.1:8799/ screenshots
-
-      - name: Run demo smoke test
-        if: steps.ui.outputs.run == '1'
-        run: |
-          python tools/build_demo_site.py /tmp/demosite --with-demo
-          python -m http.server 8811 --directory /tmp/demosite &
-          SERVER_PID=$!
-          sleep 2
-          RC=0
-          python tools/demo_smoke.py || RC=$?
-          kill $SERVER_PID 2>/dev/null || true
-          rm -rf /tmp/demosite
-          exit $RC
-
-      - name: Upload screenshots artifact
-        if: steps.ui.outputs.run == '1' && always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots-ui-smoke
-          path: screenshots/
-          if-no-files-found: ignore

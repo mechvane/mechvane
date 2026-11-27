@@ -1,7 +1,7 @@
 import sys
 
 if len(sys.argv) > 1:
-    # python -m mechvane setup|ui|mcp, for when the mechvane script is not on PATH (Windows user installs)
+    # python -m mechvane setup|mcp|check, for when the mechvane script is not on PATH (Windows user installs)
     from .cli import main as cli_main
 
     sys.exit(cli_main())

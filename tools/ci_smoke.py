@@ -2,27 +2,20 @@
 """Cross-platform smoke test for Mechvane CI (Windows, macOS, Linux).
 
 Verifies:
-1. `mechvane setup` (download and unpack pinned SolidCraft CLI and web app).
+1. `mechvane setup` (download and unpack the pinned SolidCraft CLI).
 2. Python interface: create a part (plate with hole), check_design, save, reopen,
    and verify volume against expected value.
 3. Wheel: contains the knowledge catalog, installs into a fresh venv and finds the rule sources there (#169).
-4. UI server: launch `mechvane ui --demo --no-browser --port <free>`, query
-   /api/project and /api/mesh, and terminate cleanly via /api/quit.
 
 Standard library only, plus mechvane.
 """
 
-import json
 import math
 import os
-import socket
 import subprocess
 import sys
 import tempfile
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 # Ensure repository root is on sys.path even when invoked without pip install -e
@@ -31,16 +24,9 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 
-def get_free_port() -> int:
-    """Find an available TCP port on localhost."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
 def run_setup() -> None:
     """Run `mechvane setup` via CLI entry point."""
-    print("== [1/3] Running `mechvane setup` ==", flush=True)
+    print("== [1/2] Running `mechvane setup` ==", flush=True)
     cmd = [sys.executable, "-m", "mechvane", "setup"]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if res.returncode != 0:
@@ -55,7 +41,7 @@ def run_setup() -> None:
 
 def test_part_modeling() -> None:
     """Create a plate with a hole, check_design, save, reopen, and verify volume."""
-    print("== [2/3] Testing part creation, check_design, save, reopen, volume ==", flush=True)
+    print("== [2/2] Testing part creation, check_design, save, reopen, volume ==", flush=True)
     from mechvane.documents import Workspace, PART
     from mechvane import server
 
@@ -139,135 +125,6 @@ def test_part_modeling() -> None:
     print("  OK: part modeling and volume check passed.\n", flush=True)
 
 
-def test_ui_server() -> None:
-    """Launch `mechvane ui --demo --no-browser --port <free>`, query APIs, exit cleanly."""
-    print("== [3/3] Testing UI server (--demo mode) ==", flush=True)
-    port = get_free_port()
-    cmd = [
-        sys.executable,
-        "-m",
-        "mechvane",
-        "ui",
-        "--demo",
-        "--no-browser",
-        "--port",
-        str(port),
-    ]
-    print(f"  Starting UI server: {' '.join(cmd)}", flush=True)
-
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    try:
-        # Wait for server to respond to /api/project
-        base_url = f"http://127.0.0.1:{port}"
-        project_data = None
-        deadline = time.time() + 45.0
-
-        while time.time() < deadline:
-            if proc.poll() is not None:
-                out, err = proc.communicate(timeout=5)
-                raise RuntimeError(
-                    f"UI server process terminated prematurely with exit code {proc.returncode}:\n{out}\n{err}"
-                )
-            try:
-                req = urllib.request.Request(f"{base_url}/api/project")
-                with urllib.request.urlopen(req, timeout=2) as resp:
-                    if resp.status == 200:
-                        project_data = json.loads(resp.read().decode("utf-8"))
-                        break
-            except Exception:
-                time.sleep(0.3)
-
-        if project_data is None:
-            raise TimeoutError("UI server did not respond to /api/project within 45 seconds")
-
-        documents = project_data.get("documents", [])
-        print(f"  /api/project OK: mode={project_data.get('mode')}, {len(documents)} document(s)", flush=True)
-        if not documents:
-            raise RuntimeError("No documents found in /api/project demo response")
-
-        # Open a document to query /api/mesh
-        doc_name = documents[0]["name"]
-        encoded_name = urllib.parse.quote(doc_name)
-        open_req = urllib.request.Request(
-            f"{base_url}/api/open/{encoded_name}",
-            data=b"{}",
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(open_req, timeout=10) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"/api/open/{doc_name} returned status {resp.status}")
-        print(f"  Opened demo document: {doc_name}", flush=True)
-
-        # Query /api/mesh
-        mesh_req = urllib.request.Request(f"{base_url}/api/mesh")
-        with urllib.request.urlopen(mesh_req, timeout=10) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"/api/mesh returned status {resp.status}")
-            mesh_data = json.loads(resp.read().decode("utf-8"))
-
-        bodies = mesh_data.get("bodies", [])
-        if not bodies:
-            raise RuntimeError(f"No bodies returned in /api/mesh for {doc_name}")
-        print(f"  /api/mesh OK: {len(bodies)} body/bodies in mesh", flush=True)
-
-        # Clean shutdown via /api/quit
-        quit_req = urllib.request.Request(
-            f"{base_url}/api/quit",
-            data=b"{}",
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(quit_req, timeout=5) as resp:
-                print(f"  /api/quit sent (HTTP {resp.status})", flush=True)
-        except Exception as e:
-            print(f"  Warning on /api/quit request: {e}", flush=True)
-
-        try:
-            proc.wait(timeout=10)
-            print(f"  Server process exited with code {proc.returncode}", flush=True)
-        except subprocess.TimeoutExpired:
-            print("  Warning: server did not exit within 10s after /api/quit, terminating...", flush=True)
-            proc.terminate()
-            proc.wait(timeout=5)
-
-        if proc.returncode != 0:
-            out, err = proc.communicate()
-            raise RuntimeError(f"UI server finished with non-zero exit code {proc.returncode}:\n{out}\n{err}")
-
-        print("  OK: UI server started, responded to API queries, and stopped cleanly.\n", flush=True)
-
-    except Exception as exc:
-        # show the server's answer and its own output, so a CI failure says why (Windows: HTTP 500 on /api/mesh)
-        if isinstance(exc, urllib.error.HTTPError):
-            print(f"  HTTP {exc.code} body: {exc.read()[:2000]!r}", file=sys.stderr, flush=True)
-        if proc.poll() is None:
-            proc.terminate()
-        try:
-            out, err = proc.communicate(timeout=10)
-        except Exception:
-            out, err = "", ""
-        print("---- UI server stdout (tail) ----\n" + "\n".join((out or "").splitlines()[-60:]), file=sys.stderr)
-        print("---- UI server stderr (tail) ----\n" + "\n".join((err or "").splitlines()[-60:]), file=sys.stderr, flush=True)
-        raise
-
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-
-
 def test_wheel_ships_catalog() -> None:
     """The wheel carries the knowledge catalog (#169): 0.1.0a24 shipped without it, so installed packages showed findings
     without their source. Builds the wheel, compares its catalog entries and the other package data with the source tree,
@@ -292,7 +149,7 @@ def test_wheel_ships_catalog() -> None:
         expected = {n for n in tree("katalog/eintraege") if n.endswith(".json")}
         assert shipped == expected and len(expected) >= 100, (
             f"wheel catalog differs from katalog/eintraege: missing {sorted(expected - shipped)[:3]}, extra {sorted(shipped - expected)[:3]}")
-        for sub, pat in (("mechvane/data", ".json"), ("mechvane/ui/static", "")):  # other package data must survive the explicit package list
+        for sub, pat in (("mechvane/data", ".json"),):  # other package data must survive the explicit package list
             want = {f"{sub}/{n}" for n in tree(sub) if n.endswith(pat)}
             assert want and want <= names, f"wheel misses package data under {sub}: {sorted(want - names)[:3]}"
         # install into a fresh venv and ask for the sources there (no SolidCraft needed); -I keeps the checkout out of sys.path
@@ -314,7 +171,6 @@ def main() -> None:
     run_setup()
     test_wheel_ships_catalog()
     test_part_modeling()
-    test_ui_server()
     elapsed = time.time() - t0
     print(f"=== All CI smoke checks passed in {elapsed:.1f}s ===", flush=True)
 

@@ -231,8 +231,8 @@ _RULE_SOURCE_CACHE = None
 
 def rule_sources() -> dict:
     """Source of each mapped rule: {rule: {entry, titel, url, stelle, zitat}} from the first source of its
-    catalog entry (quote verbatim). Without the catalog (live demo in the browser) the bundled
-    rule_sources.json, written by tools/build_demo_site.py, stands in."""
+    catalog entry (quote verbatim). Without the catalog the bundled
+    rule_sources.json, if present, stands in."""
     global _RULE_SOURCE_CACHE
     if _RULE_SOURCE_CACHE is not None:
         return _RULE_SOURCE_CACHE

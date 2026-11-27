@@ -7,6 +7,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-27
+
+### Changed
+
+- Built and tested with **SolidCraft 0.43.0** (unchanged); `mechvane setup` fetches only the SolidCraft command line now.
+
+### Removed
+
+- The browser workspace `mechvane ui` and the start menu entry `mechvane shortcut`: you model by hand in SolidCraft's own app, and Mechvane connects to the window you have open (`connect_window`, `mechvane check`).
+- `mechvane setup` no longer downloads the SolidCraft web app; it fetches only the pinned SolidCraft CLI (about 60 MB less to download, about 175 MB less on disk).
+- Caches of earlier versions (`~/.cache/mechvane/demo`, `solidcraft-web-*`) are no longer used and can be deleted by hand.
+
+### Fixed
+
+- `measure` on an assembly no longer doubles the placement of its parts with SolidCraft 0.50 and newer (those versions already report assembly bodies in world coordinates). The version is read from the SolidCraft process when the session starts.
+
 ## [0.1.0] - 2026-11-27
 
 ### Changed

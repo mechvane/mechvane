@@ -1,8 +1,6 @@
-"""The `mechvane` command: setup, ui, shortcut, mcp and check.
+"""The `mechvane` command: setup, mcp and check.
 
-  mechvane setup                 download the pinned SolidCraft CLI and web app into the cache
-  mechvane ui [path] [--demo]    open the web UI for a .solidcraft file or project folder
-  mechvane shortcut [folder]     add a start menu entry that opens folder (default: ~/Mechvane)
+  mechvane setup                 download the pinned SolidCraft CLI into the cache
   mechvane mcp                   run the MCP server on stdio (for Claude Code and other agents)
   mechvane check [file]          run design rule checks on a .solidcraft file or open SolidCraft window
 """
@@ -10,15 +8,12 @@
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
-import webbrowser
 from pathlib import Path
 
 from . import install
-from .ui import appwindow, webapp
 
 
 def cmd_setup(args) -> int:
@@ -30,63 +25,7 @@ def cmd_setup(args) -> int:
         print(f"  but it does not start: {(out.stderr or out.stdout).strip()}", file=sys.stderr)
         return 1
     print(f"  {out.stdout.strip()}")
-    print(f"SolidCraft web app {webapp.VERSION}: {webapp.webapp_dir()}")
     print("Ready. Next: connect your agent (mechvane mcp) and the SolidCraft app you have open, see docs/installation.md")
-    return 0
-
-
-def demo_folder() -> Path:
-    """Folder with the example models, built on first use."""
-    from .documents import Workspace
-    from .examples import build_all
-
-    folder = install.CACHE / "demo"
-    done = folder / ".complete"  # written last, lists every file the build made
-    if done.is_file() and all((folder / n).is_file() for n in done.read_text(encoding="utf-8").split()):
-        return folder
-    # A build that broke off (a crash, Ctrl+C) leaves some files behind: start again from an empty
-    # folder. Built in place, not moved there afterwards: assemblies keep their parts' paths.
-    shutil.rmtree(folder, ignore_errors=True)
-    folder.mkdir(parents=True)
-    print(f"Building the example models in {folder} ...", flush=True)
-    ws = Workspace(folder)
-    try:
-        build_all(ws)
-    finally:
-        ws.close_all()
-    done.write_text("\n".join(sorted(p.name for p in folder.glob("*.solidcraft"))), encoding="utf-8")
-    return folder
-
-
-def cmd_ui(args) -> int:
-    from .ui.server import run_server
-
-    if args.demo:
-        path = demo_folder()
-    elif args.path:
-        path = Path(args.path)
-    else:
-        path = Path.cwd()
-    if not path.exists():
-        print(f"not found: {path}", file=sys.stderr)
-        return 1
-    opener = None
-    if args.browser:
-        opener = lambda url, stop: webbrowser.open(url)  # noqa: E731
-    elif not args.no_browser:
-        opener = lambda url, stop: appwindow.open_window(url, on_close=stop)  # noqa: E731
-    run_server(str(path), port=args.port, opener=opener)
-    return 0
-
-
-def cmd_shortcut(args) -> int:
-    folder = Path(args.folder).expanduser().resolve() if args.folder else Path.home() / "Mechvane"
-    try:
-        entry = appwindow.create_shortcut(folder)
-    except (RuntimeError, OSError, subprocess.SubprocessError) as e:
-        print(f"could not add the start menu entry: {e}", file=sys.stderr)
-        return 1
-    print(f"Start menu entry: {entry}\nOpens: {folder}")
     return 0
 
 
@@ -196,18 +135,8 @@ def cmd_check(args) -> int:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="mechvane", description="Mechvane: parametric CAD, you and your agent on the same model, on SolidCraft")
     sub = parser.add_subparsers(dest="command", required=True)
-    p = sub.add_parser("setup", help="download the pinned SolidCraft CLI and web app")
+    p = sub.add_parser("setup", help="download the pinned SolidCraft CLI")
     p.set_defaults(func=cmd_setup)
-    p = sub.add_parser("ui", help="open the web UI")
-    p.add_argument("path", nargs="?", help="a .solidcraft file or project folder (default: current folder)")
-    p.add_argument("--demo", action="store_true", help="open the example models")
-    p.add_argument("--port", type=int, default=8765, help="local port on 127.0.0.1 (default: 8765)")
-    p.add_argument("--no-browser", action="store_true", help="do not open a window")
-    p.add_argument("--browser", action="store_true", help="open a tab in the default browser instead of an app window")
-    p.set_defaults(func=cmd_ui)
-    p = sub.add_parser("shortcut", help="add a start menu entry (Windows, Linux)")
-    p.add_argument("folder", nargs="?", help="project folder it opens (default: ~/Mechvane)")
-    p.set_defaults(func=cmd_shortcut)
     p = sub.add_parser("mcp", help="run the MCP server on stdio")
     p.add_argument("--workspace", help="folder for new documents (default: $MECHVANE_WORKSPACE)")
     p.set_defaults(func=cmd_mcp)

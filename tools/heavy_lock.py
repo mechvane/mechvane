@@ -1,8 +1,8 @@
-"""One heavy run at a time on this machine (audit 2026-11-16, A5): the gate, review_branch.sh, ui_smoke.py and
-demo_smoke.py take this lock first. Two of them side by side filled the swap and turned branches red that were fine
-(#49, 2026-11-16). The outermost run holds the lock; the runs it starts see MECHVANE_HEAVY_LOCK and go on.
+"""One heavy run at a time on this machine (audit 2026-11-16, A5): the gate and review_branch.sh take this lock
+first (the UI smokes that also took it are gone with the web UI, #232). Two heavy runs side by side filled the swap
+and turned branches red that were fine (#49, 2026-11-16). The outermost run holds the lock; the runs it starts see MECHVANE_HEAVY_LOCK and go on.
 
-    from heavy_lock import hold; hold("ui_smoke")        (Python)
+    from heavy_lock import hold; hold("gate")            (Python)
     review_branch.sh: flock on the same file              (shell, see there)
 
 MECHVANE_HEAVY_WAIT: seconds to wait for the lock (default 10800); then the run stops with an error.

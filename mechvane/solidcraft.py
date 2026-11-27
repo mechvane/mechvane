@@ -134,6 +134,18 @@ def find_app(control=None, probe=_listening) -> str:
     return f"127.0.0.1:{live[0]}"
 
 
+def parse_version(text) -> tuple | None:
+    """(0, 50, 0) from "0.50.0" or "0.51.0-nightly.20261127"; None when it does not look like a version."""
+    import re
+    m = re.match(r"\s*v?(\d+)\.(\d+)(?:\.(\d+))?", text) if isinstance(text, str) else None
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)) if m else None
+
+
+# From this SolidCraft version on, `document.inspect {"measure": true}` reports the bodies of an assembly in world
+# coordinates (0.49.1 and older: in part coordinates). Checked 2026-11-27 on 0.43.0, 0.47.0, 0.49.0, 0.49.1 (part) and 0.50.0 (world), #231.
+MEASURE_WORLD_FROM = (0, 50, 0)
+
+
 class Session:
     """One SolidCraft session: headless (one open design of its own), or, with `connect`, bridged to the
     design in the running app's window (`connect="auto"` finds the window, or `"127.0.0.1:PORT"`)."""
@@ -143,6 +155,7 @@ class Session:
     def __init__(self, allow_paths=(), executable=None, timeout=300.0, connect=None, token=None):
         self.timeout = timeout
         self._closed = False
+        self.engine_version = None  # (major, minor, patch) of the SolidCraft process, set by initialize
         self.connected = connect is not None
         self.address = None
         if self.connected:
@@ -173,9 +186,11 @@ class Session:
         threading.Thread(target=self._reader, args=(self._p.stdout.fileno(), self._lines),
                          daemon=True).start()
         try:
-            self._rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
-                                     "clientInfo": {"name": "mechvane", "version": "0.1"}},
-                      timeout=self.CONNECT_TIMEOUT if self.connected else None)
+            init = self._rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
+                                            "clientInfo": {"name": "mechvane", "version": "0.1"}},
+                             timeout=self.CONNECT_TIMEOUT if self.connected else None)
+            info = init.get("serverInfo") if isinstance(init, dict) else None
+            self.engine_version = parse_version(info.get("version") if isinstance(info, dict) else None)
             self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
         except Exception:
             self.close()

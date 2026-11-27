@@ -1,5 +1,5 @@
-"""One way to run modelling commands in a document, for the agent (MCP `run`) and the user's own
-dialogs in the web UI (`/api/feature`): all or nothing, sketch rule, state delta, explained errors."""
+"""One way to run modelling commands in a document, for the agent (MCP `run`) and for
+plugins and tools: all or nothing, sketch rule, state delta, explained errors."""
 
 import json
 import math
@@ -374,3 +374,142 @@ def edit_constraint(ws, doc, constraint: str, params: dict) -> dict:
             if k in params:
                 old_create[k] = params[k]
     return {"constraint": r, "name": new_name, "anchors": links.record(ws, doc, new_name, old_create)["sides"]}
+
+
+def _circle_from_edge(e: dict):
+    """If edge e is a circle or circular arc, return (radius, center, edge). Otherwise None."""
+    a, m, b = e.get("start"), e.get("mid"), e.get("end")
+    if not (a and m and b and "length" in e):
+        return None
+    length = e["length"]
+    chord = g.norm(g.sub(b, a))
+    if abs(chord - length) < 1e-6:
+        return None  # straight line
+    if chord < 1e-5:
+        # Full closed circle where start and end coincide; mid is opposite to start
+        center = g.scale(g.add(a, m), 0.5)
+        radius = g.norm(g.sub(m, center))
+        if radius > 1e-4 and abs(2.0 * math.pi * radius - length) / max(length, 1e-6) < 0.05:
+            return (radius, center, e)
+        return None
+    v1 = g.sub(m, a)
+    v2 = g.sub(b, a)
+    w = g.cross(v1, v2)
+    w2 = g.dot(w, w)
+    if w2 < 1e-12:
+        return None
+    term1 = g.scale(g.cross(v2, w), g.dot(v1, v1))
+    term2 = g.scale(g.cross(w, v1), g.dot(v2, v2))
+    offset = g.scale(g.add(term1, term2), 1.0 / (2.0 * w2))
+    center = g.add(a, offset)
+    radius = g.norm(offset)
+    if radius < 1e-4:
+        return None
+    ua = g.scale(g.sub(a, center), 1.0 / radius)
+    um = g.scale(g.sub(m, center), 1.0 / radius)
+    ub = g.scale(g.sub(b, center), 1.0 / radius)
+    cos_am = max(-1.0, min(1.0, g.dot(ua, um)))
+    cos_mb = max(-1.0, min(1.0, g.dot(um, ub)))
+    angle = math.acos(cos_am) + math.acos(cos_mb)
+    arc_len = radius * angle
+    if abs(arc_len - length) / max(length, 1e-6) < 0.05:
+        return (radius, center, e)
+    return None
+
+
+def centred_hole_commands(doc, params: dict) -> list[dict]:
+    """A hole in the middle of the clicked planar face that stays there (design intent rule): on a face with
+    two opposite straight edges, a sketch with a construction line between their midpoints; on a circular face
+    (cylinder, flange, ring), a sketch with the largest circular edge projected and the hole centre concentric
+    to it. params: the hole's (solid.hole), with position on the face and direction into it, plus centre: true."""
+    pos, direction = params.get("position"), params.get("direction")
+    if not (isinstance(pos, list) and len(pos) == 3 and isinstance(direction, list) and len(direction) == 3):
+        raise ValueError("a centred hole needs a clicked face (position and direction)")
+    pos, n = [float(c) for c in pos], g.unit([-float(c) for c in direction])
+    face, body, face_edges = None, None, []
+    for b in doc.session.cmd("document.inspect").get("bodies", []):
+        name = b.get("name") if isinstance(b, dict) else b
+        for f in doc.session.cmd("model.faces", {"body": name}).get("faces", []):
+            pn = f.get("plane_normal")
+            if pn and g.dot(g.unit(pn), n) > 0.999 and abs(g.dot(g.sub(pos, f["point"]), n)) < 1e-4:
+                edges = [e for e in doc.session.cmd("model.edges", {"body": name}).get("edges", [])
+                         if g.edge_touches(e["name"], f["name"])]
+                if edges:
+                    pts = [e[k] for e in edges for k in ("start", "end")]
+                    lo = [min(p[i] for p in pts) - 1e-4 for i in range(3)]
+                    hi = [max(p[i] for p in pts) + 1e-4 for i in range(3)]
+                    for e in edges:
+                        circ = _circle_from_edge(e)
+                        if circ:
+                            r_c, c_c, _ = circ
+                            for i in range(3):
+                                span = r_c * math.sqrt(max(0.0, 1.0 - n[i] ** 2))
+                                lo[i] = min(lo[i], c_c[i] - span - 1e-4)
+                                hi[i] = max(hi[i], c_c[i] + span + 1e-4)
+                    if all(lo[i] <= pos[i] <= hi[i] for i in range(3)):
+                        face, body, face_edges = f, name, edges
+                        break
+        if face:
+            break
+    if face is None:
+        raise ValueError("no planar face at the clicked point")
+
+    names = {f.get("name") for f in doc.session.cmd("document.inspect").get("timeline", [])}
+    k = 1
+    while f"Hole centre {k}" in names:
+        k += 1
+    sketch = f"Hole centre {k}"
+    hole = {key: v for key, v in params.items() if key not in ("centre", "position", "references")}
+    hole.update({"sketch": sketch, "points": ["c"]})
+
+    lines = [e for e in face_edges if abs(g.norm(g.sub(e["end"], e["start"])) - e["length"]) < 1e-6]
+    best = None
+    for i, a in enumerate(lines):
+        da = g.unit(g.sub(a["end"], a["start"]))
+        for b in lines[i + 1:]:
+            db = g.unit(g.sub(b["end"], b["start"]))
+            if abs(abs(g.dot(da, db)) - 1) < 1e-6:
+                gap = g.norm(g.sub(g.sub(b["mid"], a["mid"]), g.scale(da, g.dot(g.sub(b["mid"], a["mid"]), da))))
+                if gap > 1e-6 and (best is None or a["length"] + b["length"] > best[0]):
+                    best = (a["length"] + b["length"], a, b, da)
+    if best is not None:
+        _, ea, eb, xd = best
+        yd = g.cross(n, xd)
+        origin = g.add(pos, g.scale(n, -g.dot(g.sub(pos, face["point"]), n)))
+        uv = lambda q: [round(g.dot(g.sub(q, origin), xd), 6), round(g.dot(g.sub(q, origin), yd), 6)]
+        ma, mb = uv(ea["mid"]), uv(eb["mid"])
+        mid = [(ma[0] + mb[0]) / 2, (ma[1] + mb[1]) / 2]
+        return [
+            {"command": "sketch.create", "params": {"plane": {"origin": origin, "x_dir": xd, "y_dir": yd}, "name": sketch}},
+            {"command": "sketch.project", "params": {"refs": [{"edge": ea["mid"], "body": body}, {"edge": eb["mid"], "body": body}]}},
+            {"command": "sketch.line", "params": {"points": [ma, mb], "ids": ["axis"]}},
+            {"command": "sketch.construction", "params": {"curves": ["axis"]}},
+            {"command": "sketch.constraint.midpoint", "params": {"point": "axis.start", "line": "l1"}},
+            {"command": "sketch.constraint.midpoint", "params": {"point": "axis.end", "line": "l2"}},
+            {"command": "sketch.point", "params": {"point": mid, "id": "c", "connect": False}},
+            {"command": "sketch.constraint.midpoint", "params": {"point": "c", "line": "axis"}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.hole", "params": hole},
+        ]
+
+    circles = [_circle_from_edge(e) for e in face_edges]
+    circles = [c for c in circles if c is not None]
+    if circles:
+        # Largest circular edge of the face (the outer edge on a ring)
+        best_circ = max(circles, key=lambda c: (round(c[0], 6), round(c[2]["length"], 6), c[2]["name"]))
+        circ_radius, circ_center, circ_edge = best_circ
+        xd = g.unit(g.sub(circ_edge["mid"], circ_center))
+        yd = g.cross(n, xd)
+        origin = g.add(pos, g.scale(n, -g.dot(g.sub(pos, face["point"]), n)))
+        uv = lambda q: [round(g.dot(g.sub(q, origin), xd), 6), round(g.dot(g.sub(q, origin), yd), 6)]
+        mid = uv(circ_center)
+        return [
+            {"command": "sketch.create", "params": {"plane": {"origin": origin, "x_dir": xd, "y_dir": yd}, "name": sketch}},
+            {"command": "sketch.project", "params": {"refs": [{"edge": circ_edge["mid"], "body": body}]}},
+            {"command": "sketch.point", "params": {"point": mid, "id": "c", "connect": False}},
+            {"command": "sketch.constraint.concentric", "params": {"a": "a1", "b": "c"}},
+            {"command": "sketch.finish", "params": {}},
+            {"command": "solid.hole", "params": hole},
+        ]
+
+    raise ValueError("the middle of this face needs two opposite straight edges or a circular edge")

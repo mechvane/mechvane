@@ -5,7 +5,8 @@ import math
 from pathlib import Path
 import re
 
-from . import geometry as g
+from . import geometry as g, sketch_rule
+from .documents import PART
 from .links import _links, _occurrences
 from .solidcraft import Session
 
@@ -619,3 +620,109 @@ def _assembly_holes(doc, targets, where, limit):
         for r in readers.values():
             r.close()
     return items
+
+
+PARAM_KEYS = (
+    "name", "expression", "unit", "value", "source", "feature", "sketch",
+    "input", "comment", "favorite", "error", "uses", "used_by"
+)
+
+
+def _sketch_param_owners(session) -> dict[str, str]:
+    """Map sketch dimension parameter names to the sketch feature that owns each."""
+    owners = {}
+    try:
+        insp = session.cmd("document.inspect", {"measure": False})
+        for sk in insp.get("sketches", []):
+            name = sk.get("name")
+            if not name:
+                continue
+            try:
+                sk_insp = session.cmd("sketch.inspect", {"sketch": name})
+                for c in sk_insp.get("constraints", []):
+                    p = c.get("param")
+                    if p:
+                        owners[p] = name
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return owners
+
+
+def _is_named_dimension(p: dict) -> bool:
+    """Whether a sketch parameter is a named dimension rather than an auto-generated 'd1'."""
+    name = p.get("name") or ""
+    # In SolidCraft auto-generated dimension parameters are 'd' followed by digits
+    if not re.match(r"^d\d+$", name):
+        return True
+    if p.get("uses") or (p.get("expression") and re.match(r"^[A-Za-z_]\w*$", str(p.get("expression")))):
+        return True
+    return False
+
+
+def collect_params(doc) -> dict:
+    """The document's parameters: user parameters first, then sketch and feature dimensions."""
+    listed = doc.session.cmd("parameters.list", {})
+    owners = _sketch_param_owners(doc.session)
+    params = []
+    for raw in listed.get("parameters", []):
+        p = {k: raw.get(k) for k in PARAM_KEYS if k in raw}
+        if p.get("source") == "sketch":
+            p["sketch"] = owners.get(p.get("name")) or "Sketch"
+        params.append(p)
+
+    def sort_key(p):
+        src = p.get("source")
+        fav = not p.get("favorite")
+        if src == "user":
+            return (0, fav, p.get("name", ""))
+        if src == "sketch":
+            sketch_name = p.get("sketch", "")
+            named = not _is_named_dimension(p)
+            return (1, sketch_name, named, p.get("name", ""))
+        feature_name = p.get("feature", "")
+        return (2, feature_name, fav, p.get("name", ""))
+
+    params.sort(key=sort_key)
+    return {"parameters": params}
+
+
+CURVE_KEYS = ("id", "type", "start_at", "end_at", "center_at", "radius", "construction")
+
+
+def sketch_shapes(session, name: str) -> dict:
+    """What the workspace draws of a sketch outside the sketch environment (unused sketches, the profiles to
+    click in Extrude and Revolve): its plane, curves in sketch coordinates and the closed regions, each with the
+    curve ids of its outline and of its holes (index as solid.extrude's profiles)."""
+    try:
+        insp = session.cmd("sketch.inspect", {"sketch": name})
+    except Exception:
+        return {"profiles": [], "plane": None, "curves": []}
+    profiles = [{"index": p["index"], "area": round(p["area_mm2"], 1), "curves": p["curves"],
+                 "holes": len(p.get("holes") or []), "hole_loops": p.get("holes") or []}
+                for p in insp.get("profiles", [])]
+    curves = [{k: c[k] for k in CURVE_KEYS if k in c} for c in insp.get("curves", [])]
+    return {"profiles": profiles, "plane": insp.get("plane"), "curves": curves}
+
+
+def sketches(doc) -> dict:
+    """The part's sketches for Extrude and Revolve (oldest first), with what already uses each."""
+    if doc.kind != PART:
+        return {"sketches": []}
+    used = sketch_rule.consumers(doc.session)
+    try:
+        insp = doc.session.cmd("document.inspect", {"measure": False, "sketches": True})
+        vis_map = {sk["name"]: sk.get("visible", True) for sk in insp.get("sketches", [])}
+        tl = insp.get("timeline", [])
+    except (RuntimeError, KeyError, AttributeError):
+        vis_map = {}
+        tl = doc.session.cmd("document.inspect", {"measure": False}).get("timeline", [])
+    out = []
+    for f in tl:
+        if f["type"] != "Sketch":
+            continue
+        name = f["name"]
+        vis = vis_map.get(name, not bool(used.get(name)))
+        out.append({"name": name, "visible": vis, "used_by": sorted(used.get(name) or []), **sketch_shapes(doc.session, name)})
+    return {"sketches": out}

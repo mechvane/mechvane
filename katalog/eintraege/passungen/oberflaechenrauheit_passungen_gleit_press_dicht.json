@@ -1,0 +1,148 @@
+{
+  "id": "oberflaechenrauheit_passungen_gleit_press_dicht",
+  "aussage": "Die zulässige Oberflächenrauheit Ra (und Rz) muss zur gewählten ISO-Passung und der Flächenfunktion passen: Gängige Spielpassungen (z. B. H7/g6, H8/f7) erfordern typischerweise Ra 0,8–1,6 µm (N6–N7), Pressverbände und Wälzlagersitze Ra 0,4–1,6 µm (DIN 7190 rechnet mit Rz 6,3–12,5 µm für Ra 0,8–1,6 µm gegen Übermaßverlust durch Glättung), Präzisionsgleitflächen und Kolbenstangen Ra 0,1–0,4 µm (N3–N5) sowie dynamische Dichtflächen Ra 0,2–0,8 µm (TPU/Elastomer-Hydraulikdichtungen 0,1–0,4 µm bei Rz <= 1,6 µm; statische O-Ring-/Gehäusedichtflächen Ra <= 1,6 µm bzw. Weichstoff-Flanschdichtungen nach EN 1092-1 Form A/B1 Ra 3,2–12,5 µm).",
+  "werte": [
+    {
+      "name": "Ra Gängige Spielpassungen (H7/g6, H8/f7)",
+      "bereich": [0.8, 1.6],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Presssitze und Lagersitze",
+      "bereich": [0.4, 1.6],
+      "einheit": "µm"
+    },
+    {
+      "name": "Rz Presssitz bei Ra 0,8 µm (DIN 7190 Mittelwert, Spanne 3,15–10 µm)",
+      "wert": 6.3,
+      "einheit": "µm"
+    },
+    {
+      "name": "Rz Presssitz bei Ra 1,6 µm (DIN 7190 Mittelwert, Spanne 6,3–20 µm)",
+      "wert": 12.5,
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Präzisionsgleitflächen und Kolbenstangen",
+      "bereich": [0.1, 0.4],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Dynamische Wellendichtring-Gegenlaufflächen",
+      "bereich": [0.2, 0.8],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Dynamische Hydraulikdichtungen (TPU/TPE/Gummi, Rz max 1,6 µm)",
+      "bereich": [0.1, 0.4],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Dynamische PTFE-Dichtflächen (Rz max 1,6 µm)",
+      "bereich": [0.05, 0.2],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra max Statische Dichtfläche (ØD1, Rz max 6,3 µm)",
+      "wert": 1.6,
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Flansch-Dichtflächen glatt/Dichtleiste EN 1092-1 Form A/B1/E/F (Weichstoff)",
+      "bereich": [3.2, 12.5],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Flansch-Dichtflächen fein EN 1092-1 Form B2/C/D (Metall-/Hochdruckdichtung)",
+      "bereich": [0.8, 3.2],
+      "einheit": "µm"
+    },
+    {
+      "name": "Ra Anlage- und Montageflächen (Clean Machined)",
+      "wert": 3.2,
+      "einheit": "µm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Metalle",
+      "Aluminium",
+      "Gusseisen"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Feindrehen",
+      "Reiben",
+      "Schleifen",
+      "Honen",
+      "Läppen"
+    ],
+    "feature": [
+      "Oberflächenrauheit",
+      "Passung",
+      "Gleitfläche",
+      "Presssitz",
+      "Dichtfläche"
+    ],
+    "groesse": [],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.baouch.fr/en/blog/rugosite-ra-tableau-classes-procedes/",
+      "stelle": "Abschnitt 2 (Which Ra to specify for each function) und Abschnitt 3 (Ra, Rz)",
+      "zitat": "Roughness must stay consistent with the tolerance: a dimension toleranced to a few micrometres on an Ra 6.3 surface can be neither made nor measured.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.stauberstahl.com/fileadmin/Bilder/Wiki/Download_PDFs/Oberflaechenguete_von_Stahl.pdf",
+      "stelle": "S. 1 und N-Klassen-Tabelle S. 3",
+      "zitat": "Eine zu raue Oberfläche kann zu erhöhtem Verschleiß, schlechteren Gleiteigenschaften, Kerbwirkung und Rissinitiierung oder Dichtigkeitsproblemen führen.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://hallite.com/de/support/designinformation/oberflachenrauhigkeit/",
+      "stelle": "Abschnitte Dynamische/Statische Oberflächenbeschaffenheit und Tabellen (PTFE / TPU-TPE-Gummi)",
+      "zitat": "Wenn die Oberfläche zu glatt ist, kann sie die Schmierung nicht halten, wodurch die Reibungshitze übermäßigen Dichtungsabrieb verursacht.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.trelleborg.com/seals/-/media/tss-media-repository/tss_website/pdf-and-other-literature/brochures/flatsealguides/flatseal-guide-06-dichtflchenrauheit_de.pdf?rev=-1",
+      "stelle": "Seite 1, Tabelle Dichtflächenform gemäß EN 1092-1",
+      "zitat": "Grundsätzlich sollte man sich an die in der Europäischen Flanschnorm EN 1092-1 gegebenen Empfehlungen für die Oberflächenbeschaffenheit von Dichtflächen halten.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.eassistant.eu/fileadmin/dokumente/eassistant/etc/HTMLHandbuch/de/eAssistantHandbch15.html",
+      "stelle": "Kapitel 15.10 Setzung/Oberflächenglättung, Tabelle Vergleich Ra und Rz nach DIN 7190",
+      "zitat": "Sofern keine experimentellen Werte vorliegen, gilt nach DIN 7190 für Längs- und Querpressverbände",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.cncrechner.de/rechner/oberflaechenrauheit/",
+      "stelle": "Abschnitt Ra/Rz Tabelle und Umrechnung / N-Klassen",
+      "zitat": "Als Werkstatt-Näherung gilt Rz ≈ 4 × Ra: Ra 1,6 µm entspricht damit ungefähr Rz 6,3 µm und der N-Klasse N7.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Bei Passungen geht die Profilhöhe unmittelbar in die Maßstreuung ein: Ist Rz groß gegenüber der IT-Toleranz, verfälschen Rauheitsspitzen sowohl das Messen als auch das Fügeverhalten. Bei Pressverbänden ebnen sich Spitzen beim Fügen plastisch ein und verringern das Übermaß um s = 0,8 · (RzA + RzI), weshalb Ra 0,4–1,6 µm gefordert wird. Bei Gleit- und dynamischen Dichtflächen führt zu hohe Rauheit zu Mischreibung, Abrieb und Einschnitten an der Dichtlippe, während zu glatte Flächen (< 0,1 µm Ra) kein Schmiermittel in Mikrotälern halten können (Materialanteil Rmr bei 50–80 %). Statische Weichstoff-Flanschdichtungen brauchen umgekehrt eine definierte Rauheit (Ra 3,2–12,5 µm) für Verzahnung und Haftung.",
+  "ausnahmen": "Die Werkstatt-Näherung Rz ≈ 4 × Ra (bzw. 4–7 × Ra je nach Verfahren) ersetzt keine Messung, da einzelne Kratzer Rz/Rt stark erhöhen, während Ra sie herausmittelt. Bei gebohrten und aufgeriebenen Passbohrungen nennt Stauber Stahl praxisüblich bis Ra 3,2 µm (N8), während Baouch für allgemeine Spielpassungen Ra 0,8–1,6 µm und für einfache Anlageflächen Ra 3,2 µm ansetzt. Drallfreiheit bei Wellendichtringen sowie Querriefenfreiheit bei O-Ring-Nuten müssen gesondert auf der Zeichnung vorgeschrieben werden.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso286_passungen_h7_h8_grenzabmasse"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "pressverbaende_uebermass_fugendruck_fuegekraft"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "oring_oberflaechenrauheit_statisch"
+    }
+  ]
+}

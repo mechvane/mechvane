@@ -1,6 +1,6 @@
 """Export a part or assembly as glTF 2.0 with its appearance (ADR 0004).
 
-Meshes come from the web UI's export (one per body, world coordinates, B-rep face per triangle); the look
+Meshes come from mechvane.mesh (one per body, world coordinates, B-rep face per triangle); the look
 of each body from SolidCraft: an appearance assigned to the body, else the default look of its material;
 faces with an appearance of their own (assigned by a point) get it too.
 Colour and PBR (metallic, roughness, IOR) map to pbrMetallicRoughness and KHR_materials_ior. Normals are
@@ -12,7 +12,7 @@ import re
 import struct
 from pathlib import Path
 
-from .ui.mesh import collect_mesh
+from .mesh import collect_mesh
 
 # Built-in SolidCraft materials without a PBR look that are metals
 METALS = {"Steel", "Stainless Steel", "Aluminum", "Brass", "Copper", "Titanium", "Cast Iron"}

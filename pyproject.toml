@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mechvane"
-version = "0.1.0"
+version = "0.1.1"
 description = "Parametric 3D CAD for everyday mechanical engineering: you and your AI agent on the same model, built on SolidCraft"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,12 +35,11 @@ mechvane = "mechvane.cli:main"
 [tool.setuptools]
 # The knowledge catalog lives in katalog/ at the repository root; the wheel ships its entries as mechvane/katalog_data/eintraege
 # (mechvane/katalog.py looks there when katalog/ is missing next to the package, i.e. in an installed package).
-packages = ["mechvane", "mechvane.ui", "mechvane.katalog_data"]
+packages = ["mechvane", "mechvane.katalog_data"]
 
 [tool.setuptools.package-dir]
 "mechvane.katalog_data" = "katalog"
 
 [tool.setuptools.package-data]
 mechvane = ["data/*.json"]
-"mechvane.ui" = ["static/**/*"]
 "mechvane.katalog_data" = ["eintraege/**/*.json"]

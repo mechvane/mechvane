@@ -331,7 +331,7 @@ class Workspace:
 
     def _fresh(self, doc):
         """The document, read again from its file if that changed on disk since it was loaded or saved
-        here (saved by hand in the web UI, or by another process). Reloads in the same session and
+        here (saved by hand in SolidCraft, or by another process). Reloads in the same session and
         Document, so callers holding it keep a working reference."""
         cur = doc.disk_mtime()
         if cur is None or doc.mtime is None or cur == doc.mtime:

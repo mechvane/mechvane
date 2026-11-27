@@ -1,0 +1,157 @@
+{
+  "id": "pressverbaende_uebermass_fugendruck_fuegekraft",
+  "aussage": "Bei zylindrischen Pressverbänden reduziert sich das geometrische Übermaß U beim Fügen durch Rauheitsglättung um den Setzbetrag s = 0,8 · (RzA + RzI) nach DIN 7190 (neuere Angabe bei schweizer-fn.de: 0,4 · (RzA + RzI)) auf das wirksame Übermaß Uw. Das Mindestübermaß muss den erforderlichen Fugendruck pF für Drehmoment/Axialkraft mit Mindestsicherheit SR = 1,2 sicherstellen, das Höchstübermaß ist durch die Fließgrenze (Vergleichsspannung) der Fügepartner begrenzt; die axiale Einpresskraft beträgt Fe = π · DF · lF · νll · p_max. Bei Aluminium-Naben (α ≈ 23·10⁻⁶/K, E ≈ 65–75 GPa, Haftbeiwert G-AlSi12 im Längspressverband trocken 0,06–0,07) führt Erwärmung zu starkem Übermaßverlust (Ø 50 mm Al-Nabe auf Stahlwelle verliert bei +80 K rund 0,044 mm), bei Kunststoffen (z. B. POM-C mit 2 % Dehnung) senkt viskoelastische Spannungsrelaxation den Fugendruck rasch, sodass Formschlussunterstützung (z. B. 30°-Fischhauträndel, Faktor C ≈ 4,7 nach 1000 h) empfohlen wird.",
+  "werte": [
+    {
+      "name": "Glättungsfaktor Setzung s/(RzA+RzI) nach DIN 7190 (eAssistant / HS Anhalt)",
+      "wert": 0.8,
+      "einheit": ""
+    },
+    {
+      "name": "Glättungsfaktor Setzung s/(RzA+RzI) (schweizer-fn.de, neuere Normangabe)",
+      "wert": 0.4,
+      "einheit": ""
+    },
+    {
+      "name": "Standard-Mindestsicherheit gegen Rutschen SR (eAssistant)",
+      "wert": 1.2,
+      "einheit": ""
+    },
+    {
+      "name": "Sofortige Haftkraft direkt nach Längseinpressen (vor 24 h Ablagerung)",
+      "wert": 70,
+      "einheit": "%"
+    },
+    {
+      "name": "Ablagerungszeit nach Längseinpressen bis volle Haftkraft",
+      "wert": 24,
+      "einheit": "h"
+    },
+    {
+      "name": "Maximaler Fasenwinkel am Längspressverband",
+      "wert": 5,
+      "einheit": "°"
+    },
+    {
+      "name": "Haftbeiwert Stahl-Stahl Schrumpfverband entfettet (bis 300 °C)",
+      "wert": 0.2,
+      "einheit": ""
+    },
+    {
+      "name": "Haftbeiwert Stahl-Stahl S235/E335 Längspressverband trocken",
+      "bereich": [0.08, 0.11],
+      "einheit": ""
+    },
+    {
+      "name": "Haftbeiwert G-AlSi12 Längspressverband trocken (Rutschen/Lösen)",
+      "bereich": [0.06, 0.07],
+      "einheit": ""
+    },
+    {
+      "name": "Haftbeiwert G-AlSi12 Längspressverband geschmiert (Rutschen/Lösen)",
+      "bereich": [0.04, 0.05],
+      "einheit": ""
+    },
+    {
+      "name": "Haftbeiwert Stahl-MgAl Querpressverband trocken",
+      "bereich": [0.1, 0.25],
+      "einheit": ""
+    },
+    {
+      "name": "Längenausdehnungskoeffizient Aluminium AlMgSi / AlCuMg",
+      "wert": 23,
+      "einheit": "10^-6/K"
+    },
+    {
+      "name": "Übermaßverlust Al-Nabe auf Ø 50 mm Stahlwelle bei +80 K",
+      "wert": 0.044,
+      "einheit": "mm"
+    },
+    {
+      "name": "Beispiel-Übermaß POM-C-Nabe auf Ø 15 mm Stahlwelle (2 % Dehnung)",
+      "wert": 0.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Kraftsteigerungsfaktor Fischhauträndel 30° in POM-C nach 1000 h",
+      "wert": 4.7,
+      "einheit": ""
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Aluminium",
+      "AlMgSi",
+      "G-AlSi12",
+      "Kunststoffe",
+      "POM-C"
+    ],
+    "verfahren": [
+      "Längspressen",
+      "Aufschrumpfen",
+      "Dehnsitz",
+      "Montage"
+    ],
+    "feature": [
+      "Pressverband",
+      "Welle-Nabe-Verbindung",
+      "Übermaßpassung",
+      "Einführfase"
+    ],
+    "groesse": [
+      "15 mm",
+      "50 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "handbuch",
+  "quellen": [
+    {
+      "url": "https://www.eassistant.eu/fileadmin/dokumente/eassistant/etc/HTMLHandbuch/de/eAssistantHandbch15.html",
+      "stelle": "Kapitel 15 Presssitz nach DIN 7190 (Abschnitte 15.8, 15.10, 15.13, 15.24)",
+      "zitat": "Infolge von Glättung der Rauheitsspitzen beim Fügen steht im gefügten Zustand nur noch das wirksame Übermaß",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.hs-anhalt.de/fileadmin/Dateien/FB6/personen/voigt_st/Lehrunterlagen/01_ME/05_Zylindrische_Pressverbaende_DIN_7190.pdf",
+      "stelle": "Kapitel 1.2, 2.1 und 4 (Montage und Betrieb, Einpresskraft)",
+      "zitat": "Beim Längspressverband kann die Einpresskraft wie folgt ermittelt werden:",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.baouch.fr/en/blog/ajustement-serre-frettage-calcul/",
+      "stelle": "Abschnitt 1 (Lamé-Formeln) und Abschnitt 4 (Service temperature)",
+      "zitat": "An aluminium hub (23 × 10⁻⁶/K) on a Ø 50 steel shaft (12 × 10⁻⁶/K) loses 0.044 mm at +80 K: the whole maximum interference of an H7/p6.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.ost.ch/fileadmin/dateiliste/3_forschung_dienstleistung/institute/iwk/mechanische_systeme/fachbeitraege/0612_kunststoff-metall-pressverbindungen.pdf",
+      "stelle": "Kunststoff-Metall-Pressverbindungen (Kunz & Lukic, Kunststoffe 12/2006, S. 68–71)",
+      "zitat": "In umfangreichen Unter- suchungen hat sich das 30°-Links-Rechts-Rändel (Fischhauträndel) als sehr gut geeignete Formschlussunterstützung herausgestellt.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.schweizer-fn.de/maschinenelemente/pressverbindung/pressverbindung.php",
+      "stelle": "Abschnitt Wirksames Übermaß abzüglich Glättung",
+      "zitat": "Die neueste Normausgabe berücksichtigt nur eine Glättung von 0.4 , gegenüber früher 0,8.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://tretter.ch/waermeausdehnung-ausgleichen-toleranzhuelsen-im-einsatz/",
+      "stelle": "Abschnitt Wenn Materialien unterschiedlich arbeiten",
+      "zitat": "Steigt die Temperatur im Betrieb, kann sich beispielsweise ein Aluminiumgehäuse stärker ausdehnen als das darin sitzende Stahlbauteil.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Nach den Lamé-Gleichungen entsteht aus dem wirksamen Übermaß eine radiale Fugenpressung pF, die über die Zylinderoberfläche und den Haftbeiwert Reibschluss erzeugt. Während beim Kleinstübermaß Rutschen oder bei Querbelastung Fugenklaffen (p_min >= pr + pb) droht, begrenzt beim Größtübermaß die Vergleichsspannung an der Nabenbohrung den zulässigen Druck. Bei Mischbauweisen mit Aluminium (E = 65 000–75 000 N/mm², doppelt so hohe Wärmedehnung wie Stahl) verändert jede Temperaturänderung das Übermaß stark; bei weichen Al-Gehäusen helfen Toleranzhülsen oder höhere Grundübermaße unter Kontrolle der Kaltpressung. Bei Kunststoffen verlagert viskoelastische Relaxation den Nachweis von der Spannung auf die zulässige Dehnung (im OST-Versuch Ø 15 mm POM-C mit 0,3 mm Übermaß = 2 % Dehnung), weshalb rein kraftschlüssige Verbindungen über die Zeit Kraft verlieren und Rändel zur Formschlussunterstützung eingesetzt werden.",
+  "ausnahmen": "Abweichungen zwischen Quellen: (1) Für die Rauheitsglättung nennen DIN 7190 in eAssistant/HS Anhalt den Faktor 0,8, schweizer-fn.de für die neuere Ausgabe den Faktor 0,4. (2) Für die Längspress-Geschwindigkeit empfiehlt HS Anhalt <= 2 mm/s, während eAssistant gegen Stick-Slip rund 50 mm/s (bei 2,5-facher Lösekraftreserve und leichter Ölschmierung) nennt. (3) Bei hohen Drehzahlen reduziert Fliehkraftaufweitung den Fugendruck; bei Querpressverbänden begrenzt die zulässige Fügetemperatur der Wärmebehandlung (z. B. 200 °C bei einsatzgehärtetem Stahl) das maximale Übermaß. (4) Im OST-PDF steht für die glatte Referenzwelle per Druckfehler „Ra von 0,4 mm“ statt 0,4 µm.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "iso286_passungen_h7_h8_grenzabmasse"
+    }
+  ]
+}

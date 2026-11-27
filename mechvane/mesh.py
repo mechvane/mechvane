@@ -1,4 +1,4 @@
-"""Read SolidCraft 3MF-tagged exports and map face indices to B-rep face names."""
+"""Mesh of a design from SolidCraft's 3MF-tagged export, with the B-rep face name of each triangle (for the glTF export)."""
 
 import os
 from pathlib import Path

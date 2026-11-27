@@ -8,16 +8,11 @@ Stand 2026-10-20. Python (`mechvane/`), läuft vor `solidcraft-cli mcp`.
 `pyproject.toml` macht Mechvane installierbar: `pip install mechvane` (PyPI seit 2026-10-27,
 `0.1.0a1`; `0.1.0a2` mit Windows-Korrekturen als erste Version per Tag, `0.1.0a3` mit Temp-Aufräumen und Argon-Befund-Fixes), Entwicklung `pip install -e .`. Neue Version: `version` in `pyproject.toml` erhöhen,
 exportieren, im öffentlichen Repo Tag `v<version>` pushen; `.github/workflows/publish.yml` lädt
-per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat fünf Unterbefehle:
+per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane` (`mechvane/cli.py`) hat drei Unterbefehle:
 
-- `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) und die Web-App
-  (`mechvane/ui/webapp.py`) in der festen Version 0.43.0 (seit 2026-11-16, vorher 0.41.0 und 0.30.1) für die eigene Plattform in den Cache
+- `mechvane setup` lädt `solidcraft-cli` (`mechvane/install.py`) in der festen Version 0.43.0 (seit 2026-11-16, vorher 0.41.0 und 0.30.1) für die eigene Plattform in den Cache
   (`~/.cache/mechvane`, unter Windows `%LOCALAPPDATA%\mechvane`), SHA256 je Release-Asset
   festgeschrieben, Entpacken mit Pfadprüfung.
-- `mechvane ui [pfad] [--demo] [--port] [--no-browser]` startet die Web-UI und öffnet den Browser.
-  `--demo` baut beim ersten Mal die Beispiele aus `mechvane/examples.py` (dieselben wie die
-  Live-Demo) in `<cache>/demo`.
-- `mechvane shortcut [ordner]` legt einen Startmenü-Eintrag (Windows, Linux) an, der `ordner` öffnet (Standard `~/Mechvane`).
 - `mechvane mcp [--workspace <ordner>]` startet den MCP-Server (wie `python3 -m mechvane`).
 - `mechvane check [datei] [--profile fdm_0.4|cnc_alu] [--material <name>] [--json]` führt dieselbe
   Konstruktionsprüfung wie `check_design` im Terminal aus: mit Datei headless öffnen, prüfen und
@@ -29,8 +24,7 @@ per Trusted Publishing hoch (Umgebung `pypi`, kein Token). Der Befehl `mechvane`
 
 Welche CLI genommen wird: `SOLIDCRAFT_CLI`, sonst die aus `mechvane setup`, sonst
 `solidcraft-cli` im `PATH`. `mcp` ist auf `<2` begrenzt (2.x hat `FastMCP` umbenannt).
-Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` sowie `VERSION`/`SHA256` in
-`webapp.py` nachziehen (Summen aus dem Release, `gh api …/releases/tags/vX --jq '.assets[]'`).
+Neue SolidCraft-Version: `VERSION` und `ASSETS` in `install.py` nachziehen (Summen aus dem Release, `gh api …/releases/tags/vX --jq '.assets[]'`).
 
 ## Modell
 
@@ -411,197 +405,13 @@ Fläche `F2:top#[Kanten]`. `links._base` behandelt das wie die Endung `#2`; lieg
 einer geteilten Fläche, nimmt `bolted._resolve_anchor` das Stück, das dem gespeicherten Ankerpunkt am
 nächsten liegt.
 
-## Web-UI (Stufe 1)
+## Web-UI (entfernt)
 
-Das Paket `mechvane/ui/` stellt eine rein lesende Web-Oberfläche für Bauteil- und Baugruppendateien bereit:
-
-```sh
-python3 -m mechvane.ui <datei.solidcraft> [--port 8765]
-```
-
-Der Server bindet ausschließlich lokal an `127.0.0.1` (`ThreadingHTTPServer` mit zentraler Sperre um alle Zugriffe auf die nicht-threadsichere SolidCraft-Sitzung) und öffnet die Datei über `Workspace`.
-
-### Ansicht
-
-- **Modellbaum (links):** Zeigt für Bauteile die Körper sowie den Feature-Verlauf mit untergeordneten Skizzen und dem Bauteilende (`tree.part_tree`), für Baugruppen die Komponenten-Occurrences samt Gelenken und deren Prüfstatus aus `links.check` (`tree.assembly_tree`).
-- **3D-Ansicht (Mitte):** `three.js` (`three@0.160.0` mit `OrbitControls` per Import-Map von `cdn.jsdelivr.net`), Z-Achse nach oben, Kamera beim ersten Laden automatisch auf die Bounding Sphere des Modells eingepasst, scharfe B-Rep-Flächenkanten über die Face-Tags aus dem `3mf-tagged`-Export.
-- **„Last step“ (seit 2026-11-16, #121):** Nach jedem Schritt (von Hand, vom Agenten, nach Undo) zeigt die 3D-Ansicht das
-  Modell von vorher als bernsteinfarbenen, nicht anklickbaren Schatten; der Modellbaum markiert neue (grün) und geänderte
-  (bernstein) Features, eine Leiste „Last step“ über dem Baum nennt `+ neu · ~ geändert · − entfernt` und schaltet mit
-  „Hide“/„Show“ Schatten und Markierung. Grundlage ist eine Signatur je Feature im Baum (`sig`, `tree.signature`): Definition,
-  die aktuellen Werte der Parameter, die sie nennt, bei Skizzen die Geometrie. Nur für Bauteile. In der Live-Demo signiert der
-  Kernel (`demo_kernel.js`) den unberührten Stand vor dem ersten Schritt selbst.
-- **Stückliste (Assemble, Knopf „BOM“, seit 2026-11-16):** Dialog mit Position, Benennung, Anzahl, Norm und Größe, Werkstoff,
-  Masse, Datei; „Flat“ rechnet Unterbaugruppen ein, „Export CSV“ erzeugt die Datei im Browser. Eine fehlende oder unlesbare
-  Teiledatei steht als Zeile „(file missing)“ bzw. „(unreadable)“. Textzellen, die mit `=`, `+`, `-` oder `@` beginnen,
-  bekommen im CSV ein Apostroph (Schutz gegen Formelinjektion; MCP und Browser). Unterpositionen wie `1.2` deutet ein deutsches
-  Excel beim Öffnen als Datum: Datei über „Daten importieren“ mit Spalte „Text“ laden.
-- **Befundliste (rechts):** Zeigt alle Befunde aus `design_rules.check` (und bei Baugruppen zusätzlich `links.check`), farbig nach Schwere (`fail`, `warn`, `ok`). Ein Klick auf einen Befund hebt die betroffenen B-Rep-Flächen im 3D-Modell über die Zuordnung `Flächenname → Index (model.faces) → ft:face-Dreiecke` farbig hervor. Hat ein Befund keinen passenden Flächenbezug im Netz, aber einen 3D-Punkt (`location.point`), erscheint dort ein 3D-Marker; ohne beides wird nur der Text ausgewählt.
-- **Automatisches Neu-Laden:** Die Seite fragt alle 2 s `/api/version` ab. Ändert sich die `mtime` der Datei auf der Festplatte, lädt der Server das Dokument in `Workspace` neu und der Browser aktualisiert Netz, Baum und Befunde ohne Zurücksetzen der Kamera.
-- **Parameter, Messen, Schnitt (Prüfseite):** Unter dem Modellbaum ein Formular für die Parameter
-  (`/api/params`, Enter setzt alle geänderten gemeinsam). Über der 3D-Ansicht „Measure“ (zwei Klicks:
-  Abstand, ΔX/ΔY/ΔZ, bei ebenen Flächen Parallelabstand oder Winkel, bei Bohrungen Ø, Achse, Achsabstand) und „Section“ (Schnitt entlang X/Y/Z
-  mit Regler, ⇅ zeigt die andere Hälfte). Beides rechnet im Browser auf dem Netz, läuft also auch in der
-  Live-Demo; Esc beendet das Werkzeug. Kopfzeile: „Closing this window quits Mechvane“ bzw. Knopf „Quit“.
-- **Funktions- und Modulwünsche:** Über den Textknopf „Request a feature“ in der Kopfzeile beider Seiten öffnet sich ein kompakter Dialog für Wünsche und Fehlerberichte (Art wie Feature, Module, Standard part, Design rule oder Bug, Titel und mehrzeilige Beschreibung). Bei gesetztem Häkchen werden Versionsnummern (`/api/about`), der Browser-Typ und der Name des offenen Modells (ohne Pfad oder Dateiinhalte) angehängt. Der Knopf „Open on GitHub“ öffnet ein vorbereitetes Issue im GitHub-Repo in einem neuen Browser-Tab; Mechvane selbst sendet keine Daten ab.
-
-### JSON-Endpunkte
-
-| Endpunkt | Inhalt |
-|---|---|
-| `GET /api/about` | `{"mechvane", "solidcraft", "root", "stops_with_window"}`: Paketversion von Mechvane, Version des eingebundenen SolidCraft-Releases, die Datei bzw. der Ordner, den dieser Server zeigt (für die einzelne Instanz, siehe unten), und ob ein App-Fenster den Server besitzt (Schließen beendet Mechvane) |
-| `GET /api/params` | `{"parameters": [{name, expression, unit, value, source, feature?, input?, comment, favorite, error}]}` aus `parameters.list`, Nutzerparameter und Favoriten zuerst (Formular „Parameters“ unter dem Modellbaum) |
-| `POST /api/params` | `{"changes": {name: expression}}`: über `parameters.change` gemeinsam gesetzt (ganz oder gar nicht), danach gespeichert; Antwort wie `GET` plus `changed`. Ungültiger Ausdruck: 400, nichts geändert. Während eines Agentenzuges 409 |
-| `POST /api/quit` | Beendet den UI-Server (Knopf „Quit“ in der Kopfzeile, wenn kein App-Fenster ihn besitzt: Browser-Tab oder an ein offenes Fenster übergeben) |
-| `GET /api/version` | `{"version", "mtime", "name", "kind", "path"}` anhand der Datei-`mtime` |
-| `GET /api/mesh` | `{"bodies": [{"name", "positions": [x,y,z,…], "indices": […], "face_ids": […], "faces": [{"index", "name"}]}]}` aus `export(format="3mf-tagged")` und `model.faces` |
-| `GET /api/tree` | Modellbaum aus `tree.part_tree` bzw. `tree.assembly_tree` (bei Baugruppen angereichert mit Gelenkstatus aus `links.check`) |
-| `GET /api/assembly/bom` | Stückliste der offenen Baugruppe aus `bom.bill_of_materials` (optional `?flat=true` / `?flat=false`; liefert 400 auf Bauteilen) |
-| `GET /api/findings` | Befunde aus `design_rules.check` sowie bei Baugruppen `links.check` |
-| `GET /api/files` | `{"document", "files"}`: das Dokument und bei Baugruppen die verknüpften Bauteildateien (nur diese sind lesbar und schreibbar) |
-| `GET /api/file/<name>` | Inhalt einer dieser Dateien |
-| `POST /api/file/<name>` | Datei aus der Web-App speichern (bis 64 MB), Dokument neu laden, `{"saved", "bytes", "findings", "update_links"?}` |
-| `GET /api/project` | `{"folder", "current", "documents": [{"name", "kind"}]}`: Projektordner-Übersicht und Dokumentenliste; Art (`part`/`assembly`) wird direkt aus `document.json` ermittelt (mit mtime-Cache) |
-| `POST /api/open/<name>` | Aktuelles Dokument auf `<name>` umschalten, vorherige Sitzung schließen, liefert Antwort wie `GET /api/files` |
-| `POST /api/new` | Neues leeres Bauteil anlegen (`{"name": "…"}`), als aktuelles Dokument öffnen (nur im Ordner-Modus) |
-
-### Modus „Modellieren“ (seit 2026-10-25)
-
-`/model` bettet die SolidCraft-Web-App ein (Release-Asset `solidcraft-web-0.43.0.zip`, beim ersten
-Aufruf nach `~/.cache/mechvane/` geladen und gegen die SHA256 in `mechvane/ui/webapp.py` geprüft,
-ausgeliefert unter `/sc/`; `MECHVANE_SOLIDCRAFT_WEB` zeigt auf einen anderen entpackten Build).
-Die Seite schreibt die Dateien aus `/api/files` ins OPFS des Browsers, bevor die App startet (die App
-liest OPFS nur beim Start, als `/opfs/<name>`), öffnet das Dokument mit `doc.open` und prüft jede
-Sekunde, ob die App eine Datei neu gespeichert hat. Dann geht sie per POST an den Server, der sie
-schreibt, neu lädt, prüft und bei Baugruppen `update_links` ausführt. Verknüpfungen speichert
-SolidCraft relativ (`path`), daher findet die App die Bauteile im OPFS; `component.links` meldet
-dort trotzdem `found: false`, weil es mit `std::fs` prüft. In der Live-Demo (statisch) liegen die
-Beispieldateien unter `demos/<name>/files/`, Speichern bleibt im Browser, die Befunde sind
-vorberechnet.
-
-**Agenten-Wiedergabe in der Live-Demo (#124):** Knopf „Watch an agent session“ (oder `?demo=<name>&replay=1`) spielt eine
-aufgezeichnete, echte Agent-Sitzung ab: das Chat-Fenster nur lesend, die Werkzeugaufrufe mit ihren Zeiten (Pausen auf 2 s
-gekürzt), das Modell nach jeder Änderung mit Schatten, Markierung und „Last step“, am Ende die Prüfung; Pause, Stop,
-„Watch again“, „Reset demo“; Esc bricht ab, die Dialoge und ihre Tasten ruhen solange. Die Zustände rechnet
-`tools/build_demo_site.py` beim Bauen vor: Es führt die markierten Änderungen (`do`) mit denselben Funktionen wie das
-MCP-Werkzeug aus (`run`, `command`, `delete_feature`, `rename_feature`) und legt `demos/<name>/replay/<k>/` an. Bricht
-eine Aufnahme mit einer neuen SolidCraft-Version, scheitert der Build, nicht die Seite. Abweichung vom Entwurf im Issue
-(Befehle im Demo-Kernel): kein 168-MB-Download zum Zuschauen und derselbe Codepfad wie bei der Aufnahme.
-**Befehlsdialog in der Live-Demo (#128):** Strg+K gilt auch dort. `tools/build_demo_site.py` schreibt `demo/commands.json`
-(Liste und Formulare aller Befehle, etwa 1 MB, aus der SolidCraft-Sitzung des Builds mit denselben Funktionen wie am
-Server: `_command_cache`, `command_form_for`, `command_form.why_not`). Der Demo-Kernel (`demo_kernel.js`) beantwortet
-`api/commands` und `api/command` daraus und führt `api/feature` mit `generic` selbst aus (Prüfpunkt davor, Vorschau stellt
-immer zurück, `document.revision` trennt ändernde von lesenden Befehlen). Befehle mit Mechvane-Handler oder Dateipfad sind
-dort „nicht angeboten“ mit Begründung, in einer Skizze oder einer Baugruppe gar keiner. Offen: #161 (Rückgängig zählt
-SolidCraft-Einträge nicht). Geprüft von `tools/demo_smoke.py` (Strg+K, Fase mit Kantenwahl, lesender Befehl ohne Eintrag).
-Aufnehmen: `mechvane ui <ordner>` mit dem Beispiel, `MECHVANE_AGENT` auf `claude-agent-acp`, Auftrag über die Oberfläche
-(oder `POST /api/agent/send`), danach `curl …/api/agent/events?since=0 > ev.json` und
-`python3 tools/record_replay.py ev.json demo/replays/<name>.json --demo <name> --title "…" --note "…"` (`--log` mit dem
-Sitzungsprotokoll, wenn die Ereignisse keine Zeiten haben). Ein Werkzeug, das ändert und nicht nachgespielt werden kann,
-lässt das Skript abbrechen. Die erste Aufnahme (`bracket`, 2026-11-16): Claude über `claude-agent-acp` 0.99.1, unverändert.
-
-Browsertest (archiviert, Web-UI eingefroren seit 2026-11-20): `node tools/archiv/drive_model_ui.mjs <url> <png> [befehle.json]` (headless
-Chromium; ohne GPU mit `CHROME_FLAGS=--disable-features=WebGPU`, sonst bleibt die Canvas im
-Screenshot leer).
-
-**Befund anklicken (seit 2026-10-26):** `collect_findings` gibt jedem Befund mit Fläche ein Feld
-`select` (`{type: "face", body, index, point}`, Index wie in `model.faces`, bei Baugruppen der
-Baugruppenkörper). Ein Klick in der Seitenleiste ruft in der App `select.set` auf (die Fläche ist dann
-ausgewählt wie nach einem Klick im Ansichtsfenster) und richtet die Kamera mit `ui.camera {target,
-distance ≤ 120}` auf den Punkt. Eine eigene Hervorhebungs-API braucht es dafür nicht, `select.set`
-gibt es seit 0.21.0. Im Browsertest klickt der Pseudo-Befehl `{"command": "mechvane.pick", "params":
-{"finding": 0}}` den ersten anklickbaren Befund. Getestet am Winkel (Senkung, Fläche 13) und an der
-verschraubten Baugruppe (`select.set` mit Baugruppenkörpern wie `Washer`, `TopPlate`).
-
-**Projektordner-Modus (seit 2026-10-26):** Der Server kann mit `python3 -m mechvane.ui <pfad>` bzw.
-`create_server(pfad)` auf eine einzelne `.solidcraft`-Datei oder auf einen ganzen Projektordner
-gestartet werden. Im Ordner-Modus bildet der Ordner die Workspace-Wurzel. Solange noch kein
-Dokument geöffnet ist, liefern Endpunkte, die ein Dokument voraussetzen, HTTP 409 (`{"error": "no document open"}`).
-Über `GET /api/project` werden alle `.solidcraft`-Dateien im Ordner mit ihrer Art (`part` oder `assembly`)
-aufgelistet; `POST /api/open/<name>` schaltet auf eine Datei um (404 bei Pfadüberläufen oder unbekannten Dateien),
-und `POST /api/new` mit `{"name": "…"}` erzeugt ein neues leeres Bauteil via `Workspace.new` (409 bei
-bestehenden Dateien, 400 bei unzulässigen Namen). In `model.html` zeigt eine Leiste „Project“ oben in der Seitenleiste
-die Dokumente samt Bauteil-/Baugruppen-Kennzeichnung und Umschaltung sowie einen Schalter für neue Bauteile; beim
-Laden ohne `?doc=` wird automatisch die erste Datei geöffnet. Im Einzeldatei-Modus bleibt das bisherige
-Verhalten unverändert.
-
-**Prüfansicht im Ordnermodus (seit 2026-10-29):** `index.html` füllt die Auswahl „Document“ aus
-`/api/project` und öffnet `?doc=`, sonst die erste Baugruppe, sonst das erste Dokument; der Link nach
-„Model by hand“ und zurück nimmt das Dokument mit. Ein leerer Ordner (erster Start über den
-Startmenü-Eintrag) zeigt einen Hinweis statt „Connection lost“ und lädt neu, sobald `/api/project` ein
-Dokument meldet. Ein Teil ohne Körper bekommt von `/api/mesh` ein leeres Netz (`{"bodies": []}`).
-
-**Eine Instanz je Ordner (seit 2026-10-29):** Ist der Port belegt, fragt `run_server` dort `/api/about`
-ab. Zeigt der laufende Server dieselbe Datei bzw. denselben Ordner (`root`), öffnet Mechvane nur ein
-Fenster dorthin und beendet sich; sonst nimmt es einen freien Port. Der Server läuft, bis das letzte
-App-Fenster geschlossen ist.
-
-**Beispielmodelle (`mechvane ui --demo`):** `cli.demo_folder()` baut sie in
-`<cache>/demo/` und schreibt zuletzt `.complete` mit der Liste aller gebauten Dateien. Fehlt die Datei
-oder eine der Dateien darin (Abbruch beim ersten Aufbau), wird der Ordner gelöscht und neu gebaut, an
-Ort und Stelle.
-
-![Modus „Modellieren“ mit Projektordner und ausgewähltem Befund](media/model-folder.png)
-
-Fehler in den Endpunkten werden als JSON mit HTTP-Status 500 (`{"error": "…"}`) beantwortet; der Server bleibt weiter aktiv.
-
-### Grenzen (Stufe 1)
-
-- Rein lesend: keine Bearbeitung von Parametern, Features oder Gelenken im Browser.
-- `three.js` wird per Import-Map von `cdn.jsdelivr.net` geladen (erfordert im Browser Zugang zum CDN).
-- In Baugruppen prüft `/api/version` derzeit die `mtime` der geöffneten Hauptdatei; werden verknüpfte Bauteildateien separat geändert, aktualisiert sich die Ansicht nach `finish_edit` bzw. Speichern der Baugruppe.
-- Da SolidCraft verknüpfte Bauteile in Baugruppen als STEP einbettet, tragen Baugruppen-Körper STEP-Flächennamen (`F3:face:0` usw.) statt der Bauteil-Lineage-Namen; `collect_findings` ordnet Gelenkrahmen über `links._match` den Baugruppen-Flächen bzw. dem 3D-Gelenkursprung zu.
-
-### Agent in der Web-UI (Stufe 2, Server-Seite seit 2026-10-28)
-
-Nach [ADR 0003](adr/0003-point-and-speak.md). `mechvane/ui/agent.py` startet den Agenten des Nutzers
-über ACP (`$MECHVANE_AGENT` als Befehlszeile, sonst `claude-agent-acp` im PATH) in einem leeren Ordner,
-ohne Dateisystem und Terminal, beim Claude-Adapter ohne eigene Werkzeuge (`tools: []`,
-`settingSources: []`, `strictMcpConfig`). Er bekommt nur `mechvane mcp --workspace <projekt>` mit
-`MECHVANE_AUTOSAVE=1`. Jeder Werkzeugaufruf kommt als `session/request_permission` an; `decide()`
-erlaubt Mechvane-Werkzeuge und lehnt ab: fremde Werkzeuge, Löschen (`delete_*`, `close_document`),
-`file.*`/`doc.*`-Befehle und Parameter mit Dateinamen in `run`/`command`, `screenshot` mit `path`.
-
-Endpunkte des UI-Servers:
-
-| Endpunkt | Wirkung |
-|---|---|
-| `POST /api/agent/send` `{text, selection?}` | startet einen Zug (409, solange einer läuft) |
-| `GET /api/agent/events?since=n` | Ereignisse ab n: `text`, `tool`, `declined`, `status`, `done` (geänderte Dateien), `error`; dazu `busy` und `undo` (Text des Zuges, den Rückgängig zurücknimmt). Das abschließende `tool`-Ereignis (`completed`/`failed`) trägt seit #124 die ganze Eingabe in `params` (der ACP-Adapter schickt sie erst mit einem Update, im Sitzungsprotokoll ist sie gekürzt) |
-| `POST /api/agent/stop` | bricht ab und stellt den Stand vor dem Zug her |
-| `POST /api/agent/undo` `{force?}` / `redo` | Zug zurücknehmen bzw. wiederherstellen; 409, wenn seitdem von Hand gespeichert wurde (außer `force`) |
-
-Während eines Zuges lehnt der Server `POST /api/file/*`, `/api/open/*` und `/api/new` mit 409 ab. Vor
-jedem Zug kopiert er alle `.solidcraft`-Dateien des Projekts nach `~/.cache/mechvane/history/<projekt>/`
-(außerhalb der Ordner, in die Sitzungen schreiben dürfen); Stop, ein Abbruch des Agenten oder ein Fehler
-stellen diesen Stand wieder her, im Zug neu angelegte Dateien werden entfernt.
-
-`Workspace` liest ein Dokument neu ein, wenn sich seine Datei seit dem Laden oder Speichern geändert
-hat (gleiche Sitzung, gleiches `Document`); mit ungespeicherten Änderungen gibt es stattdessen einen
-Fehler. `MECHVANE_AUTOSAVE=1` lässt den MCP-Server nach jedem Werkzeugaufruf alle geänderten Dokumente
-speichern. Tests: `agent_turns_checks` gegen `tests/mechvane/fake_acp_agent.py` (kein Kontingent);
-einmal mit echtem Claude Code geprüft (Fase an der Wand, Export abgelehnt, Rückgängig, 36 s).
-**Chat-Spalte in „Modellieren“ (seit 2026-10-28):** Gestaltung nach Claude Code in VS Code (eigene
-Nachrichten als Blase, Werkzeuge als Zeilen mit Statuspunkt, Eingabe unten, Senden wird zu Stop,
-Rückgängig/Wiederherstellen im Kopf, Prüfungen aufklappbar darunter). Vor dem Senden speichert die
-Seite in der App (`file.save`), lädt hoch und schickt die Auswahl (`ui.selection`) mit; während des
-Zuges ist die App gesperrt. Danach lädt sie die Dateien neu ins OPFS, startet die App neu und setzt
-die Kamera zurück (`ui.home {open: false}` vorher, sonst bleibt die Startseite der App offen).
-Browsertest mit Fake-Agent: Zug 5 s, Rückgängig 2,6 s (Software-Rendering).
-**Auswahl (seit 2026-10-28):** `POST /api/resolve_selection {items}` übersetzt die Auswahl der App
-(`{type, body, index, point}`) in Mechvane-Namen: Flächenname, erzeugendes Feature, Normale bzw.
-Radius und Achse, Klickpunkt (`click`, „da“) und Schwerpunkt (`centroid`, „mittig“); Kanten mit Name
-und Länge. In Baugruppen sucht `mechvane/ui/selection.py` die Fläche in der verknüpften Bauteildatei
-(inverse Matrix der Occurrence, `links._match`) und nennt Teil, Occurrence und Bauteilfläche. Der Chat
-schickt die aufgelöste Auswahl mit und zeigt die Namen unter der Nachricht.
-
-**Sprache (erste Fassung 2026-10-28):** Mikrofon-Knopf im Eingabefeld (gedrückt halten, nur wo der Browser
-`SpeechRecognition` hat: Chrome, Edge), Deutsch, beim ersten Mal Zustimmung zum Online-Dienst des
-Browsers (Merker in `localStorage`). Der erkannte Text geht an `POST /api/speech`, `mechvane/speech.py`
-macht im Code daraus Zahlen und Einheiten („eins mal fünfundvierzig Grad“ → „1 × 45°“, „Em sechs“ → „M6“,
-„Phase“ → „Fase“) und erkennt Namen aus dem offenen Modell (Features, Körper, Parameter, Occurrences).
-Der Text steht danach im Eingabefeld und wird erst mit Enter gesendet. Offen: Whisper auf dem Server
-(offline), Auswahl beim Drücken festhalten, Vergleich mit gesprochenen Testsätzen.
+Die Web-UI (`mechvane ui`, `mechvane/ui/`, Live-Demo, Agent im Browser, Spracheingabe) war seit 2026-11-20 eingefroren
+und ist am 2026-11-27 entfernt (#232). Von Hand wird in der SolidCraft-App modelliert; Mechvane hängt sich mit
+`connect_window` bzw. `mechvane check` an das offene Fenster. Was die UI an Kernlogik hatte, liegt im Kern: die Meshes des
+glTF-Exports in `mechvane/mesh.py`, „Mitte der Fläche“ in `modeling.centred_hole_commands`, Parameter- und Skizzenlisten in
+`query.collect_params` und `query.sketches`. Die Beschreibung der UI steht in der Git-Geschichte und in ADR 0005 (abgelöst).
 
 ## Tests
 

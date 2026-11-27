@@ -9,7 +9,7 @@
 
 **[Website](https://mechvane.dev/)** · **[Roadmap](https://mechvane.dev/roadmap/)** · [PyPI](https://pypi.org/project/mechvane/)
 
-> **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent. The browser workspace stays available as a local preview.
+> **Where Mechvane is heading:** Mechvane's engineering knowledge is moving into SolidCraft's own app. First, Mechvane connects to the SolidCraft app you have open, so design checks with their sources, bolted connections and your agent work on the design in SolidCraft's window. Later, the same checks and assistants become SolidCraft plugins: a ribbon entry for you and a tool for your agent.
 
 The mechanical engineering layer for [SolidCraft](https://github.com/tangency-labs/solidcraft), for
 individual engineers, makers and small and medium-sized companies: design checks with cited sources,
@@ -50,23 +50,23 @@ MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its own la
 ## Quick start
 
 Requirements: Python ≥ 3.11. Everything else comes with `mechvane setup`: it downloads the
-pinned `solidcraft-cli` and SolidCraft web app (v0.43.0) from the
+pinned `solidcraft-cli` (v0.43.0) from the
 [SolidCraft release](https://github.com/tangency-labs/solidcraft/releases) for your platform
-(Linux x86_64/aarch64, Windows x64/arm64, macOS) and checks their SHA256. No build needed;
+(Linux x86_64/aarch64, Windows x64/arm64, macOS) and checks its SHA256. No build needed;
 rendering works headless too.
 
 ```sh
 pip install mechvane
-mechvane setup        # SolidCraft CLI and web app, about 170 MB, once
+mechvane setup        # SolidCraft CLI, a download of about 175 MB, once
 mechvane mcp          # MCP server for your agent (see below)
 ```
 
-Everything runs locally and offline after `mechvane setup`. The browser workspace stays available as a
-preview (`mechvane ui my-project/`); development now goes into working inside SolidCraft's own window.
+Everything runs locally and offline after `mechvane setup`. You model by hand in SolidCraft's own app;
+Mechvane connects to the window you have open.
 
 Tested on Linux and Windows 11 (x64); macOS is expected to work but not yet tested.
 If `mechvane` is not found after a user install on Windows, use `python -m mechvane setup` (and
-`ui`, `mcp`) instead.
+`mcp`, `check`) instead.
 
 An existing `solidcraft-cli` is used when you set `SOLIDCRAFT_CLI` or skip `mechvane setup`
 and have it on your `PATH`.
@@ -94,7 +94,7 @@ For development, clone the repo and run the checks:
 ```sh
 git clone https://github.com/mechvane/mechvane && cd mechvane
 pip install -e .
-python3 tests/mechvane/check.py      # over 800 checks, a few minutes
+python3 tests/mechvane/check.py      # over 600 checks, a few minutes
 python3 tests/reference/check.py     # reference parts with expected values
 ```
 
@@ -116,7 +116,6 @@ SolidCraft app you have open (see the note at the top and the [roadmap](https://
   its source and quoted passage.
 - **MCP server** for your agent with clear error messages, a short report after every step and
   `verify_view` to check its work against a picture.
-- **Browser preview** (`mechvane ui`): parameters, measuring, section view and the design check on your files.
 
 ## Contents
 

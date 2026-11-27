@@ -1,0 +1,324 @@
+{
+  "id": "iso286_passungen_h7_h8_grenzabmasse",
+  "aussage": "Im System Einheitsbohrung nach DIN EN ISO 286-2 liegen für Nennmaßbereiche von 1 bis 120 mm die Grenzabmaße (in µm) der Bohrungen H7 (0/+10 bis 0/+35) und H8 (0/+14 bis 0/+54) sowie der gängigen Wellen f7 (-6/-16 bis -36/-71), g6 (-2/-8 bis -12/-34), h6 (0/-6 bis 0/-22) und p6 (+6/+12 bis +37/+59) fest. Daraus ergeben sich H7/f7 (Laufsitz), H8/f7 (weiter Laufsitz für geschmierte Gleitlager), H7/g6 (enger Schiebe-/Laufsitz), H7/h6 (spielfreier Gleit-/Zentriersitz ab 0 µm) und H7/p6 (reine Presspassung).",
+  "werte": [
+    {
+      "name": "Bohrung H7 (1 bis 3 mm)",
+      "bereich": [0, 10],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>3 bis 6 mm)",
+      "bereich": [0, 12],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>6 bis 10 mm)",
+      "bereich": [0, 15],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>10 bis 18 mm)",
+      "bereich": [0, 18],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>18 bis 30 mm)",
+      "bereich": [0, 21],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>30 bis 50 mm)",
+      "bereich": [0, 25],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>50 bis 80 mm)",
+      "bereich": [0, 30],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H7 (>80 bis 120 mm)",
+      "bereich": [0, 35],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (1 bis 3 mm)",
+      "bereich": [0, 14],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>3 bis 6 mm)",
+      "bereich": [0, 18],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>6 bis 10 mm)",
+      "bereich": [0, 22],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>10 bis 18 mm)",
+      "bereich": [0, 27],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>18 bis 30 mm)",
+      "bereich": [0, 33],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>30 bis 50 mm)",
+      "bereich": [0, 39],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>50 bis 80 mm)",
+      "bereich": [0, 46],
+      "einheit": "µm"
+    },
+    {
+      "name": "Bohrung H8 (>80 bis 120 mm)",
+      "bereich": [0, 54],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (1 bis 3 mm)",
+      "bereich": [-16, -6],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>3 bis 6 mm)",
+      "bereich": [-22, -10],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>6 bis 10 mm)",
+      "bereich": [-28, -13],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>10 bis 18 mm)",
+      "bereich": [-34, -16],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>18 bis 30 mm)",
+      "bereich": [-41, -20],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>30 bis 50 mm)",
+      "bereich": [-50, -25],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>50 bis 80 mm)",
+      "bereich": [-60, -30],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle f7 (>80 bis 120 mm)",
+      "bereich": [-71, -36],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (1 bis 3 mm)",
+      "bereich": [-8, -2],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>3 bis 6 mm)",
+      "bereich": [-12, -4],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>6 bis 10 mm)",
+      "bereich": [-14, -5],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>10 bis 18 mm)",
+      "bereich": [-17, -6],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>18 bis 30 mm)",
+      "bereich": [-20, -7],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>30 bis 50 mm)",
+      "bereich": [-25, -9],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>50 bis 80 mm)",
+      "bereich": [-29, -10],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle g6 (>80 bis 120 mm)",
+      "bereich": [-34, -12],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (1 bis 3 mm)",
+      "bereich": [-6, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>3 bis 6 mm)",
+      "bereich": [-8, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>6 bis 10 mm)",
+      "bereich": [-9, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>10 bis 18 mm)",
+      "bereich": [-11, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>18 bis 30 mm)",
+      "bereich": [-13, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>30 bis 50 mm)",
+      "bereich": [-16, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>50 bis 80 mm)",
+      "bereich": [-19, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle h6 (>80 bis 120 mm)",
+      "bereich": [-22, 0],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (1 bis 3 mm)",
+      "bereich": [6, 12],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>3 bis 6 mm)",
+      "bereich": [12, 20],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>6 bis 10 mm)",
+      "bereich": [15, 24],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>10 bis 18 mm)",
+      "bereich": [18, 29],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>18 bis 30 mm)",
+      "bereich": [22, 35],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>30 bis 50 mm)",
+      "bereich": [26, 42],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>50 bis 80 mm)",
+      "bereich": [32, 51],
+      "einheit": "µm"
+    },
+    {
+      "name": "Welle p6 (>80 bis 120 mm)",
+      "bereich": [37, 59],
+      "einheit": "µm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Stahl",
+      "Aluminium",
+      "Gusseisen",
+      "Buntmetalle"
+    ],
+    "verfahren": [
+      "Drehen",
+      "Fräsen",
+      "Reiben",
+      "Schleifen",
+      "Zerspanung"
+    ],
+    "feature": [
+      "Passung",
+      "Bohrung",
+      "Welle",
+      "Grenzabmaß"
+    ],
+    "groesse": [
+      "1-3 mm",
+      ">3-6 mm",
+      ">6-10 mm",
+      ">10-18 mm",
+      ">18-30 mm",
+      ">30-50 mm",
+      ">50-80 mm",
+      ">80-120 mm"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "norm_sekundaer",
+  "quellen": [
+    {
+      "url": "https://einspannzapfen.de/assets/toleranztabelle.pdf",
+      "stelle": "NVG Toleranztabelle, Außenmaße (Wellen) und Innenmaße (Bohrungen), 1 bis 120 mm",
+      "zitat": "Grenzabmaße in µm (1 µm = 0,001 mm)",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.elesa-ganter.at/siteassets/technical/DIN_ISO_286_ISO_Fundamental_Tolerances_DE.pdf",
+      "stelle": "10.8 DIN ISO 286 ISO-Grundtoleranzen, S. A21–A22",
+      "zitat": "Am gebräuchlichsten ist für Bohrungen das Toleranzfeld H. Es besagt, dass das Mindestmaß der Bohrung dem Nennmaß entspricht.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.baouch.fr/telechargements/en/iso-286-fits-chart.pdf",
+      "stelle": "Abschnitt 1 (The 8 fits to know) und Abschnitt 2 (Deviation chart)",
+      "zitat": "The hole-basis system (H hole, you choose the shaft) is by far the most used: one reamer or hole tolerance across the range, and the shaft, easier to machine precisely, carries the function.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.baouch.fr/en/blog/ajustements-iso-286-tableau-h7-g6/",
+      "stelle": "Abschnitt 3 (Reading Ø 25 H7/g6) und Abschnitt 5 (Formeln)",
+      "zitat": "The hole takes one grade more than the shaft (H7 with g6, H8 with f7): a precise hole is harder to machine than a precise shaft.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Im System Einheitsbohrung werden Bohrungen mit festen Werkzeugen (Reibahlen) in H7 oder H8 gefertigt (unteres Abmaß EI = 0), während das Passspiel bzw. Übermaß wirtschaftlicher über die geschliffene oder feingedrehte Welle eingestellt wird. Aus den Grenzabmaßen folgen Mindestspiel P_min = EI - es und Höchstspiel P_max = ES - ei (negative Werte bedeuten Übermaß): Beispielsweise liefert Ø 25 H7/g6 ein Spiel von +7 bis +41 µm (enger Laufsitz für Führungen und Schieberäder), H7/h6 von 0 bis +34 µm (spielfreie Handzentrierung), H7/f7 von +20 bis +62 µm, H8/f7 von +20 bis +74 µm (geschmierte Gleitlager) und H7/p6 von -35 bis -1 µm bzw. 1 bis 35 µm Übermaß (reiner Presssitz für Buchsen und Passstifte). Bei >30 bis 50 mm ergibt H7/p6 1 bis 42 µm Übermaß.",
+  "ausnahmen": "Für Wälzlagersitze gelten vorrangig die last- und drehzahlabhängigen Empfehlungen der Lagerhersteller (siehe skf_lagersitze_6000_schulter_radius). Abweichung bei externen Drittquellen: Das französische Memento von Axes Industries (tolerances_et_alesages.pdf, S. M15) druckt bei g6 im Bereich 18–30 mm fehlerhaft -7 / -13 µm statt -7 / -20 µm; die hier hinterlegten Werte stimmen überein zwischen NVG Einspannzapfen, Elesa+Ganter und Baouch.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "grundtoleranzen_it7_it6_iso286"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "passung_h7_k6_waelzlager"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "passung_h7_m6_zylinderstifte"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "id": "protolabs_gewinde_fraesen_tiefe_auslauf",
+  "aussage": "Protolabs fertigt CNC-Innengewinde nicht mit Gewindebohrern, sondern mittels Einzahn-Gewindefräsen (single-lip thread mill) in die im CAD als Kernloch (Pilotdurchmesser) modellierte Bohrung. Für beste Prozesssicherheit ist die nutzbare Gewindetiefe auf etwa das 2,5-fache des Gewindedurchmessers begrenzt (größenabhängige Maximalwerte im Standard-Fräsen von M2 mit 5,08 mm bis M10/M12 mit 25,40 mm; M1,6 × 0,35 mit 3,00 mm Tiefe nur in Weichmetallen bzw. Aluminium). Bei Sacklochbohrungen endet das Gewinde wegen des Werkzeugauslaufs etwa 0,25 mm vor dem Bohrungsgrund bzw. 0,25 mm vor dem Beginn des Bohrerspitzenwinkels.",
+  "werte": [
+    {
+      "name": "Richtwert nutzbare Gewindetiefe zu Nenndurchmesser",
+      "wert": 2.5,
+      "einheit": "x Gewindedurchmesser"
+    },
+    {
+      "name": "Ungewindeter Auslauf am Sacklochgrund bzw. vor Spitzenwinkel",
+      "wert": 0.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "Kleinstes Sondergewinde (nur Weichmetalle/Aluminium)",
+      "wert": "M1.6 x 0.35",
+      "einheit": ""
+    },
+    {
+      "name": "Max. Gewindetiefe M1.6 x 0.35 (Weichmetalle)",
+      "wert": 3,
+      "einheit": "mm"
+    },
+    {
+      "name": "CAD-Pilotdurchmesser M1.6 x 0.35 (zulässig 1,22–1,32 mm)",
+      "wert": 1.25,
+      "einheit": "mm"
+    },
+    {
+      "name": "Kleinstes Standardgewinde metrisch",
+      "wert": "M2 x 0.4",
+      "einheit": ""
+    },
+    {
+      "name": "Max. Gewindetiefe M2 x 0.4",
+      "wert": 5.08,
+      "einheit": "mm"
+    },
+    {
+      "name": "Zulässiger CAD-Pilotdurchmesser M2",
+      "bereich": [1.57, 1.68],
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M3 x 0.5",
+      "wert": 7.62,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M4 x 0.7",
+      "wert": 10.16,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M5 x 0.8",
+      "wert": 15.24,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M6 x 1.0",
+      "wert": 16.51,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M8 x 1.25",
+      "wert": 16.51,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M10 x 1.5",
+      "wert": 25.4,
+      "einheit": "mm"
+    },
+    {
+      "name": "Max. Gewindetiefe M12 x 1.75",
+      "wert": 25.4,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Metalle",
+      "Aluminium",
+      "Stahl",
+      "Kunststoffe"
+    ],
+    "verfahren": [
+      "CNC-Fräsen",
+      "Gewindefräsen"
+    ],
+    "feature": [
+      "Innengewinde",
+      "Sackloch",
+      "Durchgangsloch",
+      "Gewindeauslauf"
+    ],
+    "groesse": [
+      "M1.6",
+      "M2",
+      "M2.5",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M8",
+      "M10",
+      "M12"
+    ],
+    "festigkeitsklasse": []
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.protolabs.com/en-gb/services/cnc-machining/threaded-holes-guidelines/",
+      "stelle": "Abschnitt Understanding thread depth & Tabelle Threaded Hole Guidelines - Metric (Inner Diameter - Milling)",
+      "zitat": "Thread milling is more reliable than manual tapping, but for the best results thread depth is regulated to about 2.5 times the thread diameter (refer to maximum depth in the table below).",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.protolabs.com/en-gb/services/cnc-machining/threaded-holes-guidelines/",
+      "stelle": "Abschnitt THREADING: MAXIMUM REACH (Example 5: Blind hole)",
+      "zitat": "In this case, the hole is less than the full reach and threading will stop roughly 0.25 mm (0.010 in) off the bottom.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.protolabs.com/en-gb/services/cnc-machining/threaded-holes-guidelines/",
+      "stelle": "Abschnitt THREADING: MAXIMUM REACH (Example 6: Point angle)",
+      "zitat": "If this point is added to the model, the threading will stop roughly 0.25 mm above the start of the point angle.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.protolabs.com/en-gb/resources/design-tips/threading-considerations-for-cnc-machining/",
+      "stelle": "Abschnitt Internal Threads",
+      "zitat": "Protolabs supports right-hand threaded holes on machined parts for UNC and UNF threads ranging from a #2 and up to a ½ in.; metric threads are also available ranging from M2 to M12.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Durch das Zirkularfräsen mit einem Einzahn-Gewindefräser entfällt der lange Anschnitt eines herkömmlichen Gewindebohrers, sodass im Sackloch nur etwa 0,25 mm Auslauf bis zum Bohrungsboden bzw. Beginn des Spitzenwinkels verbleiben. Zugleich begrenzt die schlanke Schaftgeometrie des Gewindefräsers die erreichbare Werkzeugauskragung auf rund 2,5 × d (bzw. feste Maximalwerte pro Gewindegröße).",
+  "ausnahmen": "Abweichung gegenüber sackloch_gewindelaenge_auslauf_hubs: Hubs empfiehlt 1,5 × d bis 3 × d Gewindelänge sowie 1,5 × d gewindefreien Auslauf für Gewindebohrer unter M6, während Protolabs wegen Gewindefräsens rund 2,5 × d Tiefe und nur ca. 0,25 mm Auslauf am Sacklochgrund angibt. Für M1,6 × 0,35 gelten Einschränkungen auf Weichmetalle (im US-Leitfaden standard-holes/ nur Aluminium und als Sonderoption mit 2D-Zeichnung; dort außerdem M14–M20 bis 50,80 mm per 2D-Zeichnung). Durchgangsbohrungen oberhalb der maximalen Fräserreichweite bleiben auf der Gegenseite gewindefrei oder werden von beiden Seiten gefräst (Gefahr von Gewindeversatz bei Überlappung).",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "widerspricht",
+      "ziel": "sackloch_gewindelaenge_auslauf_hubs"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "id": "trumpf_biegeparameter_gesenkweite_schenkellaenge",
+  "aussage": "Nach dem TRUMPF-Katalog für Biegewerkzeuge (Freibiegen 90°) richtet sich die Gesenkweite w nach der Blechdicke s (Richtwert w = 6 × s für s = 0,5–2,6 mm, 8 × s für 3,0–8,0 mm, 10 × s für 9,0–12,0 mm). Die minimale Schenkellänge beträgt näherungsweise 0,75 × Gesenkweite (konkrete Mindestwerte b1 für 84°-Matrizen bzw. b2 für 30°-Matrizen bei maximaler Blechdicke in der Presskrafttabelle, z. B. b1 = 5,7 mm bei W8 und 11,1 mm bei W16). Der sich einstellende Innenradius Ri hängt von der Gesenkweite, dem Oberwerkzeugradius und dem Werkstoff ab und fällt bei Edelstahl (700 N/mm²) größer aus als bei Baustahl (450 N/mm²), z. B. bei optimaler Blechdicke s = 2 mm (W16, R1) Ri = 3,3 mm (Stahl) bzw. 3,9 mm (Edelstahl). Für Bohrungen nahe der Biegelinie empfiehlt TRUMPF 84°-Matrizen gegenüber 30°-Matrizen wegen des geringeren Lochverzugs bzw. bei sehr geringem Abstand das Prägebiegen mit 90°-Matrize.",
+  "werte": [
+    {
+      "name": "Faustformel minimale Schenkellänge zu Gesenkweite",
+      "wert": 0.75,
+      "einheit": "x Gesenkweite"
+    },
+    {
+      "name": "Blechdickenbereich für Gesenkweite 6 × s",
+      "bereich": [0.5, 2.6],
+      "einheit": "mm"
+    },
+    {
+      "name": "Gesenkweitenfaktor (s = 0,5–2,6 mm)",
+      "wert": 6,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Blechdickenbereich für Gesenkweite 8 × s",
+      "bereich": [3.0, 8.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "Gesenkweitenfaktor (s = 3,0–8,0 mm)",
+      "wert": 8,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Blechdickenbereich für Gesenkweite 10 × s",
+      "bereich": [9.0, 12.0],
+      "einheit": "mm"
+    },
+    {
+      "name": "Gesenkweitenfaktor (s = 9,0–12,0 mm)",
+      "wert": 10,
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Innenradius Ri bei W8 (opt. s = 1 mm, R1), Stahl 450 N/mm²",
+      "wert": 1.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W8 (opt. s = 1 mm, R1), Edelstahl 700 N/mm²",
+      "wert": 2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b1 (Matrize 84°, W8, bei max. Blechdicke)",
+      "wert": 5.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b2 (Matrize 30°, W8, bei max. Blechdicke)",
+      "wert": 6.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W16 (opt. s = 2 mm, R1), Stahl 450 N/mm²",
+      "wert": 3.3,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W16 (opt. s = 2 mm, R1), Edelstahl 700 N/mm²",
+      "wert": 3.9,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b1 (Matrize 84°, W16, bei max. Blechdicke)",
+      "wert": 11.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b2 (Matrize 30°, W16, bei max. Blechdicke)",
+      "wert": 12.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W24 (opt. s = 3 mm, R1), Stahl 450 N/mm²",
+      "wert": 4.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W24 (opt. s = 3 mm, R1), Edelstahl 700 N/mm²",
+      "wert": 5.2,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b1 (Matrize 84°, W24, bei max. Blechdicke)",
+      "wert": 19,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b2 (Matrize 30°, W24, bei max. Blechdicke)",
+      "wert": 19.1,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W30 (opt. s = 4 mm, R1), Stahl 450 N/mm²",
+      "wert": 4.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "Innenradius Ri bei W30 (opt. s = 4 mm, R1), Edelstahl 700 N/mm²",
+      "wert": 6.5,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b1 (Matrize 84°, W30, bei max. Blechdicke)",
+      "wert": 23.7,
+      "einheit": "mm"
+    },
+    {
+      "name": "Min. Schenkellänge b2 (Matrize 30°, W30, bei max. Blechdicke)",
+      "wert": 23,
+      "einheit": "mm"
+    }
+  ],
+  "geltungsbereich": {
+    "werkstoff": [
+      "Stahl",
+      "Baustahl",
+      "Edelstahl"
+    ],
+    "verfahren": [
+      "Freibiegen",
+      "Gesenkbiegen",
+      "Prägebiegen",
+      "Blechbearbeitung"
+    ],
+    "feature": [
+      "Biegeradius",
+      "Biegeschenkel",
+      "Schenkel",
+      "Gesenkweite",
+      "Bohrung",
+      "Biegekante",
+      "Blech"
+    ],
+    "groesse": [
+      "0.5-15 mm"
+    ],
+    "festigkeitsklasse": [
+      "450 N/mm²",
+      "700 N/mm²"
+    ]
+  },
+  "herkunft": "hersteller",
+  "quellen": [
+    {
+      "url": "https://www.trumpf.com/filestorage/TRUMPF_Master/Products/Services/01_brochures/TRUMPF-bending-tools-catalog-DE.pdf",
+      "stelle": "Technischer Teil, S. 179 (Wahl der Gesenkweite)",
+      "zitat": "minimale Schenkellänge = ~ 0,75 x Gesenkweite",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.trumpf.com/filestorage/TRUMPF_Master/Products/Services/01_brochures/TRUMPF-bending-tools-catalog-DE.pdf",
+      "stelle": "Technischer Teil, S. 300 (Berechnung der Gesenkweite)",
+      "zitat": "Der Innenradius ist eine Funktion der Gesenkweite und des Oberwerkzeugradius",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.trumpf.com/filestorage/TRUMPF_Master/Products/Services/01_brochures/TRUMPF-bending-tools-catalog-DE.pdf",
+      "stelle": "Technischer Teil, S. 301 (Presskrafttabelle Richtwerte für 90° Freibiegen)",
+      "zitat": "b1= min. Schenkellänge bei max. Blechdicke (Matrize 84°)",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.trumpf.com/filestorage/TRUMPF_Master/Products/Services/01_brochures/TRUMPF-bending-tools-catalog-DE.pdf",
+      "stelle": "Unterwerkzeuge, S. 178 (Auswahl von Matrizen 30° / 80° / 84°(86°) / 90°)",
+      "zitat": "Weniger Verzug bei Löchern (Klinkungen) nahe der Biegelinie gegenüber 30° Matrizen. In manchen Anwendungsfällen muss auf das Prägebiegen (90° Matrize) zurückgegriffen werden.",
+      "abgerufen": "2026-11-27"
+    }
+  ],
+  "begruendung": "Beim Freibiegen bildet sich der innere Biegeradius weitgehend frei über der gewählten V-Gesenkweite w (Faustregel 6 × s bis 10 × s je nach Blechdicke), wobei Werkstoffe mit höherer Festigkeit und Rückfederung (Edelstahl 700 N/mm² gegenüber Stahl 450 N/mm²) unter gleicher Matrize größere Innenradien Ri ausbilden. Der Biegeschenkel muss die Schultern des Unterwerkzeugs sicher überbrücken (~0,75 × Gesenkweite bzw. b1/b2), da er sonst in die V-Öffnung abrutscht. Nahe der Biegelinie liegende Bohrungen verziehen sich in steileren 30°-Matrizen stärker als in 84°-Matrizen oder beim Prägebiegen (90°-Matrize, mindestens dreifache Presskraft).",
+  "ausnahmen": "Abweichungen und Abgrenzung zu vorhandenen Einträgen: (1) Gegenüber mindestbiegeradius_stahl_dc01_alu_5754 (r_min >= 1,0 × t) liefert TRUMPF für das Freibiegen bei optimaler Gesenkweite größere Versuchswerte für Ri (z. B. 1,7 mm bei s = 1 mm bzw. 3,3 mm bei s = 2 mm in Stahl 450 N/mm², d. h. ca. 1,65–1,7 × s; in Edelstahl 2,0 bzw. 3,9 mm). (2) Gegenüber mindestschenkellaenge_freibiegen (Protolabs: 3,5 × t + r Stahl) bezieht TRUMPF die Mindestschenkellänge primär auf die Gesenkweite w (~0,75 × w bzw. b1/b2). (3) Für den Abstand von Bohrungen zur Biegekante enthält der öffentliche TRUMPF-Werkzeugkatalog nur die qualitative Matrizenempfehlung auf S. 178, keine eigene Abstandsformel (wie 4,0 × t in lochabstand_biegetangente). (4) Für Aluminium (300 N/mm²) führt der Katalog nur RollBend-/RBK-Presskrafttabellen (S. 244, 248), jedoch keine eigenen Ri-/b1-/b2-Reihen auf S. 301; der interaktive TRUMPF BendGuide (bendguide.trumpf.com) ist eine rein clientseitige Web-App.",
+  "haerte": "hinweis",
+  "pruefstatus": "offen",
+  "beziehungen": [
+    {
+      "typ": "gilt_fuer",
+      "ziel": "mindestbiegeradius_stahl_dc01_alu_5754"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "mindestschenkellaenge_freibiegen"
+    },
+    {
+      "typ": "gilt_fuer",
+      "ziel": "lochabstand_biegetangente"
+    }
+  ]
+}

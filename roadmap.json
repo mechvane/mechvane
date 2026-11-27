@@ -65,6 +65,11 @@
           "text": "Design checks, bolted connections and standard parts as SolidCraft plugins: a ribbon entry and a form for you, the same entry as a tool for your agent."
         },
         {
+          "status": "later",
+          "title": "Knowledge and checks beyond one CAD",
+          "text": "The knowledge catalog, design checks and fastener calculations are kept independent of any one CAD system, so that further CAD systems can connect later. SolidCraft stays first."
+        },
+        {
           "status": "done",
           "title": "Clear error messages for your agent",
           "text": "When SolidCraft rejects a step, Mechvane names the feature and the spot and says in one sentence what touches what, with a suggestion, so your agent can fix it on the next try.",
@@ -138,132 +143,6 @@
           "status": "planned",
           "title": "Open files from other CAD systems",
           "text": "Parts and assemblies from Inventor, SolidWorks, CATIA, NX, Creo, Solid Edge, Fusion and FreeCAD, rebuilt as SolidCraft features with their history, sketches and parameters, so your earlier work comes along fully editable, nothing left behind. Inventor comes first. Features that cannot be rebuilt directly stay as placeholders until your agent or a later version rebuilds them."
-        }
-      ]
-    },
-    {
-      "title": "Web UI",
-      "intro": "The Mechvane workspace in the browser stays as a preview on your own computer (mechvane ui) while the work continues inside SolidCraft itself. Model by hand, let your agent take a step, check the result: all on the same model.",
-      "items": [
-        {
-          "status": "done",
-          "title": "Own app window and start menu entry",
-          "text": "Opens like a desktop app, one instance per project folder.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Check page",
-          "text": "3D view, model tree and design findings; reloads when the file changes.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Model by hand",
-          "text": "The SolidCraft web app embedded in Mechvane, saving back into your project.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Request a feature from the app",
-          "text": "A short form that opens a prepared GitHub issue.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Parameters",
-          "text": "Change parameters and dimensions in a form; sketch dimensions appear grouped by sketch with named dimensions first, and several changes apply together or not at all.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Measure",
-          "text": "Distances, gaps between faces, angles, hole diameters and axis distances by clicking in the 3D view.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Measure edges",
-          "text": "Click an edge for its length, a circle's diameter or an arc's radius; two edges give their angle, gap or whether they are coaxial.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Section view",
-          "text": "Cut the model along X, Y or Z with a slider.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Profile and material for the checks",
-          "text": "Choose how the part is made and what it is made of.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Your own Mechvane workspace",
-          "text": "A full workspace in the style of Inventor: ribbon, model browser, property panel and dialogs, with SolidCraft computing underneath. Done: the workspace, one Undo list for you and your agent, inline renaming in the model browser (F2, slow click, context menu) with shortcut R for revolve outside sketcher, and dialogs with live preview for extrude, revolve (profiles and axis picked in the view), hole, fillet, chamfer, patterns and mirror, editable from the model browser. A sketch environment with lines, rectangles and circles, snapping, arcs, constraints, a dimension tool and dimensions typed at the cursor; projecting model edges, automatic projection of the outer and inner boundary edges of a picked planar face on sketch creation (with a toggle to turn it off), trim (including loose ends), offset and window selection (enclosing left-to-right, crossing right-to-left, Shift/Ctrl modifiers) are in too, with planar face hover on sketch creation and clean extrude profiles without diagonal seam lines. Sketches on the XZ plane now show world Z pointing up, as in Inventor's front view.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Switch project folders in the app",
-          "text": "Pick another project folder from inside Mechvane, with recently used folders at hand, instead of starting it again with a different folder. Opening a single file makes its folder the project, so assemblies keep finding their parts.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Model browser visibility",
-          "text": "Show or hide sketches, work features (planes, axes, points) and solid bodies with an eye button on each entry, key V on selection, or the Visibility context menu item. Hidden elements appear dimmed in the tree and are persisted in the document.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Assemble tab by hand",
-          "text": "Place parts, add joints, bolt them together and update links from the workspace, without an agent, as in classic mechanical CAD. Done: placing parts and standard parts from the norm tables, joints (rigid, revolute, slider, cylindrical, ball) and constraints (mate, flush, distance, concentric, angle and more) picked on faces in the view and editable from the browser, bolted connections with ISO screws, nuts and washers, preview, edit and delete, Update Links, and a parts list (BOM) with CSV export.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Every SolidCraft command in the workspace",
-          "text": "Search any command and fill in a form built from its description in SolidCraft, with picks in the view, preview and undo, in the workspace. What SolidCraft can do to your design, you and your agent can do in Mechvane. Commands that act on the SolidCraft window itself, such as its view and renderer, stay with SolidCraft.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Hole positioning by edge distances",
-          "text": "Place holes by distances from one or two straight edges in the Hole dialog (Inventor style), with interactive edge picking and live preview.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Centred holes on circular faces",
-          "text": "The Hole dialog with 'Middle of face' places holes concentric to the outer circular edge on cylinders, flanges and rings, keeping them centred when parameters change.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Edit centred holes",
-          "text": "Holes placed with 'Middle of face' (centred on rectangular faces or concentric on circular faces) can be edited from the model browser, keeping their centred position and sketch constraints when part parameters change.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Check settings saved with the part",
-          "text": "Profile and material travel with the part file, so every browser and your agent check the same way.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "Chat with your agent",
-          "text": "Your agent works in the same window, on the Check page and in Model by hand, with stop, undo and redo for each turn.",
-          "milestone": "v0.1"
-        },
-        {
-          "status": "done",
-          "title": "See what your agent changed",
-          "text": "The previous state as a ghost over the new one and changed features marked in the browser; accepting or undoing single changes follows. Builds on SolidCraft's compare.",
-          "milestone": "v0.1"
         }
       ]
     },
@@ -346,6 +225,11 @@
           "text": "Every value with its source, quotation and status, checked automatically against the source. A page to browse the catalog on mechvane.dev is planned."
         },
         {
+          "status": "progress",
+          "title": "Private knowledge area",
+          "text": "Add your own works standards, test results and notes in a private folder. Checks can use them and cite them, and they are never published. A book can be named as a literature reference."
+        },
+        {
           "status": "done",
           "title": "Every finding shows its source",
           "text": "Each finding of the design check shows the rule, the value, the source and the quoted passage from the knowledge catalog.",
@@ -375,7 +259,7 @@
     },
     {
       "title": "Domain modules",
-      "intro": "Loaded only when a document needs them.",
+      "intro": "Loaded only when a document needs them. Delivered as SolidCraft plugins or as contributions to SolidCraft itself, as the need comes up.",
       "items": [
         {
           "status": "planned",
@@ -450,7 +334,7 @@
         {
           "status": "planned",
           "title": "Your own features as code",
-          "text": "Write a feature such as a bolted connection in Python once; it sits in the model browser as one feature, recomputes on change, and you and your agent use it the same way."
+          "text": "Write a feature such as a bolted connection once; it sits in the model browser as one feature, recomputes on change, and you and your agent use it the same way."
         },
         {
           "status": "planned",
@@ -466,7 +350,7 @@
     },
     {
       "title": "Manufacturing drawings",
-      "intro": "ISO drawings straight from the 3D model.",
+      "intro": "ISO drawings straight from the 3D model. Delivered as SolidCraft plugins or as contributions to SolidCraft itself, as the need comes up.",
       "items": [
         {
           "status": "planned",
@@ -502,7 +386,7 @@
     },
     {
       "title": "Later",
-      "intro": "As plugins, when there is a need.",
+      "intro": "Ideas for later. Delivered as SolidCraft plugins or as contributions to SolidCraft itself, as the need comes up.",
       "items": [
         {
           "status": "later",
