@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mechvane – You and your agent on the same model</title>
+  <meta name="description" content="Open-source mechanical engineering for SolidCraft: sourced design checks, bolted connections, standard parts and linked assemblies, for you and your agent in the SolidCraft app you already use.">
+  <meta name="color-scheme" content="dark light">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Mechvane – You and your agent on the same model">
+  <meta property="og:description" content="Mechanical engineering for SolidCraft: sourced design checks, bolted connections and linked assemblies, working in the app you already use, for you and your agent.">
+  <meta property="og:url" content="https://mechvane.dev/">
+  <meta property="og:image" content="https://mechvane.dev/media/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Mechvane – You and your agent on the same model. Parametric 3D CAD with highlighted countersink clearance check.">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mechvane – You and your agent on the same model">
+  <meta name="twitter:description" content="Mechanical engineering for SolidCraft: sourced design checks, bolted connections and linked assemblies for you and your agent.">
+  <meta name="twitter:image" content="https://mechvane.dev/media/social-preview.png">
+
+  <link rel="icon" href="media/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="media/logo-512.png">
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/site.js" defer></script>
+</head>
+<body id="top">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#top" aria-label="Mechvane home">
+        <img class="brand-logo" src="media/logo.svg" width="28" height="28" alt="">
+        <span class="brand-name">Mech<span class="brand-vane">vane</span></span>
+        <span class="badge badge-alpha" title="Current PyPI release">0.1.1</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#workflow">Vision</a>
+        <a href="#features">What works</a>
+        <a href="#knowledge">Knowledge</a>
+        <a href="#get-started">Get started</a>
+        <a href="https://github.com/mechvane/mechvane">GitHub</a>
+        <a class="nav-cta" href="/roadmap/">Roadmap</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- 1. Hero -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <div class="hero-wordmark">
+            <picture>
+              <source media="(prefers-color-scheme: light)" srcset="media/logo-wordmark-light.png">
+              <img src="media/logo-wordmark-dark.png" width="234" height="60" alt="Mechvane">
+            </picture>
+          </div>
+
+          <h1 id="hero-heading">You and your agent on the <span class="accent-text">same model.</span></h1>
+
+          <p class="hero-lead">
+            The mechanical engineering layer for
+            <a href="https://github.com/tangency-labs/solidcraft">SolidCraft</a>: sourced design checks,
+            bolted connections, standard parts and assemblies that keep their joints. Model by hand in the
+            SolidCraft app you already use, hand a step to an AI agent, or both, on the same parts with the
+            same checks.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/roadmap/">See what is planned</a>
+            <a class="btn btn-secondary" href="#get-started">Get started</a>
+          </div>
+
+          <ul class="hero-meta" aria-label="Project highlights">
+            <li><span class="meta-dot"></span>Open source (MIT OR Apache-2.0)</li>
+            <li><span class="meta-dot"></span>Works with SolidCraft, nothing to replace</li>
+            <li><span class="meta-dot"></span>Runs locally &amp; offline after setup</li>
+          </ul>
+        </div>
+
+        <figure class="hero-media">
+          <div class="hero-frame">
+            <img
+              src="media/logo-showcase-render.png"
+              width="1600"
+              height="1200"
+              alt="Blender render of the Mechvane logo modeled as a real welded and bolted CAD assembly: steel M on a navy back plate, brushed brass and copper V on spacers with countersunk screws."
+            >
+          </div>
+          <figcaption>
+            Modeled as a real assembly in Mechvane—welded steel M on a back plate, brass and copper V on
+            spacers with countersunk screws—and exported via <code>export_gltf</code>.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 2. One model, many hands -->
+    <section class="section" id="workflow" aria-labelledby="workflow-heading">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Where Mechvane is going</p>
+          <h2 id="workflow-heading">One model, many hands</h2>
+          <p class="section-lead">
+            Mechvane moves into the SolidCraft app you already use. You work in SolidCraft's own window, your
+            agent works on the same open design, and Mechvane brings the mechanical engineering knowledge to both:
+            checks with their sources, bolted connections as one undoable step, and joints that stay where you
+            put them.
+          </p>
+        </div>
+
+        <div class="workflow-steps">
+          <div class="step-card">
+            <span class="step-num">01</span>
+            <h3>Model in SolidCraft, with or without an agent</h3>
+            <p>
+              Sketch, extrude and assemble by hand in SolidCraft, or hand a step to an agent such as Claude Code
+              through MCP. Both of you work on the same <code>.solidcraft</code> files, with the same undo list.
+            </p>
+          </div>
+          <div class="step-card">
+            <span class="step-num">02</span>
+            <h3>Check against sourced rules</h3>
+            <p>
+              Wall thickness, hole edge distance, thread depth and printability are checked against an open
+              catalog. Every finding shows the rule, the value and the quoted passage it comes from.
+            </p>
+          </div>
+          <div class="step-card">
+            <span class="step-num">03</span>
+            <h3>Assemble with fasteners that stay put</h3>
+            <p>
+              A bolted connection drills the holes, places standard parts and joins them in one step. When a part
+              changes, Mechvane notices joints that moved to another face and puts them back.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. What works today -->
+    <section class="section section-alt" id="features" aria-labelledby="features-heading">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Available today · v0.1.1</p>
+          <h2 id="features-heading">What works today</h2>
+          <p class="section-lead">
+            Mechvane 0.1 is for individual engineers, makers, and small and medium-sized
+            companies. Everything below is released and ready to try locally with your agent.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="card-top">
+              <h3>Files, assemblies &amp; resilient joints</h3>
+              <span class="status-pill status-ok">Available</span>
+            </div>
+            <p>
+              Separate <code>.solidcraft</code> files for parts and assemblies, stored with relative paths so
+              project folders can move freely. Sketches belong to their feature in a classic model tree.
+              Cross-file joints and bolted connections remember their target faces: when a part edit causes a
+              joint to jump to another bore, <code>update_links</code> notices and repairs it.
+            </p>
+          </article>
+
+          <article class="feature-card feature-card-media">
+            <figure class="gif-figure">
+              <img
+                src="media/update_links.gif"
+                width="720"
+                height="504"
+                loading="lazy"
+                alt="Animated demonstration: editing a part causes an assembly joint to jump to a different bore, and update_links repairs it back to the original bore."
+              >
+              <figcaption>
+                When a part changes, <code>update_links</code> detects joints that jumped to a different face and puts them back.
+              </figcaption>
+            </figure>
+          </article>
+
+          <article class="feature-card">
+            <div class="card-top">
+              <h3>Standard parts &amp; bolted connections</h3>
+              <span class="status-pill status-ok">Available</span>
+            </div>
+            <p>
+              Standard parts generated procedurally on demand: socket head cap screws (ISO 4762), countersunk
+              screws (ISO 10642), hex bolts (ISO 4017), hex nuts (ISO 4032), washers (ISO 7089), ball bearings
+              (DIN 625), and heat-set inserts. The bolted connection assistant drills through holes, tapped blind
+              holes, or insert bores across parts, places fasteners with coaxial joints, and supports patterns.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <div class="card-top">
+              <h3>Design checks with manufacturing profiles</h3>
+              <span class="status-pill status-ok">Available</span>
+            </div>
+            <p>
+              <code>check_design</code> checks wall thickness, hole edge distance, countersink clearance, thread
+              engagement depth (by material, e.g. <code>1.0 × d</code> in steel, <code>2.0 × d</code> in soft
+              aluminium), and printability overhangs for 3D printing and CNC milling. Choose the manufacturing
+              profile, build direction, and material; profile and material are saved with the part, so you and
+              your agent check the same way.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <div class="card-top">
+              <h3>MCP server for AI agents</h3>
+              <span class="status-pill status-ok">Available</span>
+            </div>
+            <p>
+              Connect Claude Code or another MCP client via <code>mechvane mcp</code>. Provides tools for parts,
+              assemblies, joints, semantic geometry queries (<code>find</code> for faces, edges, and holes),
+              in-place part editing, standard parts, bolted connections, ISO 286 fits (<code>iso_fit</code>),
+              design checks, and <code>export_gltf</code> with materials for Blender and three.js.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Engineering knowledge with sources -->
+    <section class="section" id="knowledge" aria-labelledby="knowledge-heading">
+      <div class="container">
+        <div class="knowledge-grid">
+          <div class="knowledge-copy">
+            <p class="eyebrow">Open knowledge catalog</p>
+            <h2 id="knowledge-heading">Engineering knowledge with sources</h2>
+            <p class="section-lead">
+              Design checks should not guess, and an AI agent should propose what an experienced mechanical
+              engineer would. Mechvane ships an open, machine-readable knowledge catalog where every number
+              carries its source and verbatim quotation.
+            </p>
+
+            <ul class="check-list">
+              <li>
+                <strong>Every value traced to a source:</strong> Standard values from freely accessible sources,
+                public engineering handbooks, and manufacturer datasheets, with automated source verification.
+              </li>
+              <li>
+                <strong>Explicit scope and severity:</strong> Each rule records the applicable material,
+                manufacturing process, feature type, rationale, exceptions, and whether a violation is an
+                error or a hint.
+              </li>
+              <li>
+                <strong>First 28 materials included:</strong> Structural and stainless steels, aluminium alloys,
+                grey cast iron, brass, POM, PA6, PLA, and PETG—with density, stiffness, strength, hardness, and
+                thermal values ready to assign in SolidCraft so mass and thread-depth checks use the part's material.
+              </li>
+            </ul>
+          </div>
+
+          <div class="knowledge-cards" aria-label="Sample entries from the Mechvane knowledge catalog">
+            <div class="catalog-card">
+              <div class="catalog-header">
+                <span class="catalog-id">rule · thread_depth</span>
+                <span class="badge badge-warn">Material-dependent</span>
+              </div>
+              <h3>Minimum thread engagement depth in blind holes</h3>
+              <p class="catalog-desc">
+                Used by <code>bolted_connection</code> and <code>check_design</code> based on the material
+                assigned to the part's body:
+              </p>
+              <dl class="spec-table">
+                <div>
+                  <dt>Steel</dt>
+                  <dd><code>1.0 × d</code></dd>
+                </div>
+                <div>
+                  <dt>Grey cast iron</dt>
+                  <dd><code>1.0 × d</code></dd>
+                </div>
+                <div>
+                  <dt>Wrought aluminium</dt>
+                  <dd><code>1.4 × d</code></dd>
+                </div>
+                <div>
+                  <dt>Soft / cast aluminium</dt>
+                  <dd><code>2.0 × d</code></dd>
+                </div>
+              </dl>
+              <p class="catalog-source">
+                Source: Bossard technical information on thread engagement depth (01/2025), class 8.8 coarse thread · Values without a checked source say so explicitly.
+              </p>
+            </div>
+
+            <div class="catalog-card">
+              <div class="catalog-header">
+                <span class="catalog-id">material · en_aw_6082_t6</span>
+                <span class="badge badge-ok">Source-checked</span>
+              </div>
+              <h3>EN AW-6082 T6 (AlSi1MgMn / 3.2315)</h3>
+              <dl class="spec-table">
+                <div>
+                  <dt>Density (20 °C)</dt>
+                  <dd><code>2.70 kg/dm³</code></dd>
+                </div>
+                <div>
+                  <dt>Young's modulus E</dt>
+                  <dd><code>70 000 MPa</code></dd>
+                </div>
+                <div>
+                  <dt>Yield strength Rp0.2</dt>
+                  <dd><code>≥ 255 MPa</code></dd>
+                </div>
+                <div>
+                  <dt>Tensile strength Rm</dt>
+                  <dd><code>≥ 310 MPa</code></dd>
+                </div>
+                <div>
+                  <dt>Hardness</dt>
+                  <dd><code>95 HBW</code></dd>
+                </div>
+                <div>
+                  <dt>Thermal conductivity</dt>
+                  <dd><code>170–220 W/(m·K)</code></dd>
+                </div>
+              </dl>
+              <p class="catalog-source">
+                Source: Material datasheet DIN EN 755-2 / DIN EN 485-2 · Quotation verified automatically against source.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Get started -->
+    <section class="section section-alt" id="get-started" aria-labelledby="start-heading">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Quick start</p>
+          <h2 id="start-heading">Get started</h2>
+          <p class="section-lead">
+            Install Mechvane next to SolidCraft in two commands and connect your agent.
+          </p>
+        </div>
+
+        <div class="start-grid">
+          <div class="start-card">
+            <div class="start-card-header">
+              <h3>1. Install</h3>
+              <span class="code-meta">Python ≥ 3.11</span>
+            </div>
+            <p>
+              <code>mechvane setup</code> downloads the pinned SolidCraft CLI (about 175 MB) and
+              verifies its SHA256 checksum. After setup, everything runs locally and offline.
+            </p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy="pip install mechvane&#10;mechvane setup">Copy</button>
+              <pre><code><span class="cmd">pip install mechvane</span>
+<span class="cmd">mechvane setup</span>      <span class="comment"># pinned SolidCraft CLI (~175 MB)</span></code></pre>
+            </div>
+            <p class="start-note">
+              Mechvane connects to the SolidCraft window you have open: your agent reads and builds there, and the design checks run on it. Without a window Mechvane runs its own SolidCraft session on your project folder.
+            </p>
+            <div class="platform-box" role="note">
+              <strong>Platforms:</strong> Tested on <strong>Linux</strong> and <strong>Windows 11 (x64)</strong>;
+              <strong>macOS</strong> is expected to work, <strong>not yet tested</strong>.
+            </div>
+          </div>
+
+          <div class="start-card">
+            <div class="start-card-header">
+              <h3>2. Connect an AI agent via MCP</h3>
+              <span class="code-meta">.mcp.json</span>
+            </div>
+            <p>
+              Add Mechvane as an MCP server in your project directory so an agent such as Claude Code can
+              build parts, assemble joints, and run design checks on your files:
+            </p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy='{&#10;  "mcpServers": {&#10;    "mechvane": {&#10;      "command": "mechvane",&#10;      "args": ["mcp", "--workspace", "./workspace"]&#10;    }&#10;  }&#10;}'>Copy</button>
+              <pre><code>{
+  "mcpServers": {
+    "mechvane": {
+      "command": "mechvane",
+      "args": ["mcp", "--workspace", "./workspace"]
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="prompt-example">
+              <span class="prompt-label">Example prompt</span>
+              <p>
+                “Build an 80×40×8 plate with four M5 clearance holes, bolt it to a bracket and check the design.”
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Roadmap -->
+    <section class="section" id="roadmap" aria-labelledby="roadmap-heading">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Where it is going</p>
+          <h2 id="roadmap-heading">Roadmap</h2>
+          <p class="section-lead">
+            Development is tracked openly in <code>roadmap.json</code> by milestone progress rather than fixed dates.
+          </p>
+        </div>
+
+        <div class="milestone-card">
+          <div class="milestone-top">
+            <div>
+              <h3 id="ms-title">Next milestone: v0.2</h3>
+              <p id="ms-goal">
+                Mechvane's engineering knowledge moves into SolidCraft's own app as plugins: design checks and bolted
+                connections as entries in SolidCraft for you and as tools for your agent, on the same model.
+              </p>
+            </div>
+            <a class="btn btn-secondary" href="/roadmap/">Open full roadmap</a>
+          </div>
+
+          <div class="ms-bar" id="ms-bar" hidden aria-hidden="true">
+            <span id="ms-fill"></span>
+          </div>
+          <p class="ms-detail" id="ms-detail">
+            See <a href="/roadmap/">/roadmap/</a> for the live breakdown of every feature by status.
+          </p>
+
+          <div class="roadmap-columns">
+            <div class="rm-col rm-col-done">
+              <h4><span class="rm-dot"></span>Available today</h4>
+              <p>
+                Separate part and assembly files, joint repair across files, an MCP server for your agent with clear
+                error messages and a short report after every step, standard parts, the bolted connection assistant,
+                design checks with the source and quoted passage behind every finding, an open knowledge catalog,
+                thread depth by material, STEP import as a reference body, glTF export, trying parameter values with
+                a skill and MCP tool, a picture for your agent to check its work against, a weekly check on new
+                SolidCraft releases, your agent and you working in the SolidCraft window you have open (design checks
+                with their sources at that window, <code>mechvane check</code>), a bolted connection that comes and goes
+                in one call, a short install guide for Windows and Linux, and SolidCraft 0.43.
+              </p>
+            </div>
+            <div class="rm-col rm-col-progress">
+              <h4><span class="rm-dot"></span>In progress</h4>
+              <p>
+                A single undo step for a bolted connection inside SolidCraft (it follows with the plugin), expanding the
+                open knowledge catalog and growing the material database.
+              </p>
+            </div>
+            <div class="rm-col rm-col-planned">
+              <h4><span class="rm-dot"></span>Planned</h4>
+              <p>
+                Engineering plugins inside SolidCraft (design checks, bolted connections and standard parts as a ribbon
+                entry for you and a tool for your agent), your own features as code,
+                locks, change previews, versions, branches and variants, rules calculated from material properties,
+                domain modules (frames, design accelerators, sheet metal, slicer, welding, strength check, clearance
+                check, exploded views), manufacturing drawings, and opening files from other CAD systems with their
+                feature history.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Built on SolidCraft -->
+    <section class="section section-alt" id="solidcraft" aria-labelledby="solidcraft-heading">
+      <div class="container">
+        <div class="solidcraft-banner">
+          <div class="solidcraft-copy">
+            <p class="eyebrow">Foundation</p>
+            <h2 id="solidcraft-heading">Built on SolidCraft</h2>
+            <p>
+              Mechvane builds on <a href="https://github.com/tangency-labs/solidcraft">SolidCraft</a>
+              (Rust, Apache-2.0), an open parametric CAD kernel and application where “everything is a command”,
+              with a built-in MCP server. SolidCraft stays unchanged as a dependency; Mechvane adds its
+              mechanical engineering layer on top—separate part and assembly files with link verification,
+              procedural standard parts, bolted connections, and sourced design rules. The plan is to bring that
+              layer into the SolidCraft app itself, as plugins you use by hand and tools your agent calls.
+            </p>
+          </div>
+          <div class="solidcraft-action">
+            <a class="btn btn-secondary" href="https://github.com/tangency-labs/solidcraft">
+              Visit SolidCraft on GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 8. Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="brand">
+          <img class="brand-logo" src="media/logo.svg" width="24" height="24" loading="lazy" alt="">
+          <span class="brand-name">Mech<span class="brand-vane">vane</span></span>
+        </div>
+        <p class="footer-tagline">You and your agent on the same model.</p>
+        <p class="footer-legal">
+          Open source under <strong>MIT OR Apache-2.0</strong>, at your option. Built on
+          <a href="https://github.com/tangency-labs/solidcraft">SolidCraft</a>. Mechvane is an independent
+          project and is not affiliated with any CAD vendor.
+        </p>
+      </div>
+
+      <nav class="footer-links" aria-label="Footer">
+        <div class="footer-col">
+          <h4>Try &amp; explore</h4>
+          <ul>
+            <li><a href="/roadmap/">Roadmap</a></li>
+            <li><a href="#get-started">Install</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/mechvane/mechvane">GitHub</a></li>
+            <li><a href="https://pypi.org/project/mechvane/">PyPI (0.1.1)</a></li>
+            <li><a href="https://github.com/mechvane/mechvane/blob/main/CHANGELOG.md">Changelog</a></li>
+            <li><a href="https://github.com/mechvane/mechvane/issues/new?template=feature_request.yml">Request a feature</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
