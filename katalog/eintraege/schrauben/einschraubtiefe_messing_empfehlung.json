@@ -1,9 +1,9 @@
 {
   "id": "einschraubtiefe_messing_empfehlung",
-  "aussage": "Empfohlene Gesamteinschraubtiefe für Schrauben der Festigkeitsklasse 8.8 mit Regelgewinde in Messing (CuZn-Legierungen): 1,5 * d.",
+  "aussage": "Empfohlene Mindesteinschraubtiefe für Stahlschrauben in Messing (CuZn-Legierungen): 1,5 * d (allgemeiner Faustwert für Stahlschrauben ohne Angabe der Festigkeitsklasse; Tabellen nach Roloff/Matek bzw. Böllhoff nennen 1,3 * d bis 6.8 und lassen 8.8 offen).",
   "werte": [
     {
-      "name": "Empfohlene Gesamteinschraubtiefe Messing",
+      "name": "Empfohlene Mindesteinschraubtiefe Messing",
       "wert": 1.5,
       "einheit": "x Nenndurchmesser"
     }
@@ -32,22 +32,32 @@
       "M10",
       "M12"
     ],
-    "festigkeitsklasse": [
-      "8.8"
-    ]
+    "festigkeitsklasse": []
   },
-  "herkunft": "erfahrung",
+  "herkunft": "handbuch",
   "quellen": [
     {
-      "url": "https://jus-spanntechnik.de/ratgeber/gewindelaenge-berechnen/",
-      "stelle": "Synthese aus VDI 2230 Berechnungsdiagramm und Fachpraxis",
-      "zitat": "Scherfestigkeit des Bauteilwerkstoffs (≈ 0,6 · Rm,M)",
-      "abgerufen": "2026-10-21"
+      "url": "https://www.ecomfasteners.com/pages/thread-engagement-chart",
+      "stelle": "Thread Engagement Chart & Calculator (Rule of Thumb & Steel into Brass/Bronze)",
+      "zitat": "Softer materials need more: about 1.5x in cast iron, brass or bronze, and about 2x in aluminum, zinc or plastics.",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://roymech.org/Useful_Tables/Screws/Thread_Calcs",
+      "stelle": "Rules of thumb for steel screws used with screwed holes in weaker materials",
+      "zitat": "For Cast Iron or brass or bronze the thread engagement should be at least 1,5 x Nominal dia's of the thread",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://media.boellhoff.com/files/pdf1/technik-rund-um-schrauben-de-8100.pdf",
+      "stelle": "Technik rund um Schrauben 8100, S. 14 (Quelle dort: Roloff/Matek), Zeile Kupferlegierungen",
+      "zitat": "Kupferlegierungen 1,3 · d 1,3 · d – –",
+      "abgerufen": "2026-11-28"
     }
   ],
-  "begruendung": "Erfahrungswert ohne Quellenbeleg. Die angegebene Quelle nennt weder Messing noch den Wert 1,5·d für 8.8 (dort nur grobe Faktoren für Stahl, Guss und Aluminium, selbst als zu prüfen markiert) (#210).",
-  "ausnahmen": "",
+  "begruendung": "Messing besitzt eine geringere Scherfestigkeit als Vergütungsstahl, sodass zur Sicherstellung von Bruchgleichheit (Schraubenbruch vor Gewindeausriss) eine größere Einschraubtiefe als bei Stahl (1,0 * d) erforderlich ist. Korrektur gegenüber vorheriger Fassung: Die Quellen nennen 1,5 * d als allgemeinen Richtwert für die tragende Gewindeeingriffslänge von Stahlschrauben in Messing ohne Festlegung auf Festigkeitsklasse 8.8 und ohne Angabe zur Sackloch-Gesamttiefe (Tameson nennt 1,5–2,0 * d); Böllhoff (8100, Tab. 2.3 nach Roloff/Matek) nennt für Kupferlegierungen 1,3 * d bis Klasse 6.8 und lässt 8.8 offen.",
+  "ausnahmen": "Für hochfeste Schrauben der Klasse 8.8 im hochbeanspruchten Einsatz ist ein rechnerischer Nachweis nach VDI 2230 mit der Scherfestigkeit der konkreten CuZn-Legierung erforderlich.",
   "haerte": "hinweis",
-  "pruefstatus": "nicht_belegt",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

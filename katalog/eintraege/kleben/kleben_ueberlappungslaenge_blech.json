@@ -1,37 +1,64 @@
 {
   "id": "kleben_ueberlappungslaenge_blech",
-  "aussage": "Die empfohlene Überlappungslänge bei einfach überlappten Klebeverbindungen beträgt das 10- bis 20-fache der Fügeteilblechdicke (typischer Richtwert: 10 mm bis 25 mm).",
+  "aussage": "Bei einfach überlappten Klebeverbindungen richtet sich die Überlappungslänge l_ü nach der Dicke s des dünneren Fügeteils: Richtwerte für das Überlappungsverhältnis l_ü/s betragen 7,5 bis 15 für Stahl und 5 bis 10 für Aluminiumlegierungen. Oberhalb von etwa dem 20-Fachen der Fügeteildicke bringt eine weitere Verlängerung der Überlappung praktisch keinen Festigkeitszuwachs mehr.",
   "werte": [
     {
-      "name": "Überlappungslänge zu Blechdicke",
-      "bereich": [10, 20],
+      "name": "Überlappungsverhältnis Stahl (l_ü / s)",
+      "bereich": [
+        7.5,
+        15
+      ],
       "einheit": "x Blechdicke"
     },
     {
-      "name": "Typische absolute Überlappungslänge",
-      "bereich": [10, 25],
-      "einheit": "mm"
+      "name": "Überlappungsverhältnis Aluminiumlegierung (l_ü / s)",
+      "bereich": [
+        5,
+        10
+      ],
+      "einheit": "x Blechdicke"
+    },
+    {
+      "name": "Praktische Obergrenze Überlappungslänge",
+      "wert": 20,
+      "einheit": "x Blechdicke"
     }
   ],
   "geltungsbereich": {
-    "werkstoff": ["Bleche", "Metalle", "Aluminium", "Stahl"],
-    "verfahren": ["Kleben"],
-    "feature": ["Überlappungsklebung", "Klebefuge"],
+    "werkstoff": [
+      "Bleche",
+      "Metalle",
+      "Aluminium",
+      "Stahl"
+    ],
+    "verfahren": [
+      "Kleben"
+    ],
+    "feature": [
+      "Überlappungsklebung",
+      "Klebefuge"
+    ],
     "groesse": [],
     "festigkeitsklasse": []
   },
-  "herkunft": "hypothese",
+  "herkunft": "handbuch",
   "quellen": [
     {
-      "url": "",
-      "stelle": "Fachliteratur / Konstruktionslehre (z. B. Habenicht)",
-      "zitat": "Die Kraftübertragung konzentriert sich infolge der elastischen Schubverzerrung überwiegend auf die Randzonen der Überlappung. Eine Vergrößerung der Überlappung über das 20-fache der Wandstärke hinaus steigert die Bruchlast kaum noch, senkt aber die mittlere Zugscherfestigkeit.",
-      "abgerufen": "2026-10-21"
+      "url": "https://www.ingenieurkurse.de/maschinenelemente-1/verbindungen-und-verbindungselemente/stoffschluessige-verbindungen/loetverbindungen-und-klebeverbindungen/richtlinien-zur-gestaltung-von-klebeverbindungen.html",
+      "stelle": "Abschnitt Überlappung, Tabelle Überlappungsverhältnis l_ü / s",
+      "zitat": "Stahl 7,5 - 15 Al-Legierung 5 - 10",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://www.perbond.com/blog/how-long-should-a-lap-joint-overlap-be/",
+      "stelle": "Abschnitt Case 3: when the answer is too long to be true",
+      "zitat": "past about 20 times the thickness (40 mm for 2 mm parts) extra overlap stops adding strength.",
+      "abgerufen": "2026-11-27"
     }
   ],
-  "begruendung": "Die Kraftübertragung konzentriert sich infolge der elastischen Schubverzerrung überwiegend auf die Randzonen der Überlappung. Eine Vergrößerung der Überlappung über das 20-fache der Wandstärke hinaus steigert die Bruchlast kaum noch, senkt aber die mittlere Zugscherfestigkeit.",
+  "begruendung": "Die Kraftübertragung konzentriert sich infolge elastischer Schubverzerrung überwiegend auf die Randzonen der Überlappung; über etwa das 20-Fache der Fügeteildicke hinaus tragen mittlere Bereiche kaum noch zur Bruchlast bei. Wertänderung gegenüber vorheriger Fassung: Für den bisherigen Pauschalbereich 10–20 * Blechdicke und die absolute Angabe 10–25 mm fand sich keine frei zugängliche Quelle (12,5 x 25 mm ist lediglich die DIN-EN-1465-Prüfkörpergeometrie); die Werte wurden auf die belegten Richtwerte 7,5–15 (Stahl), 5–10 (Al-Legierung) und die Obergrenze 20 (x Fügeteildicke) korrigiert.",
   "ausnahmen": "",
   "haerte": "hinweis",
-  "pruefstatus": "automatisch",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

@@ -1,0 +1,70 @@
+# Builds the edge-distance plugin (U2, #220) for wasm32, checks the package with the SolidCraft target version
+# and runs the equality gate against the reference baselines and design_rules.check. Runs in the public repo only.
+name: Plugin
+
+"on":
+  push:
+    branches: [main]
+    paths: ["plugins/**", "mechvane/design_rules.py", "mechvane/geometry.py", "katalog/eintraege/**",
+            "tests/reference/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOLIDCRAFT_VERSION: "0.50.0"
+
+jobs:
+  edge-distance:
+    name: edge-distance (${{ matrix.os }})
+    if: github.repository == 'mechvane/mechvane'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: solidcraft-0.50.0-linux-x86_64.tar.gz
+            sha256: b0c63f45fe58ab13c40145132b21fdc309f45e294301f1ba525050aa99575920
+          - os: windows-latest
+            asset: solidcraft-0.50.0-windows-x64-portable.zip
+            sha256: f9b5be186e966e839af6b1a9bf32dfd0e0663cace9ba91f091ef8d99893a965a
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Rust with the wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: wasm-tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools
+
+      - name: Build the plugin
+        run: plugins/edge-distance/build.sh
+
+      - name: SolidCraft ${{ env.SOLIDCRAFT_VERSION }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sc" && cd "$RUNNER_TEMP/sc"
+          curl -fsSLO "https://github.com/tangency-labs/solidcraft/releases/download/v${SOLIDCRAFT_VERSION}/${{ matrix.asset }}"
+          echo "${{ matrix.sha256 }}  ${{ matrix.asset }}" | sha256sum -c -
+          case "${{ matrix.asset }}" in *.zip) unzip -q "${{ matrix.asset }}" ;; *) tar xzf "${{ matrix.asset }}" ;; esac
+          cli=$(find "$RUNNER_TEMP/sc" -type f \( -name solidcraft-cli -o -name solidcraft-cli.exe \) | head -1)
+          echo "SOLIDCRAFT_CLI=$cli" >> "$GITHUB_ENV"
+
+      - name: Install Mechvane
+        run: pip install -e .
+
+      - name: Package check
+        run: '"$SOLIDCRAFT_CLI" plugin check plugins/edge-distance/mechvane-edge-distance'
+
+      - name: Equality gate
+        run: python plugins/edge-distance/gate.py

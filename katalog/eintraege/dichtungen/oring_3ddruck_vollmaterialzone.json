@@ -1,15 +1,21 @@
 {
   "id": "oring_3ddruck_vollmaterialzone",
-  "aussage": "Bei FDM-gedruckten Dichtflanschen muss die Dichtnut von einer mindestens 3,0 mm dicken Vollmaterialzone (mindestens 5–6 massive Perimeter oder lokaler 100-%-Infill-Block) umgeben sein.",
+  "aussage": "Bei FDM-gedruckten druck- und wasserdichten Gehäusen (einschließlich mit O-Ringen gedichteter Konstruktionen) empfiehlt Prusa Research eine Wandstärke von 2 bis 3 mm bzw. 4 bis 6 Perimetern, um Leckagen durch Z-Nähte und Infill-Hohlräume zu vermeiden.",
   "werte": [
     {
-      "name": "Mindestdicke Vollmaterialzone",
-      "wert": 3.0,
+      "name": "Empfohlene Wandstärke",
+      "bereich": [
+        2,
+        3
+      ],
       "einheit": "mm"
     },
     {
-      "name": "Mindestanzahl Perimeter",
-      "wert": 5,
+      "name": "Empfohlene Anzahl Perimeter",
+      "bereich": [
+        4,
+        6
+      ],
       "einheit": ""
     }
   ],
@@ -33,18 +39,24 @@
     "groesse": [],
     "festigkeitsklasse": []
   },
-  "herkunft": "hypothese",
+  "herkunft": "hersteller",
   "quellen": [
     {
-      "url": "",
-      "stelle": "interne Konstruktionserfahrung Mechvane",
-      "zitat": "FDM-Druckteile mit Standard-Infill (20%) sind luft- und wasserdurchlässig; ohne massive Perimeter um die Dichtnut strömt das Medium durch das Bauteilinnere am O-Ring vorbei.",
-      "abgerufen": "2026-10-21"
+      "url": "https://blog.prusa3d.com/watertight-3d-printing-pt1-vases-cups-and-other-open-models_48949/",
+      "stelle": "Watertight 3D printing PT1, Abschnitt Perimeters",
+      "zitat": "In our tests, most of the 3D printed parts worked fine with 4-6 perimeters (wall thicknesses of 2-3 mm).",
+      "abgerufen": "2026-11-27"
+    },
+    {
+      "url": "https://blog.prusa3d.com/watertight-3d-printing-part-2_53638/",
+      "stelle": "Watertight 3D printing part 2, Abschnitt Choosing the model",
+      "zitat": "Make the walls thick enough. 2-3 mm is usually a good start.",
+      "abgerufen": "2026-11-27"
     }
   ],
-  "begruendung": "Druckluft oder Wasser unter Druck migriert durch die Grenzflächen der Layer in das Hohlraumsystem des Standard-Infills und tritt außerhalb der Dichtung wieder aus. Nicht belegt: Es gibt keine Quelle; zudem ergeben 5 Perimeter bei 0,4 mm Düse nur etwa 2,0–2,4 mm, nicht 3,0 mm.",
-  "ausnahmen": "Vollständig massiv gedruckte Bauteile (100 % Infill).",
+  "begruendung": "Wasser oder Luft unter Druck kann über Z-Nähte und Übergänge zwischen Perimetern und Standard-Infill migrieren. Klärung des bisherigen Widerspruchs und Wertänderung: Bei einer 0,4-mm-Düse (typische Extrusionsbreite ca. 0,42–0,45 mm) ergeben 5 Perimeter nur ca. 2,1–2,25 mm, nicht 3,0 mm. Die Versuchsreihe von Prusa Research (Teil 1 und Teil 2, inkl. O-Ring-gedichteter Gehäuse) belegt 4–6 Perimeter entsprechend 2–3 mm Wandstärke (bei 0,45 mm Bahnbreite ca. 1,8–2,7 mm); ein expliziter Sonderwert ausschließlich für eine O-Ring-Nut-Vollmaterialzone wird dort nicht genannt. Für O-Ring-Dichtflächen empfiehlt Prusa Teil 2 zudem möglichst glatte Kontaktflächen (z. B. Druckbettseite oder Glätten/Ironing) und Silikonfett.",
+  "ausnahmen": "Vollständig massiv gedruckte Bauteile (100 % Infill); bei hohem Druck (> 2 bar) laut Prusa Teil 2 ggf. zusätzlich Nachbehandlung (z. B. Epoxidharz-Versiegelung).",
   "haerte": "hinweis",
-  "pruefstatus": "nicht_belegt",
+  "pruefstatus": "offen",
   "beziehungen": []
 }

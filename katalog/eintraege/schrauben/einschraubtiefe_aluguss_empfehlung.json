@@ -47,12 +47,12 @@
   "quellen": [
     {
       "url": "https://assets.eu.ctfassets.net/0vp0u5uh75zd/3wPlDC2XQOYT3XOdwCk6lz/78349182054251c341bf2565b01f69c9/052_Einschraubtiefe_Fastening_DE_01_2025.pdf",
-      "stelle": "Synthese aus Bossard Handbuch und DIN 940",
+      "stelle": "Bossard Blatt 052 (01/2025) — ohne Zeile Aluminiumguss",
       "zitat": "Sollen Schrauben in geschnittene Innengewinde eingeschraubt [...] minimale Eindrehtiefen festzulegen.",
       "abgerufen": "2026-10-21"
     }
   ],
-  "begruendung": "Erfahrungswert ohne Quellenbeleg. Die Bossard-Tabelle (SFS/Bossard) nennt für 8.8 mit Regelgewinde bei AlMg3 2·d (3·d nach VDI), AlMgSi1 1,4·d, AlMg4,5Mn 1,4·d, AlMgMn1 1,1·d und AlZnMgCu 1,0·d; eine Zeile für Aluminiumguss gibt es dort nicht. Bezug zu DIN 940/835 und Herstellerangaben ist nicht belegt (#210).",
+  "begruendung": "Erfahrungswert ohne frei zugänglichen Quellenbeleg für 8.8-Regelgewinde in Aluminiumguss. Nachprüfung (2026-11-27): Bossard Blatt 052 hat keine Zeile für Aluminiumguss; Böllhoff (8100, Tab. 2.3 nach Roloff/Matek), Schweizer-FN und Ingenieurkurse lassen unter Al-Gusslegierungen die Spalte 8.8 bewusst offen (–, Verweis auf VDI 2230; 2,2·d steht dort nur bis 6.8); Ingenieurbüro Hanke (VDI 2230-1:2015) liefert je nach Scherfestigkeit und Nenngröße etwa 1,8·d bis 3,55·d (siehe einschraubtiefe_aluminium_vdi2230_hanke); Böllhoff HELICOIL Plus (0100, S. 13) nennt 2,5·d (Rm 100–200 N/mm²) nur für Drahtgewindeeinsätze; Tameson und Associated Fastening nennen 2,0–2,5·d nur pauschal für Aluminium ohne Differenzierung nach Guss, 8.8 oder tragender vs. Sackloch-Gesamttiefe.",
   "ausnahmen": "",
   "haerte": "hinweis",
   "pruefstatus": "nicht_belegt",

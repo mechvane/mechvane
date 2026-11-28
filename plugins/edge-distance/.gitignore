@@ -1,0 +1,3 @@
+target/
+mechvane-edge-distance/*.wasm
+*.zip

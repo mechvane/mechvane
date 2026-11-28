@@ -1,0 +1,19 @@
+[package]
+name = "mechvane-edge-distance"
+version = "0.1.0"
+edition = "2024"
+
+# A crate of its own (plugin #220), not part of any workspace.
+[workspace]
+
+[dependencies]
+serde_json = "1"
+wit-bindgen = "0.63"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

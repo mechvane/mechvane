@@ -1,0 +1,53 @@
+{
+  "id": "mechvane-edge-distance",
+  "name": "Mechvane: Hole edge distance",
+  "version": "0.1.0",
+  "description": "Checks that every hole and slot end is at least factor × d from the part's edges (Mechvane design rule hole_edge_distance, with its catalog source).",
+  "capabilities": [
+    "commands@0.2"
+  ],
+  "runtime": {
+    "module": "mechvane-edge-distance.wasm",
+    "commands": [
+      "document.inspect",
+      "model.faces",
+      "model.edges",
+      "timeline.inspect",
+      "inspect.classify_points"
+    ],
+    "entries": [
+      {
+        "name": "hole-edge-distance",
+        "effect": "read",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "factor": {
+              "type": "number",
+              "title": "Edge distance factor (× d)",
+              "default": 1.5,
+              "minimum": 0.5,
+              "maximum": 5
+            },
+            "debug": {
+              "type": "boolean",
+              "title": "Return intermediate values",
+              "default": false
+            }
+          }
+        },
+        "slots": [
+          {
+            "kind": "ribbon",
+            "name": "Inspect"
+          }
+        ]
+      }
+    ],
+    "limits": {
+      "fuel": 1000000000,
+      "memory_mib": 16,
+      "deadline_ms": 10000
+    }
+  }
+}
